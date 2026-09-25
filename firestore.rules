@@ -1,0 +1,145 @@
+rules_version = '2';
+
+// See DESIGN.md §11. Household roles live in household/main and change only via the Firebase console.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Roles ----
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function roleOf(uid) {
+      return get(/databases/$(database)/documents/household/main).data.members.get(uid, {}).get('role', '');
+    }
+
+    function isMember() {
+      return signedIn() && roleOf(request.auth.uid) == 'member';
+    }
+
+    function isViewer() {
+      return signedIn() && roleOf(request.auth.uid) == 'viewer';
+    }
+
+    // ---- Lists and tasks share visibility (tasks carry a copy of their list's fields) ----
+
+    function canRead(d) {
+      return (d.visibility == 'private' && isMember() && d.ownerId == request.auth.uid)
+        || (d.visibility == 'family' && (isMember() || (isViewer() && d.viewerVisible == true)));
+    }
+
+    function canWrite(d) {
+      return isMember() && (d.visibility == 'family' || d.ownerId == request.auth.uid);
+    }
+
+    // ---- Household ----
+
+    function ownMemberEntryOnly() {
+      let before = resource.data.members;
+      let after = request.resource.data.members;
+      let uid = request.auth.uid;
+      return after.diff(before).affectedKeys().hasOnly([uid])
+        && after[uid].role == before[uid].role
+        && after[uid].keys().hasOnly(['role', 'displayName', 'color']);
+    }
+
+    match /household/main {
+      allow read: if isMember() || isViewer();
+      allow update: if isMember()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pets', 'weeklyTokens', 'members'])
+        && ownMemberEntryOnly();
+    }
+
+    // ---- Lists ----
+
+    function validList(d) {
+      return d.name is string && d.name.size() > 0
+        && d.kind in ['list', 'project']
+        && d.visibility in ['private', 'family']
+        && d.viewerVisible is bool
+        && (d.visibility == 'family' || d.viewerVisible == false)
+        && d.defaultContext in ['family', 'work']
+        && d.ownerId is string;
+    }
+
+    match /lists/{listId} {
+      allow read: if canRead(resource.data);
+      allow create: if canWrite(request.resource.data)
+        && request.resource.data.ownerId == request.auth.uid
+        && validList(request.resource.data);
+      // Only the current owner may hand a list to someone else.
+      allow update: if canWrite(resource.data)
+        && canWrite(request.resource.data)
+        && (request.resource.data.ownerId == resource.data.ownerId || resource.data.ownerId == request.auth.uid)
+        && validList(request.resource.data);
+      allow delete: if canWrite(resource.data);
+    }
+
+    // ---- Tasks ----
+
+    // getAfter() so a batch that changes a list and its tasks together is checked against the new list.
+    function validTask(d) {
+      let list = getAfter(/databases/$(database)/documents/lists/$(d.listId)).data;
+      return d.title is string && d.title.size() > 0
+        && d.status in ['todo', 'doing', 'done']
+        && d.priority in [1, 2, 3]
+        && d.context in ['family', 'work']
+        && d.durationDays is int && d.durationDays >= 1
+        && d.dependsOn is list
+        && d.visibility == list.visibility
+        && d.ownerId == list.ownerId
+        && d.viewerVisible == list.viewerVisible;
+    }
+
+    match /tasks/{taskId} {
+      allow read: if canRead(resource.data);
+      allow create: if canWrite(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid
+        && validTask(request.resource.data);
+      allow update: if canWrite(resource.data)
+        && canWrite(request.resource.data)
+        && request.resource.data.createdBy == resource.data.createdBy
+        && validTask(request.resource.data);
+      allow delete: if canWrite(resource.data);
+    }
+
+    // ---- Voting ----
+
+    function boardVisible(boardId) {
+      return isMember()
+        || (isViewer() && get(/databases/$(database)/documents/boards/$(boardId)).data.viewerVisible == true);
+    }
+
+    match /boards/{boardId} {
+      allow read: if isMember() || (isViewer() && resource.data.viewerVisible == true);
+      allow create, update: if isMember()
+        && request.resource.data.name is string && request.resource.data.name.size() > 0
+        && request.resource.data.viewerVisible is bool;
+      allow delete: if isMember();
+
+      match /items/{itemId} {
+        allow read: if boardVisible(boardId);
+        allow create, update: if isMember()
+          && request.resource.data.title is string && request.resource.data.title.size() > 0
+          && request.resource.data.status in ['open', 'chosen', 'archived'];
+        allow delete: if isMember();
+
+        match /votes/{voterId} {
+          allow read: if boardVisible(boardId);
+          allow create, update: if isMember()
+            && voterId == request.auth.uid
+            && request.resource.data.uid == voterId
+            && request.resource.data.tokens is int
+            && request.resource.data.tokens >= 0;
+          allow delete: if isMember() && voterId == request.auth.uid;
+        }
+      }
+    }
+
+    // Members compute their token balance with a collection-group query over their own votes.
+    match /{path=**}/votes/{voterId} {
+      allow read: if isMember();
+    }
+  }
+}
