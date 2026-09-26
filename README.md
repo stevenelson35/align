@@ -1,6 +1,6 @@
 # Align
 
-Household task manager for the Nelson family. See [DESIGN.md](DESIGN.md) for the full spec.
+Household task manager for the Nelson family. See [DESIGN.md](DESIGN.md) for the full spec. Its §13 "Status & Handoff" says where things stand, and [CLAUDE.md](CLAUDE.md) has notes for coding agents.
 
 React + TypeScript + Vite in the browser, with Firebase Auth and Firestore on the free Spark plan. The app is static files hosted on Turbify at align.itsallonesong.com.
 

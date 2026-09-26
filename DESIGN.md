@@ -2,6 +2,8 @@
 
 Align is a household task manager for one family. It handles personal, shared and project tasks, does dependency-aware scheduling, runs token-based family voting, and has a chat box that accepts simple typed commands.
 
+
+> **Picking this project up later, or handing it to another agent?** Start with **§13 Status & Handoff**. It covers what's built, what's next, what the user still has to set up, the environment, and gotchas. `CLAUDE.md` has the short version for coding agents.
 ## 1. Constraints
 
 These rules override anything else in this document.
@@ -273,3 +275,52 @@ firestore.indexes.json
 - **Tests:** Vitest for the engine and parser, and the rules test SDK for security rules.
 - **Deploy the backend:** `firebase deploy --only firestore:rules,firestore:indexes`. Rules and indexes are free.
 - **Deploy the frontend:** `npm run build`, then upload `dist/` to the Turbify subdomain's document root (FTP or File Manager). An `lftp` script can come later.
+
+## 13. Status & Handoff
+
+### Where things stand (2026-09-26)
+- **Stage 1: scaffold (done)**, commit `f4a987b` on `main` at `git@github.com:stevenelson35/align.git`:
+  - Vite + React 19 + TypeScript app (`src/`), with Firebase wiring (`src/firebase/`) that uses the emulators in development
+  - sign-in screen only (no sign-up), and a session provider that loads `household/main` and shows "Not in this household" to outsiders
+  - an app shell with the top bar (household name, avatar, "View only" badge, sign out)
+  - `scripts/seed-emulator.mjs` creates test accounts and the household on the emulator
+- **Stage 2: security rules (done).** `firestore.rules` implements §11, and `tests/rules/firestore.rules.test.ts` has **18 tests, all passing** (verified 2026-09-26). The build is clean.
+- **Nothing is deployed yet.** There's no Firebase project and no Turbify subdomain so far.
+
+### Next stages (planned order)
+3. **Lists and tasks:** list CRUD (private/family, list/project, `viewerVisible`, `defaultContext`), task CRUD with the copied list fields (§5.3), the combined view with colors and filters (family/work context, `for` person/pet, assignee, priority, status, dates), and hash routing.
+4. **Scheduling engine** (§6): pure TypeScript in `src/engine/`, with Vitest tests for earliest start, conflicts, forward/backward shifting and cycle rejection, plus the timeline view with drag-to-shift previews.
+5. **Voting and tokens** (§7): boards and items, votes, a computed balance (weekly grant, rollover, chosen = spent, archived = returned), and a collection-group query on `votes`.
+6. **Chat command parser** (§9): pure TypeScript with `chrono-node` dates and fuzzy task matching, plus tests.
+7. **First deploy:** Firebase rules/indexes, the production `.env`, and uploading `dist/` to the Turbify subdomain.
+
+### What the user still has to do (can't be done by an agent)
+1. **Firebase:**
+   - Create a project on the free **Spark** plan.
+   - Enable **Email/Password** auth and **Firestore**.
+   - Add the authorized domain `align.itsallonesong.com`.
+   - Register a **Web app** and put its config in `.env.production.local` (see `.env.example`).
+   - Run `firebase login` (interactive), then `firebase use --add`.
+2. **Accounts:** create the family's accounts in the Firebase console, then add their uids to `household/main.members` with roles. Real names for the wife, daughter and pets are still needed; the seed script uses placeholders.
+3. **Turbify:**
+   - Create the subdomain `align.itsallonesong.com` in cPanel, with HTTPS.
+   - Note its document root. SPA routing uses hashes, so no rewrite rules are needed.
+   - **FTP facts from the psort project, verified 2026-09-26:**
+     - Use explicit **FTPS** to **`cpanel292.turbify.biz`**; the TLS certificate names that server, and SFTP port 22 is closed.
+     - The account `sjnelson@itsallonesong.com` starts at the main website root. The subdomain's docroot is probably a folder under it. The root listing showed a folder named `itsallonesong.com` created 2026-09-26; confirm what it is.
+     - psort's `blog.Uploader` in `stevenelson35/psort` is a working FTPS upload example.
+
+### Environment
+- **WSL Ubuntu 24.04.** Node **v24.21.0** via nvm (`~/.nvm`); load it with `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"`.
+- `firebase-tools` 15.31 is installed globally under nvm. Java 21 is present (for the emulators).
+- **Emulator project ID:** `demo-align` ("demo-" projects never reach real Firebase). The emulator UI is at http://127.0.0.1:4000.
+- **Test accounts** (password `align-dev`): `steve@`, `wife@`, `daughter@` (members) and `grandparent@` (viewer), all `@example.com`.
+
+### Gotchas
+- npm skipped the install scripts for `@firebase/util` and `protobufjs`. That's harmless: the stub `postinstall.mjs` ships with the package.
+- `vite build` warns that the chunk is over 500 KB. It's the Firebase SDK, and code-splitting is optional.
+- **Tasks copy their list's visibility fields**, so queries and rules need no lookups. The rules check them against the list with `getAfter()`, so a batch that changes a list and its tasks together is valid. Any code that changes a list's visibility or owner **must update its tasks in the same batch**.
+- **Queries must match the rules.** Viewers must query family tasks with `where("viewerVisible","==",true)`.
+- `firestore.indexes.json` declares the collection-group single-field index on `votes.uid` that the token-balance query needs.
+- Don't put spaces in generated file or folder names (user preference). All pushes go over SSH.
+
