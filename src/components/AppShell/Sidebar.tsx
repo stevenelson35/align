@@ -27,8 +27,8 @@ export function Sidebar({ open }: { open: boolean }) {
 
   return (
     <nav className={`sidebar${open ? ' open' : ''}`}>
-      <NavLink route={{ view: 'home' }} label="Everything" />
       <NavLink route={{ view: 'today' }} label="Today" />
+      <NavLink route={{ view: 'home' }} label="Everything" />
       {isMember && <NavLink route={{ view: 'mine' }} label="My tasks" />}
       <NavLink route={{ view: 'family' }} label="Family tasks" />
       <NavLink route={{ view: 'work' }} label="Work" />

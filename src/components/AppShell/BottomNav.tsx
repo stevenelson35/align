@@ -1,11 +1,11 @@
 import { useApp } from '../../hooks/useApp'
 import type { Route } from '../../utils/routes'
 
-/** Mobile navigation (DESIGN.md §10): Home, My Tasks, Family, Voting, Chat. */
+/** Mobile navigation (DESIGN.md §10): Today (the start page), My Tasks, Family, Voting, Chat. */
 export function BottomNav({ onChat }: { onChat: () => void }) {
   const { route, navigate, isMember } = useApp()
   const items: { label: string; route: Route }[] = [
-    { label: 'Home', route: { view: 'home' } },
+    { label: 'Today', route: { view: 'today' } },
     ...(isMember ? [{ label: 'My Tasks', route: { view: 'mine' } as Route }] : []),
     { label: 'Family', route: { view: 'family' } },
     { label: 'Voting', route: { view: 'boards' } },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Task } from '../types'
-import { isForToday } from './tasks'
+import { filterTasks, isForToday } from './tasks'
 
 const t = (over: Partial<Task>): Task => ({
   id: 'x',
@@ -34,5 +34,19 @@ describe('isForToday', () => {
     expect(isForToday(t({ calendar: cal, startDate: '2026-10-08' }), day)).toBe(true)
     expect(isForToday(t({ calendar: cal, startDate: '2026-10-07', durationDays: 3 }), day)).toBe(true)
     expect(isForToday(t({ calendar: cal, startDate: '2026-10-09' }), day)).toBe(false)
+  })
+})
+
+describe('filterTasks "Not done"', () => {
+  it('hides calendar events that are over, but not overdue regular tasks', () => {
+    const cal = { eventId: 'e' }
+    const tasks = [
+      t({ id: 'pastEvent', calendar: cal, startDate: '2026-10-01' }),
+      t({ id: 'multiDayNow', calendar: cal, startDate: '2026-10-07', durationDays: 3 }),
+      t({ id: 'futureEvent', calendar: cal, startDate: '2026-10-20' }),
+      t({ id: 'overdueChore', startDate: '2026-10-01' }),
+    ]
+    expect(filterTasks(tasks, { status: 'open' }, day).map((x) => x.id)).toEqual(['multiDayNow', 'futureEvent', 'overdueChore'])
+    expect(filterTasks(tasks, {}, day)).toHaveLength(4)
   })
 })

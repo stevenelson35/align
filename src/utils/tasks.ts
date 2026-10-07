@@ -1,3 +1,4 @@
+import { today } from '../engine/dates'
 import { topoSort } from '../engine/graph'
 import { applyPreview, conflictsById, finish, type ShiftPreview } from '../engine/scheduling'
 import type { Context, Household, List, Priority, Role, Status, Task } from '../types'
@@ -62,8 +63,10 @@ export interface TaskFilter {
   to?: string
 }
 
-export function filterTasks(tasks: Task[], f: TaskFilter): Task[] {
+/** "Not done" also hides calendar events that are over: they're history, not unfinished work. */
+export function filterTasks(tasks: Task[], f: TaskFilter, now = today()): Task[] {
   return tasks.filter((t) => {
+    if (f.status === 'open' && t.calendar && (finish(t) ?? '9999-99-99') < now) return false
     if (f.listId && t.listId !== f.listId) return false
     if (f.context && t.context !== f.context) return false
     if (f.forId && !t.for?.includes(f.forId)) return false

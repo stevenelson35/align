@@ -34,7 +34,9 @@
    | `BOT_EMAIL` | the bot's email |
    | `BOT_PASSWORD` | the bot's password |
 
-   Optional: `WEEKS_AHEAD` (default 8), `DAYS_BEHIND` (7), `LIST_NAME` ("Family Calendar"). `LIST_ID` fills itself in.
+   Optional: `WEEKS_AHEAD` (default 8), `DAYS_BEHIND` (7), `LIST_NAME` ("Family Calendar"), and `TIME_ZONE`. `TIME_ZONE` is an IANA name such as `America/New_York`; it defaults to the `timeZone` in `appsscript.json`. `LIST_ID` fills itself in.
+
+   Times are shown in that zone, not the calendar's own zone setting. A calendar set to UTC would otherwise show 4 PM events as 8 PM. Each run logs the zone it used.
 5. **Run it.** In the editor, pick `installHourlyTrigger` and click **Run**. Google asks you to authorize. Because it's your own unpublished script, you'll see "Google hasn't verified this app": choose *Advanced → Go to Align calendar sync*. The run does a first sync and schedules one every hour.
 6. Check **Executions** for a line like `Synced 23 events: 23 new, 0 changed, 0 removed.` To let grandparents see the calendar, open the list in Align → **Edit list** → *Visible to viewers*.
 

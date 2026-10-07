@@ -16,7 +16,8 @@
  *     FIREBASE_PROJECT_ID  align-a32c1
  *     BOT_EMAIL            the bot's Firebase Auth email
  *     BOT_PASSWORD         the bot's Firebase Auth password
- *   Optional: WEEKS_AHEAD (8), DAYS_BEHIND (7), LIST_NAME ("Family Calendar"), LIST_ID (found or created automatically)
+ *   Optional: WEEKS_AHEAD (8), DAYS_BEHIND (7), LIST_NAME ("Family Calendar"), LIST_ID (found or created automatically),
+ *   TIME_ZONE (e.g. America/New_York; defaults to the script's zone from appsscript.json)
  *   Then run installHourlyTrigger() once.
  */
 
@@ -55,8 +56,10 @@ function syncCalendar() {
   var from = new Date(now.getTime() - Number(cfg.DAYS_BEHIND) * 86400000)
   var to = new Date(now.getTime() + Number(cfg.WEEKS_AHEAD) * 7 * 86400000)
 
+  // Show times in the family's zone. Not the calendar's own zone setting: a calendar can be set to UTC while
+  // Google Calendar still displays it in local time, which made 4 PM events read 8 PM.
+  var tz = cfg.TIME_ZONE || Session.getScriptTimeZone()
   var events = []
-  var tz = null
   var pageToken
   do {
     var page = Calendar.Events.list(cfg.CALENDAR_ID, {
@@ -64,9 +67,9 @@ function syncCalendar() {
       timeMax: to.toISOString(),
       singleEvents: true, // one item per recurring instance
       maxResults: 2500,
+      timeZone: tz,
       pageToken: pageToken,
     })
-    tz = page.timeZone
     events = events.concat(page.items || [])
     pageToken = page.nextPageToken
   } while (pageToken)
@@ -95,7 +98,7 @@ function syncCalendar() {
   var plan = planSync_(wanted, existing, fmt.day(from), fmt.day(to))
   api.commit(buildWrites_(plan, list, api))
   console.log(
-    'Synced ' + wanted.length + ' events: ' + plan.creates.length + ' new, ' + plan.updates.length + ' changed, ' + plan.deletes.length + ' removed.',
+    'Synced ' + wanted.length + ' events (' + tz + '): ' + plan.creates.length + ' new, ' + plan.updates.length + ' changed, ' + plan.deletes.length + ' removed.',
   )
   return plan
 }
@@ -114,6 +117,7 @@ function config_(p) {
     cfg[k] = p[k]
   })
   cfg.LIST_ID = p.LIST_ID || ''
+  cfg.TIME_ZONE = p.TIME_ZONE || ''
   return cfg
 }
 

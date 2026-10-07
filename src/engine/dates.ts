@@ -30,6 +30,7 @@ export function today(): string {
   return toDay(new Date())
 }
 
+/** e.g. "Wed, Oct 7". */
 export function formatDay(day: string): string {
-  return new Date(toUtc(day)).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  return new Date(toUtc(day)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
 }

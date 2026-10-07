@@ -156,6 +156,7 @@ The family Google Calendar is copied one way into a family list named **Family C
   - `calendar: { eventId, time?, location? }` holds the event details.
   - New tasks get the list's copied fields, `priority: 2`, `status: "todo"`, and `createdBy` set to the bot.
 - **The sync owns `title`, `startDate`, `durationDays` and `calendar`.** Updates use an update mask limited to those fields, so status, notes, priority, assignee, `for` and dependencies set in Align survive.
+- **Time zone:** times and dates use the `TIME_ZONE` script property, or else the script's zone from `appsscript.json`. They never use the calendar's own zone setting: the family calendar turned out to be set to UTC, which showed 4 PM events as 8 PM.
 - **Removals:** an imported task whose event is gone is deleted only if its date falls inside the sync window (7 days back to 8 weeks ahead). Tasks family members add to the list by hand are never touched.
 
 ## 6. Scheduling Engine
@@ -215,6 +216,8 @@ Shifting always shows a **preview** first. Then it applies the changes as one ba
 - A **Work** badge marks tasks with `context: "work"`.
 - **Filters:** list, context (family/work), `for` (person or pet), assignee, priority, status, date range.
 - **Sort:** priority, date, or dependency order (topological).
+- **Today** is the start page (`#/`). It lists tasks that are in progress, scheduled or due today, or overdue, plus calendar events happening today. "Everything" is at `#/all`.
+- Calendar events that are over are hidden by the default **Not done** filter; choose *Any status* to see them. Dates show the weekday, e.g. "Wed, Oct 7".
 
 ## 9. Chat Commands
 

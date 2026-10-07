@@ -39,11 +39,13 @@ let events = []
 
 const sandbox = createContext({
   console,
+  Session: { getScriptTimeZone: () => TZ },
   PropertiesService: {
     getScriptProperties: () => ({ getProperties: () => ({ ...props }), setProperty: (k, v) => (props[k] = v) }),
   },
   Calendar: {
-    Events: { list: () => ({ timeZone: TZ, items: events }) },
+    // The calendar's own zone set to UTC reproduces the 4 PM → 8 PM bug; times must follow the script's zone.
+    Events: { list: () => ({ timeZone: 'UTC', items: events }) },
   },
   Utilities: {
     formatDate: (d, tz, pattern) =>
