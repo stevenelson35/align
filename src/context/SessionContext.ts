@@ -6,6 +6,7 @@ export type SessionState =
   | { status: 'loading' }
   | { status: 'signedOut' }
   | { status: 'unauthorized'; user: User }
+  | { status: 'setup'; user: User }
   | { status: 'error'; message: string }
   | { status: 'ready'; user: User; household: Household; member: HouseholdMember }
 

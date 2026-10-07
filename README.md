@@ -28,5 +28,6 @@ npm run lint
 ## Deploying
 
 1. Copy `.env.example` to `.env.production.local` and fill in the Firebase web app config.
-2. `firebase use --add` to select the real project, then `npm run deploy:rules`.
-3. `npm run build`, then upload the contents of `dist/` to the Turbify subdomain's document root.
+2. `firebase login --no-localhost`, `firebase use --add` (pick the `align` project), then `npm run deploy:rules`.
+3. `ALIGN_FTP_DIR=/<subdomain docroot> npm run deploy:web` builds and uploads `dist/` to Turbify over FTPS and asks for the FTP password. To preview without changing anything, run `npm run build` and then `ALIGN_FTP_DIR=... scripts/deploy-turbify.sh --dry-run`.
+4. First visit: sign in and complete the one-time household setup screen.

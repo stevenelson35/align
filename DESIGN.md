@@ -278,37 +278,41 @@ firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### Where things stand (2026-09-26)
-- **Stage 1: scaffold (done)**, commit `f4a987b` on `main` at `git@github.com:stevenelson35/align.git`:
-  - Vite + React 19 + TypeScript app (`src/`), with Firebase wiring (`src/firebase/`) that uses the emulators in development
-  - sign-in screen only (no sign-up), and a session provider that loads `household/main` and shows "Not in this household" to outsiders
-  - an app shell with the top bar (household name, avatar, "View only" badge, sign out)
-  - `scripts/seed-emulator.mjs` creates test accounts and the household on the emulator
-- **Stage 2: security rules (done).** `firestore.rules` implements §11, and `tests/rules/firestore.rules.test.ts` has **18 tests, all passing** (verified 2026-09-26). The build is clean.
-- **Nothing is deployed yet.** There's no Firebase project and no Turbify subdomain so far.
+### Where things stand (2026-10-07)
+- **Stage 1: scaffold (done).** Vite + React 19 + TypeScript, with Firebase wiring that uses the emulators in development, a sign-in-only screen, and a session provider.
+- **Stage 2: security rules (done).** `firestore.rules` implements §11. There are now **20 rule tests**, including first-time household setup.
+- **Stages 3–6: MVP (done, 2026-10-07, not yet committed or deployed):**
+  - **Lists and tasks:** list/project CRUD (`ListEditor`; visibility changes batch-update the copied fields on tasks), task CRUD (`TaskDetails` right panel), and a combined view (`CombinedView`) with the §8 colors, filters and sorts (date, priority, dependency order). Views: Everything, Today, My tasks, Family tasks, Work, per-list. Hash routes are in `src/utils/routes.ts`.
+  - **Scheduling engine:** `src/engine/` (`dates.ts`, `graph.ts`, `scheduling.ts`) handles earliest start, conflicts, forward shift, meet-date (backward) shift, recalculate and cycle rejection. Every shift opens a preview (`ShiftDialog`) and applies as one batch. `TimelineView` draws bars, `+Nd` arrows and conflict outlines, and dragging a bar previews a forward shift. Conflicts are computed live in `DataProvider`; the stored `conflict` field is refreshed whenever a shift is applied.
+  - **Voting:** `src/voting/tokens.ts` handles the balance (weekly grant from `tokenStartDate`, rollover, chosen = spent, archived = returned). `BoardsView` offers a one-click "Add the starter boards". `BoardView` shows the ranking, per-member colored share bars, +/− voting with overspend blocking, chosen/archive/reopen, and a viewer-visible toggle.
+  - **Chat:** `src/chat/parser.ts` (chrono-node dates) plus `src/chat/execute.ts`, which resolves names with `src/utils/fuzzy.ts` and asks with buttons when a match is ambiguous. It supports all §9 commands. "Quick add" opens chat pre-filled with `add task `.
+  - **First-time setup:** when `household/main` doesn't exist, a signed-in user sees `Setup.tsx` and creates the household as its first member, optionally adding other members' uids and the pets. The rules allow `create` only while the document doesn't exist. Later role changes are still made in the console.
+  - **Tests:** 29 unit tests (engine, tokens, parser, fuzzy). 2026-10-07: Playwright smoke runs against the emulators exercised sign-in, lists, chat add/done/move/meet/recalculate/show/vote, dependency conflicts, timeline drag, viewer visibility and mobile layout, with no console errors. Those scripts are throwaway and live outside the repo.
+- **Deploy tooling:** `scripts/deploy-turbify.sh` (`npm run deploy:web`) uploads over explicit FTPS with lftp. It prompts for the password and only prunes inside `assets/`. `public/.htaccess` sets cache headers and forces HTTPS.
+- **Deployed (2026-10-07):**
+  - The Firebase project is `align-a32c1` (web app "Align Web App", owner steve.john.nelson@gmail.com). `.firebaserc` alias: `prod`.
+  - Rules and indexes were deployed with `npm run deploy:rules`. The web config is in `.env.production.local` (gitignored).
+  - The Turbify docroot is `/align.itsallonesong.com` (relative to the FTP login root), served by LiteSpeed with HTTPS.
+  - The user created the household through the setup screen.
 
-### Next stages (planned order)
-3. **Lists and tasks:** list CRUD (private/family, list/project, `viewerVisible`, `defaultContext`), task CRUD with the copied list fields (§5.3), the combined view with colors and filters (family/work context, `for` person/pet, assignee, priority, status, dates), and hash routing.
-4. **Scheduling engine** (§6): pure TypeScript in `src/engine/`, with Vitest tests for earliest start, conflicts, forward/backward shifting and cycle rejection, plus the timeline view with drag-to-shift previews.
-5. **Voting and tokens** (§7): boards and items, votes, a computed balance (weekly grant, rollover, chosen = spent, archived = returned), and a collection-group query on `votes`.
-6. **Chat command parser** (§9): pure TypeScript with `chrono-node` dates and fuzzy task matching, plus tests.
-7. **First deploy:** Firebase rules/indexes, the production `.env`, and uploading `dist/` to the Turbify subdomain.
+### Next stages
+7. **First deploy (mostly done):** re-upload with `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` after each change. Confirm the permissions-race fix in production.
+8. Polish ideas, in no particular order: code-split the Firebase SDK, a settings screen (weekly tokens, pets), recurring tasks (§3.2), and committing the Playwright smoke tests.
 
 ### What the user still has to do (can't be done by an agent)
-1. **Firebase:**
-   - Create a project on the free **Spark** plan.
-   - Enable **Email/Password** auth and **Firestore**.
-   - Add the authorized domain `align.itsallonesong.com`.
-   - Register a **Web app** and put its config in `.env.production.local` (see `.env.example`).
-   - Run `firebase login` (interactive), then `firebase use --add`.
-2. **Accounts:** create the family's accounts in the Firebase console, then add their uids to `household/main.members` with roles. Real names for the wife, daughter and pets are still needed; the seed script uses placeholders.
+1. **Firebase console** (project `align`):
+   - Authentication → Sign-in method → enable **Email/Password**.
+   - Authentication → Settings → **User actions**: untick **Enable create (sign-up)**, so nobody can self-register with the public API key. Console-created accounts still work.
+   - Authentication → Settings → Authorized domains: add `align.itsallonesong.com`.
+   - Firestore Database → Create database (production mode; the region can't be changed later).
+   - Authentication → Users: add the family's accounts. Copy each **User UID** for the setup screen.
+   - Project settings → Your apps → Align Web App: copy `apiKey`, `authDomain`, `projectId` and `appId` into `.env.production.local` (see `.env.example`).
+2. **CLI:** `firebase login --no-localhost` (interactive), then `firebase use --add` in the repo.
 3. **Turbify:**
-   - Create the subdomain `align.itsallonesong.com` in cPanel, with HTTPS.
-   - Note its document root. SPA routing uses hashes, so no rewrite rules are needed.
-   - **FTP facts from the psort project, verified 2026-09-26:**
-     - Use explicit **FTPS** to **`cpanel292.turbify.biz`**; the TLS certificate names that server, and SFTP port 22 is closed.
-     - The account `sjnelson@itsallonesong.com` starts at the main website root. The subdomain's docroot is probably a folder under it. The root listing showed a folder named `itsallonesong.com` created 2026-09-26; confirm what it is.
-     - psort's `blog.Uploader` in `stevenelson35/psort` is a working FTPS upload example.
+   - Create the subdomain `align.itsallonesong.com` in cPanel, with HTTPS (AutoSSL / Let's Encrypt).
+   - Note its document root relative to the FTP login root; it's needed for `ALIGN_FTP_DIR`.
+   - FTP facts (verified 2026-09-26 for psort): explicit FTPS to `cpanel292.turbify.biz` as `sjnelson@itsallonesong.com`. SFTP port 22 is closed. The FTP login starts at the main website root.
+4. **Go live:** sign in at https://align.itsallonesong.com and fill in the one-time setup screen (household, members' uids, pets). Then open Voting → "Add the starter boards".
 
 ### Environment
 - **WSL Ubuntu 24.04.** Node **v24.21.0** via nvm (`~/.nvm`); load it with `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"`.
@@ -319,6 +323,9 @@ firestore.indexes.json
 ### Gotchas
 - npm skipped the install scripts for `@firebase/util` and `protobufjs`. That's harmless: the stub `postinstall.mjs` ships with the package.
 - `vite build` warns that the chunk is over 500 KB. It's the Firebase SDK, and code-splitting is optional.
+- **First-time setup rule:** `household/main` allows `get` by any signed-in user and `create` only while it doesn't exist. That's why sign-up must be disabled in Auth settings before the household is created. After that, it's harmless.
+- **The household listener ignores snapshots with `hasPendingWrites`.** Otherwise, right after first-time setup, the data queries could start before the server had the household; the rules would deny them, and the dead listeners left the app stuck on "Missing or insufficient permissions". This only showed up in production, because the emulator is too fast.
+- **TaskDetails is re-keyed on the task's full JSON** so its form never keeps stale dates after a shift. Without this, Save would revert the shift.
 - **Tasks copy their list's visibility fields**, so queries and rules need no lookups. The rules check them against the list with `getAfter()`, so a batch that changes a list and its tasks together is valid. Any code that changes a list's visibility or owner **must update its tasks in the same batch**.
 - **Queries must match the rules.** Viewers must query family tasks with `where("viewerVisible","==",true)`.
 - `firestore.indexes.json` declares the collection-group single-field index on `votes.uid` that the token-balance query needs.

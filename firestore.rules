@@ -44,8 +44,26 @@ service cloud.firestore {
         && after[uid].keys().hasOnly(['role', 'displayName', 'color']);
     }
 
+    function householdExists() {
+      return exists(/databases/$(database)/documents/household/main);
+    }
+
+    // First-time setup: before household/main exists, a signed-in user may create it with themselves as a member.
+    function validNewHousehold() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['name', 'members', 'pets', 'weeklyTokens', 'tokenStartDate'])
+        && d.name is string && d.name.size() > 0
+        && d.members[request.auth.uid].role == 'member'
+        && d.pets is list
+        && d.weeklyTokens is int && d.weeklyTokens >= 0
+        && d.tokenStartDate is timestamp;
+    }
+
     match /household/main {
       allow read: if isMember() || isViewer();
+      // Lets the app tell "not set up yet" apart from "not in this household".
+      allow get: if signedIn() && !householdExists();
+      allow create: if signedIn() && validNewHousehold();
       allow update: if isMember()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pets', 'weeklyTokens', 'members'])
         && ownMemberEntryOnly();

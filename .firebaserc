@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-align"
+    "default": "demo-align",
+    "prod": "align-a32c1"
   }
 }

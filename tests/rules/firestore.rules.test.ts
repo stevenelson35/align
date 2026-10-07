@@ -111,6 +111,31 @@ describe('household', () => {
   })
 })
 
+describe('household setup', () => {
+  const fresh = (uid: string) => ({
+    name: 'New Household',
+    members: { [uid]: { role: 'member', displayName: 'Me', color: '#1f6feb' } },
+    pets: [],
+    weeklyTokens: 10,
+    tokenStartDate: new Date('2026-10-05'),
+  })
+  const removeHousehold = () =>
+    env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore() as unknown as Firestore, 'household/main')))
+
+  it('lets a signed-in user see that no household exists and create it as a member', async () => {
+    await removeHousehold()
+    await assertSucceeds(getDoc(doc(db('stranger'), 'household/main')))
+    await assertFails(getDoc(doc(db(), 'household/main')))
+    await assertFails(setDoc(doc(db('stranger'), 'household/main'), { ...fresh('stranger'), extra: true }))
+    await assertFails(setDoc(doc(db('stranger'), 'household/main'), fresh('someoneElse')))
+    await assertSucceeds(setDoc(doc(db('stranger'), 'household/main'), fresh('stranger')))
+  })
+
+  it('cannot be used to take over an existing household', async () => {
+    await assertFails(setDoc(doc(db('stranger'), 'household/main'), fresh('stranger')))
+  })
+})
+
 describe('lists', () => {
   it('keeps private lists private to their owner', async () => {
     await assertSucceeds(getDoc(doc(db('steve'), 'lists/stevePrivate')))

@@ -19,6 +19,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setState({ status: 'loading' })
       unsubHousehold = subscribeHousehold(
         (household) => {
+          if (!household) {
+            setState({ status: 'setup', user })
+            return
+          }
           const member = household.members[user.uid]
           setState(member ? { status: 'ready', user, household, member } : { status: 'unauthorized', user })
         },
