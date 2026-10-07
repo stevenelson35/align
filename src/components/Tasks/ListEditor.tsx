@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { createList, deleteList, updateList, type ListInput } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
+import { people } from '../../utils/tasks'
 
 /** Create or edit a list/project. Visibility changes rewrite the copied fields on its tasks in the same batch. */
 export function ListEditor({ list, onClose }: { list: List | null; onClose: () => void }) {
@@ -13,7 +14,7 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const set = (patch: Partial<ListInput>) => setForm((f) => ({ ...f, ...patch }))
-  const members = Object.entries(app.household.members).filter(([, m]) => m.role === 'member')
+  const members = people(app.household, true)
   // Only the owner may hand a list to someone else (rules), and private lists always belong to their owner.
   const canChangeOwner = list !== null && list.ownerId === app.uid && form.visibility === 'family'
 

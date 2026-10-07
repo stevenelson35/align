@@ -4,7 +4,7 @@ import { wouldCreateCycle } from '../../engine/graph'
 import { deleteTask, updateTask, type TaskInput } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Dependency, Priority, Status, Task } from '../../types'
-import { targetName } from '../../utils/tasks'
+import { people as humans, targetName } from '../../utils/tasks'
 
 /** Right panel: task details, dependencies and schedule (DESIGN.md §10). */
 export function TaskDetails({ task }: { task: Task }) {
@@ -23,7 +23,7 @@ export function TaskDetails({ task }: { task: Task }) {
     const t = byId.get(id)
     return !!t && app.canEdit(t)
   }
-  const people = Object.entries(app.household.members).filter(([, m]) => m.role === 'member')
+  const people = humans(app.household, true)
   const targets = [...people.map(([id, m]) => ({ id, name: m.displayName })), ...app.household.pets.map((p) => ({ id: p.id, name: p.name }))]
   // Lists this task can move to: ones the user can edit.
   const listChoices = lists.filter((l) => app.canEdit(l))
@@ -113,6 +113,13 @@ export function TaskDetails({ task }: { task: Task }) {
         </button>
       </header>
       {conflict && <p className="badge danger">⚠ {conflict}</p>}
+      {task.calendar && (
+        <p className="calendar-note small">
+          📅 From the family Google Calendar{task.calendar.time && ` · ${task.calendar.time}`}
+          {task.calendar.location && ` · ${task.calendar.location}`}. The hourly sync keeps the title and dates in step with
+          the calendar; everything else here is yours to edit.
+        </p>
+      )}
       <fieldset disabled={!editable}>
         <label>
           Title

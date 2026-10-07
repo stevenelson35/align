@@ -144,6 +144,20 @@ boards/{boardId}/items/{itemId}/votes/{uid}   { uid, tokens: number, updatedAt }
 - Starter boards: **Movies & Shows**, **Restaurants & Meals**, **Weekend Activities**, **Travel Plans**. Members can add more.
 - Totals are **computed in the client** from the `votes` subcollection. Nothing stores them.
 
+### 5.5 Google Calendar import
+
+The family Google Calendar is copied one way into a family list named **Family Calendar** by `scripts/apps-script/calendar-sync.gs`. Setup steps are in that folder's README.
+
+- **Runs in Google Apps Script** (free) under the account that can see the calendar, on an hourly trigger. Align itself still has no server code.
+- **Auth:** the script signs in to Firebase Auth's REST API as a dedicated **calendar-bot** account. That account is a normal `member` in `household/main`, with `bot: true` so the UI hides it from people pickers. The security rules apply to it unchanged.
+- **Reads** use the Advanced Calendar service (`Calendar.Events.list`, `singleEvents: true`, read-only scope). Event ids are stable when an event moves, and each instance of a recurring event has its own id.
+- **Each event becomes a task with id `gcal_<eventId>`:**
+  - `startDate` and `durationDays` follow the event; all-day ends are exclusive, and timed events use the calendar's time zone.
+  - `calendar: { eventId, time?, location? }` holds the event details.
+  - New tasks get the list's copied fields, `priority: 2`, `status: "todo"`, and `createdBy` set to the bot.
+- **The sync owns `title`, `startDate`, `durationDays` and `calendar`.** Updates use an update mask limited to those fields, so status, notes, priority, assignee, `for` and dependencies set in Align survive.
+- **Removals:** an imported task whose event is gone is deleted only if its date falls inside the sync window (7 days back to 8 weeks ahead). Tasks family members add to the list by hand are never touched.
+
 ## 6. Scheduling Engine
 
 The engine is pure TypeScript with no Firebase dependency, so it's easy to unit test.
@@ -295,11 +309,18 @@ firestore.indexes.json
   - The Turbify docroot is `/align.itsallonesong.com` (relative to the FTP login root), served by LiteSpeed with HTTPS.
   - The user created the household through the setup screen.
 
+- **Google Calendar import (built 2026-10-07, not yet installed):**
+  - §5.5 describes the design; `scripts/apps-script/` has the script, a least-privilege manifest and setup steps.
+  - Rules now validate the optional `calendar` map on tasks: 21 rule tests.
+  - Unit tests are in `tests/apps-script/` (37 unit tests total). `npm run test:calendar` runs the real script against the emulators, with fake Calendar, UrlFetch and Properties services.
+  - The UI shows a 📅 time badge on imported tasks and a note in the task panel.
+
 ### Next stages
 7. **First deploy (mostly done):** re-upload with `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` after each change. Confirm the permissions-race fix in production.
 8. Polish ideas, in no particular order: code-split the Firebase SDK, a settings screen (weekly tokens, pets), recurring tasks (§3.2), and committing the Playwright smoke tests.
 
 ### What the user still has to do (can't be done by an agent)
+0. **Calendar sync:** create the bot account, add it to `household/main.members` with `bot: true`, and install the Apps Script (`scripts/apps-script/README.md`). Also redeploy the rules (`npm run deploy:rules`) and the web app.
 1. **Firebase console** (project `align`):
    - Authentication → Sign-in method → enable **Email/Password**.
    - Authentication → Settings → **User actions**: untick **Enable create (sign-up)**, so nobody can self-register with the public API key. Console-created accounts still work.

@@ -6,6 +6,8 @@ export interface HouseholdMember {
   role: Role
   displayName: string
   color: string
+  /** The calendar-sync account: a member for the rules, hidden from people pickers. Set in the console. */
+  bot?: boolean
 }
 
 export interface Pet {
@@ -64,6 +66,8 @@ export interface Task {
   targetDate?: string
   dependsOn: Dependency[]
   conflict?: string
+  /** Set by the Google Calendar sync; title and dates are overwritten by it (DESIGN.md §5.5). */
+  calendar?: { eventId: string; time?: string; location?: string }
 
   createdBy: string
 }

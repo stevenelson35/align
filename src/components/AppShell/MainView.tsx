@@ -1,5 +1,6 @@
 import { today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
+import { isForToday } from '../../utils/tasks'
 import { TimelineView } from '../Dependencies/TimelineView'
 import { CombinedView } from '../Tasks/CombinedView'
 import { ListView } from '../Tasks/ListView'
@@ -21,13 +22,7 @@ export function MainView() {
       return <CombinedView title="Work" tasks={tasks.filter((t) => t.context === 'work')} />
     case 'today': {
       const day = today()
-      // Due or scheduled today, overdue, or in progress.
-      const todays = tasks.filter(
-        (t) =>
-          t.status !== 'done' &&
-          (t.status === 'doing' || (t.startDate !== undefined && t.startDate <= day) || (t.targetDate !== undefined && t.targetDate <= day)),
-      )
-      return <CombinedView title="Today" tasks={todays} defaultSort="priority" />
+      return <CombinedView title="Today" tasks={tasks.filter((t) => isForToday(t, day))} defaultSort="priority" />
     }
     case 'list': {
       const list = lists.find((l) => l.id === route.listId)

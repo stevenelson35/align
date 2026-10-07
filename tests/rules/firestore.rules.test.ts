@@ -205,10 +205,18 @@ describe('tasks', () => {
     await assertFails(updateDoc(doc(db('daughter'), 'tasks/familyVisibleTask'), { createdBy: 'daughter' }))
   })
 
+  it('accepts calendar-imported tasks with a fixed id, and rejects a malformed calendar field', async () => {
+    const imported = task('familyVisible', { title: 'Vet', startDate: '2026-10-12', calendar: { eventId: 'abc', time: '3:00 PM–3:30 PM' } })
+    await assertSucceeds(setDoc(doc(db('steve'), 'tasks/gcal_abc'), imported))
+    await assertSucceeds(updateDoc(doc(db('steve'), 'tasks/gcal_abc'), { startDate: '2026-10-13', calendar: { eventId: 'abc' } }))
+    await assertFails(setDoc(doc(db('steve'), 'tasks/gcal_bad'), task('familyVisible', { calendar: 'abc' })))
+  })
+
   it('allows the queries the app will run', async () => {
     const tasks = (uid: string) => collection(db(uid), 'tasks')
     await assertSucceeds(getDocs(query(tasks('steve'), where('ownerId', '==', 'steve'), where('visibility', '==', 'private'))))
     await assertSucceeds(getDocs(query(tasks('daughter'), where('visibility', '==', 'family'))))
+    await assertSucceeds(getDocs(query(tasks('steve'), where('visibility', '==', 'family'), where('listId', '==', 'familyVisible'))))
     await assertSucceeds(getDocs(query(tasks('grandma'), where('visibility', '==', 'family'), where('viewerVisible', '==', true))))
     await assertFails(getDocs(query(tasks('grandma'), where('visibility', '==', 'family'))))
     await assertFails(getDocs(tasks('daughter')))

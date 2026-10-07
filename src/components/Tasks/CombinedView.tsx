@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Priority, Status, Task } from '../../types'
-import { filterTasks, sortTasks, type SortKey, type TaskFilter } from '../../utils/tasks'
+import { filterTasks, people as humans, sortTasks, type SortKey, type TaskFilter } from '../../utils/tasks'
 import { TaskCard } from './TaskCard'
 
 interface Props {
@@ -20,7 +20,7 @@ export function CombinedView({ title, tasks, defaultSort = 'date' }: Props) {
   const shown = sortTasks(filterTasks(tasks, filter), sort)
 
   const set = (patch: Partial<TaskFilter>) => setFilter((f) => ({ ...f, ...patch }))
-  const people = Object.entries(household.members).map(([id, m]) => ({ id, name: m.displayName }))
+  const people = humans(household).map(([id, m]) => ({ id, name: m.displayName }))
   const targets = [...people, ...household.pets.map((p) => ({ id: p.id, name: p.name }))]
 
   return (

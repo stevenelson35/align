@@ -32,6 +32,11 @@ export function TaskCard({ task, showList = true }: { task: Task; showList?: boo
           <span className={`badge priority-${task.priority}`}>{PRIORITY_LABEL[task.priority]}</span>
           {task.status === 'doing' && <span className="badge">{STATUS_LABEL.doing}</span>}
           {showList && list && <span className="badge">{list.name}</span>}
+          {task.calendar && (
+            <span className="badge calendar" title={task.calendar.location}>
+              📅 {task.calendar.time ?? 'All day'}
+            </span>
+          )}
           {task.context === 'work' && <span className="badge work">Work</span>}
           {task.for?.map((id) => (
             <span key={id} className="badge for">

@@ -452,6 +452,16 @@ input.narrow {
   background: #ddf4ff;
   border-color: #54aeff;
 }
+.badge.calendar {
+  background: #dafbe1;
+  border-color: #4ac26b;
+}
+.calendar-note {
+  background: #dafbe1;
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+  margin: 0;
+}
 .badge.danger {
   background: #ffebe9;
   border-color: var(--danger);

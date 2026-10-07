@@ -105,6 +105,8 @@ service cloud.firestore {
         && d.context in ['family', 'work']
         && d.durationDays is int && d.durationDays >= 1
         && d.dependsOn is list
+        // Set only by the calendar sync (scripts/apps-script): { eventId, time?, location? }.
+        && (!('calendar' in d) || d.calendar is map)
         && d.visibility == list.visibility
         && d.ownerId == list.ownerId
         && d.viewerVisible == list.viewerVisible;

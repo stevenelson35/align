@@ -6,6 +6,7 @@ import { meetDate, recalculate, shiftForward } from '../engine/scheduling'
 import { createList, createTask, setVote, updateTask } from '../firebase/db'
 import type { Board, BoardItem, List, Task } from '../types'
 import { fuzzyMatch } from '../utils/fuzzy'
+import { isForToday, people } from '../utils/tasks'
 import { HELP_TEXT, parse, type Command } from './parser'
 
 export interface Reply {
@@ -72,7 +73,7 @@ async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext,
       list = { id, name: 'Inbox', kind: 'list', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' }
     }
     const names = [
-      ...Object.entries(app.household.members).map(([id, m]) => ({ id, name: m.displayName })),
+      ...people(app.household).map(([id, m]) => ({ id, name: m.displayName })),
       ...app.household.pets.map((p) => ({ id: p.id, name: p.name })),
     ]
     const forIds: string[] = []
@@ -174,11 +175,7 @@ export async function execute(input: string, ctx: ExecContext): Promise<Reply> {
       } else {
         app.navigate({ view: 'today' })
         const day = today()
-        return showTasks(
-          'Today',
-          open.filter((t) => t.status === 'doing' || (t.startDate ?? t.targetDate ?? '9999') <= day),
-          ctx,
-        )
+        return showTasks('Today', open.filter((t) => isForToday(t, day)), ctx)
       }
     case 'showBoard':
       return pick(cmd.board, data.boards, (b) => b.name, 'board', (b) => boardReply(b, ctx))

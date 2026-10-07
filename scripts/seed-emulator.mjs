@@ -15,6 +15,8 @@ const people = [
   { uid: 'wife', email: 'wife@example.com', displayName: 'Wife', role: 'member', color: '#bf3989' },
   { uid: 'daughter', email: 'daughter@example.com', displayName: 'Daughter', role: 'member', color: '#bc4c00' },
   { uid: 'grandparent', email: 'grandparent@example.com', displayName: 'Grandparent', role: 'viewer', color: '#57606a' },
+  // Signs in from the Apps Script calendar sync (DESIGN.md §5.5).
+  { uid: 'calendar-bot', email: 'calendar-bot@example.com', displayName: 'Calendar', role: 'member', color: '#57606a', bot: true },
 ]
 
 for (const { uid, email, displayName } of people) {
@@ -29,7 +31,9 @@ await getFirestore()
   .doc('household/main')
   .set({
     name: 'Nelson Household',
-    members: Object.fromEntries(people.map(({ uid, displayName, role, color }) => [uid, { role, displayName, color }])),
+    members: Object.fromEntries(
+      people.map(({ uid, displayName, role, color, bot }) => [uid, { role, displayName, color, ...(bot && { bot }) }]),
+    ),
     pets: [
       { id: 'dog1', name: 'Dog 1', kind: 'dog' },
       { id: 'dog2', name: 'Dog 2', kind: 'dog' },

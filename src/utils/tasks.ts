@@ -1,5 +1,5 @@
 import { topoSort } from '../engine/graph'
-import { applyPreview, conflictsById, type ShiftPreview } from '../engine/scheduling'
+import { applyPreview, conflictsById, finish, type ShiftPreview } from '../engine/scheduling'
 import type { Context, Household, List, Priority, Role, Status, Task } from '../types'
 
 export function canEditTask(task: Pick<Task, 'visibility' | 'ownerId'>, uid: string, role: Role): boolean {
@@ -16,9 +16,24 @@ export function colorKey(task: Task, list: List | undefined): 'private' | 'famil
 export const PRIORITY_LABEL: Record<Priority, string> = { 1: 'High', 2: 'Medium', 3: 'Low' }
 export const STATUS_LABEL: Record<Status, string> = { todo: 'To do', doing: 'Doing', done: 'Done' }
 
+/** Real people (no calendar bot), optionally only members. */
+export function people(household: Household, membersOnly = false) {
+  return Object.entries(household.members).filter(([, m]) => !m.bot && (!membersOnly || m.role === 'member'))
+}
+
 /** Name for a `for` target or assignee: member uid or pet id. */
 export function targetName(id: string, household: Household): string {
   return household.members[id]?.displayName ?? household.pets.find((p) => p.id === id)?.name ?? id
+}
+
+/**
+ * Belongs in "Today": in progress, scheduled or due today, or overdue. Calendar events only on the days they
+ * happen; a past appointment isn't overdue work.
+ */
+export function isForToday(t: Task, day: string): boolean {
+  if (t.status === 'done') return false
+  if (t.calendar) return t.startDate !== undefined && t.startDate <= day && finish(t)! >= day
+  return t.status === 'doing' || (t.startDate !== undefined && t.startDate <= day) || (t.targetDate !== undefined && t.targetDate <= day)
 }
 
 export type SortKey = 'priority' | 'date' | 'dependency'
