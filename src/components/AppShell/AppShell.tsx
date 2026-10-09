@@ -7,6 +7,7 @@ import { canEditTask } from '../../utils/tasks'
 import { ChatPanel } from '../Chat/ChatPanel'
 import { ShiftDialog } from '../Dependencies/ShiftDialog'
 import { ListEditor } from '../Tasks/ListEditor'
+import { ItemDetails } from '../Tasks/ItemDetails'
 import { TaskDetails } from '../Tasks/TaskDetails'
 import { BottomNav } from './BottomNav'
 import { MainView } from './MainView'
@@ -58,6 +59,8 @@ export function AppShell({ uid, household, member }: Props) {
   )
 
   const selectedTask = data.tasks.find((t) => t.id === selectedTaskId)
+  const selectedItem = selectedTask ? undefined : data.listItems.find((t) => t.id === selectedTaskId)
+  const selectedItemList = selectedItem && data.lists.find((l) => l.id === selectedItem.listId)
 
   // Escape closes the phone menu, like tapping outside it.
   useEffect(() => {
@@ -94,6 +97,11 @@ export function AppShell({ uid, household, member }: Props) {
             <aside className="right-panel">
               {/* Re-keyed on any change so the form never holds stale dates after a shift is applied. */}
               <TaskDetails key={JSON.stringify(selectedTask)} task={selectedTask} />
+            </aside>
+          )}
+          {selectedItem && selectedItemList && (
+            <aside className="right-panel">
+              <ItemDetails key={selectedItem.id} item={selectedItem} list={selectedItemList} />
             </aside>
           )}
         </div>

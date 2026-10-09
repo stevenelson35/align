@@ -164,6 +164,11 @@ describe('lists', () => {
     await assertSucceeds(updateDoc(doc(db('steve'), 'lists/familyVisible'), { ownerId: 'daughter' }))
   })
 
+  it('accepts checklists and notes lists', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'lists/shopping'), { ...lists.familyVisible, kind: 'checklist' }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'lists/wifi'), { ...lists.familyVisible, kind: 'notes' }))
+  })
+
   it('rejects invalid lists', async () => {
     await assertFails(setDoc(doc(db('steve'), 'lists/bad'), { ...lists.familyVisible, kind: 'folder' }))
     await assertFails(setDoc(doc(db('steve'), 'lists/bad'), { ...lists.familyVisible, name: '' }))

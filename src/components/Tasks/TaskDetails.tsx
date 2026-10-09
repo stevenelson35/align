@@ -5,7 +5,7 @@ import { deleteTask, updateTask, type TaskInput } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Dependency, Priority, Status, Task } from '../../types'
 import { NumberField } from './NumberField'
-import { isFinished, people as humans, STATUS_LABEL, targetName } from '../../utils/tasks'
+import { isFinished, isItemList, people as humans, STATUS_LABEL, targetName } from '../../utils/tasks'
 
 /** ✓ done, ✕ canceled, ⏳ not finished yet. */
 function statusIcon(t: Task) {
@@ -32,7 +32,7 @@ export function TaskDetails({ task }: { task: Task }) {
   const people = humans(app.household, true)
   const targets = [...people.map(([id, m]) => ({ id, name: m.displayName })), ...app.household.pets.map((p) => ({ id: p.id, name: p.name }))]
   // Lists this task can move to: ones the user can edit.
-  const listChoices = lists.filter((l) => app.canEdit(l))
+  const listChoices = lists.filter((l) => app.canEdit(l) && !isItemList(l))
   const depChoices = tasks.filter((t) => t.id !== task.id && !form.dependsOn.some((d) => d.taskId === t.id))
 
   async function save(e: FormEvent) {
@@ -115,8 +115,14 @@ export function TaskDetails({ task }: { task: Task }) {
 
   return (
     <form className="task-details form" onSubmit={save}>
-      <header className="row">
+      {/* Save at the top too (and the header stays in view), so a quick edit needs no scrolling. */}
+      <header className="row panel-header">
         <h3 className="grow">{editable ? 'Edit task' : 'Task'}</h3>
+        {editable && (
+          <button type="submit" className="small" disabled={busy}>
+            Save
+          </button>
+        )}
         <button type="button" className="link" onClick={() => app.selectTask(null)} aria-label="Close">
           ✕
         </button>

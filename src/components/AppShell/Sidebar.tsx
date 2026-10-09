@@ -17,13 +17,18 @@ function NavLink({ route, label, color, count }: { route: Route; label: string; 
 
 export function Sidebar({ open }: { open: boolean }) {
   const { uid, isMember, editList } = useApp()
-  const { lists, boards, tasks } = useData()
-  const openCount = (l: List) => tasks.filter((t) => t.listId === l.id && !isFinished(t)).length
+  const { lists, boards, tasks, listItems } = useData()
+  // Unfinished tasks or unchecked items; for notes, how many there are.
+  const openCount = (l: List) =>
+    (l.kind === 'checklist' || l.kind === 'notes' ? listItems : tasks).filter((t) => t.listId === l.id && (l.kind === 'notes' || !isFinished(t))).length
+  const color = (l: List) => (l.visibility === 'private' ? 'var(--color-private)' : 'var(--color-family)')
 
   const sections: { title: string; lists: List[]; color: string }[] = [
     { title: 'My lists', lists: lists.filter((l) => l.visibility === 'private' && l.kind === 'list' && l.ownerId === uid), color: 'var(--color-private)' },
     { title: 'Family lists', lists: lists.filter((l) => l.visibility === 'family' && l.kind === 'list'), color: 'var(--color-family)' },
     { title: 'Projects', lists: lists.filter((l) => l.kind === 'project'), color: 'var(--color-project)' },
+    { title: 'Checklists', lists: lists.filter((l) => l.kind === 'checklist'), color: '' },
+    { title: 'Notes', lists: lists.filter((l) => l.kind === 'notes'), color: '' },
   ]
 
   return (
@@ -38,14 +43,14 @@ export function Sidebar({ open }: { open: boolean }) {
         <div key={s.title} className="nav-section">
           <h3>{s.title}</h3>
           {s.lists.map((l) => (
-            <NavLink key={l.id} route={{ view: 'list', listId: l.id, timeline: false }} label={l.name} color={s.color} count={openCount(l)} />
+            <NavLink key={l.id} route={{ view: 'list', listId: l.id, timeline: false }} label={l.name} color={s.color || color(l)} count={openCount(l)} />
           ))}
           {s.lists.length === 0 && <p className="muted small">None yet</p>}
         </div>
       ))}
       {isMember && (
         <button type="button" className="secondary small" onClick={() => editList(null)}>
-          + New list or project
+          + New list, project, checklist or notes
         </button>
       )}
 

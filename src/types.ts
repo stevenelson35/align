@@ -30,7 +30,12 @@ export type Context = 'family' | 'work'
 export interface List {
   id: string
   name: string
-  kind: 'list' | 'project'
+  /**
+   * list / project: tasks (projects add dependencies and the timeline). checklist: things to tick off that aren't
+   * tasks (shopping, gifts, people to call). notes: reference info. Checklist items and notes are stored like tasks
+   * (same collection and rules) but stay out of the task views.
+   */
+  kind: 'list' | 'project' | 'checklist' | 'notes'
   visibility: Visibility
   ownerId: string
   viewerVisible: boolean
@@ -71,6 +76,8 @@ export interface Task {
   calendar?: { eventId: string; time?: string; location?: string }
 
   createdBy: string
+  /** Firestore timestamp; null until the server confirms a new doc. Orders checklist items as added. */
+  createdAt?: { seconds: number; nanoseconds: number } | null
 }
 
 export interface Board {

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { conflictsById } from '../engine/scheduling'
 import { subscribeBoards, subscribeItems, subscribeLists, subscribeMyVotes, subscribeTasks } from '../firebase/db'
 import type { Board, BoardItem, List, Role, Task, Vote } from '../types'
-import { isFinished } from '../utils/tasks'
+import { isFinished, isItemList } from '../utils/tasks'
 import { DataContext, type DataState } from './DataContext'
 
 /** Real-time subscriptions to everything the signed-in user can read. Household scale, so it's all in memory. */
@@ -35,7 +35,10 @@ export function DataProvider({ uid, role, children }: { uid: string; role: Role;
   }, [boardIds])
 
   const value = useMemo<DataState>(() => {
-    const allTasks = tasks ?? []
+    // Checklist items and notes live in the tasks collection (same rules) but aren't tasks.
+    const itemListIds = new Set((lists ?? []).filter(isItemList).map((l) => l.id))
+    const allTasks = (tasks ?? []).filter((t) => !itemListIds.has(t.listId))
+    const listItems = (tasks ?? []).filter((t) => itemListIds.has(t.listId))
     const liveBoards = new Set((boards ?? []).map((b) => b.id))
     // Finished tasks still constrain their dependents, but aren't flagged themselves.
     const conflicts = conflictsById(allTasks)
@@ -47,6 +50,7 @@ export function DataProvider({ uid, role, children }: { uid: string; role: Role;
       error,
       lists: [...(lists ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
       tasks: allTasks,
+      listItems,
       boards: [...(boards ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
       items: Object.entries(itemsByBoard)
         .filter(([id]) => liveBoards.has(id))

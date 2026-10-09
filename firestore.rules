@@ -73,7 +73,7 @@ service cloud.firestore {
 
     function validList(d) {
       return d.name is string && d.name.size() > 0
-        && d.kind in ['list', 'project']
+        && d.kind in ['list', 'project', 'checklist', 'notes']
         && d.visibility in ['private', 'family']
         && d.viewerVisible is bool
         && (d.visibility == 'family' || d.viewerVisible == false)

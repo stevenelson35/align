@@ -3,7 +3,9 @@ import { useApp, useData } from '../../hooks/useApp'
 import { isForToday } from '../../utils/tasks'
 import { TimelineView } from '../Dependencies/TimelineView'
 import { CalendarRefresh } from '../Tasks/CalendarRefresh'
+import { ChecklistView } from '../Tasks/ChecklistView'
 import { CombinedView } from '../Tasks/CombinedView'
+import { NotesView } from '../Tasks/NotesView'
 import { ListView } from '../Tasks/ListView'
 import { BoardsView } from '../Voting/BoardsView'
 import { BoardView } from '../Voting/BoardView'
@@ -31,7 +33,9 @@ export function MainView() {
     case 'list': {
       const list = lists.find((l) => l.id === route.listId)
       if (!list) return <p className="muted">That list doesn't exist or isn't shared with you.</p>
-      return route.timeline ? <TimelineView list={list} /> : <ListView list={list} />
+      if (list.kind === 'checklist') return <ChecklistView key={list.id} list={list} />
+      if (list.kind === 'notes') return <NotesView key={list.id} list={list} />
+      return route.timeline ? <TimelineView list={list} /> : <ListView key={list.id} list={list} />
     }
     case 'boards':
       return <BoardsView />

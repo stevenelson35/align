@@ -342,6 +342,15 @@ firestore.indexes.json
   - The **Timeline** button is shown only for lists of kind *Project* (Edit list → Kind).
   - Tests: 47 unit, 22 rules, and the calendar emulator run with 7 web-app checks. Checked with Playwright at 390px.
 
+- **2026-10-09: checklists, notes, quicker lists:**
+  - **List kinds** (`List.kind`, rules plus a test): `list` and `project` hold tasks. `checklist` holds things to tick off that aren't tasks (shopping, gifts, people to call). `notes` holds reference info.
+  - **Checklist items and notes** are stored as task docs (same collection, visibility fields and rules), but `DataProvider` puts them in `listItems`, not `tasks`. So they never appear in Today / Everything / My / Family / Work, chat `done`/`move`, scheduling or conflicts. They're edited in `ItemDetails` (title, text, move to another list of the same kind, delete).
+  - **Checklist view:** quick add that keeps focus. Items are in the order added (`createdAt`, to the nanosecond). Ticked items stay, crossed off at the bottom. There's a remembered **Hide N checked** toggle and **Clear checked**.
+  - **Notes view:** alphabetical cards showing the first lines. Adding a note opens it for writing.
+  - **Task lists:** quick add no longer opens the task panel. Finished tasks stay, crossed off at the bottom, with a remembered **Hide N finished** toggle (`align-hide-finished:<listId>` in `localStorage`).
+  - **Task panel:** Save sits in a sticky header next to ✕.
+  - Tests: 48 unit, 23 rules. Checked with Playwright at 390px.
+
 ### Next stages
 7. **First deploy (mostly done):** re-upload with `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` after each change. Confirm the permissions-race fix in production.
 8. Polish ideas, in no particular order: code-split the Firebase SDK, a settings screen (weekly tokens, pets), recurring tasks (§3.2), and committing the Playwright smoke tests.

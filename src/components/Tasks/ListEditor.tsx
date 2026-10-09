@@ -7,7 +7,9 @@ import { people } from '../../utils/tasks'
 /** Create or edit a list/project. Visibility changes rewrite the copied fields on its tasks in the same batch. */
 export function ListEditor({ list, onClose }: { list: List | null; onClose: () => void }) {
   const app = useApp()
-  const { tasks } = useData()
+  // A list's contents are tasks, or checklist items / notes: the batch updates must cover both.
+  const { tasks: taskDocs, listItems } = useData()
+  const tasks = [...taskDocs, ...listItems]
   const [form, setForm] = useState<ListInput>(
     list ?? { name: '', kind: 'list', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' },
   )
@@ -40,7 +42,7 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
   async function remove() {
     if (!list) return
     const count = tasks.filter((t) => t.listId === list.id).length
-    if (!window.confirm(`Delete "${list.name}" and its ${count} task(s)?`)) return
+    if (!window.confirm(`Delete "${list.name}" and its ${count} item(s)?`)) return
     try {
       await deleteList(list.id, tasks)
       app.navigate({ view: 'home' })
@@ -62,8 +64,10 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
           <label>
             Kind
             <select value={form.kind} onChange={(e) => set({ kind: e.target.value as List['kind'] })}>
-              <option value="list">List</option>
+              <option value="list">Task list</option>
               <option value="project">Project (dependencies, timeline)</option>
+              <option value="checklist">Checklist (shopping, gifts, people to call…)</option>
+              <option value="notes">Notes (reference info)</option>
             </select>
           </label>
           <label>

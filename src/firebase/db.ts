@@ -157,7 +157,7 @@ export function deleteList(listId: string, tasks: Task[]) {
 
 // ---- Tasks ----
 
-export type TaskInput = Omit<Task, 'id' | 'listId' | 'visibility' | 'ownerId' | 'viewerVisible' | 'createdBy'>
+export type TaskInput = Omit<Task, 'id' | 'listId' | 'visibility' | 'ownerId' | 'viewerVisible' | 'createdBy' | 'createdAt'>
 
 export async function createTask(list: List, input: TaskInput, uid: string) {
   const ref = doc(collection(db, 'tasks'))

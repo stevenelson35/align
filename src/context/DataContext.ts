@@ -5,7 +5,10 @@ export interface DataState {
   loaded: boolean
   error: string | null
   lists: List[]
+  /** Tasks only: everything in task lists and projects. */
   tasks: Task[]
+  /** Checklist items and notes (stored like tasks, but never shown or counted as tasks). */
+  listItems: Task[]
   boards: Board[]
   /** Items of every visible board. */
   items: BoardItem[]
@@ -23,6 +26,7 @@ export const emptyData: DataState = {
   error: null,
   lists: [],
   tasks: [],
+  listItems: [],
   boards: [],
   items: [],
   myVotes: [],

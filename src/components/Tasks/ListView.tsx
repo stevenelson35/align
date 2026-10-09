@@ -2,23 +2,26 @@ import { useState, type FormEvent } from 'react'
 import { recalculate } from '../../engine/scheduling'
 import { createTask } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
+import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { List } from '../../types'
 import { isFinished, sortTasks } from '../../utils/tasks'
 import { CalendarRefresh } from './CalendarRefresh'
+import { ListHeader } from './ListHeader'
 import { TaskCard } from './TaskCard'
 
 export function ListView({ list }: { list: List }) {
   const app = useApp()
   const { tasks } = useData()
   const [title, setTitle] = useState('')
-  const [showDone, setShowDone] = useState(false)
+  // Finished tasks stay, crossed off at the bottom, unless you hide them (remembered per list on this device).
+  const [hideDone, setHideDone] = useStoredFlag(`align-hide-finished:${list.id}`, false)
   const [error, setError] = useState<string | null>(null)
 
   const listTasks = tasks.filter((t) => t.listId === list.id)
-  const shown = sortTasks(
-    listTasks.filter((t) => showDone || !isFinished(t)),
-    list.kind === 'project' ? 'dependency' : 'priority',
-  )
+  const order = list.kind === 'project' ? 'dependency' : 'priority'
+  const open = sortTasks(listTasks.filter((t) => !isFinished(t)), order)
+  const finished = hideDone ? [] : sortTasks(listTasks.filter(isFinished), order)
+  const shown = [...open, ...finished]
   const editable = app.canEdit(list)
   const doneCount = listTasks.filter(isFinished).length
 
@@ -27,9 +30,9 @@ export function ListView({ list }: { list: List }) {
     if (!title.trim()) return
     setError(null)
     try {
-      const id = await createTask(list, { title: title.trim(), priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] }, app.uid)
+      // Just add it: the box stays ready for the next one. Tap a task to fill in details.
+      await createTask(list, { title: title.trim(), priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] }, app.uid)
       setTitle('')
-      app.selectTask(id)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -45,15 +48,7 @@ export function ListView({ list }: { list: List }) {
 
   return (
     <section>
-      <header className="view-header">
-        <h2>{list.name}</h2>
-        <span className={`badge ${list.kind === 'project' ? 'color-project' : `color-${list.visibility}`}`}>
-          {list.visibility === 'private' ? 'Private' : 'Family'}
-          {list.kind === 'project' && ' project'}
-        </span>
-        {list.viewerVisible && <span className="badge">Visible to viewers</span>}
-        {list.defaultContext === 'work' && <span className="badge work">Work</span>}
-        <span className="grow" />
+      <ListHeader list={list}>
         {listTasks.some((t) => t.calendar) && <CalendarRefresh />}
         {list.kind === 'project' && (
           <>
@@ -67,12 +62,7 @@ export function ListView({ list }: { list: List }) {
             )}
           </>
         )}
-        {editable && (
-          <button type="button" className="secondary small" onClick={() => app.editList(list)}>
-            Edit list
-          </button>
-        )}
-      </header>
+      </ListHeader>
 
       {editable && (
         <form className="row add-task" onSubmit={add}>
@@ -86,11 +76,11 @@ export function ListView({ list }: { list: List }) {
         {shown.map((t) => (
           <TaskCard key={t.id} task={t} showList={false} />
         ))}
-        {shown.length === 0 && <p className="muted">No open tasks.</p>}
+        {shown.length === 0 && <p className="muted">{doneCount ? 'Nothing left to do.' : 'No tasks yet.'}</p>}
       </div>
       {doneCount > 0 && (
-        <button type="button" className="link" onClick={() => setShowDone((s) => !s)}>
-          {showDone ? 'Hide' : 'Show'} {doneCount} finished
+        <button type="button" className="link" onClick={() => setHideDone(!hideDone)}>
+          {hideDone ? 'Show' : 'Hide'} {doneCount} finished
         </button>
       )}
     </section>

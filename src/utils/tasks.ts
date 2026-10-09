@@ -7,6 +7,11 @@ export function canEditTask(task: Pick<Task, 'visibility' | 'ownerId'>, uid: str
   return role === 'member' && (task.visibility === 'family' || task.ownerId === uid)
 }
 
+/** Checklists and notes hold items, not tasks: they stay out of the task views, chat and scheduling. */
+export function isItemList(list: Pick<List, 'kind'>): boolean {
+  return list.kind === 'checklist' || list.kind === 'notes'
+}
+
 /** Done or canceled: nothing more to do, and it no longer holds up the tasks that depend on it. */
 export function isFinished(t: Pick<Task, 'status'>): boolean {
   return t.status === 'done' || t.status === 'canceled'

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Task } from '../types'
-import { filterTasks, isFinished, isForToday, sortTasks, startMinutes, waitingOn } from './tasks'
+import { filterTasks, isFinished, isForToday, isItemList, sortTasks, startMinutes, waitingOn } from './tasks'
 
 const t = (over: Partial<Task>): Task => ({
   id: 'x',
@@ -111,5 +111,14 @@ describe('canceled and dependencies', () => {
     expect(waitingOn(paint, byId).map((x) => x.id)).toEqual(['buy'])
     byId.set('buy', { ...buy, status: 'canceled' })
     expect(waitingOn(paint, byId)).toEqual([])
+  })
+})
+
+describe('list kinds', () => {
+  it('treats checklists and notes as item lists, not task lists', () => {
+    expect(isItemList({ kind: 'checklist' })).toBe(true)
+    expect(isItemList({ kind: 'notes' })).toBe(true)
+    expect(isItemList({ kind: 'list' })).toBe(false)
+    expect(isItemList({ kind: 'project' })).toBe(false)
   })
 })
