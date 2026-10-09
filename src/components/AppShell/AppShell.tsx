@@ -33,6 +33,7 @@ export function AppShell({ uid, household, member }: Props) {
   const go = useCallback(
     (r: AppState['route']) => {
       setSidebarOpen(false)
+      selectTask(null) // on a phone the task panel covers the page, so a new view must not open behind it
       navigate(r)
     },
     [navigate],

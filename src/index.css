@@ -713,7 +713,7 @@ table.moves td {
     top: 3rem;
     bottom: 3.25rem;
     left: 0;
-    z-index: 10;
+    z-index: 13; /* above an open task panel (12), so ☰ always works */
     transform: translateX(-100%);
     transition: transform 0.15s;
     box-shadow: 4px 0 16px rgb(0 0 0 / 0.1);

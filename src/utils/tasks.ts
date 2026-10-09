@@ -29,17 +29,35 @@ export function targetName(id: string, household: Household): string {
 
 /**
  * Belongs in "Today": in progress, scheduled or due today, or overdue. Calendar events only on the days they
- * happen; a past appointment isn't overdue work.
+ * happen; a past appointment isn't overdue work. With `includeDone`, finished tasks that were on for today
+ * (scheduled or due today, or today's events) count too, so the Today view's status filter can show them.
  */
-export function isForToday(t: Task, day: string): boolean {
-  if (t.status === 'done') return false
-  if (t.calendar) return t.startDate !== undefined && t.startDate <= day && finish(t)! >= day
+export function isForToday(t: Task, day: string, includeDone = false): boolean {
+  const onToday = t.startDate !== undefined && t.startDate <= day && finish(t)! >= day
+  if (t.status === 'done') return includeDone && (onToday || t.targetDate === day)
+  if (t.calendar) return onToday
   return t.status === 'doing' || (t.startDate !== undefined && t.startDate <= day) || (t.targetDate !== undefined && t.targetDate <= day)
+}
+
+/** Minutes after midnight of a calendar event's start ("4:30 PM–5:00 PM" → 990), or undefined (all day / not an event). */
+export function startMinutes(t: Task): number | undefined {
+  const m = t.calendar?.time?.match(/^(\d{1,2}):(\d{2})\s*([AP])M/i)
+  if (!m) return undefined
+  return ((Number(m[1]) % 12) + (m[3].toUpperCase() === 'P' ? 12 : 0)) * 60 + Number(m[2])
 }
 
 export type SortKey = 'priority' | 'date' | 'dependency'
 
-const dateKey = (t: Task) => t.startDate ?? t.targetDate ?? '9999-99-99'
+/**
+ * Day, then time of day: on the same day, all-day calendar events come first, then timed events in clock
+ * order, then tasks without a time.
+ */
+function dateKey(t: Task): string {
+  const day = t.startDate ?? t.targetDate ?? '9999-99-99'
+  const minutes = startMinutes(t)
+  const slot = t.calendar ? (minutes === undefined ? 0 : 1 + minutes) : 9999
+  return `${day} ${String(slot).padStart(4, '0')}`
+}
 
 export function sortTasks(tasks: Task[], by: SortKey): Task[] {
   if (by === 'dependency') return topoSort(tasks)

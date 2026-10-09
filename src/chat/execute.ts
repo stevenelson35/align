@@ -83,6 +83,11 @@ async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext,
       if (m.kind === 'one') forIds.push(m.item.id)
       else unknown.push(n)
     }
+    if (cmd.forText && forIds.length === 0) {
+      // Nobody by that name: "for ..." was part of the title ("create plan for laundry room door repair").
+      title = `${title} for ${cmd.forText}`
+      unknown.length = 0
+    }
     const target = list
     const id = await createTask(
       target,

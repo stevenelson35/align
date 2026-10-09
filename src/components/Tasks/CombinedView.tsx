@@ -17,7 +17,17 @@ export function CombinedView({ title, tasks, defaultSort = 'date' }: Props) {
   const [filter, setFilter] = useState<TaskFilter>({ status: 'open' })
   const [sort, setSort] = useState<SortKey>(defaultSort)
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const shown = sortTasks(filterTasks(tasks, filter), sort)
+  // A task you tick off here stays in view (grayed) until you leave the view, so a mis-click can be unticked.
+  const [tickedHere, setTickedHere] = useState<ReadonlySet<string>>(new Set())
+  const justDone =
+    filter.status === 'open'
+      ? filterTasks(
+          tasks.filter((t) => t.status === 'done' && tickedHere.has(t.id)),
+          { ...filter, status: undefined },
+        )
+      : []
+  const shown = sortTasks([...filterTasks(tasks, filter), ...justDone], sort)
+  const onTicked = (id: string) => setTickedHere((s) => new Set(s).add(id))
 
   const set = (patch: Partial<TaskFilter>) => setFilter((f) => ({ ...f, ...patch }))
   const people = humans(household).map(([id, m]) => ({ id, name: m.displayName }))
@@ -95,7 +105,7 @@ export function CombinedView({ title, tasks, defaultSort = 'date' }: Props) {
       </div>
       <div className="task-list">
         {shown.map((t) => (
-          <TaskCard key={t.id} task={t} />
+          <TaskCard key={t.id} task={t} onTicked={onTicked} />
         ))}
         {shown.length === 0 && <p className="muted">Nothing here.</p>}
       </div>

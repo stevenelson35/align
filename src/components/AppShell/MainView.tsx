@@ -13,16 +13,17 @@ export function MainView() {
 
   switch (route.view) {
     case 'home':
-      return <CombinedView title="Everything" tasks={tasks} />
+      return <CombinedView key="home" title="Everything" tasks={tasks} />
     case 'mine':
-      return <CombinedView title="My tasks" tasks={tasks.filter((t) => t.visibility === 'private' && t.ownerId === uid)} />
+      return <CombinedView key="mine" title="My tasks" tasks={tasks.filter((t) => t.visibility === 'private' && t.ownerId === uid)} />
     case 'family':
-      return <CombinedView title="Family tasks" tasks={tasks.filter((t) => t.visibility === 'family')} />
+      return <CombinedView key="family" title="Family tasks" tasks={tasks.filter((t) => t.visibility === 'family')} />
     case 'work':
-      return <CombinedView title="Work" tasks={tasks.filter((t) => t.context === 'work')} />
+      return <CombinedView key="work" title="Work" tasks={tasks.filter((t) => t.context === 'work')} />
     case 'today': {
       const day = today()
-      return <CombinedView title="Today" tasks={tasks.filter((t) => isForToday(t, day))} defaultSort="priority" />
+      // Done ones are included so "Any status" / "Done" can show them; "Not done" (the default) hides them.
+      return <CombinedView key="today" title="Today" tasks={tasks.filter((t) => isForToday(t, day, true))} />
     }
     case 'list': {
       const list = lists.find((l) => l.id === route.listId)

@@ -23,6 +23,23 @@ describe('parse', () => {
       title: 'flea meds',
       targetDate: '2026-10-02',
       forNames: ['Dog 1', 'Cat 2'],
+      forText: 'Dog 1 and Cat 2',
+    })
+  })
+
+  it('keeps the "for ..." text so it can go back in the title, and strips a trailing date from names', () => {
+    expect(parse('add task create plan for laundry room door repair', ref)).toEqual({
+      type: 'add',
+      title: 'create plan',
+      forNames: ['laundry room door repair'],
+      forText: 'laundry room door repair',
+    })
+    expect(parse('add flea meds for Dog tomorrow', ref)).toEqual({
+      type: 'add',
+      title: 'flea meds',
+      startDate: '2026-10-02',
+      forNames: ['Dog'],
+      forText: 'Dog',
     })
   })
 

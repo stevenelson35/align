@@ -60,6 +60,9 @@ export function TaskDetails({ task }: { task: Task }) {
     try {
       await updateTask(task.id, patch, moveTo)
       if (preview) app.proposeShift({ title: `Move ${task.title}`, preview })
+      // Close, so the change shows on the task's card (on a phone this panel covers the whole page).
+      app.selectTask(null)
+      return
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }

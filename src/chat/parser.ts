@@ -15,6 +15,8 @@ export type Command =
       titleWithoutList?: string
       context?: Context
       forNames?: string[]
+      /** The "for ..." text as typed: put back in the title if none of forNames is a person or pet ("plan for door repair"). */
+      forText?: string
       priority?: Priority
     }
   | { type: 'done'; task: string }
@@ -65,7 +67,10 @@ function parseAdd(rest: string, ref: Date): Command {
     } else if (kw === 'for') {
       const v = value.toLowerCase()
       if (v === 'work' || v === 'family') cmd.context = v
-      else cmd.forNames = splitNames(value)
+      else {
+        cmd.forNames = splitNames(value)
+        cmd.forText = value
+      }
     } else if (kw === 'priority') {
       const p = PRIORITIES[value.toLowerCase()]
       if (!p) return { type: 'error', message: `Priority should be high, medium or low, not "${value}".` }
@@ -82,6 +87,14 @@ function parseAdd(rest: string, ref: Date): Command {
       cmd.listName = strip(cmd.listName)
       cmd.titleWithoutList = strip(cmd.titleWithoutList)
       if (!cmd.listName) delete cmd.titleWithoutList
+      // "flea meds for Dog tomorrow": the date isn't part of the last name.
+      cmd.forText = strip(cmd.forText)
+      if (cmd.forNames) {
+        const last = strip(cmd.forNames.at(-1))
+        cmd.forNames = last ? [...cmd.forNames.slice(0, -1), last] : cmd.forNames.slice(0, -1)
+        if (!cmd.forNames.length) delete cmd.forNames
+      }
+      if (!cmd.forNames) delete cmd.forText
     }
   }
   return cmd

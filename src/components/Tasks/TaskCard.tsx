@@ -5,7 +5,14 @@ import { useApp, useData } from '../../hooks/useApp'
 import type { Task } from '../../types'
 import { colorKey, PRIORITY_LABEL, STATUS_LABEL, targetName } from '../../utils/tasks'
 
-export function TaskCard({ task, showList = true }: { task: Task; showList?: boolean }) {
+interface Props {
+  task: Task
+  showList?: boolean
+  /** Told when the box is ticked here, so the view can keep the task visible for an untick. */
+  onTicked?: (id: string) => void
+}
+
+export function TaskCard({ task, showList = true, onTicked }: Props) {
   const { household, selectTask, selectedTaskId, canEdit } = useApp()
   const { lists, conflicts } = useData()
   const list = lists.find((l) => l.id === task.listId)
@@ -24,7 +31,10 @@ export function TaskCard({ task, showList = true }: { task: Task; showList?: boo
         checked={task.status === 'done'}
         disabled={!editable}
         onClick={(e) => e.stopPropagation()}
-        onChange={(e) => updateTask(task.id, { status: e.target.checked ? 'done' : 'todo' })}
+        onChange={(e) => {
+          if (e.target.checked) onTicked?.(task.id)
+          updateTask(task.id, { status: e.target.checked ? 'done' : 'todo' })
+        }}
       />
       <div className="grow">
         <div className="task-title">{task.title}</div>

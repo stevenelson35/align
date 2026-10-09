@@ -318,6 +318,15 @@ firestore.indexes.json
   - Unit tests are in `tests/apps-script/` (37 unit tests total). `npm run test:calendar` runs the real script against the emulators, with fake Calendar, UrlFetch and Properties services.
   - The UI shows a 📅 time badge on imported tasks and a note in the task panel.
 
+- **2026-10-08 fixes (from the user's first real use):**
+  - **Today** passes done tasks that were on for today (`isForToday(t, day, true)`) to the view, so **Any status** / **Done** can show them; **Not done** still hides them. A task ticked in a view stays there, grayed, until you leave the view, so a mis-tick can be unticked.
+  - **Order:** the date sort uses the event's clock time. On each day, all-day events come first, then timed events in clock order, then tasks without a time. Today now sorts by date by default.
+  - **Quick add:** if none of the names after "for" are a person or pet, the "for ..." text stays in the title ("create plan for laundry room door repair"). A trailing date is no longer read as part of the last name.
+  - **Task panel (phone layout):**
+    - It covers the page, so it now closes after a successful Save and whenever you change views.
+    - ☰ opens above it.
+  - Checked with Playwright at 390px against the emulators.
+
 ### Next stages
 7. **First deploy (mostly done):** re-upload with `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` after each change. Confirm the permissions-race fix in production.
 8. Polish ideas, in no particular order: code-split the Firebase SDK, a settings screen (weekly tokens, pets), recurring tasks (§3.2), and committing the Playwright smoke tests.
