@@ -50,6 +50,12 @@ export function CombinedView({ title, tasks, defaultSort = 'date', actions }: Pr
           Filters
         </button>
       </header>
+      <p className="color-key small muted" aria-label="Color key">
+        <span className="key color-private">Private 🔒</span>
+        <span className="key color-family">Family</span>
+        <span className="key color-project">Project</span>
+        <span className="key color-done">Finished</span>
+      </p>
       <div className={`filters${filtersOpen ? ' open' : ''}`}>
         <select value={filter.listId ?? ''} onChange={(e) => set({ listId: e.target.value || undefined })}>
           <option value="">All lists</option>

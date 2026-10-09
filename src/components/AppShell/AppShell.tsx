@@ -10,6 +10,7 @@ import { ListEditor } from '../Tasks/ListEditor'
 import { ItemDetails } from '../Tasks/ItemDetails'
 import { TaskDetails } from '../Tasks/TaskDetails'
 import { BottomNav } from './BottomNav'
+import { SettingsDialog } from './SettingsDialog'
 import { MainView } from './MainView'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
@@ -28,6 +29,11 @@ export function AppShell({ uid, household, member }: Props) {
   const [listEditor, setListEditor] = useState<{ list: List | null } | null>(null)
   const [chat, setChat] = useState<{ open: boolean; draft: string; key: number }>({ open: false, draft: '', key: 0 })
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const openSettings = useCallback(() => {
+    setSidebarOpen(false)
+    setSettingsOpen(true)
+  }, [])
 
   const canEdit = useCallback((t: Pick<Task, 'visibility' | 'ownerId'>) => canEditTask(t, uid, member.role), [uid, member.role])
   const openChat = useCallback((draft = '') => setChat((c) => ({ open: true, draft, key: c.key + 1 })), [])
@@ -78,9 +84,10 @@ export function AppShell({ uid, household, member }: Props) {
           member={member}
           onMenu={() => setSidebarOpen((o) => !o)}
           onChat={() => setChat((c) => ({ ...c, open: !c.open }))}
+          onSettings={openSettings}
         />
         <div className="app-body">
-          <Sidebar open={sidebarOpen} />
+          <Sidebar open={sidebarOpen} onSettings={openSettings} />
           {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
           <main className="main-panel">
             {data.error && (
@@ -109,6 +116,7 @@ export function AppShell({ uid, household, member }: Props) {
         {chat.open && <ChatPanel key={chat.key} initialDraft={chat.draft} onClose={() => setChat((c) => ({ ...c, open: false }))} />}
         {shift && <ShiftDialog shift={shift} onClose={() => proposeShift(null)} />}
         {listEditor && <ListEditor list={listEditor.list} onClose={() => setListEditor(null)} />}
+        {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       </div>
     </AppContext.Provider>
   )

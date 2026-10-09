@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { followSystem, loadTheme, saveTheme, type ThemeChoice } from '../../utils/theme'
+import { followSystem, loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
 
 const NEXT: Record<ThemeChoice, ThemeChoice> = { system: 'light', light: 'dark', dark: 'system' }
 const LABEL: Record<ThemeChoice, string> = { system: 'Match device', light: 'Light', dark: 'Dark' }
@@ -9,6 +9,7 @@ const ICON: Record<ThemeChoice, string> = { system: '◐', light: '☀', dark: '
 export function ThemeToggle() {
   const [choice, setChoice] = useState<ThemeChoice>(loadTheme)
   useEffect(() => followSystem(choice), [choice])
+  useEffect(() => onThemeChange(setChoice), [])
   const next = NEXT[choice]
   return (
     <button

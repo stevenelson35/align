@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { deleteTask, updateTask } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
+import { privacyText } from '../../utils/tasks'
 
 /** Side panel for a checklist item or a note: title, text, move, delete. Save and ✕ are at the top. */
 export function ItemDetails({ item, list }: { item: Task; list: List }) {
@@ -81,6 +82,10 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
           </label>
         )}
       </fieldset>
+      {(() => {
+        const target = lists.find((l) => l.id === listId) ?? list
+        return <p className="privacy-note small">{privacyText(target, isNote ? 'note' : 'item')}</p>
+      })()}
       {error && <p className="error">{error}</p>}
       {editable && (
         <div className="row">

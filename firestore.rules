@@ -41,7 +41,9 @@ service cloud.firestore {
       let uid = request.auth.uid;
       return after.diff(before).affectedKeys().hasOnly([uid])
         && after[uid].role == before[uid].role
-        && after[uid].keys().hasOnly(['role', 'displayName', 'color']);
+        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility'])
+        // Their own default for new lists and quick adds (Settings).
+        && (!('defaultVisibility' in after[uid]) || after[uid].defaultVisibility in ['private', 'family']);
     }
 
     function householdExists() {

@@ -11,7 +11,8 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
   const { tasks: taskDocs, listItems } = useData()
   const tasks = [...taskDocs, ...listItems]
   const [form, setForm] = useState<ListInput>(
-    list ?? { name: '', kind: 'list', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' },
+    // New lists start with your own default privacy (Settings).
+    list ?? { name: '', kind: 'list', visibility: app.member.defaultVisibility ?? 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' },
   )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)

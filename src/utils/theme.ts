@@ -19,6 +19,16 @@ export function saveTheme(choice: ThemeChoice) {
   if (choice === 'system') localStorage.removeItem(KEY)
   else localStorage.setItem(KEY, choice)
   applyTheme(choice)
+  window.dispatchEvent(new CustomEvent(CHANGED, { detail: choice })) // keeps the top-bar button and Settings in step
+}
+
+const CHANGED = 'align-theme-changed'
+
+/** Calls back whenever the theme is changed anywhere in the app. Returns an unsubscribe function. */
+export function onThemeChange(callback: (choice: ThemeChoice) => void): () => void {
+  const listener = (e: Event) => callback((e as CustomEvent<ThemeChoice>).detail)
+  window.addEventListener(CHANGED, listener)
+  return () => window.removeEventListener(CHANGED, listener)
 }
 
 /** Re-applies "system" when the device switches between light and dark. Returns an unsubscribe function. */

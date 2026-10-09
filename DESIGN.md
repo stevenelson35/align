@@ -351,6 +351,12 @@ firestore.indexes.json
   - **Task panel:** Save sits in a sticky header next to ✕.
   - Tests: 48 unit, 23 rules. Checked with Playwright at 390px.
 
+- **2026-10-09: privacy you can see, and your own default:**
+  - **Settings** (⚙ in the menu, or tap your avatar): **Default privacy** (🔒 Just me / 👪 Family) is saved as `household.members[uid].defaultVisibility`. The rules let you set only your own, to those two values (tests). Theme (per device) also lives here, kept in step with the top-bar button.
+  - **The default applies to:** new lists (List editor), and quick adds or chat adds that don't name a list. Private adds go to your own **Inbox**; Family adds go to the shared **Family Inbox**, created when first needed.
+  - **Shown:** 🔒 on private lists in the menu and on the list badge of private tasks in mixed views. List badges say "🔒 Private" or "👪 Family". There's a color key on the task views. The task and item panels say "🔒 Only you can see this task" or "👪 Everyone in the family can see this…", following the chosen list. Chat says "Added … to Inbox (🔒 private)".
+  - Tests: 48 unit, 24 rules. Checked with Playwright.
+
 ### Next stages
 7. **First deploy (mostly done):** re-upload with `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` after each change. Confirm the permissions-race fix in production.
 8. Polish ideas, in no particular order: code-split the Firebase SDK, a settings screen (weekly tokens, pets), recurring tasks (§3.2), and committing the Playwright smoke tests.

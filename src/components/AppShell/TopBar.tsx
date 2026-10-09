@@ -8,9 +8,10 @@ interface Props {
   member: HouseholdMember
   onMenu: () => void
   onChat: () => void
+  onSettings: () => void
 }
 
-export function TopBar({ householdName, member, onMenu, onChat }: Props) {
+export function TopBar({ householdName, member, onMenu, onChat, onSettings }: Props) {
   const { isMember, openChat } = useApp()
   return (
     <header className="top-bar">
@@ -32,9 +33,9 @@ export function TopBar({ householdName, member, onMenu, onChat }: Props) {
         </button>
         <ThemeToggle />
         {member.role === 'viewer' && <span className="badge">View only</span>}
-        <span className="avatar" style={{ background: member.color }} aria-hidden="true">
+        <button type="button" className="avatar" style={{ background: member.color }} onClick={onSettings} title="Settings" aria-label="Settings">
           {member.displayName.charAt(0).toUpperCase()}
-        </span>
+        </button>
         <span className="hide-mobile">{member.displayName}</span>
         <button type="button" className="link" onClick={() => signOut()}>
           Sign out

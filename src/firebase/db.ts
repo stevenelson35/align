@@ -17,7 +17,7 @@ import {
   type Query,
 } from 'firebase/firestore'
 import type { Move } from '../engine/scheduling'
-import type { Board, BoardItem, Household, ItemStatus, List, Role, Task, Vote } from '../types'
+import type { Board, BoardItem, Household, ItemStatus, List, Role, Task, Visibility, Vote } from '../types'
 import { db } from './config'
 
 export const householdRef = doc(db, 'household', 'main')
@@ -117,6 +117,11 @@ export function subscribeMyVotes(uid: string, onData: (votes: Vote[]) => void, o
 }
 
 // ---- Lists ----
+
+/** Your own default privacy for new lists and quick adds (Settings). The rules allow only your own entry. */
+export function setDefaultVisibility(uid: string, visibility: Visibility) {
+  return updateDoc(householdRef, { [`members.${uid}.defaultVisibility`]: visibility })
+}
 
 export type ListInput = Omit<List, 'id'>
 

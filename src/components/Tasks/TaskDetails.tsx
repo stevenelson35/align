@@ -5,7 +5,7 @@ import { deleteTask, updateTask, type TaskInput } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Dependency, Priority, Status, Task } from '../../types'
 import { NumberField } from './NumberField'
-import { isFinished, isItemList, people as humans, STATUS_LABEL, targetName } from '../../utils/tasks'
+import { isFinished, isItemList, people as humans, privacyText, STATUS_LABEL, targetName } from '../../utils/tasks'
 
 /** ✓ done, ✕ canceled, ⏳ not finished yet. */
 function statusIcon(t: Task) {
@@ -154,6 +154,10 @@ export function TaskDetails({ task }: { task: Task }) {
             ))}
           </select>
         </label>
+        {(() => {
+          const target = lists.find((l) => l.id === form.listId)
+          return target && <p className="privacy-note small">{privacyText(target, 'task')}</p>
+        })()}
         <div className="grid2">
           <label>
             Priority

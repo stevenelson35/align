@@ -11,7 +11,7 @@ export function ListHeader({ list, children }: { list: List; children?: ReactNod
     <header className="view-header">
       <h2>{list.name}</h2>
       <span className={`badge ${list.kind === 'project' ? 'color-project' : `color-${list.visibility}`}`}>
-        {list.visibility === 'private' ? 'Private' : 'Family'}
+        {list.visibility === 'private' ? '🔒 Private' : '👪 Family'}
         {KIND_LABEL[list.kind]}
       </span>
       {list.viewerVisible && <span className="badge">Visible to viewers</span>}

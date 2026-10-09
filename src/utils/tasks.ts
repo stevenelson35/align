@@ -7,6 +7,14 @@ export function canEditTask(task: Pick<Task, 'visibility' | 'ownerId'>, uid: str
   return role === 'member' && (task.visibility === 'family' || task.ownerId === uid)
 }
 
+export const PRIVACY_ICON: Record<List['visibility'], string> = { private: '🔒', family: '👪' }
+
+/** Plain words for who can see something in this list ("task", "item", "note", "list"). */
+export function privacyText(list: Pick<List, 'visibility' | 'viewerVisible'>, noun: string): string {
+  if (list.visibility === 'private') return `🔒 Only you can see this ${noun}.`
+  return `👪 Everyone in the family can see this ${noun}${list.viewerVisible ? ', and so can viewers' : ''}.`
+}
+
 /** Checklists and notes hold items, not tasks: they stay out of the task views, chat and scheduling. */
 export function isItemList(list: Pick<List, 'kind'>): boolean {
   return list.kind === 'checklist' || list.kind === 'notes'

@@ -6,7 +6,7 @@ import { meetDate, recalculate, shiftForward } from '../engine/scheduling'
 import { createList, createTask, setVote, updateTask } from '../firebase/db'
 import type { Board, BoardItem, List, Task } from '../types'
 import { fuzzyMatch } from '../utils/fuzzy'
-import { isFinished, isForToday, people } from '../utils/tasks'
+import { isFinished, isForToday, people, PRIVACY_ICON } from '../utils/tasks'
 import { HELP_TEXT, parse, type Command } from './parser'
 
 export interface Reply {
@@ -48,6 +48,8 @@ function describeTask(t: Task, lists: List[]) {
   return `${t.title}${list ? ` (${list.name})` : ''}${when}`
 }
 
+const FAMILY_INBOX = 'Family Inbox'
+
 async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext, chosen?: List): Promise<Reply> {
   const { app, data } = ctx
   const editable = data.lists.filter((l) => app.canEdit(l))
@@ -64,13 +66,20 @@ async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext,
     // No such list: "to ..." was probably part of the title ("take dog to vet").
     else if (cmd.titleWithoutList) title = cmd.titleWithoutList
   }
+  // No list named: your inbox for your default privacy (Settings). Private: your own "Inbox" (or first private
+  // task list). Family: the shared "Family Inbox".
+  const family = (app.member.defaultVisibility ?? 'private') === 'family'
   if (!list) {
-    list = editable.find((l) => l.visibility === 'private' && l.ownerId === app.uid && l.kind === 'list')
+    list = family
+      ? editable.find((l) => l.visibility === 'family' && l.kind === 'list' && l.name === FAMILY_INBOX)
+      : editable.find((l) => l.visibility === 'private' && l.ownerId === app.uid && l.kind === 'list')
   }
   try {
     if (!list) {
-      const id = await createList({ name: 'Inbox', kind: 'list', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' })
-      list = { id, name: 'Inbox', kind: 'list', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' }
+      const inbox: Omit<List, 'id'> = family
+        ? { name: FAMILY_INBOX, kind: 'list', visibility: 'family', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' }
+        : { name: 'Inbox', kind: 'list', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' }
+      list = { ...inbox, id: await createList(inbox) }
     }
     const names = [
       ...people(app.household).map(([id, m]) => ({ id, name: m.displayName })),
@@ -105,7 +114,7 @@ async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext,
       app.uid,
     )
     return {
-      text: `Added "${title}" to ${target.name}${cmd.startDate ? ` on ${formatDay(cmd.startDate)}` : ''}.`,
+      text: `Added "${title}" to ${target.name} (${PRIVACY_ICON[target.visibility]} ${target.visibility === 'private' ? 'private' : 'family'})${cmd.startDate ? ` on ${formatDay(cmd.startDate)}` : ''}.`,
       lines: unknown.length ? [`I didn't recognize: ${unknown.join(', ')}.`] : undefined,
       actions: [
         { label: 'Open it', run: () => app.selectTask(id) },

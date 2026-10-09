@@ -1,7 +1,7 @@
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
 import type { Route } from '../../utils/routes'
-import { isFinished } from '../../utils/tasks'
+import { isFinished, PRIVACY_ICON } from '../../utils/tasks'
 
 function NavLink({ route, label, color, count }: { route: Route; label: string; color?: string; count?: number }) {
   const app = useApp()
@@ -15,7 +15,7 @@ function NavLink({ route, label, color, count }: { route: Route; label: string; 
   )
 }
 
-export function Sidebar({ open }: { open: boolean }) {
+export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () => void }) {
   const { uid, isMember, editList } = useApp()
   const { lists, boards, tasks, listItems } = useData()
   // Unfinished tasks or unchecked items; for notes, how many there are.
@@ -43,7 +43,13 @@ export function Sidebar({ open }: { open: boolean }) {
         <div key={s.title} className="nav-section">
           <h3>{s.title}</h3>
           {s.lists.map((l) => (
-            <NavLink key={l.id} route={{ view: 'list', listId: l.id, timeline: false }} label={l.name} color={s.color || color(l)} count={openCount(l)} />
+            <NavLink
+              key={l.id}
+              route={{ view: 'list', listId: l.id, timeline: false }}
+              label={l.visibility === 'private' ? `${l.name} ${PRIVACY_ICON.private}` : l.name}
+              color={s.color || color(l)}
+              count={openCount(l)}
+            />
           ))}
           {s.lists.length === 0 && <p className="muted small">None yet</p>}
         </div>
@@ -60,6 +66,11 @@ export function Sidebar({ open }: { open: boolean }) {
         {boards.map((b) => (
           <NavLink key={b.id} route={{ view: 'board', boardId: b.id }} label={b.name} />
         ))}
+      </div>
+      <div className="nav-section">
+        <button type="button" className="nav-link" onClick={onSettings}>
+          ⚙ Settings
+        </button>
       </div>
     </nav>
   )

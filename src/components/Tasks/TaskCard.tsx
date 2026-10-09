@@ -3,7 +3,7 @@ import { finish } from '../../engine/scheduling'
 import { updateTask } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Task } from '../../types'
-import { colorKey, isFinished, PRIORITY_LABEL, STATUS_LABEL, targetName, waitingOn } from '../../utils/tasks'
+import { colorKey, isFinished, PRIORITY_LABEL, PRIVACY_ICON, STATUS_LABEL, targetName, waitingOn } from '../../utils/tasks'
 
 interface Props {
   task: Task
@@ -60,7 +60,12 @@ export function TaskCard({ task, showList = true, onTicked }: Props) {
               Unblocks {unblocks.length}
             </span>
           )}
-          {showList && list && <span className="badge">{list.name}</span>}
+          {showList && list && (
+            <span className="badge" title={task.visibility === 'private' ? 'Private: only you can see it' : 'Family: everyone can see it'}>
+              {task.visibility === 'private' && `${PRIVACY_ICON.private} `}
+              {list.name}
+            </span>
+          )}
           {task.calendar && (
             <span className="badge calendar" title={task.calendar.location}>
               📅 {task.calendar.time ?? 'All day'}

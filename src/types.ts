@@ -6,6 +6,8 @@ export interface HouseholdMember {
   role: Role
   displayName: string
   color: string
+  /** Who can see the lists this person creates, and their quick adds, unless they choose otherwise. Default private. */
+  defaultVisibility?: Visibility
   /** The calendar-sync account: a member for the rules, hidden from people pickers. Set in the console. */
   bot?: boolean
 }
