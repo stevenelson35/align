@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { execute, type Reply } from '../../chat/execute'
+import { execute, type Action, type Reply } from '../../chat/execute'
 import { useApp, useData } from '../../hooks/useApp'
 import { useTokenBalance } from '../../hooks/useVoting'
 
@@ -39,9 +39,11 @@ export function ChatPanel({ initialDraft, onClose }: { initialDraft: string; onC
     setBusy(false)
   }
 
-  async function runAction(run: () => Promise<Reply | void> | Reply | void) {
-    const reply = await run()
+  async function runAction(action: Action) {
+    const reply = await action.run()
     if (reply) push({ from: 'align', reply })
+    // "Open it" / "Go to …": get out of the way, or the task panel or page opens hidden under the chat.
+    if (action.showsSomething) onClose()
   }
 
   return (
@@ -71,7 +73,7 @@ export function ChatPanel({ initialDraft, onClose }: { initialDraft: string; onC
               {m.reply.actions && (
                 <div className="chips">
                   {m.reply.actions.map((a, j) => (
-                    <button key={j} type="button" className="secondary small" onClick={() => runAction(a.run)}>
+                    <button key={j} type="button" className="secondary small" onClick={() => runAction(a)}>
                       {a.label}
                     </button>
                   ))}

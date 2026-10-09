@@ -9,10 +9,17 @@ import { fuzzyMatch } from '../utils/fuzzy'
 import { isFinished, isForToday, people, PRIVACY_ICON } from '../utils/tasks'
 import { HELP_TEXT, parse, type Command } from './parser'
 
+export interface Action {
+  label: string
+  run: () => Promise<Reply | void> | Reply | void
+  /** It opens a task or shows another page: the chat closes so you can see it (it covers both on a phone). */
+  showsSomething?: boolean
+}
+
 export interface Reply {
   text: string
   lines?: string[]
-  actions?: { label: string; run: () => Promise<Reply | void> | Reply | void }[]
+  actions?: Action[]
 }
 
 export interface ExecContext {
@@ -117,8 +124,8 @@ async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext,
       text: `Added "${title}" to ${target.name} (${PRIVACY_ICON[target.visibility]} ${target.visibility === 'private' ? 'private' : 'family'})${cmd.startDate ? ` on ${formatDay(cmd.startDate)}` : ''}.`,
       lines: unknown.length ? [`I didn't recognize: ${unknown.join(', ')}.`] : undefined,
       actions: [
-        { label: 'Open it', run: () => app.selectTask(id) },
-        { label: `Go to ${target.name}`, run: () => app.navigate({ view: 'list', listId: target.id, timeline: false }) },
+        { label: 'Open it', run: () => app.selectTask(id), showsSomething: true },
+        { label: `Go to ${target.name}`, run: () => app.navigate({ view: 'list', listId: target.id, timeline: false }), showsSomething: true },
       ],
     }
   } catch (err) {
@@ -225,7 +232,7 @@ export async function execute(input: string, ctx: ExecContext): Promise<Reply> {
           await setVote(item.boardId, item.id, app.uid, current + cmd.tokens)
           return {
             text: `Put ${cmd.tokens} token(s) on "${item.title}" in ${boardName(item)} (${current + cmd.tokens} total from you).`,
-            actions: [{ label: 'Show board', run: () => void app.navigate({ view: 'board', boardId: item.boardId }) }],
+            actions: [{ label: 'Show board', run: () => void app.navigate({ view: 'board', boardId: item.boardId }), showsSomething: true }],
           }
         } catch (err) {
           return { text: errorText(err) }
