@@ -40,7 +40,12 @@ if grep -q "demo-align" dist/assets/*.js; then
 fi
 
 echo "Uploading dist/ to ftp://$USER_NAME@$HOST$DIR ${DRY:+(dry run)}"
-read -rsp "FTP password for $USER_NAME: " LFTP_PASSWORD
+# No terminal to type into (e.g. run from an editor or agent): say so instead of exiting silently.
+if ! read -rsp "FTP password for $USER_NAME: " LFTP_PASSWORD || [[ -z "$LFTP_PASSWORD" ]]; then
+  echo
+  echo "No password entered, so nothing was uploaded. Run this in a terminal where you can type the password." >&2
+  exit 1
+fi
 echo
 export LFTP_PASSWORD
 
