@@ -1,6 +1,7 @@
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
 import type { Route } from '../../utils/routes'
+import { isFinished } from '../../utils/tasks'
 
 function NavLink({ route, label, color, count }: { route: Route; label: string; color?: string; count?: number }) {
   const app = useApp()
@@ -17,7 +18,7 @@ function NavLink({ route, label, color, count }: { route: Route; label: string; 
 export function Sidebar({ open }: { open: boolean }) {
   const { uid, isMember, editList } = useApp()
   const { lists, boards, tasks } = useData()
-  const openCount = (l: List) => tasks.filter((t) => t.listId === l.id && t.status !== 'done').length
+  const openCount = (l: List) => tasks.filter((t) => t.listId === l.id && !isFinished(t)).length
 
   const sections: { title: string; lists: List[]; color: string }[] = [
     { title: 'My lists', lists: lists.filter((l) => l.visibility === 'private' && l.kind === 'list' && l.ownerId === uid), color: 'var(--color-private)' },

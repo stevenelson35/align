@@ -3,7 +3,8 @@ import { recalculate } from '../../engine/scheduling'
 import { createTask } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
-import { sortTasks } from '../../utils/tasks'
+import { isFinished, sortTasks } from '../../utils/tasks'
+import { CalendarRefresh } from './CalendarRefresh'
 import { TaskCard } from './TaskCard'
 
 export function ListView({ list }: { list: List }) {
@@ -15,11 +16,11 @@ export function ListView({ list }: { list: List }) {
 
   const listTasks = tasks.filter((t) => t.listId === list.id)
   const shown = sortTasks(
-    listTasks.filter((t) => showDone || t.status !== 'done'),
+    listTasks.filter((t) => showDone || !isFinished(t)),
     list.kind === 'project' ? 'dependency' : 'priority',
   )
   const editable = app.canEdit(list)
-  const doneCount = listTasks.filter((t) => t.status === 'done').length
+  const doneCount = listTasks.filter(isFinished).length
 
   async function add(e: FormEvent) {
     e.preventDefault()
@@ -53,6 +54,7 @@ export function ListView({ list }: { list: List }) {
         {list.viewerVisible && <span className="badge">Visible to viewers</span>}
         {list.defaultContext === 'work' && <span className="badge work">Work</span>}
         <span className="grow" />
+        {listTasks.some((t) => t.calendar) && <CalendarRefresh />}
         {list.kind === 'project' && (
           <>
             <button type="button" className="secondary small" onClick={() => app.navigate({ view: 'list', listId: list.id, timeline: true })}>
@@ -88,7 +90,7 @@ export function ListView({ list }: { list: List }) {
       </div>
       {doneCount > 0 && (
         <button type="button" className="link" onClick={() => setShowDone((s) => !s)}>
-          {showDone ? 'Hide' : 'Show'} {doneCount} done
+          {showDone ? 'Hide' : 'Show'} {doneCount} finished
         </button>
       )}
     </section>

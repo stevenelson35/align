@@ -13,6 +13,9 @@ export interface DataState {
   myVotes: Vote[]
   /** Live conflict reasons by task id (DESIGN.md §6.2). */
   conflicts: Map<string, string>
+  taskById: Map<string, Task>
+  /** Tasks that list this task id as a prerequisite. */
+  dependents: Map<string, Task[]>
 }
 
 export const emptyData: DataState = {
@@ -24,6 +27,8 @@ export const emptyData: DataState = {
   items: [],
   myVotes: [],
   conflicts: new Map(),
+  taskById: new Map(),
+  dependents: new Map(),
 }
 
 export const DataContext = createContext<DataState>(emptyData)

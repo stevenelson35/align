@@ -148,7 +148,7 @@ boards/{boardId}/items/{itemId}/votes/{uid}   { uid, tokens: number, updatedAt }
 
 The family Google Calendar is copied one way into a family list named **Family Calendar** by `scripts/apps-script/calendar-sync.gs`. Setup steps are in that folder's README.
 
-- **Runs in Google Apps Script** (free) under the account that can see the calendar, on an hourly trigger. Align itself still has no server code.
+- **Runs in Google Apps Script** (free) under the account that can see the calendar, on a 15-minute trigger, and on demand when a member taps **↻ Refresh calendar** (the script is also published as a web app; its `doPost` checks the Firebase ID token with `accounts:lookup` and household membership, skips taps within a minute, and shares a lock with the trigger). Align itself still has no server code.
 - **Auth:** the script signs in to Firebase Auth's REST API as a dedicated **calendar-bot** account. That account is a normal `member` in `household/main`, with `bot: true` so the UI hides it from people pickers. The security rules apply to it unchanged.
 - **Reads** use the Advanced Calendar service (`Calendar.Events.list`, `singleEvents: true`, read-only scope). Event ids are stable when an event moves, and each instance of a recurring event has its own id.
 - **Each event becomes a task with id `gcal_<eventId>`:**
@@ -326,6 +326,21 @@ firestore.indexes.json
     - It covers the page, so it now closes after a successful Save and whenever you change views.
     - ☰ opens above it.
   - Checked with Playwright at 390px against the emulators.
+
+- **2026-10-08 additions:**
+  - **Canceled status** (`'canceled'`, rules plus a test): finished but not done. It's hidden by "Not done", grayed and struck through with a "✕ Canceled" badge. It's set from the task panel's Status menu or with the chat command `cancel <task>` (which has an Undo). Done and canceled both count as **finished** (`isFinished`): sidebar counts, list "Show N finished", Today, conflicts and dependencies all use it.
+  - **Dependencies you can see:**
+    - A card waiting on an unfinished prerequisite shows "⏳ Waiting on <title> +N" and is dimmed with a dashed border.
+    - A prerequisite shows "Unblocks N".
+    - Ticking a waiting task asks first.
+    - In the task panel, each prerequisite shows ✓, ✕ or ⏳ and opens when tapped. A **Needed by** section lists the dependents.
+    - A **Ready to do only** filter hides waiting tasks.
+    - It's all computed from `dependsOn` (`waitingOn`, `DataState.dependents`); nothing is stored. Prerequisites in someone else's private list aren't visible, so they don't count.
+  - **Phone menu:** a backdrop closes it on a tap outside, and so does Escape.
+  - **Dark mode:** ◐/☀/☾ in the top bar cycles Match device → Light → Dark. The choice is saved per device in `localStorage` (`align-theme`), applied before the first paint by a script in `index.html`, with colors as CSS variables under `:root[data-theme='dark']`.
+  - **Calendar:** syncs every 15 minutes; optional **↻ Refresh calendar** button (`VITE_CALENDAR_SYNC_URL`, `src/firebase/calendarSync.ts`; setup in `scripts/apps-script/README.md`).
+  - The **Timeline** button is shown only for lists of kind *Project* (Edit list → Kind).
+  - Tests: 47 unit, 22 rules, and the calendar emulator run with 7 web-app checks. Checked with Playwright at 390px.
 
 ### Next stages
 7. **First deploy (mostly done):** re-upload with `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` after each change. Confirm the permissions-race fix in production.

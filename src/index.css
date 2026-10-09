@@ -13,10 +13,48 @@
   --danger: #cf222e;
   --radius: 8px;
 
+  /* Badge tints */
+  --tint-red-bg: #ffebe9;
+  --tint-red-border: #ff8182;
+  --tint-yellow-bg: #fff8c5;
+  --tint-yellow-border: #d4a72c;
+  --tint-blue-bg: #ddf4ff;
+  --tint-blue-border: #54aeff;
+  --tint-green-bg: #dafbe1;
+  --tint-green-border: #4ac26b;
+
+  color-scheme: light;
+
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
   color: var(--text);
   background: var(--bg);
+}
+
+/* Dark mode: set on <html> from the saved choice, or the device setting (see index.html and ThemeToggle). */
+:root[data-theme='dark'] {
+  --color-private: #4493f8;
+  --color-family: #a371f7;
+  --color-project: #3fb950;
+  --color-done: #6e7681;
+
+  --bg: #0d1117;
+  --surface: #161b22;
+  --text: #e6edf3;
+  --muted: #8d96a0;
+  --border: #30363d;
+  --danger: #f85149;
+
+  --tint-red-bg: rgb(248 81 73 / 0.15);
+  --tint-red-border: rgb(248 81 73 / 0.6);
+  --tint-yellow-bg: rgb(210 153 34 / 0.15);
+  --tint-yellow-border: rgb(210 153 34 / 0.6);
+  --tint-blue-bg: rgb(56 139 253 / 0.15);
+  --tint-blue-border: rgb(56 139 253 / 0.6);
+  --tint-green-bg: rgb(46 160 67 / 0.15);
+  --tint-green-border: rgb(46 160 67 / 0.6);
+
+  color-scheme: dark;
 }
 
 * {
@@ -61,6 +99,8 @@ textarea {
   padding: 0.5rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
 }
 
 .center {
@@ -200,6 +240,10 @@ label.inline {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+label.inline input[type='checkbox'] {
+  width: auto;
 }
 
 label.inline input[type='checkbox'] {
@@ -404,6 +448,13 @@ input.narrow {
   color: var(--muted);
 }
 
+/* Waiting on an unfinished prerequisite: still usable, just visibly not ready. */
+.task-card.waiting {
+  opacity: 0.75;
+  border-style: dashed;
+  border-left-style: solid;
+}
+
 .color-private {
   --accent: var(--color-private);
 }
@@ -438,32 +489,32 @@ input.narrow {
 }
 
 .badge.priority-1 {
-  background: #ffebe9;
-  border-color: #ff8182;
+  background: var(--tint-red-bg);
+  border-color: var(--tint-red-border);
 }
 .badge.priority-3 {
   color: var(--muted);
 }
 .badge.work {
-  background: #fff8c5;
-  border-color: #d4a72c;
+  background: var(--tint-yellow-bg);
+  border-color: var(--tint-yellow-border);
 }
 .badge.for {
-  background: #ddf4ff;
-  border-color: #54aeff;
+  background: var(--tint-blue-bg);
+  border-color: var(--tint-blue-border);
 }
 .badge.calendar {
-  background: #dafbe1;
-  border-color: #4ac26b;
+  background: var(--tint-green-bg);
+  border-color: var(--tint-green-border);
 }
 .calendar-note {
-  background: #dafbe1;
+  background: var(--tint-green-bg);
   border-radius: var(--radius);
   padding: 0.4rem 0.6rem;
   margin: 0;
 }
 .badge.danger {
-  background: #ffebe9;
+  background: var(--tint-red-bg);
   border-color: var(--danger);
   color: var(--danger);
 }
@@ -488,8 +539,8 @@ input.narrow {
 }
 
 .chip-toggle.on {
-  background: #ddf4ff;
-  border-color: #54aeff;
+  background: var(--tint-blue-bg);
+  border-color: var(--tint-blue-border);
 }
 
 .add-task {
@@ -713,7 +764,7 @@ table.moves td {
     top: 3rem;
     bottom: 3.25rem;
     left: 0;
-    z-index: 13; /* above an open task panel (12), so ☰ always works */
+    z-index: 14; /* above an open task panel (12) and the backdrop (13), so ☰ always works */
     transform: translateX(-100%);
     transition: transform 0.15s;
     box-shadow: 4px 0 16px rgb(0 0 0 / 0.1);
@@ -721,6 +772,14 @@ table.moves td {
 
   .sidebar.open {
     transform: none;
+  }
+
+  /* Tapping anywhere outside the open menu closes it. */
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 3rem 0 3.25rem;
+    z-index: 13;
+    background: rgb(0 0 0 / 0.3);
   }
 
   .main-panel {
@@ -768,4 +827,40 @@ table.moves td {
   .item-row {
     flex-wrap: wrap;
   }
+}
+
+.badge.waiting {
+  background: var(--tint-yellow-bg);
+  border-color: var(--tint-yellow-border);
+}
+.badge.unblocks {
+  background: var(--tint-blue-bg);
+  border-color: var(--tint-blue-border);
+}
+.badge.canceled {
+  color: var(--muted);
+}
+
+.dep-link {
+  cursor: pointer;
+}
+.dep-link:hover {
+  text-decoration: underline;
+}
+.needed-by {
+  margin-top: 0.75rem;
+}
+
+.theme-toggle {
+  font-size: 1.05rem;
+}
+
+.calendar-refresh {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.error-text {
+  color: var(--danger);
 }

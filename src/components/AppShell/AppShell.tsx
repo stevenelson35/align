@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppContext, type AppState, type PendingShift } from '../../context/AppContext'
 import { useData } from '../../hooks/useApp'
 import { useHashRoute } from '../../hooks/useHashRoute'
@@ -59,6 +59,14 @@ export function AppShell({ uid, household, member }: Props) {
 
   const selectedTask = data.tasks.find((t) => t.id === selectedTaskId)
 
+  // Escape closes the phone menu, like tapping outside it.
+  useEffect(() => {
+    if (!sidebarOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSidebarOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sidebarOpen])
+
   return (
     <AppContext.Provider value={app}>
       <div className="app-shell">
@@ -70,6 +78,7 @@ export function AppShell({ uid, household, member }: Props) {
         />
         <div className="app-body">
           <Sidebar open={sidebarOpen} />
+          {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
           <main className="main-panel">
             {data.error && (
               <p className="error card">

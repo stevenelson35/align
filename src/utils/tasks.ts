@@ -7,15 +7,28 @@ export function canEditTask(task: Pick<Task, 'visibility' | 'ownerId'>, uid: str
   return role === 'member' && (task.visibility === 'family' || task.ownerId === uid)
 }
 
-/** Color key from DESIGN.md §8: project lists are green regardless of visibility; done is gray. */
+/** Done or canceled: nothing more to do, and it no longer holds up the tasks that depend on it. */
+export function isFinished(t: Pick<Task, 'status'>): boolean {
+  return t.status === 'done' || t.status === 'canceled'
+}
+
+/**
+ * The prerequisites still holding this task up: ones you can see that aren't finished. A prerequisite in someone
+ * else's private list isn't visible, so it can't be shown (or block) here.
+ */
+export function waitingOn(t: Task, byId: Map<string, Task>): Task[] {
+  return t.dependsOn.map((d) => byId.get(d.taskId)).filter((p): p is Task => !!p && !isFinished(p))
+}
+
+/** Color key from DESIGN.md §8: project lists are green regardless of visibility; finished is gray. */
 export function colorKey(task: Task, list: List | undefined): 'private' | 'family' | 'project' | 'done' {
-  if (task.status === 'done') return 'done'
+  if (isFinished(task)) return 'done'
   if (list?.kind === 'project') return 'project'
   return task.visibility
 }
 
 export const PRIORITY_LABEL: Record<Priority, string> = { 1: 'High', 2: 'Medium', 3: 'Low' }
-export const STATUS_LABEL: Record<Status, string> = { todo: 'To do', doing: 'Doing', done: 'Done' }
+export const STATUS_LABEL: Record<Status, string> = { todo: 'To do', doing: 'Doing', done: 'Done', canceled: 'Canceled' }
 
 /** Real people (no calendar bot), optionally only members. */
 export function people(household: Household, membersOnly = false) {
@@ -34,7 +47,7 @@ export function targetName(id: string, household: Household): string {
  */
 export function isForToday(t: Task, day: string, includeDone = false): boolean {
   const onToday = t.startDate !== undefined && t.startDate <= day && finish(t)! >= day
-  if (t.status === 'done') return includeDone && (onToday || t.targetDate === day)
+  if (isFinished(t)) return includeDone && (onToday || t.targetDate === day)
   if (t.calendar) return onToday
   return t.status === 'doing' || (t.startDate !== undefined && t.startDate <= day) || (t.targetDate !== undefined && t.targetDate <= day)
 }
@@ -81,7 +94,7 @@ export interface TaskFilter {
   to?: string
 }
 
-/** "Not done" also hides calendar events that are over: they're history, not unfinished work. */
+/** "Not done" hides finished (done or canceled) tasks, and calendar events that are over: they're history, not unfinished work. */
 export function filterTasks(tasks: Task[], f: TaskFilter, now = today()): Task[] {
   return tasks.filter((t) => {
     if (f.status === 'open' && t.calendar && (finish(t) ?? '9999-99-99') < now) return false
@@ -90,7 +103,7 @@ export function filterTasks(tasks: Task[], f: TaskFilter, now = today()): Task[]
     if (f.forId && !t.for?.includes(f.forId)) return false
     if (f.assigneeId && t.assigneeId !== f.assigneeId) return false
     if (f.priority && t.priority !== f.priority) return false
-    if (f.status === 'open' ? t.status === 'done' : f.status && t.status !== f.status) return false
+    if (f.status === 'open' ? isFinished(t) : f.status && t.status !== f.status) return false
     const day = t.startDate ?? t.targetDate
     if (f.from && (!day || day < f.from)) return false
     if (f.to && (!day || day > f.to)) return false
@@ -105,7 +118,7 @@ export function conflictUpdates(tasks: Task[], preview: ShiftPreview, canEdit: (
   const out = new Map<string, string | undefined>()
   for (const t of after) {
     if (!canEdit(t)) continue
-    const next = t.status === 'done' ? undefined : now.get(t.id)
+    const next = isFinished(t) ? undefined : now.get(t.id)
     if ((t.conflict ?? undefined) !== next) out.set(t.id, next)
   }
   return out

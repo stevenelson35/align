@@ -1,22 +1,25 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Priority, Status, Task } from '../../types'
-import { filterTasks, people as humans, sortTasks, type SortKey, type TaskFilter } from '../../utils/tasks'
+import { filterTasks, people as humans, sortTasks, waitingOn, type SortKey, type TaskFilter } from '../../utils/tasks'
 import { TaskCard } from './TaskCard'
 
 interface Props {
   title: string
   tasks: Task[]
   defaultSort?: SortKey
+  /** Extra buttons for the header (e.g. Today's "Refresh calendar"). */
+  actions?: ReactNode
 }
 
 /** Combined view (DESIGN.md §8): color-coded, with filters and sorting. */
-export function CombinedView({ title, tasks, defaultSort = 'date' }: Props) {
+export function CombinedView({ title, tasks, defaultSort = 'date', actions }: Props) {
   const { household } = useApp()
-  const { lists } = useData()
+  const { lists, taskById } = useData()
   const [filter, setFilter] = useState<TaskFilter>({ status: 'open' })
   const [sort, setSort] = useState<SortKey>(defaultSort)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [readyOnly, setReadyOnly] = useState(false)
   // A task you tick off here stays in view (grayed) until you leave the view, so a mis-click can be unticked.
   const [tickedHere, setTickedHere] = useState<ReadonlySet<string>>(new Set())
   const justDone =
@@ -26,7 +29,10 @@ export function CombinedView({ title, tasks, defaultSort = 'date' }: Props) {
           { ...filter, status: undefined },
         )
       : []
-  const shown = sortTasks([...filterTasks(tasks, filter), ...justDone], sort)
+  const shown = sortTasks(
+    [...filterTasks(tasks, filter), ...justDone].filter((t) => !readyOnly || waitingOn(t, taskById).length === 0),
+    sort,
+  )
   const onTicked = (id: string) => setTickedHere((s) => new Set(s).add(id))
 
   const set = (patch: Partial<TaskFilter>) => setFilter((f) => ({ ...f, ...patch }))
@@ -39,6 +45,7 @@ export function CombinedView({ title, tasks, defaultSort = 'date' }: Props) {
         <h2>{title}</h2>
         <span className="muted">{shown.length} tasks</span>
         <span className="grow" />
+        {actions}
         <button type="button" className="secondary small show-mobile" onClick={() => setFiltersOpen((o) => !o)}>
           Filters
         </button>
@@ -88,6 +95,7 @@ export function CombinedView({ title, tasks, defaultSort = 'date' }: Props) {
           <option value="todo">To do</option>
           <option value="doing">Doing</option>
           <option value="done">Done</option>
+          <option value="canceled">Canceled</option>
         </select>
         <label className="inline">
           From
@@ -96,6 +104,10 @@ export function CombinedView({ title, tasks, defaultSort = 'date' }: Props) {
         <label className="inline">
           To
           <input type="date" value={filter.to ?? ''} onChange={(e) => set({ to: e.target.value || undefined })} />
+        </label>
+        <label className="inline" title="Hide tasks still waiting on an unfinished prerequisite">
+          <input type="checkbox" checked={readyOnly} onChange={(e) => setReadyOnly(e.target.checked)} />
+          Ready to do only
         </label>
         <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Sort">
           <option value="date">Sort by date</option>

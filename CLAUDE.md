@@ -10,7 +10,7 @@ npm run emulators      # terminal 1 (Auth + Firestore emulators)
 npm run seed           # terminal 2: test accounts + household (password "align-dev")
 npm run dev            # http://localhost:5173
 npm test               # unit tests (vitest, src/)
-npm run test:rules     # 20 security-rule tests against the emulator; must stay green
+npm run test:rules     # 22 security-rule tests against the emulator; must stay green
 npm run test:calendar  # Apps Script calendar sync against the running emulators (after seed)
 npm run build && npm run lint
 npm run deploy:rules   # real project (after firebase login + firebase use)

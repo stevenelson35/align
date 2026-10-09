@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Task } from '../types'
-import { filterTasks, isForToday, sortTasks, startMinutes } from './tasks'
+import { filterTasks, isFinished, isForToday, sortTasks, startMinutes, waitingOn } from './tasks'
 
 const t = (over: Partial<Task>): Task => ({
   id: 'x',
@@ -80,5 +80,36 @@ describe('time of day', () => {
     ]
     expect(sortTasks(tasks, 'date').map((x) => x.id)).toEqual(['earlier', 'allday', 'am', 'pm', 'task'])
     expect(sortTasks(tasks, 'priority').map((x) => x.id)).toEqual(['earlier', 'allday', 'am', 'pm', 'task'])
+  })
+})
+
+describe('canceled and dependencies', () => {
+  it('treats done and canceled as finished everywhere', () => {
+    const canceled = t({ id: 'c', status: 'canceled', startDate: day })
+    expect(isFinished(canceled)).toBe(true)
+    expect(isFinished(t({ status: 'doing' }))).toBe(false)
+    expect(filterTasks([canceled], { status: 'open' }, day)).toEqual([])
+    expect(filterTasks([canceled], { status: 'canceled' }, day)).toEqual([canceled])
+    expect(isForToday(canceled, day)).toBe(false)
+    expect(isForToday(canceled, day, true)).toBe(true)
+  })
+
+  it('waits only on visible, unfinished prerequisites', () => {
+    const buy = t({ id: 'buy', title: 'Buy paint' })
+    const prime = t({ id: 'prime', title: 'Prime', status: 'done' })
+    const dropped = t({ id: 'dropped', status: 'canceled' })
+    const paint = t({
+      id: 'paint',
+      dependsOn: [
+        { taskId: 'buy', offsetDays: 0 },
+        { taskId: 'prime', offsetDays: 0 },
+        { taskId: 'dropped', offsetDays: 0 },
+        { taskId: 'hidden', offsetDays: 0 },
+      ],
+    })
+    const byId = new Map([buy, prime, dropped, paint].map((x) => [x.id, x]))
+    expect(waitingOn(paint, byId).map((x) => x.id)).toEqual(['buy'])
+    byId.set('buy', { ...buy, status: 'canceled' })
+    expect(waitingOn(paint, byId)).toEqual([])
   })
 })

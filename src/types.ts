@@ -43,7 +43,8 @@ export interface Dependency {
 }
 
 export type Priority = 1 | 2 | 3
-export type Status = 'todo' | 'doing' | 'done'
+/** Done and canceled are both finished: off the to-do views, and they no longer hold up dependents. */
+export type Status = 'todo' | 'doing' | 'done' | 'canceled'
 
 export interface Task {
   id: string

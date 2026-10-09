@@ -4,12 +4,18 @@ import { wouldCreateCycle } from '../../engine/graph'
 import { deleteTask, updateTask, type TaskInput } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Dependency, Priority, Status, Task } from '../../types'
-import { people as humans, targetName } from '../../utils/tasks'
+import { NumberField } from './NumberField'
+import { isFinished, people as humans, STATUS_LABEL, targetName } from '../../utils/tasks'
+
+/** ✓ done, ✕ canceled, ⏳ not finished yet. */
+function statusIcon(t: Task) {
+  return t.status === 'done' ? '✓' : t.status === 'canceled' ? '✕' : '⏳'
+}
 
 /** Right panel: task details, dependencies and schedule (DESIGN.md §10). */
 export function TaskDetails({ task }: { task: Task }) {
   const app = useApp()
-  const { tasks, lists, conflicts } = useData()
+  const { tasks, lists, conflicts, dependents } = useData()
   const editable = app.canEdit(task)
   const [form, setForm] = useState(task)
   const [newDep, setNewDep] = useState({ taskId: '', offsetDays: 0 })
@@ -119,7 +125,7 @@ export function TaskDetails({ task }: { task: Task }) {
       {task.calendar && (
         <p className="calendar-note small">
           📅 From the family Google Calendar{task.calendar.time && ` · ${task.calendar.time}`}
-          {task.calendar.location && ` · ${task.calendar.location}`}. The hourly sync keeps the title and dates in step with
+          {task.calendar.location && ` · ${task.calendar.location}`}. The sync (every 15 minutes, or ↻ Refresh calendar) keeps the title and dates in step with
           the calendar; everything else here is yours to edit.
         </p>
       )}
@@ -157,6 +163,7 @@ export function TaskDetails({ task }: { task: Task }) {
               <option value="todo">To do</option>
               <option value="doing">Doing</option>
               <option value="done">Done</option>
+              <option value="canceled">Canceled</option>
             </select>
           </label>
           <label>
@@ -205,12 +212,7 @@ export function TaskDetails({ task }: { task: Task }) {
           </label>
           <label>
             Days
-            <input
-              type="number"
-              min={1}
-              value={form.durationDays}
-              onChange={(e) => set({ durationDays: Math.max(1, Math.round(Number(e.target.value) || 1)) })}
-            />
+            <NumberField min={1} value={form.durationDays} onChange={(n) => set({ durationDays: n })} />
           </label>
           <label>
             Target date
@@ -221,16 +223,30 @@ export function TaskDetails({ task }: { task: Task }) {
 
         <div>
           <span className="label">Depends on</span>
-          {form.dependsOn.map((d, i) => (
+          {form.dependsOn.map((d, i) => {
+            const pre = byId.get(d.taskId)
+            return (
             <div className="row dep-row" key={d.taskId}>
-              <span className="grow">{byId.get(d.taskId)?.title ?? '(hidden or deleted task)'}</span>
+              {pre ? (
+                <span
+                  className={`grow dep-link${isFinished(pre) ? '' : ' open'}`}
+                  role="button"
+                  tabIndex={0}
+                  title={`${STATUS_LABEL[pre.status]}. Open it.`}
+                  onClick={() => app.selectTask(pre.id)}
+                  onKeyDown={(e) => e.key === 'Enter' && app.selectTask(pre.id)}
+                >
+                  {statusIcon(pre)} {pre.title}
+                </span>
+              ) : (
+                <span className="grow muted">(hidden or deleted task)</span>
+              )}
               <span className="muted small">+</span>
-              <input
-                type="number"
+              <NumberField
                 className="narrow"
                 min={0}
                 value={d.offsetDays}
-                onChange={(e) => updateDep(i, { offsetDays: Math.max(0, Math.round(Number(e.target.value) || 0)) })}
+                onChange={(n) => updateDep(i, { offsetDays: n })}
                 aria-label="Days after it finishes"
               />
               <span className="muted small">days</span>
@@ -238,7 +254,8 @@ export function TaskDetails({ task }: { task: Task }) {
                 ✕
               </button>
             </div>
-          ))}
+            )
+          })}
           <div className="row dep-row">
             <select className="grow" value={newDep.taskId} onChange={(e) => setNewDep({ ...newDep, taskId: e.target.value })}>
               <option value="">Add a prerequisite…</option>
@@ -249,12 +266,11 @@ export function TaskDetails({ task }: { task: Task }) {
               ))}
             </select>
             <span className="muted small">+</span>
-            <input
-              type="number"
+            <NumberField
               className="narrow"
               min={0}
               value={newDep.offsetDays}
-              onChange={(e) => setNewDep({ ...newDep, offsetDays: Math.max(0, Math.round(Number(e.target.value) || 0)) })}
+              onChange={(n) => setNewDep({ ...newDep, offsetDays: n })}
               aria-label="Days after it finishes"
             />
             <button type="button" className="secondary small" onClick={addDependency}>
@@ -263,6 +279,27 @@ export function TaskDetails({ task }: { task: Task }) {
           </div>
         </div>
       </fieldset>
+
+      {(dependents.get(task.id) ?? []).length > 0 && (
+        <div className="needed-by">
+          <span className="label">Needed by</span>
+          {(dependents.get(task.id) ?? []).map((d) => (
+            <div className="row dep-row" key={d.id}>
+              <span
+                className={`grow dep-link${isFinished(d) ? '' : ' open'}`}
+                role="button"
+                tabIndex={0}
+                title={`${STATUS_LABEL[d.status]}. Open it.`}
+                onClick={() => app.selectTask(d.id)}
+                onKeyDown={(e) => e.key === 'Enter' && app.selectTask(d.id)}
+              >
+                {statusIcon(d)} {d.title}
+              </span>
+            </div>
+          ))}
+          {!isFinished(task) && <p className="muted small">These can't start until this task is done or canceled.</p>}
+        </div>
+      )}
 
       {error && <p className="error">{error}</p>}
       {editable && (

@@ -1,6 +1,7 @@
 import { signOut } from '../../firebase/auth'
 import { useApp } from '../../hooks/useApp'
 import type { HouseholdMember } from '../../types'
+import { ThemeToggle } from './ThemeToggle'
 
 interface Props {
   householdName: string
@@ -29,6 +30,7 @@ export function TopBar({ householdName, member, onMenu, onChat }: Props) {
         <button type="button" className="link hide-mobile" onClick={onChat}>
           Chat
         </button>
+        <ThemeToggle />
         {member.role === 'viewer' && <span className="badge">View only</span>}
         <span className="avatar" style={{ background: member.color }} aria-hidden="true">
           {member.displayName.charAt(0).toUpperCase()}

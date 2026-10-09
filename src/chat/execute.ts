@@ -6,7 +6,7 @@ import { meetDate, recalculate, shiftForward } from '../engine/scheduling'
 import { createList, createTask, setVote, updateTask } from '../firebase/db'
 import type { Board, BoardItem, List, Task } from '../types'
 import { fuzzyMatch } from '../utils/fuzzy'
-import { isForToday, people } from '../utils/tasks'
+import { isFinished, isForToday, people } from '../utils/tasks'
 import { HELP_TEXT, parse, type Command } from './parser'
 
 export interface Reply {
@@ -133,7 +133,7 @@ function boardReply(board: Board, ctx: ExecContext): Reply {
 export async function execute(input: string, ctx: ExecContext): Promise<Reply> {
   const cmd = parse(input)
   const { app, data } = ctx
-  const open = data.tasks.filter((t) => t.status !== 'done')
+  const open = data.tasks.filter((t) => !isFinished(t))
   const needsMember = !['help', 'show', 'showBoard', 'showNamed', 'error'].includes(cmd.type)
   if (needsMember && !app.isMember) return { text: 'Viewers can look but not change things.' }
 
@@ -149,6 +149,16 @@ export async function execute(input: string, ctx: ExecContext): Promise<Reply> {
         try {
           await updateTask(t.id, { status: 'done' })
           return { text: `Marked "${t.title}" done.`, actions: [{ label: 'Undo', run: async () => void (await updateTask(t.id, { status: 'todo' })) }] }
+        } catch (err) {
+          return { text: errorText(err) }
+        }
+      })
+    case 'cancel':
+      return pick(cmd.task, open.filter(app.canEdit), (t) => t.title, 'task', async (t) => {
+        const before = t.status
+        try {
+          await updateTask(t.id, { status: 'canceled' })
+          return { text: `Canceled "${t.title}".`, actions: [{ label: 'Undo', run: async () => void (await updateTask(t.id, { status: before })) }] }
         } catch (err) {
           return { text: errorText(err) }
         }

@@ -58,6 +58,11 @@ describe('parse', () => {
     expect(parse('add task x on someday soon', ref).type).toBe('error')
   })
 
+  it('parses cancel', () => {
+    expect(parse('cancel paint the door', ref)).toEqual({ type: 'cancel', task: 'paint the door' })
+    expect(parse('Cancelled paint the door.', ref)).toEqual({ type: 'cancel', task: 'paint the door' })
+  })
+
   it('parses done, move and meet', () => {
     expect(parse('done fertilize lawn', ref)).toEqual({ type: 'done', task: 'fertilize lawn' })
     expect(parse('mark fertilize lawn as done', ref)).toEqual({ type: 'done', task: 'fertilize lawn' })

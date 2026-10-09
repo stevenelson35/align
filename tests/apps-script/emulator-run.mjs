@@ -37,8 +37,21 @@ const timed = (id, summary, offset, hour, location) => ({
 const allDay = (id, summary, offset, days) => ({ id, summary, start: { date: dayStr(offset) }, end: { date: dayStr(offset + days) } })
 let events = []
 
+const cache = new Map()
+let lockHeld = false
 const sandbox = createContext({
   console,
+  LockService: {
+    getScriptLock: () => ({
+      tryLock: () => (lockHeld ? false : (lockHeld = true)),
+      releaseLock: () => (lockHeld = false),
+    }),
+  },
+  CacheService: { getScriptCache: () => ({ get: (k) => cache.get(k) ?? null, put: (k, v) => cache.set(k, v) }) },
+  ContentService: {
+    MimeType: { JSON: 'json' },
+    createTextOutput: (text) => ({ text, setMimeType() { return this } }),
+  },
   Session: { getScriptTimeZone: () => TZ },
   PropertiesService: {
     getScriptProperties: () => ({ getProperties: () => ({ ...props }), setProperty: (k, v) => (props[k] = v) }),
@@ -110,5 +123,39 @@ check(tasks.length === 3, 'cancelled instance removed')
 
 plan = sandbox.syncCalendar()
 check(plan.creates.length + plan.updates.length + plan.deletes.length === 0, 'third sync with no changes writes nothing')
+check(!lockHeld, 'the sync lock is released after each run')
+
+// "Refresh calendar" from Align: the web app's doPost, called with a member's real ID token.
+const idTokenFor = async (email) => {
+  const res = await fetch(`${props.AUTH_URL}/accounts:signInWithPassword?key=demo-key`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: 'align-dev', returnSecureToken: true }),
+  })
+  return (await res.json()).idToken
+}
+const post = (body) => JSON.parse(sandbox.doPost({ postData: { contents: JSON.stringify(body) } }).text)
+events = [...events, timed('dentist', 'Dentist', 2, 10)]
+let reply = post({ idToken: await idTokenFor('steve@example.com') })
+check(reply.ok && reply.created === 1, 'a member can refresh the calendar from Align, and it syncs')
+check((await imported()).some((t) => t.title === 'Dentist'), 'the refresh imported the new event')
+reply = post({ idToken: await idTokenFor('wife@example.com') })
+check(reply.ok && reply.skipped, 'a second refresh within a minute is skipped')
+cache.clear()
+check(post({ idToken: 'not-a-token' }).ok === false, 'an invalid sign-in is refused')
+const stranger = await (
+  await fetch(`${props.AUTH_URL}/accounts:signUp?key=demo-key`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: `stranger${Date.now()}@example.com`, password: 'align-dev', returnSecureToken: true }),
+  })
+).json()
+reply = post({ idToken: stranger.idToken })
+check(!reply.ok && /household members/.test(reply.error), 'a signed-in account outside the household is refused')
+check(post({}).ok === false && post({}).error === 'Not signed in.', 'a request without a sign-in is refused')
+lockHeld = true
+reply = post({ idToken: await idTokenFor('steve@example.com') })
+check(!reply.ok && /still running/.test(reply.error), 'a refresh during a running sync says so instead of overlapping')
+lockHeld = false
 console.log('Calendar sync works against the emulator.')
 process.exit(0)

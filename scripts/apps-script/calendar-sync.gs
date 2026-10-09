@@ -2,7 +2,7 @@
  * Align: Google Calendar → Firestore sync (DESIGN.md §5.5).
  *
  * Runs in Google Apps Script (free) under the Google account that can see the family calendar.
- * Every hour it copies events into the "Family Calendar" family list as tasks. One-way: the calendar is the
+ * Every 15 minutes (and when someone taps "Refresh calendar" in Align) it copies events into the "Family Calendar" family list as tasks. One-way: the calendar is the
  * source of truth for title, dates, time and location; status, priority, dependencies, etc. stay editable in Align.
  *
  * It signs in to Firebase as a dedicated household member (the "calendar bot"), so the normal security rules apply.
@@ -18,8 +18,14 @@
  *     BOT_PASSWORD         the bot's Firebase Auth password
  *   Optional: WEEKS_AHEAD (8), DAYS_BEHIND (7), LIST_NAME ("Family Calendar"), LIST_ID (found or created automatically),
  *   TIME_ZONE (e.g. America/New_York; defaults to the script's zone from appsscript.json)
- *   Then run installHourlyTrigger() once.
+ *   Then run installTrigger() once.
+ *   Optional "Refresh calendar" button: Deploy → New deployment → Web app (execute as me, anyone can access), and put
+ *   the web app URL in Align's VITE_CALENDAR_SYNC_URL. See the README.
  */
+
+var SYNC_EVERY_MINUTES = 15
+// A manual refresh within this many seconds of the last one is skipped (the button can't be used to hammer the sync).
+var MANUAL_COOLDOWN_SECONDS = 60
 
 var DEFAULTS = {
   WEEKS_AHEAD: '8',
@@ -36,8 +42,8 @@ var SYNCED_FIELDS = ['title', 'startDate', 'durationDays', 'calendar']
 // Entry points
 // ---------------------------------------------------------------------------
 
-/** Run once from the editor: replaces any existing trigger with an hourly one, then syncs. */
-function installHourlyTrigger() {
+/** Run once from the editor: replaces any existing sync trigger with one every SYNC_EVERY_MINUTES, then syncs. */
+function installTrigger() {
   ScriptApp.getProjectTriggers()
     .filter(function (t) {
       return t.getHandlerFunction() === 'syncCalendar'
@@ -45,11 +51,67 @@ function installHourlyTrigger() {
     .forEach(function (t) {
       ScriptApp.deleteTrigger(t)
     })
-  ScriptApp.newTrigger('syncCalendar').timeBased().everyHours(1).create()
+  ScriptApp.newTrigger('syncCalendar').timeBased().everyMinutes(SYNC_EVERY_MINUTES).create()
   syncCalendar()
 }
 
+/** The old name, from when it synced hourly. Kept so earlier setup steps still work. */
+function installHourlyTrigger() {
+  installTrigger()
+}
+
+/** The trigger's entry point. One sync at a time: a scheduled run and a "Refresh calendar" tap could overlap. */
 function syncCalendar() {
+  var lock = LockService.getScriptLock()
+  if (!lock.tryLock(30000)) throw new Error('Another calendar sync is still running.')
+  try {
+    return sync_()
+  } finally {
+    lock.releaseLock()
+  }
+}
+
+/**
+ * Web app entry point for Align's "Refresh calendar" button. Align posts {"idToken": <the user's Firebase ID token>}
+ * as text/plain (a "simple" request, so the browser sends no CORS preflight). Only household members can trigger it.
+ */
+function doPost(e) {
+  var result
+  try {
+    var body = JSON.parse((e && e.postData && e.postData.contents) || '{}')
+    result = manualSync_(body.idToken)
+  } catch (err) {
+    result = { ok: false, error: String((err && err.message) || err) }
+  }
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON)
+}
+
+function manualSync_(idToken) {
+  if (!idToken) return { ok: false, error: 'Not signed in.' }
+  var cfg = config_(PropertiesService.getScriptProperties().getProperties())
+  var uid = verifyIdToken_(cfg, idToken)
+  if (!uid) return { ok: false, error: 'Your sign-in could not be checked. Reload Align and try again.' }
+  var household = firestoreApi_(cfg, signIn_(cfg)).get('household/main')
+  var members = (household && household.fields.members) || {}
+  if (!members[uid]) return { ok: false, error: 'Only household members can refresh the calendar.' }
+  var cache = CacheService.getScriptCache()
+  if (cache.get('manualSync')) return { ok: true, skipped: true }
+  cache.put('manualSync', '1', MANUAL_COOLDOWN_SECONDS)
+  var plan = syncCalendar()
+  return { ok: true, created: plan.creates.length, updated: plan.updates.length, removed: plan.deletes.length }
+}
+
+/** The uid behind a Firebase ID token, or null if it isn't a valid token for this project. */
+function verifyIdToken_(cfg, idToken) {
+  try {
+    var res = http_('post', cfg.AUTH_URL + '/accounts:lookup?key=' + encodeURIComponent(cfg.FIREBASE_API_KEY), { idToken: idToken })
+    return (res.users && res.users[0] && res.users[0].localId) || null
+  } catch (e) {
+    return null
+  }
+}
+
+function sync_() {
   var props = PropertiesService.getScriptProperties()
   var cfg = config_(props.getProperties())
   var now = new Date()

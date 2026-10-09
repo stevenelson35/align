@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { conflictsById } from '../engine/scheduling'
 import { subscribeBoards, subscribeItems, subscribeLists, subscribeMyVotes, subscribeTasks } from '../firebase/db'
 import type { Board, BoardItem, List, Role, Task, Vote } from '../types'
+import { isFinished } from '../utils/tasks'
 import { DataContext, type DataState } from './DataContext'
 
 /** Real-time subscriptions to everything the signed-in user can read. Household scale, so it's all in memory. */
@@ -36,9 +37,11 @@ export function DataProvider({ uid, role, children }: { uid: string; role: Role;
   const value = useMemo<DataState>(() => {
     const allTasks = tasks ?? []
     const liveBoards = new Set((boards ?? []).map((b) => b.id))
-    // Done tasks still constrain their dependents, but aren't flagged themselves.
+    // Finished tasks still constrain their dependents, but aren't flagged themselves.
     const conflicts = conflictsById(allTasks)
-    for (const t of allTasks) if (t.status === 'done') conflicts.delete(t.id)
+    for (const t of allTasks) if (isFinished(t)) conflicts.delete(t.id)
+    const dependents = new Map<string, Task[]>()
+    for (const t of allTasks) for (const d of t.dependsOn) dependents.set(d.taskId, [...(dependents.get(d.taskId) ?? []), t])
     return {
       loaded: lists !== null && tasks !== null && boards !== null,
       error,
@@ -50,6 +53,8 @@ export function DataProvider({ uid, role, children }: { uid: string; role: Role;
         .flatMap(([, items]) => items),
       myVotes,
       conflicts,
+      taskById: new Map(allTasks.map((t) => [t.id, t])),
+      dependents,
     }
   }, [lists, tasks, boards, itemsByBoard, myVotes, error])
 

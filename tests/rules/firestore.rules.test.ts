@@ -198,6 +198,12 @@ describe('tasks', () => {
     await assertSucceeds(batch.commit())
   })
 
+  it('accepts every task status, including canceled', async () => {
+    for (const status of ['todo', 'doing', 'done', 'canceled']) {
+      await assertSucceeds(setDoc(doc(db('steve'), `tasks/s-${status}`), task('familyVisible', { status })))
+    }
+  })
+
   it('rejects invalid tasks and forged creators', async () => {
     await assertFails(setDoc(doc(db('steve'), 'tasks/t6'), task('familyVisible', { status: 'someday' })))
     await assertFails(setDoc(doc(db('steve'), 'tasks/t7'), task('familyVisible', { durationDays: 0 })))

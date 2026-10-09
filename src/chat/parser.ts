@@ -20,6 +20,7 @@ export type Command =
       priority?: Priority
     }
   | { type: 'done'; task: string }
+  | { type: 'cancel'; task: string }
   | { type: 'move'; task: string; date: string }
   | { type: 'meet'; task: string; date: string }
   | { type: 'recalculate'; list: string }
@@ -108,6 +109,8 @@ export function parse(input: string, ref = new Date()): Command {
 
   if ((m = text.match(/^(?:add|new|create)(?:\s+(?:a\s+)?task)?\s+(.+)$/i))) return parseAdd(m[1], ref)
 
+  if ((m = text.match(/^(?:cancel|canceled|cancelled|drop)\s+(.+)$/i))) return { type: 'cancel', task: m[1] }
+
   if ((m = text.match(/^(?:done|complete|finish|finished|mark)\s+(.+?)(?:\s+(?:as\s+)?(?:done|complete))?$/i)))
     return { type: 'done', task: m[1] }
 
@@ -150,6 +153,7 @@ export function parse(input: string, ref = new Date()): Command {
 export const HELP_TEXT = [
   'add task fertilize lawn on Oct 5 to Lawn project for work priority high',
   'done fertilize lawn',
+  'cancel fertilize lawn',
   'move fertilize lawn to Oct 8',
   'shift dependencies so apply fertilizer is done by Oct 10',
   'recalculate lawn',
