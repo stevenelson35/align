@@ -1,8 +1,15 @@
 # Align
 
-Household task manager for the Nelson family. See [DESIGN.md](DESIGN.md) for the full spec. Its §13 "Status & Handoff" says where things stand, and [CLAUDE.md](CLAUDE.md) has notes for coding agents.
+Household task manager for the Nelson family, live at https://align.itsallonesong.com. It holds:
+- task lists and projects (dependencies, timeline)
+- checklists and notes
+- the family Google Calendar
+- voting boards
+- texting family members about a task
 
-React + TypeScript + Vite in the browser, with Firebase Auth and Firestore on the free Spark plan. The app is static files hosted on Turbify at align.itsallonesong.com.
+See [DESIGN.md](DESIGN.md) for the full spec. Its §13 "Status & Handoff" says where things stand, and [CLAUDE.md](CLAUDE.md) has notes for coding agents.
+
+React + TypeScript + Vite in the browser, with Firebase Auth and Firestore on the free Spark plan. The app is static files hosted on Turbify. The calendar sync runs as a free Google Apps Script (`scripts/apps-script/`).
 
 ## Local development
 
@@ -20,14 +27,15 @@ Test accounts: `steve@`, `wife@`, `daughter@` (members) and `grandparent@` (view
 ## Tests
 
 ```sh
-npm test            # unit tests
-npm run test:rules  # Firestore security rules, against the emulator
+npm test               # unit tests
+npm run test:rules     # Firestore security rules (starts its own emulators)
+npm run test:calendar  # calendar sync script against the running emulators (after seed)
 npm run lint
 ```
 
 ## Deploying
 
-1. Copy `.env.example` to `.env.production.local` and fill in the Firebase web app config.
-2. `firebase login --no-localhost`, `firebase use --add` (pick the `align` project), then `npm run deploy:rules`.
-3. `ALIGN_FTP_DIR=/<subdomain docroot> npm run deploy:web` builds and uploads `dist/` to Turbify over FTPS and asks for the FTP password. To preview without changing anything, run `npm run build` and then `ALIGN_FTP_DIR=... scripts/deploy-turbify.sh --dry-run`.
-4. First visit: sign in and complete the one-time household setup screen.
+1. Copy `.env.example` to `.env.production.local` and fill in the Firebase web app config (and `VITE_CALENDAR_SYNC_URL` for the Refresh calendar button).
+2. `firebase login --no-localhost`, `firebase use --add` (pick the `align` project), then `npm run deploy:rules`. **When the rules change, deploy them before the web app.**
+3. `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` builds and uploads `dist/` to Turbify over FTPS. It asks for the FTP password, so run it in a terminal. To preview without changing anything, run `npm run build` and then `ALIGN_FTP_DIR=... scripts/deploy-turbify.sh --dry-run`.
+4. First visit: sign in and complete the one-time household setup screen. Calendar sync setup is in `scripts/apps-script/README.md`.

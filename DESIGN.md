@@ -21,14 +21,16 @@ These rules override anything else in this document.
 
 | Person | Household role | Access |
 |---|---|---|
-| Steve | `member` | Full |
-| Wife | `member` | Full |
-| Daughter (9) | `member` | Full. Same permissions and login type as the adults. |
-| Grandparents, sisters (future) | `viewer` | Read-only. Sees only family lists and boards marked *visible to viewers*. |
+| Steve | `member` | Full. Has an account. |
+| Linda (wife) | `member` | Full. **No account yet** (test account `wife@example.com` stands in). |
+| Camilla (daughter, 9) | `member` | Full: same permissions and login type as the adults. **No account yet** (`daughter@example.com` in tests). |
+| Grandparents, sisters (future) | `viewer` | Read-only: family lists and boards marked *visible to viewers*, plus lists shared with them by name. |
+| Calendar bot | `member` with `bot: true` | The Google Calendar sync's account (§5.5); hidden from people pickers. |
 
 - The household has **2 dogs, 2 cats, a bird and a fish**. They aren't users, but they can be a task's `for` target (§5.3).
-- **No public sign-up.** Accounts (email/password) are created by hand in the Firebase console and added to the `household` document with a role. The app has a sign-in screen only.
+- **No public sign-up.** Accounts (email/password) are created by hand in the Firebase console and added to `household/main.members` with a role (console only). The app has a sign-in screen only.
 - Anyone who signs in but isn't in `household.members` sees nothing. The rules enforce this.
+- The daughter can't be given fewer permissions than a parent in the rules (decided 2026-09-25). Privacy from her comes from **list privacy** (§5.2): private lists and lists shared with chosen people.
 
 ## 3. Scope
 
@@ -46,9 +48,11 @@ Multi-device access and mobile layout come free with Firestore sync and a respon
 
 ### 3.2 Future ideas (not MVP, but don't design them out)
 
-- Screens for managing viewer accounts
+Built since the MVP (§13): checklists, notes, sharing with chosen people, texting, Google Calendar import with refresh, dark mode, Settings.
+
+- Screens for managing accounts and roles (today: Firebase console)
 - Google sign-in
-- Reminders and notifications (web push is free, but it needs a service worker)
+- Reminders and notifications (web push is free, but it needs a service worker and a sender; the Apps Script could be the sender)
 - Recurring tasks, such as watering schedules and monthly flea meds
 - Voting on tasks and a "voting weight" sort for tasks
 - Offline-first caching (Firestore offline persistence)
@@ -81,10 +85,20 @@ A single document.
 ```ts
 {
   name: "Nelson Household",
-  members: { [uid]: { role: "member" | "viewer", displayName: string, color: string } },
+  members: {
+    [uid]: {
+      role: "member" | "viewer",          // console only
+      displayName: string,
+      color: string,
+      bot?: true,                         // the calendar-sync account (console only)
+      defaultVisibility?: "private" | "family", // own Settings: default for new lists and quick adds
+      phone?: string,                     // own Settings: mobile number for "text <name> …" (≤ 24 chars)
+    }
+  },
   pets: [{ id: string, name: string, kind: "dog" | "cat" | "bird" | "fish" }],
   weeklyTokens: number,        // default 10
   tokenStartDate: Timestamp,   // first grant week
+  groups?: { parents?: uid[] } // "Parents" sharing shortcut (Settings). Once set, only a parent can change it.
 }
 ```
 
@@ -93,14 +107,18 @@ A single document.
 ```ts
 {
   name: string,
-  kind: "list" | "project",
-  visibility: "private" | "family",
+  kind: "list" | "project" | "checklist" | "notes",
+  visibility: "private" | "family" | "shared",
+  sharedWith?: uid[],           // only when shared: 1–20 people, always including ownerId
   ownerId: uid,
-  viewerVisible: boolean,       // family lists only
+  viewerVisible: boolean,       // family lists only (false otherwise)
   defaultContext: "family" | "work",
   createdAt, updatedAt
 }
 ```
+
+- **Kinds:** `list` and `project` hold **tasks** (projects add dependencies, the timeline and recalculate). `checklist` holds things to tick off that aren't tasks (shopping, gifts, people to call). `notes` holds reference info (title + text). Checklist items and notes are stored in `tasks` (same rules and copied fields) but are kept out of every task view, chat command and the scheduling engine (`DataState.listItems` vs `tasks`).
+- **Privacy:** `private` = the owner only; `family` = every member (and viewers if `viewerVisible`); `shared` = exactly the people in `sharedWith` (members can edit; viewers in it can read).
 
 ### 5.3 `tasks/{taskId}`
 
@@ -108,14 +126,15 @@ A single document.
 {
   listId: string,
   // Copied from the list so that queries and rules don't need a lookup:
-  visibility: "private" | "family",
+  visibility: "private" | "family" | "shared",
+  sharedWith?: uid[],               // only when shared; equals the list's
   ownerId: uid,
   viewerVisible: boolean,
 
   title: string,
-  notes?: string,
+  notes?: string,                   // for a note: its text
   priority: 1 | 2 | 3,              // 1 = high
-  status: "todo" | "doing" | "done",
+  status: "todo" | "doing" | "done" | "canceled",  // done and canceled are both "finished"
   context: "family" | "work",       // e.g. vet business = work
   assigneeId?: uid,
   for?: string[],                   // member uids and/or pet ids
@@ -125,13 +144,14 @@ A single document.
   targetDate?: string,              // deadline, "YYYY-MM-DD"
   dependsOn: [{ taskId: string, offsetDays: number }],
   conflict?: string,                // set by the engine, e.g. "starts before prerequisite"
+  calendar?: { eventId, time?, location?, link? },  // set only by the calendar sync (§5.5)
 
-  createdBy: uid, createdAt, updatedAt
+  createdBy: uid, createdAt, updatedAt   // createdAt orders checklist items
 }
 ```
 
-- Dependencies are stored **only** in `dependsOn`. There's no separate collection.
-- If a list's visibility or owner changes, the client updates the copied fields on its tasks in one batch.
+- Dependencies are stored **only** in `dependsOn`. There's no separate collection. "Waiting on" / "Unblocks" / "Needed by" are computed from it (a prerequisite is satisfied when finished: done or canceled).
+- If a list's visibility, sharing or owner changes, the client updates the copied fields on its tasks in **one batch** (`updateList`; `copiedFields` in `src/firebase/db.ts`).
 
 ### 5.4 Voting
 
@@ -153,7 +173,7 @@ The family Google Calendar is copied one way into a family list named **Family C
 - **Reads** use the Advanced Calendar service (`Calendar.Events.list`, `singleEvents: true`, read-only scope). Event ids are stable when an event moves, and each instance of a recurring event has its own id.
 - **Each event becomes a task with id `gcal_<eventId>`:**
   - `startDate` and `durationDays` follow the event; all-day ends are exclusive, and timed events use the calendar's time zone.
-  - `calendar: { eventId, time?, location? }` holds the event details.
+  - `calendar: { eventId, time?, location?, link? }` holds the event details; `link` is the event's own Google Calendar page (`htmlLink`).
   - New tasks get the list's copied fields, `priority: 2`, `status: "todo"`, and `createdBy` set to the bot.
 - **The sync owns `title`, `startDate`, `durationDays` and `calendar`.** Updates use an update mask limited to those fields, so status, notes, priority, assignee, `for` and dependencies set in Align survive.
 - **Time zone:** times and dates use the `TIME_ZONE` script property, or else the script's zone from `appsscript.json`. They never use the calendar's own zone setting: the family calendar turned out to be set to UTC, which showed 4 PM events as 8 PM.
@@ -207,209 +227,175 @@ Shifting always shows a **preview** first. Then it applies the changes as one ba
 
 ## 8. Combined View
 
-- Shows all readable tasks: my private tasks plus every family task.
-- **Colors:**
-  - Private = blue
+- **Views:** Today (the start page, `#/`), Everything (`#/all`), My tasks, Family tasks, Work. They show **tasks only** (never checklist items or notes).
+- **Colors** (left edge of each card; a color key is shown at the top):
+  - Private = blue 🔒
   - Family = purple
-  - Project = green (project lists use green regardless of visibility)
-  - Done = gray
-- A **Work** badge marks tasks with `context: "work"`.
-- **Filters:** list, context (family/work), `for` (person or pet), assignee, priority, status, date range.
-- **Sort:** priority, date, or dependency order (topological).
-- **Today** is the start page (`#/`). It lists tasks that are in progress, scheduled or due today, or overdue, plus calendar events happening today. "Everything" is at `#/all`.
-- Calendar events that are over are hidden by the default **Not done** filter; choose *Any status* to see them. Dates show the weekday, e.g. "Wed, Oct 7".
+  - Shared (chosen people) = teal 👥
+  - Project = green (project lists use green regardless of privacy)
+  - Finished (done or canceled) = gray, struck through
+- Badges: Work, `for` chips, assignee, 📅 time for calendar events, ⏳ Waiting on …, Unblocks N, ✕ Canceled, conflict ⚠. In mixed views the list badge carries 🔒 / 👥 for non-family lists.
+- **Filters:** list, context, `for`, assignee, priority, status (Not done / Any / To do / Doing / Done / Canceled), date range, **Ready to do only** (hides tasks waiting on an unfinished prerequisite).
+- **Sort:** date (with clock time for calendar events: all-day, then timed in clock order, then untimed), priority, or dependency order.
+- **Today** lists tasks in progress, scheduled or due today, or overdue, plus today's calendar events. Finished tasks that were on for today are included for the *Any status* / *Done* filters. A task ticked in a view stays (grayed) until you leave the view.
+- Calendar events that are over are hidden by **Not done**. Dates show the weekday, e.g. "Wed, Oct 7".
+- Today's header has **📅 Google Calendar ↗** and **↻ Refresh calendar** (§5.5).
 
 ## 9. Chat Commands
 
-The chat panel runs a local, rule-based parser. Dates are parsed by `chrono-node`. Replies can include quick-action buttons.
+The chat panel runs a local, rule-based parser (`src/chat/parser.ts`, dates by `chrono-node`) and executor (`src/chat/execute.ts`). Replies can include quick-action buttons; buttons that open a task or another page (Open it, Go to …, Show board) close the chat so the result isn't hidden under it.
 
 | Command | Example |
 |---|---|
-| Add task | `add task fertilize lawn on Oct 5 to Lawn project for work priority high` |
-| Complete | `done fertilize lawn` |
+| Add | `add task fertilize lawn on Oct 5 to Lawn project for work priority high` · `add milk to Groceries` (works for checklists too) |
+| Complete | `done fertilize lawn` (Undo button) |
+| Cancel | `cancel fertilize lawn` (Undo button) |
 | Move | `move fertilize lawn to Oct 8` (runs a forward shift preview) |
 | Meet date | `shift dependencies so apply fertilizer is done by Oct 10` |
 | Recalculate | `recalculate lawn` |
-| Show | `show board weekend activities` / `show today` / `show work` |
+| Show | `show board weekend activities` / `show today` / `show work` / `show <list>` |
 | Vote | `vote 3 on tacos in restaurants` |
+| Text | `text Linda I picked up milk` · `text Linda about pick up Camilla: are you getting her?` |
 | Help | `help` |
 
-- Task names are matched with fuzzy search. If a match is ambiguous, the reply asks the user to pick one.
+- Names are matched with fuzzy search. If a match is ambiguous, the reply asks the user to pick one.
+- **Add without a list** goes to the user's inbox for their default privacy: their private **Inbox**, or the shared **Family Inbox** (created when first needed). "for <names>" tags people/pets; if none match, the words stay in the title. The reply names the privacy ("Added … to Inbox (🔒 private)").
+- **Text** answers with **📱 Send text** (an `sms:` link: Messages opens with the number and text filled in; the user presses Send, so it's a real text and replies come back as texts) and **Copy text**. "about <task>" looks up a task, checklist item or note and adds "Re: <title> (<when>)" plus a `#/task/<id>` link. The recipient's number comes from their own Settings. Viewers may use it too.
 
 ## 10. UI
 
-- **Desktop:**
-  - TopBar: title, current view, avatar, quick add
-  - Sidebar: private lists, family lists, projects, boards, combined view
-  - MainPanel: the current view
-  - RightPanel: task details, dependencies, schedule
-  - Chat: a slide-over panel
-- **Mobile:** a BottomNav with Home, My Tasks, Family, Voting and Chat. The sidebar collapses.
-- **TaskCard:** title, priority badge, list or owner badge, Work badge, `for` chips, status, target date, dependency and conflict indicators, and quick actions (complete, edit, move).
+- **TopBar:** ☰ (phone), Align, **+ Quick add** (opens chat with `add task `), Chat, ◐/☀/☾ theme (Match device → Light → Dark, per device), avatar (opens ⚙ Settings), Sign out.
+- **Sidebar:** Today, Everything, My tasks, Family tasks, Work; sections My lists / Family lists / Shared lists (task lists), Projects, Checklists, Notes (with 🔒/👥 on non-family names and open/unchecked counts); Voting boards; ⚙ Settings. On phones it's a slide-out menu with a backdrop (tap outside or Escape closes it).
+- **List pages by kind:** task list / project (`ListView`: quick add that doesn't open the panel, finished tasks crossed off at the bottom with a remembered **Hide N finished**; projects add **Timeline** and **Recalculate**), checklist (`ChecklistView`: items in the order added, ticked ones crossed off, **Hide N checked**, **Clear checked**), notes (`NotesView`: alphabetical cards with the first lines). The header (`ListHeader`) shows the privacy badge, "with You and Linda" for shared lists, and **Edit list**.
+- **Right panel:** `TaskDetails` for tasks (Save in a sticky header next to ✕; privacy sentence under the List picker; dependencies with ✓/✕/⏳ links and a **Needed by** section; Finish-by shift), `ItemDetails` for checklist items and notes. Both have **💬 Text about this**. On phones the panel covers the page and closes after Save or when changing views.
+- **Task and checklist rows** have a **💬** at the right end: opens the item with the text form ready.
+- **⚙ Settings** (`SettingsDialog`): Default privacy, your mobile number, Parents (read-only unless you may change it), theme.
+- **List editor:** name, kind, who can see it (🔒 Just me / 👪 Family / 👥 Chosen people with name chips and a **Parents** shortcut), default context, owner, visible to viewers.
+- **Mobile:** BottomNav with Today, My Tasks, Family, Voting, Chat.
 - **Viewers** see the same screens, but editing controls are hidden.
+- **Links:** hash routes (`src/utils/routes.ts`): `#/today`, `#/all`, `#/mine`, `#/family`, `#/work`, `#/list/<id>[/timeline]`, `#/boards`, `#/board/<id>`, and `#/task/<id>` (opens that task in its list; used in texts).
 
 ### 10.1 Folder structure
 
 ```
 src/
-  components/{AppShell,Tasks,Dependencies,Voting,Chat,UI}/
-  engine/        scheduling.ts, graph.ts (+ tests)
-  chat/          parser.ts (+ tests)
-  firebase/      config.ts, auth.ts, db.ts, converters/
-  hooks/  context/  utils/  styles/
-firestore.rules
-firestore.indexes.json
+  components/
+    AppShell/      AppShell, TopBar, Sidebar, BottomNav, MainView, SettingsDialog, ThemeToggle
+    Tasks/         CombinedView, ListView, ChecklistView, NotesView, ListHeader, ListEditor, TaskCard,
+                   TaskDetails, ItemDetails, TextAbout, CalendarActions, NumberField
+    Dependencies/  TimelineView, ShiftDialog
+    Voting/        BoardsView, BoardView
+    Chat/          ChatPanel
+    Auth/          SignIn, Setup, NotAuthorized
+  engine/          dates.ts, graph.ts, scheduling.ts (+ tests)
+  chat/            parser.ts (+ tests), execute.ts
+  voting/          tokens.ts (+ tests)
+  firebase/        config.ts, auth.ts, db.ts (all Firestore access), calendarSync.ts
+  context/         DataProvider (live data: tasks, listItems, dependents…), AppContext, Session*
+  hooks/           useApp, useHashRoute, useSession, useStoredFlag, useVoting
+  utils/           tasks.ts (filters, privacy, finished/waiting), text.ts (texting), calendar.ts, theme.ts,
+                   routes.ts, fuzzy.ts (+ tests)
+scripts/           deploy-turbify.sh, seed-emulator.mjs, apps-script/ (calendar sync + README)
+tests/             rules/ (security rules), apps-script/ (unit + emulator run)
+firestore.rules, firestore.indexes.json
 ```
 
 ## 11. Security Rules (outline)
 
-- `isMember()` means `household/main.members[uid].role == "member"`. `isViewer()` means the role is `"viewer"`.
+`firestore.rules`, tested in `tests/rules/` (30 tests) against the emulator.
+
+- `isMember()` means `household/main.members[uid].role == "member"`. `isViewer()` means `"viewer"`.
 - **`household/main`:**
-  - Members and viewers can read it.
-  - Members can update `pets`, `weeklyTokens` and their own entry's display fields, but not roles.
-  - Roles change only in the console.
-- **`lists` and `tasks`:**
-  - `visibility == "private"`: read and write only if `ownerId == uid`.
-  - `visibility == "family"`: members can read and write. Viewers can read if `viewerVisible`.
+  - Members and viewers can read it. Any signed-in user may `get` it only while it doesn't exist, and `create` it then (first-time setup).
+  - Members can update `pets`, `weeklyTokens`, `groups`, and **their own** member entry's `displayName`, `color`, `defaultVisibility` (private/family) and `phone` (string ≤ 24). Never roles.
+  - `groups.parents` (`parentsChangeOk`): anyone may set it while it's empty; after that only someone already in it may change it.
+- **`lists` and `tasks`** (tasks carry copies of their list's fields; checked against the list with `getAfter()`, so a list + its tasks can change in one batch):
+  - read: `private` → owner; `family` → members, or viewers if `viewerVisible`; anyone (member or viewer) whose uid is in `sharedWith`.
+  - write: members, if `family`, or owner, or in `sharedWith`. Only the current owner may hand a list to someone else.
+  - `sharedOk`: `sharedWith` exists **if and only if** visibility is `shared`, has 1–20 entries and includes the owner. Because only shared docs have it, "shared with me" is the single query `where('sharedWith','array-contains',uid)`.
+  - Lists: `kind` in list/project/checklist/notes. Tasks: valid status (incl. `canceled`), priority, context, duration, `dependsOn` list, optional `calendar` map, and copied fields equal to the list's (incl. `sharedWith`).
 - **`boards` and `items`:** members can read and write. Viewers can read if the board is `viewerVisible`.
-- **`votes/{uid}`:**
-  - Members can read them.
-  - Users can write only the document whose ID is their own uid, and `tokens` must be a whole number of 0 or more.
+- **`votes/{uid}`:** members can read; users write only their own document, `tokens` a whole number ≥ 0.
 - Everything else is denied.
-- Queries must match the rules. For example, private tasks are queried with `where("ownerId","==",uid)` and `where("visibility","==","private")`.
-- Rules are tested with the Firebase emulator.
+- **Queries must match the rules** (`visibleQueries` in `db.ts`): members query own private docs, family docs and shared-with-me docs; viewers query viewer-visible family docs and shared-with-me docs.
 
 ## 12. Development and Deployment
 
-- **Environment:** WSL Ubuntu 24.04, VS Code, Node LTS, GitHub (`stevenelson35/align`).
-- **Firebase setup:**
-  1. Create a project on the Spark plan.
-  2. Enable Email/Password Auth and Firestore.
-  3. Add authorized domains.
-  4. Create user accounts.
-  5. Seed `household/main`.
-- **Local development:** `npm run dev` against the Firebase emulators (Auth and Firestore).
-- **Tests:** Vitest for the engine and parser, and the rules test SDK for security rules.
-- **Deploy the backend:** `firebase deploy --only firestore:rules,firestore:indexes`. Rules and indexes are free.
-- **Deploy the frontend:** `npm run build`, then upload `dist/` to the Turbify subdomain's document root (FTP or File Manager). An `lftp` script can come later.
+- **Environment:** WSL Ubuntu 24.04, Node via nvm, GitHub `stevenelson35/align` (SSH remote), Firebase project `align-a32c1` (Spark), Turbify hosting.
+- **Local development:** `npm run emulators` + `npm run seed` + `npm run dev` (see CLAUDE.md / README).
+- **Tests:** `npm test` (unit: engine, tokens, parser, utils, Apps Script helpers), `npm run test:rules` (starts its own emulators; don't run it while `npm run emulators` is up), `npm run test:calendar` (needs emulators + seed running).
+- **Deploy order matters when the rules change: rules first, then the web app.** Otherwise the new app's writes are rejected by the old rules.
+  - Rules + indexes: `npm run deploy:rules` (targets `--project prod` = `align-a32c1`; needs `firebase login`).
+  - Web: `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` builds and uploads `dist/` over explicit FTPS with lftp. **It prompts for the FTP password**, so the user runs it in their own terminal (a `!` command in Claude Code can't answer the prompt; the script now says "No password entered" instead of exiting silently).
+  - Calendar sync script: pasted into the Apps Script editor by the user; web app updates via **Deploy → Manage deployments → edit → New version** (keeps the URL).
+- **Verify a web deploy:** fetch https://align.itsallonesong.com/, read the `assets/index-*.js` name, and grep that bundle for a string from the latest change.
 
 ## 13. Status & Handoff
 
-### Where things stand (2026-10-07)
-- **Stage 1: scaffold (done).** Vite + React 19 + TypeScript, with Firebase wiring that uses the emulators in development, a sign-in-only screen, and a session provider.
-- **Stage 2: security rules (done).** `firestore.rules` implements §11. There are now **20 rule tests**, including first-time household setup.
-- **Stages 3–6: MVP (done, 2026-10-07, not yet committed or deployed):**
-  - **Lists and tasks:** list/project CRUD (`ListEditor`; visibility changes batch-update the copied fields on tasks), task CRUD (`TaskDetails` right panel), and a combined view (`CombinedView`) with the §8 colors, filters and sorts (date, priority, dependency order). Views: Everything, Today, My tasks, Family tasks, Work, per-list. Hash routes are in `src/utils/routes.ts`.
-  - **Scheduling engine:** `src/engine/` (`dates.ts`, `graph.ts`, `scheduling.ts`) handles earliest start, conflicts, forward shift, meet-date (backward) shift, recalculate and cycle rejection. Every shift opens a preview (`ShiftDialog`) and applies as one batch. `TimelineView` draws bars, `+Nd` arrows and conflict outlines, and dragging a bar previews a forward shift. Conflicts are computed live in `DataProvider`; the stored `conflict` field is refreshed whenever a shift is applied.
-  - **Voting:** `src/voting/tokens.ts` handles the balance (weekly grant from `tokenStartDate`, rollover, chosen = spent, archived = returned). `BoardsView` offers a one-click "Add the starter boards". `BoardView` shows the ranking, per-member colored share bars, +/− voting with overspend blocking, chosen/archive/reopen, and a viewer-visible toggle.
-  - **Chat:** `src/chat/parser.ts` (chrono-node dates) plus `src/chat/execute.ts`, which resolves names with `src/utils/fuzzy.ts` and asks with buttons when a match is ambiguous. It supports all §9 commands. "Quick add" opens chat pre-filled with `add task `.
-  - **First-time setup:** when `household/main` doesn't exist, a signed-in user sees `Setup.tsx` and creates the household as its first member, optionally adding other members' uids and the pets. The rules allow `create` only while the document doesn't exist. Later role changes are still made in the console.
-  - **Tests:** 29 unit tests (engine, tokens, parser, fuzzy). 2026-10-07: Playwright smoke runs against the emulators exercised sign-in, lists, chat add/done/move/meet/recalculate/show/vote, dependency conflicts, timeline drag, viewer visibility and mobile layout, with no console errors. Those scripts are throwaway and live outside the repo.
-- **Deploy tooling:** `scripts/deploy-turbify.sh` (`npm run deploy:web`) uploads over explicit FTPS with lftp. It prompts for the password and only prunes inside `assets/`. `public/.htaccess` sets cache headers and forces HTTPS.
-- **Deployed (2026-10-07):**
-  - The Firebase project is `align-a32c1` (web app "Align Web App", owner steve.john.nelson@gmail.com). `.firebaserc` alias: `prod`.
-  - Rules and indexes were deployed with `npm run deploy:rules`. The web config is in `.env.production.local` (gitignored).
-  - The Turbify docroot is `/align.itsallonesong.com` (relative to the FTP login root), served by LiteSpeed with HTTPS.
-  - The user created the household through the setup screen.
+### Where things stand (2026-10-11)
+- **Everything below is built, tested, committed, pushed and deployed.** `main` = `1595fc9`; the live site (https://align.itsallonesong.com) serves that build, and the Firestore rules from that commit are deployed to `align-a32c1`. The calendar sync script with event links is deployed in Apps Script.
+- **In use by:** Steve only so far. Linda's and Camilla's accounts haven't been created (see "Waiting on the user").
+- **Tests:** 56 unit (`npm test`), 30 security-rule (`npm run test:rules`), and the calendar script's emulator run (`npm run test:calendar`, 17 checks). Each feature was also checked in a phone-sized browser with Playwright against the emulators (scripts are throwaway, kept outside the repo; see "How to work on it").
 
-- **Google Calendar import (built 2026-10-07, not yet installed):**
-  - §5.5 describes the design; `scripts/apps-script/` has the script, a least-privilege manifest and setup steps.
-  - Rules now validate the optional `calendar` map on tasks: 21 rule tests.
-  - Unit tests are in `tests/apps-script/` (37 unit tests total). `npm run test:calendar` runs the real script against the emulators, with fake Calendar, UrlFetch and Properties services.
-  - The UI shows a 📅 time badge on imported tasks and a note in the task panel.
+### What's built (by area; details in the spec sections)
+- **Tasks and lists** (§5, §8, §10): task lists, projects (dependencies, scheduling engine, timeline, shift previews, conflicts), checklists, notes. Statuses To do / Doing / Done / Canceled. Today / Everything / My / Family / Work views with filters, sorts, color key, Ready-to-do filter. Quick add that keeps focus; finished items crossed off with remembered hide toggles.
+- **Dependencies you can see:** ⏳ Waiting on / Unblocks N on cards, a confirm before ticking a waiting task, ✓/✕/⏳ prerequisite links and **Needed by** in the panel.
+- **Privacy** (§5.2, §11): 🔒 Just me, 👪 Family (+ visible to viewers), 👥 Chosen people (`sharedWith`) with a **Parents** shortcut. Per-person default privacy in Settings (applies to new lists and to adds without a list: Inbox / Family Inbox). Markers, color key and plain sentences everywhere.
+- **Chat** (§9): add / done / cancel / move / meet / recalculate / show / vote / text / help, fuzzy matching with pick buttons.
+- **Texting:** `text <name> [about <task>:] <message>` and **💬 Text about this** (panels, and a 💬 on task and checklist rows) open Messages filled in, with a `#/task/<id>` link. Numbers come from each person's Settings. No in-app messaging or push (decided 2026-10-11: replies arrive as normal texts, so an Align inbox adds little).
+- **Google Calendar** (§5.5): one-way import every 15 minutes into "Family Calendar"; **↻ Refresh calendar** (Apps Script web app, membership-checked, 1-minute cooldown); **📅 Google Calendar ↗** with auto-refresh on return; events open in Google Calendar from their panel.
+- **Voting** (§7): boards, weekly rollover tokens, ranking, chosen/archive.
+- **Settings:** default privacy, mobile number, Parents, theme. **Dark mode** (per device, no flash).
 
-- **2026-10-08 fixes (from the user's first real use):**
-  - **Today** passes done tasks that were on for today (`isForToday(t, day, true)`) to the view, so **Any status** / **Done** can show them; **Not done** still hides them. A task ticked in a view stays there, grayed, until you leave the view, so a mis-tick can be unticked.
-  - **Order:** the date sort uses the event's clock time. On each day, all-day events come first, then timed events in clock order, then tasks without a time. Today now sorts by date by default.
-  - **Quick add:** if none of the names after "for" are a person or pet, the "for ..." text stays in the title ("create plan for laundry room door repair"). A trailing date is no longer read as part of the last name.
-  - **Task panel (phone layout):**
-    - It covers the page, so it now closes after a successful Save and whenever you change views.
-    - ☰ opens above it.
-  - Checked with Playwright at 390px against the emulators.
+### Waiting on the user (can't be done by an agent)
+1. **Set the Parents group now** (⚙ Settings → Parents → tick You). Whoever sets it first controls it; do it before other accounts exist.
+2. **Create Linda's and Camilla's accounts:** Firebase console → Authentication → Users → Add user (email/password). Then add each to `household/main.members` in the Firestore console: `{ role: "member", displayName: "Linda", color: "#bf3989" }` (Camilla likewise). Roles can only be set in the console.
+3. **Each person adds their mobile number** in ⚙ Settings so "text <name>" works; Linda ticks herself under Parents (Steve can also tick her).
+4. Optional: grandparents as `viewer` accounts the same way.
 
-- **2026-10-08 additions:**
-  - **Canceled status** (`'canceled'`, rules plus a test): finished but not done. It's hidden by "Not done", grayed and struck through with a "✕ Canceled" badge. It's set from the task panel's Status menu or with the chat command `cancel <task>` (which has an Undo). Done and canceled both count as **finished** (`isFinished`): sidebar counts, list "Show N finished", Today, conflicts and dependencies all use it.
-  - **Dependencies you can see:**
-    - A card waiting on an unfinished prerequisite shows "⏳ Waiting on <title> +N" and is dimmed with a dashed border.
-    - A prerequisite shows "Unblocks N".
-    - Ticking a waiting task asks first.
-    - In the task panel, each prerequisite shows ✓, ✕ or ⏳ and opens when tapped. A **Needed by** section lists the dependents.
-    - A **Ready to do only** filter hides waiting tasks.
-    - It's all computed from `dependsOn` (`waitingOn`, `DataState.dependents`); nothing is stored. Prerequisites in someone else's private list aren't visible, so they don't count.
-  - **Phone menu:** a backdrop closes it on a tap outside, and so does Escape.
-  - **Dark mode:** ◐/☀/☾ in the top bar cycles Match device → Light → Dark. The choice is saved per device in `localStorage` (`align-theme`), applied before the first paint by a script in `index.html`, with colors as CSS variables under `:root[data-theme='dark']`.
-  - **Calendar:** syncs every 15 minutes; optional **↻ Refresh calendar** button (`VITE_CALENDAR_SYNC_URL`, `src/firebase/calendarSync.ts`; setup in `scripts/apps-script/README.md`).
-  - The **Timeline** button is shown only for lists of kind *Project* (Edit list → Kind).
-  - Tests: 47 unit, 22 rules, and the calendar emulator run with 7 web-app checks. Checked with Playwright at 390px.
+### Next ideas (not started; ask before building)
+- Recurring tasks (watering, monthly flea meds) (§3.2).
+- Reminders / phone alerts: web push needs a sender; the Apps Script could send via Firebase Cloud Messaging for free, but setup is heavier and iPhones need Align added to the home screen.
+- "I'll do it" / claim buttons on family tasks and calendar events (answers "who's picking up Camilla?" in the app).
+- Typed "show …" commands still leave the chat open over the page on phones.
+- The Firebase SDK makes the JS bundle ~880 KB: code-split if first load feels slow.
+- Commit the Playwright smoke checks as real tests.
+- Settings for weekly tokens and pets (currently Firestore console).
 
-- **2026-10-09: checklists, notes, quicker lists:**
-  - **List kinds** (`List.kind`, rules plus a test): `list` and `project` hold tasks. `checklist` holds things to tick off that aren't tasks (shopping, gifts, people to call). `notes` holds reference info.
-  - **Checklist items and notes** are stored as task docs (same collection, visibility fields and rules), but `DataProvider` puts them in `listItems`, not `tasks`. So they never appear in Today / Everything / My / Family / Work, chat `done`/`move`, scheduling or conflicts. They're edited in `ItemDetails` (title, text, move to another list of the same kind, delete).
-  - **Checklist view:** quick add that keeps focus. Items are in the order added (`createdAt`, to the nanosecond). Ticked items stay, crossed off at the bottom. There's a remembered **Hide N checked** toggle and **Clear checked**.
-  - **Notes view:** alphabetical cards showing the first lines. Adding a note opens it for writing.
-  - **Task lists:** quick add no longer opens the task panel. Finished tasks stay, crossed off at the bottom, with a remembered **Hide N finished** toggle (`align-hide-finished:<listId>` in `localStorage`).
-  - **Task panel:** Save sits in a sticky header next to ✕.
-  - Tests: 48 unit, 23 rules. Checked with Playwright at 390px.
-
-- **2026-10-09: privacy you can see, and your own default:**
-  - **Settings** (⚙ in the menu, or tap your avatar): **Default privacy** (🔒 Just me / 👪 Family) is saved as `household.members[uid].defaultVisibility`. The rules let you set only your own, to those two values (tests). Theme (per device) also lives here, kept in step with the top-bar button.
-  - **The default applies to:** new lists (List editor), and quick adds or chat adds that don't name a list. Private adds go to your own **Inbox**; Family adds go to the shared **Family Inbox**, created when first needed.
-  - **Shown:** 🔒 on private lists in the menu and on the list badge of private tasks in mixed views. List badges say "🔒 Private" or "👪 Family". There's a color key on the task views. The task and item panels say "🔒 Only you can see this task" or "👪 Everyone in the family can see this…", following the chosen list. Chat says "Added … to Inbox (🔒 private)".
-  - Tests: 48 unit, 24 rules. Checked with Playwright.
-
-- **2026-10-10: Google Calendar link:** next to ↻ Refresh calendar (Today, and the calendar list) is **📅 Google Calendar ↗**, opening today's day view in a new tab (members only). After you open Google Calendar from there, coming back to Align (the tab becomes visible again) refreshes the calendar automatically; the script's one-minute skip still applies. An imported event's task panel has **Open in Google Calendar ↗** for that event's day. `CalendarRefresh` became `CalendarActions`; links are built by `utils/calendar.ts`. The sync script also stores each event's own page (`htmlLink`) as `calendar.link`, so the panel's link opens the event itself (falling back to the day for tasks synced by an older script). `sameSynced_` compares with sorted keys (`stableJson_`), so a map read back in another key order isn't rewritten every run. Tests: 51 unit, plus the calendar emulator run.
-
-- **2026-10-11: sharing with chosen people, and texting:**
-  - **👥 Chosen people:** a third list privacy beside 🔒 Just me and 👪 Family, kept as `visibility: 'shared'` + `sharedWith: [uid…]` (always including the owner; tasks copy it like the other list fields).
-    - The rules: anyone in `sharedWith` (member or viewer) can read, and members in it can edit. Only shared docs may have the field, so "shared with me" is one query, `where('sharedWith','array-contains',uid)`.
-    - The list editor offers name chips plus a **Parents** shortcut (`household.groups.parents`, set in Settings). It's a convenience only: who can read is always the list's own `sharedWith`, shown by name.
-    - It shows up as a "Shared lists" menu section, 👥 on names and badges, "with You and Linda" in the list header, a teal color in the key, and "👥 Shared: You and Linda can see this…" in the panels.
-  - **Texting:** each person enters their own mobile number in Settings (`members[uid].phone`, own entry only).
-    - In chat, "text <name> <message>" or "text <name> about <task>: <message>" answers with **📱 Send text** (an `sms:` link that opens Messages filled in; you press Send) and **Copy text**.
-    - Panels have **💬 Text about this** (pick a person, add a note, see the preview).
-    - "about" adds "Re: <title> (<when>)" and a link, `#/task/<id>`, which opens that task in its list. The link works for anyone the task is shared with; others see "That task isn't shared with you".
-    - No Align messages or push notifications: replies are normal texts.
-  - Tests: 56 unit (texting helpers, parser), 30 rules (sharing, phone, groups). Checked with Playwright across three accounts.
-
-- **2026-10-11 (later):**
-  - **Who can change the Parents group:** the rules (`parentsChangeOk`, tested) let anyone set it while it's empty; after that, only someone already in it can change it, so a child can't opt in. Settings shows the chips read-only to anyone else.
-  - **Text about this:** always shown in the task, item and note panels; with no one else in the household yet it explains why and offers Copy. A **💬** at the right end of each task row and checklist row opens the item with the form ready (`AppState.textAbout`/`textingId`), scrolled into view with the cursor in the message.
-  - Settings radio rows are aligned.
-
-### Next stages
-7. **First deploy (mostly done):** re-upload with `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` after each change. Confirm the permissions-race fix in production.
-8. Polish ideas, in no particular order: code-split the Firebase SDK, a settings screen (weekly tokens, pets), recurring tasks (§3.2), and committing the Playwright smoke tests.
-
-### What the user still has to do (can't be done by an agent)
-0. **Calendar sync:** create the bot account, add it to `household/main.members` with `bot: true`, and install the Apps Script (`scripts/apps-script/README.md`). Also redeploy the rules (`npm run deploy:rules`) and the web app.
-1. **Firebase console** (project `align`):
-   - Authentication → Sign-in method → enable **Email/Password**.
-   - Authentication → Settings → **User actions**: untick **Enable create (sign-up)**, so nobody can self-register with the public API key. Console-created accounts still work.
-   - Authentication → Settings → Authorized domains: add `align.itsallonesong.com`.
-   - Firestore Database → Create database (production mode; the region can't be changed later).
-   - Authentication → Users: add the family's accounts. Copy each **User UID** for the setup screen.
-   - Project settings → Your apps → Align Web App: copy `apiKey`, `authDomain`, `projectId` and `appId` into `.env.production.local` (see `.env.example`).
-2. **CLI:** `firebase login --no-localhost` (interactive), then `firebase use --add` in the repo.
-3. **Turbify:**
-   - Create the subdomain `align.itsallonesong.com` in cPanel, with HTTPS (AutoSSL / Let's Encrypt).
-   - Note its document root relative to the FTP login root; it's needed for `ALIGN_FTP_DIR`.
-   - FTP facts (verified 2026-09-26 for psort): explicit FTPS to `cpanel292.turbify.biz` as `sjnelson@itsallonesong.com`. SFTP port 22 is closed. The FTP login starts at the main website root.
-4. **Go live:** sign in at https://align.itsallonesong.com and fill in the one-time setup screen (household, members' uids, pets). Then open Voting → "Add the starter boards".
+### How to work on it
+- Read CLAUDE.md first (commands, rules for agents). The user asks for "commit and push" explicitly; then usually "deploy the rules"; they run the web upload themselves and ask the agent to verify the live site.
+- **Workflow that has worked:** change code → `npx tsc -b`, `npm run lint`, `npm test` → `npm run test:rules` if rules changed → browser check → update this section and CLAUDE.md test counts → commit when asked → `npm run deploy:rules` (if rules changed) → user runs `deploy:web` → verify the live bundle.
+- **Browser checks:** install `playwright-core` into a scratch folder (e.g. `/tmp/align-pw`), use the cached headless shell at `~/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell`, run against `npm run emulators` + `npm run seed` + `npm run dev -- --port 5199`. Use a 390×800 viewport. Sign in as `steve@`/`wife@`/`daughter@example.com` (password `align-dev`) to test sharing across accounts. To test the Refresh button, point `VITE_CALENDAR_SYNC_URL` at a small local stub that returns `{"ok":true,…}` with `Access-Control-Allow-Origin: *`; `npm run test:calendar` loads real imported events into the emulator.
 
 ### Environment
 - **WSL Ubuntu 24.04.** Node **v24.21.0** via nvm (`~/.nvm`); load it with `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"`.
-- `firebase-tools` 15.31 is installed globally under nvm. Java 21 is present (for the emulators).
-- **Emulator project ID:** `demo-align` ("demo-" projects never reach real Firebase). The emulator UI is at http://127.0.0.1:4000.
-- **Test accounts** (password `align-dev`): `steve@`, `wife@`, `daughter@` (members) and `grandparent@` (viewer), all `@example.com`.
+- `firebase-tools` 15.31 under nvm, logged in as steve.john.nelson@gmail.com. Java 21 for the emulators.
+- **Firebase:** project `align-a32c1` (alias `prod` in `.firebaserc`; default alias `demo-align` for the emulators). Web config and `VITE_CALENDAR_SYNC_URL` are in `.env.production.local` (gitignored).
+- **Turbify:** docroot `/align.itsallonesong.com`, explicit FTPS to `cpanel292.turbify.biz` as `sjnelson@itsallonesong.com` (password: the user types it). LiteSpeed, HTTPS forced by `public/.htaccess`.
+- **Apps Script:** "Align calendar sync" in the user's Google account; script properties hold the bot login and calendar id; deployed as a web app (execute as me, anyone).
+- **Emulator:** project `demo-align`, UI at http://127.0.0.1:4000. Test accounts (password `align-dev`): `steve@`, `wife@`, `daughter@` (members), `grandparent@` (viewer), `calendar-bot@` (bot), all `@example.com`.
 
 ### Gotchas
-- npm skipped the install scripts for `@firebase/util` and `protobufjs`. That's harmless: the stub `postinstall.mjs` ships with the package.
-- `vite build` warns that the chunk is over 500 KB. It's the Firebase SDK, and code-splitting is optional.
-- **First-time setup rule:** `household/main` allows `get` by any signed-in user and `create` only while it doesn't exist. That's why sign-up must be disabled in Auth settings before the household is created. After that, it's harmless.
-- **The household listener ignores snapshots with `hasPendingWrites`.** Otherwise, right after first-time setup, the data queries could start before the server had the household; the rules would deny them, and the dead listeners left the app stuck on "Missing or insufficient permissions". This only showed up in production, because the emulator is too fast.
-- **TaskDetails is re-keyed on the task's full JSON** so its form never keeps stale dates after a shift. Without this, Save would revert the shift.
-- **Tasks copy their list's visibility fields**, so queries and rules need no lookups. The rules check them against the list with `getAfter()`, so a batch that changes a list and its tasks together is valid. Any code that changes a list's visibility or owner **must update its tasks in the same batch**.
-- **Queries must match the rules.** Viewers must query family tasks with `where("viewerVisible","==",true)`.
-- `firestore.indexes.json` declares the collection-group single-field index on `votes.uid` that the token-balance query needs.
-- Don't put spaces in generated file or folder names (user preference). All pushes go over SSH.
+- **Tasks copy their list's `visibility`, `ownerId`, `viewerVisible` and `sharedWith`.** Any code that changes those on a list must update its tasks in the same batch (`updateList`); moving a task re-copies them (`updateTask(…, moveTo)`). `copiedFields` handles all four, including deleting `sharedWith` when a list stops being shared.
+- **`sharedWith` must exist only on shared docs** (rules: `sharedOk`). That's what makes the single "shared with me" query provable by the rules.
+- **Checklist items and notes are task docs.** `DataProvider` splits them into `listItems`; anything that should treat them as tasks (or not) must pick the right array. List deletion and visibility batches use both.
+- **Queries must match the rules** (`visibleQueries`). Viewers must use `where("viewerVisible","==",true)` for family docs.
+- **Deploy rules before the web app** whenever the rules changed.
+- **The household listener ignores snapshots with `hasPendingWrites`** (otherwise first-time setup raced the rules into "Missing or insufficient permissions"; production-only).
+- **TaskDetails is re-keyed on the task's full JSON** so its form never keeps stale dates after a shift.
+- **The `#/task/<id>` view is derived, not stored:** AppShell shows the linked task while the hash is a task link; selecting another task or closing the panel moves to `#/list/<id>`.
+- **Number inputs** use `NumberField` (clamping on every keystroke made "0" impossible to delete).
+- **Controlled checkboxes tick after the database confirms:** in Playwright use `click()` + a short wait, not `check()`. Headless Chrome has no emoji font, so emoji show as boxes in screenshots.
+- **Don't `pkill -f <pattern>` / match `ps` output in the same shell command line that contains the pattern:** it kills the calling shell. List PIDs in one command, kill them in the next.
+- `vite build` warns that the chunk is over 500 KB (the Firebase SDK); harmless.
+- npm skipped the install scripts for `@firebase/util` and `protobufjs`; harmless.
+- `firestore.indexes.json` declares the collection-group index on `votes.uid` for the token-balance query; the shared-with-me queries need no composite index.
+- No spaces in generated file or folder names (user preference). Pushes go over SSH.
 
+### History
+- **2026-09-25/26:** design reviewed; scaffold; security rules.
+- **2026-10-07:** MVP (lists/tasks, scheduling engine, timeline, voting, chat, first-time setup); first deploy; Google Calendar import (Apps Script, calendar bot).
+- **2026-10-08:** Today fixes (ticked tasks, clock order), quick-add "for" fallback, phone task panel; Canceled status; visible dependencies; menu backdrop; dark mode; 15-minute sync + Refresh button; number boxes.
+- **2026-10-09:** checklists and notes; crossed-off finished items with hide toggles; Save at the top of panels; per-person default privacy, markers, color key; chat buttons close the chat.
+- **2026-10-10:** Google Calendar link with auto-refresh on return; event links stored by the sync.
+- **2026-10-11:** 👥 sharing with chosen people + Parents; texting (chat and panels) with task links; Parents group lock; 💬 on rows; Settings alignment.
