@@ -359,6 +359,18 @@ firestore.indexes.json
 
 - **2026-10-10: Google Calendar link:** next to ↻ Refresh calendar (Today, and the calendar list) is **📅 Google Calendar ↗**, opening today's day view in a new tab (members only). After you open Google Calendar from there, coming back to Align (the tab becomes visible again) refreshes the calendar automatically; the script's one-minute skip still applies. An imported event's task panel has **Open in Google Calendar ↗** for that event's day. `CalendarRefresh` became `CalendarActions`; links are built by `utils/calendar.ts`. The sync script also stores each event's own page (`htmlLink`) as `calendar.link`, so the panel's link opens the event itself (falling back to the day for tasks synced by an older script). `sameSynced_` compares with sorted keys (`stableJson_`), so a map read back in another key order isn't rewritten every run. Tests: 51 unit, plus the calendar emulator run.
 
+- **2026-10-11: sharing with chosen people, and texting:**
+  - **👥 Chosen people:** a third list privacy beside 🔒 Just me and 👪 Family, kept as `visibility: 'shared'` + `sharedWith: [uid…]` (always including the owner; tasks copy it like the other list fields).
+    - The rules: anyone in `sharedWith` (member or viewer) can read, and members in it can edit. Only shared docs may have the field, so "shared with me" is one query, `where('sharedWith','array-contains',uid)`.
+    - The list editor offers name chips plus a **Parents** shortcut (`household.groups.parents`, set in Settings). It's a convenience only: who can read is always the list's own `sharedWith`, shown by name.
+    - It shows up as a "Shared lists" menu section, 👥 on names and badges, "with You and Linda" in the list header, a teal color in the key, and "👥 Shared: You and Linda can see this…" in the panels.
+  - **Texting:** each person enters their own mobile number in Settings (`members[uid].phone`, own entry only).
+    - In chat, "text <name> <message>" or "text <name> about <task>: <message>" answers with **📱 Send text** (an `sms:` link that opens Messages filled in; you press Send) and **Copy text**.
+    - Panels have **💬 Text about this** (pick a person, add a note, see the preview).
+    - "about" adds "Re: <title> (<when>)" and a link, `#/task/<id>`, which opens that task in its list. The link works for anyone the task is shared with; others see "That task isn't shared with you".
+    - No Align messages or push notifications: replies are normal texts.
+  - Tests: 56 unit (texting helpers, parser), 30 rules (sharing, phone, groups). Checked with Playwright across three accounts.
+
 ### Next stages
 7. **First deploy (mostly done):** re-upload with `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` after each change. Confirm the permissions-race fix in production.
 8. Polish ideas, in no particular order: code-split the Firebase SDK, a settings screen (weekly tokens, pets), recurring tasks (§3.2), and committing the Playwright smoke tests.

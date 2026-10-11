@@ -21,11 +21,12 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
   // Unfinished tasks or unchecked items; for notes, how many there are.
   const openCount = (l: List) =>
     (l.kind === 'checklist' || l.kind === 'notes' ? listItems : tasks).filter((t) => t.listId === l.id && (l.kind === 'notes' || !isFinished(t))).length
-  const color = (l: List) => (l.visibility === 'private' ? 'var(--color-private)' : 'var(--color-family)')
+  const color = (l: List) => `var(--color-${l.visibility})`
 
   const sections: { title: string; lists: List[]; color: string }[] = [
     { title: 'My lists', lists: lists.filter((l) => l.visibility === 'private' && l.kind === 'list' && l.ownerId === uid), color: 'var(--color-private)' },
     { title: 'Family lists', lists: lists.filter((l) => l.visibility === 'family' && l.kind === 'list'), color: 'var(--color-family)' },
+    { title: 'Shared lists', lists: lists.filter((l) => l.visibility === 'shared' && l.kind === 'list'), color: 'var(--color-shared)' },
     { title: 'Projects', lists: lists.filter((l) => l.kind === 'project'), color: 'var(--color-project)' },
     { title: 'Checklists', lists: lists.filter((l) => l.kind === 'checklist'), color: '' },
     { title: 'Notes', lists: lists.filter((l) => l.kind === 'notes'), color: '' },
@@ -46,7 +47,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
             <NavLink
               key={l.id}
               route={{ view: 'list', listId: l.id, timeline: false }}
-              label={l.visibility === 'private' ? `${l.name} ${PRIVACY_ICON.private}` : l.name}
+              label={l.visibility === 'family' ? l.name : `${l.name} ${PRIVACY_ICON[l.visibility]}`}
               color={s.color || color(l)}
               count={openCount(l)}
             />

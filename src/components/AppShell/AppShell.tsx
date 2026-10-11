@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppContext, type AppState, type PendingShift } from '../../context/AppContext'
 import { useData } from '../../hooks/useApp'
 import { useHashRoute } from '../../hooks/useHashRoute'
-import type { Household, HouseholdMember, List, Task } from '../../types'
-import { canEditTask } from '../../utils/tasks'
+import type { Household, HouseholdMember, List } from '../../types'
+import { canEditTask, type Shareable } from '../../utils/tasks'
 import { ChatPanel } from '../Chat/ChatPanel'
 import { ShiftDialog } from '../Dependencies/ShiftDialog'
 import { ListEditor } from '../Tasks/ListEditor'
@@ -35,7 +35,7 @@ export function AppShell({ uid, household, member }: Props) {
     setSettingsOpen(true)
   }, [])
 
-  const canEdit = useCallback((t: Pick<Task, 'visibility' | 'ownerId'>) => canEditTask(t, uid, member.role), [uid, member.role])
+  const canEdit = useCallback((t: Shareable) => canEditTask(t, uid, member.role), [uid, member.role])
   const openChat = useCallback((draft = '') => setChat((c) => ({ open: true, draft, key: c.key + 1 })), [])
   const go = useCallback(
     (r: AppState['route']) => {
@@ -46,6 +46,19 @@ export function AppShell({ uid, household, member }: Props) {
     [navigate],
   )
 
+  // A link to one task (#/task/<id>, e.g. from a text) shows its list with that task open. Derived, not stored:
+  // picking another task or closing the panel moves to the plain list address.
+  const linked =
+    route.view === 'task' ? (data.tasks.find((t) => t.id === route.taskId) ?? data.listItems.find((t) => t.id === route.taskId)) : undefined
+  const shownTaskId = linked ? linked.id : selectedTaskId
+  const choose = useCallback(
+    (id: string | null) => {
+      if (route.view === 'task') navigate(linked ? { view: 'list', listId: linked.listId, timeline: false } : { view: 'today' })
+      selectTask(id)
+    },
+    [route.view, linked, navigate],
+  )
+
   const app = useMemo<AppState>(
     () => ({
       uid,
@@ -54,18 +67,18 @@ export function AppShell({ uid, household, member }: Props) {
       isMember: member.role === 'member',
       route,
       navigate: go,
-      selectedTaskId,
-      selectTask,
+      selectedTaskId: shownTaskId,
+      selectTask: choose,
       proposeShift,
       editList: (list) => setListEditor({ list }),
       canEdit,
       openChat,
     }),
-    [uid, household, member, route, go, selectedTaskId, canEdit, openChat],
+    [uid, household, member, route, go, shownTaskId, choose, canEdit, openChat],
   )
 
-  const selectedTask = data.tasks.find((t) => t.id === selectedTaskId)
-  const selectedItem = selectedTask ? undefined : data.listItems.find((t) => t.id === selectedTaskId)
+  const selectedTask = data.tasks.find((t) => t.id === shownTaskId)
+  const selectedItem = selectedTask ? undefined : data.listItems.find((t) => t.id === shownTaskId)
   const selectedItemList = selectedItem && data.lists.find((l) => l.id === selectedItem.listId)
 
   // Escape closes the phone menu, like tapping outside it.

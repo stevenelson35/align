@@ -12,7 +12,7 @@ import { BoardView } from '../Voting/BoardView'
 
 export function MainView() {
   const { route, uid } = useApp()
-  const { lists, boards, tasks } = useData()
+  const { lists, boards, tasks, listItems, loaded } = useData()
 
   switch (route.view) {
     case 'home':
@@ -29,6 +29,16 @@ export function MainView() {
       return (
         <CombinedView key="today" title="Today" tasks={tasks.filter((t) => isForToday(t, day, true))} actions={<CalendarActions />} />
       )
+    }
+    case 'task': {
+      // A link to one task: its list (AppShell opens the task in the side panel).
+      const t = tasks.find((x) => x.id === route.taskId) ?? listItems.find((x) => x.id === route.taskId)
+      if (!t) return <p className="muted">{loaded ? "That task isn't shared with you, or it was deleted." : 'Opening…'}</p>
+      const list = lists.find((l) => l.id === t.listId)
+      if (!list) return <p className="muted">That list isn't shared with you.</p>
+      if (list.kind === 'checklist') return <ChecklistView key={list.id} list={list} />
+      if (list.kind === 'notes') return <NotesView key={list.id} list={list} />
+      return <ListView key={list.id} list={list} />
     }
     case 'list': {
       const list = lists.find((l) => l.id === route.listId)

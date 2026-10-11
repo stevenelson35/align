@@ -61,8 +61,11 @@ export function TaskCard({ task, showList = true, onTicked }: Props) {
             </span>
           )}
           {showList && list && (
-            <span className="badge" title={task.visibility === 'private' ? 'Private: only you can see it' : 'Family: everyone can see it'}>
-              {task.visibility === 'private' && `${PRIVACY_ICON.private} `}
+            <span
+              className="badge"
+              title={{ private: 'Private: only you can see it', family: 'Family: everyone can see it', shared: 'Shared with chosen people' }[task.visibility]}
+            >
+              {task.visibility !== 'family' && `${PRIVACY_ICON[task.visibility]} `}
               {list.name}
             </span>
           )}

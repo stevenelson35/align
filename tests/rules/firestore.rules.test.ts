@@ -27,12 +27,16 @@ const lists = {
   stevePrivate: { name: 'Errands', kind: 'list', visibility: 'private', ownerId: 'steve', viewerVisible: false, defaultContext: 'family' },
   familyVisible: { name: 'Chores', kind: 'list', visibility: 'family', ownerId: 'steve', viewerVisible: true, defaultContext: 'family' },
   familyHidden: { name: 'Lawn', kind: 'project', visibility: 'family', ownerId: 'steve', viewerVisible: false, defaultContext: 'family' },
-}
+  parentsOnly: {
+    name: 'Gift ideas', kind: 'checklist', visibility: 'shared', sharedWith: ['steve', 'wife'], ownerId: 'steve', viewerVisible: false, defaultContext: 'family',
+  },
+} as Record<string, Record<string, unknown>>
 
 function task(listId: keyof typeof lists, overrides: Record<string, unknown> = {}) {
   const list = lists[listId]
   return {
     listId,
+    ...(list.sharedWith ? { sharedWith: list.sharedWith } : {}),
     visibility: list.visibility,
     ownerId: list.ownerId,
     viewerVisible: list.viewerVisible,
@@ -70,6 +74,7 @@ beforeEach(async () => {
       members: {
         steve: { role: 'member', displayName: 'Steve', color: '#1f6feb' },
         daughter: { role: 'member', displayName: 'Daughter', color: '#d63384' },
+        wife: { role: 'member', displayName: 'Linda', color: '#1a7f37' },
         grandma: { role: 'viewer', displayName: 'Grandma', color: '#6f42c1' },
       },
       pets: [],
@@ -85,6 +90,49 @@ beforeEach(async () => {
     await setDoc(doc(admin, 'boards/movies/items/m1'), { title: 'Paddington', status: 'open', createdBy: 'steve' })
     await setDoc(doc(admin, 'boards/secret/items/s1'), { title: 'Puppy', status: 'open', createdBy: 'steve' })
     await setDoc(doc(admin, 'boards/movies/items/m1/votes/steve'), { uid: 'steve', tokens: 3 })
+  })
+})
+
+describe('sharing with chosen people', () => {
+  it('lets only the people on a shared list read it and its items', async () => {
+    for (const uid of ['steve', 'wife']) {
+      await assertSucceeds(getDoc(doc(db(uid), 'lists/parentsOnly')))
+      await assertSucceeds(getDoc(doc(db(uid), 'tasks/parentsOnlyTask')))
+    }
+    for (const uid of ['daughter', 'grandma']) {
+      await assertFails(getDoc(doc(db(uid), 'lists/parentsOnly')))
+      await assertFails(getDoc(doc(db(uid), 'tasks/parentsOnlyTask')))
+    }
+  })
+
+  it('allows the "shared with me" query, only for yourself', async () => {
+    await assertSucceeds(getDocs(query(collection(db('wife'), 'lists'), where('sharedWith', 'array-contains', 'wife'))))
+    await assertSucceeds(getDocs(query(collection(db('wife'), 'tasks'), where('sharedWith', 'array-contains', 'wife'))))
+    await assertSucceeds(getDocs(query(collection(db('daughter'), 'tasks'), where('sharedWith', 'array-contains', 'daughter'))))
+    await assertFails(getDocs(query(collection(db('daughter'), 'tasks'), where('sharedWith', 'array-contains', 'wife'))))
+  })
+
+  it('lets members on the list edit it and add items; others cannot', async () => {
+    await assertSucceeds(updateDoc(doc(db('wife'), 'tasks/parentsOnlyTask'), { status: 'done' }))
+    await assertSucceeds(setDoc(doc(db('wife'), 'tasks/gift2'), task('parentsOnly', { createdBy: 'wife', title: 'Bike' })))
+    await assertFails(updateDoc(doc(db('daughter'), 'tasks/parentsOnlyTask'), { status: 'done' }))
+    await assertFails(setDoc(doc(db('daughter'), 'tasks/gift3'), task('parentsOnly', { createdBy: 'daughter' })))
+  })
+
+  it('checks the shape: owner included, sharedWith only on shared, items copy the list', async () => {
+    const base = lists.parentsOnly
+    await assertSucceeds(setDoc(doc(db('steve'), 'lists/ok'), { ...base, sharedWith: ['steve', 'daughter'] }))
+    await assertFails(setDoc(doc(db('steve'), 'lists/noOwner'), { ...base, sharedWith: ['wife'] }))
+    const { sharedWith: _omit, ...noList } = base
+    await assertFails(setDoc(doc(db('steve'), 'lists/noList'), noList))
+    await assertFails(setDoc(doc(db('steve'), 'lists/privateWithList'), { ...lists.stevePrivate, sharedWith: ['steve'] }))
+    await assertFails(setDoc(doc(db('steve'), 'tasks/mismatch'), task('parentsOnly', { sharedWith: ['steve'] })))
+  })
+
+  it('can include a viewer, who may read but not change it', async () => {
+    await assertSucceeds(updateDoc(doc(db('steve'), 'lists/parentsOnly'), { sharedWith: ['steve', 'wife', 'grandma'] }))
+    await assertSucceeds(getDoc(doc(db('grandma'), 'lists/parentsOnly')))
+    await assertFails(updateDoc(doc(db('grandma'), 'lists/parentsOnly'), { name: 'Mine now' }))
   })
 })
 
@@ -106,6 +154,15 @@ describe('household', () => {
     await assertSucceeds(updateDoc(doc(db('daughter'), 'household/main'), { 'members.daughter.defaultVisibility': 'private' }))
     await assertFails(updateDoc(doc(db('daughter'), 'household/main'), { 'members.daughter.defaultVisibility': 'everyone' }))
     await assertFails(updateDoc(doc(db('daughter'), 'household/main'), { 'members.steve.defaultVisibility': 'family' }))
+  })
+
+  it('lets a member set their own mobile number and the Parents group', async () => {
+    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.phone': '+1 555 010 0100' }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.phone': 'x'.repeat(40) }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.steve.phone': '+1 555 010 0199' }))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { groups: { parents: ['steve', 'wife'] } }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { groups: 'parents' }))
+    await assertFails(updateDoc(doc(db('grandma'), 'household/main'), { groups: { parents: ['grandma'] } }))
   })
 
   it('blocks role changes, editing others, and viewer writes', async () => {

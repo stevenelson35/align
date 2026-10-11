@@ -2,6 +2,7 @@
   /* List colors from DESIGN.md §8 */
   --color-private: #1f6feb;
   --color-family: #8250df;
+  --color-shared: #0f8b8d;
   --color-project: #1a7f37;
   --color-done: #8c959f;
 
@@ -35,6 +36,7 @@
 :root[data-theme='dark'] {
   --color-private: #4493f8;
   --color-family: #a371f7;
+  --color-shared: #39c5cf;
   --color-project: #3fb950;
   --color-done: #6e7681;
 
@@ -461,6 +463,9 @@ input.narrow {
 .color-family {
   --accent: var(--color-family);
 }
+.color-shared {
+  --accent: var(--color-shared);
+}
 .color-project {
   --accent: var(--color-project);
 }
@@ -470,6 +475,7 @@ input.narrow {
 
 .badge.color-private,
 .badge.color-family,
+.badge.color-shared,
 .badge.color-project {
   background: var(--accent);
   border-color: var(--accent);
@@ -994,4 +1000,33 @@ a.button-link {
 }
 a.button-link:hover {
   border-color: var(--muted);
+}
+
+.share-picker {
+  display: grid;
+  gap: 0.35rem;
+}
+.share-picker p {
+  margin: 0;
+}
+
+.text-about {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+.text-preview {
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  font-family: inherit;
+}
+a.button-link.primary-link {
+  background: var(--color-family);
+  border-color: var(--color-family);
+  color: white;
 }

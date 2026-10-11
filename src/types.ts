@@ -8,6 +8,8 @@ export interface HouseholdMember {
   color: string
   /** Who can see the lists this person creates, and their quick adds, unless they choose otherwise. Default private. */
   defaultVisibility?: Visibility
+  /** Their mobile number, for "text <name> …" (they enter it in Settings). */
+  phone?: string
   /** The calendar-sync account: a member for the rules, hidden from people pickers. Set in the console. */
   bot?: boolean
 }
@@ -24,9 +26,12 @@ export interface Household {
   pets: Pet[]
   weeklyTokens: number
   tokenStartDate: Timestamp
+  /** Named groups for the sharing shortcuts (e.g. "Parents"). A convenience only: access is each list's sharedWith. */
+  groups?: { parents?: string[] }
 }
 
-export type Visibility = 'private' | 'family'
+/** private: the owner. family: every member (viewers too if viewerVisible). shared: the people in sharedWith. */
+export type Visibility = 'private' | 'family' | 'shared'
 export type Context = 'family' | 'work'
 
 export interface List {
@@ -39,6 +44,8 @@ export interface List {
    */
   kind: 'list' | 'project' | 'checklist' | 'notes'
   visibility: Visibility
+  /** Who can see and edit it when visibility is 'shared' (uids, always including the owner). Tasks copy their list's. */
+  sharedWith?: string[]
   ownerId: string
   viewerVisible: boolean
   defaultContext: Context
@@ -58,6 +65,8 @@ export interface Task {
   listId: string
   // Copied from the list (DESIGN.md §5.3).
   visibility: Visibility
+  /** Who can see and edit it when visibility is 'shared' (uids, always including the owner). Tasks copy their list's. */
+  sharedWith?: string[]
   ownerId: string
   viewerVisible: boolean
 

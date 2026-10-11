@@ -69,12 +69,16 @@ function subscribeUnion<T>(
   return () => unsubs.forEach((u) => u())
 }
 
-/** Queries must match the rules (DESIGN.md §11): own private docs, family docs, or viewer-visible family docs. */
+/**
+ * Queries must match the rules (DESIGN.md §11): own private docs, family docs (viewer-visible ones for viewers),
+ * and docs shared with you by name.
+ */
 function visibleQueries(name: 'lists' | 'tasks', uid: string, role: Role) {
   const c = collection(db, name)
+  const shared = query(c, where('sharedWith', 'array-contains', uid))
   return role === 'member'
-    ? [query(c, where('ownerId', '==', uid), where('visibility', '==', 'private')), query(c, where('visibility', '==', 'family'))]
-    : [query(c, where('visibility', '==', 'family'), where('viewerVisible', '==', true))]
+    ? [query(c, where('ownerId', '==', uid), where('visibility', '==', 'private')), query(c, where('visibility', '==', 'family')), shared]
+    : [query(c, where('visibility', '==', 'family'), where('viewerVisible', '==', true)), shared]
 }
 
 type OnError = (e: FirestoreError) => void
@@ -123,31 +127,59 @@ export function setDefaultVisibility(uid: string, visibility: Visibility) {
   return updateDoc(householdRef, { [`members.${uid}.defaultVisibility`]: visibility })
 }
 
+/** Your mobile number for "text <name> …" (Settings); empty removes it. */
+export function setPhone(uid: string, phone: string) {
+  return updateDoc(householdRef, { [`members.${uid}.phone`]: phone.trim() || deleteField() })
+}
+
+/** Who the "Parents" sharing shortcut picks. */
+export function setParents(uids: string[]) {
+  return updateDoc(householdRef, { 'groups.parents': uids })
+}
+
+/** The fields a task copies from its list, so queries and rules need no lookups (sharedWith only when shared). */
+function copiedFields(list: Pick<List, 'visibility' | 'ownerId' | 'viewerVisible' | 'sharedWith'>) {
+  return {
+    visibility: list.visibility,
+    ownerId: list.ownerId,
+    viewerVisible: list.visibility === 'family' ? list.viewerVisible : false,
+    sharedWith: list.visibility === 'shared' ? (list.sharedWith ?? [list.ownerId]) : deleteField(),
+  }
+}
+
 export type ListInput = Omit<List, 'id'>
 
 export async function createList(list: ListInput) {
   const ref = doc(collection(db, 'lists'))
-  await setDoc(ref, { ...list, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+  const { sharedWith, ...rest } = list
+  await setDoc(ref, {
+    ...rest,
+    ...(list.visibility === 'shared' ? { sharedWith: sharedWith ?? [list.ownerId] } : {}),
+    viewerVisible: list.visibility === 'family' ? list.viewerVisible : false,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
   return ref.id
 }
 
-/** Tasks carry copies of visibility/ownerId/viewerVisible, so they're updated in the same batch (DESIGN.md §5.3). */
+/**
+ * Tasks carry copies of visibility/ownerId/viewerVisible/sharedWith, so they're updated in the same batch
+ * (DESIGN.md §5.3).
+ */
 export function updateList(list: List, patch: Partial<ListInput>, tasks: Task[]) {
   const next = { ...list, ...patch }
-  if (next.visibility === 'private') next.viewerVisible = false
   const { id, ...data } = next
+  const copied = copiedFields(next)
   const batch = writeBatch(db)
-  batch.update(doc(db, 'lists', id), { ...data, updatedAt: serverTimestamp() })
+  batch.update(doc(db, 'lists', id), { ...data, ...copied, updatedAt: serverTimestamp() })
   const copiedChanged =
-    next.visibility !== list.visibility || next.ownerId !== list.ownerId || next.viewerVisible !== list.viewerVisible
+    next.visibility !== list.visibility ||
+    next.ownerId !== list.ownerId ||
+    copied.viewerVisible !== list.viewerVisible ||
+    JSON.stringify(next.visibility === 'shared' ? next.sharedWith : null) !== JSON.stringify(list.visibility === 'shared' ? list.sharedWith : null)
   if (copiedChanged) {
     for (const t of tasks.filter((t) => t.listId === id)) {
-      batch.update(doc(db, 'tasks', t.id), {
-        visibility: next.visibility,
-        ownerId: next.ownerId,
-        viewerVisible: next.viewerVisible,
-        updatedAt: serverTimestamp(),
-      })
+      batch.update(doc(db, 'tasks', t.id), { ...copied, updatedAt: serverTimestamp() })
     }
   }
   return batch.commit()
@@ -166,12 +198,12 @@ export type TaskInput = Omit<Task, 'id' | 'listId' | 'visibility' | 'ownerId' | 
 
 export async function createTask(list: List, input: TaskInput, uid: string) {
   const ref = doc(collection(db, 'tasks'))
+  const { sharedWith, ...copied } = copiedFields(list)
   await setDoc(ref, {
     ...input,
     listId: list.id,
-    visibility: list.visibility,
-    ownerId: list.ownerId,
-    viewerVisible: list.viewerVisible,
+    ...copied,
+    ...(list.visibility === 'shared' ? { sharedWith } : {}),
     createdBy: uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -183,14 +215,7 @@ export async function createTask(list: List, input: TaskInput, uid: string) {
 export function updateTask(id: string, patch: Partial<TaskInput>, moveTo?: List) {
   const data: Record<string, unknown> = { updatedAt: serverTimestamp() }
   for (const [k, v] of Object.entries(patch)) data[k] = v === undefined ? deleteField() : v
-  if (moveTo) {
-    Object.assign(data, {
-      listId: moveTo.id,
-      visibility: moveTo.visibility,
-      ownerId: moveTo.ownerId,
-      viewerVisible: moveTo.viewerVisible,
-    })
-  }
+  if (moveTo) Object.assign(data, { listId: moveTo.id, ...copiedFields(moveTo) })
   return updateDoc(doc(db, 'tasks', id), data)
 }
 

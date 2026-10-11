@@ -6,7 +6,8 @@ import { meetDate, recalculate, shiftForward } from '../engine/scheduling'
 import { createList, createTask, setVote, updateTask } from '../firebase/db'
 import type { Board, BoardItem, List, Task } from '../types'
 import { fuzzyMatch } from '../utils/fuzzy'
-import { isFinished, isForToday, people, PRIVACY_ICON } from '../utils/tasks'
+import { isFinished, isForToday, people, PRIVACY_ICON, targetName } from '../utils/tasks'
+import { smsUrl, splitAbout, splitRecipient, taskLink, textBody, whenText } from '../utils/text'
 import { HELP_TEXT, parse, type Command } from './parser'
 
 export interface Action {
@@ -121,7 +122,7 @@ async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext,
       app.uid,
     )
     return {
-      text: `Added "${title}" to ${target.name} (${PRIVACY_ICON[target.visibility]} ${target.visibility === 'private' ? 'private' : 'family'})${cmd.startDate ? ` on ${formatDay(cmd.startDate)}` : ''}.`,
+      text: `Added "${title}" to ${target.name} (${PRIVACY_ICON[target.visibility]} ${target.visibility})${cmd.startDate ? ` on ${formatDay(cmd.startDate)}` : ''}.`,
       lines: unknown.length ? [`I didn't recognize: ${unknown.join(', ')}.`] : undefined,
       actions: [
         { label: 'Open it', run: () => app.selectTask(id), showsSomething: true },
@@ -131,6 +132,39 @@ async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext,
   } catch (err) {
     return { text: errorText(err) }
   }
+}
+
+/** "text <name> [about <task>:] <message>": fills in Messages on your phone; you press Send there. */
+function textCommand(rest: string, ctx: ExecContext): Promise<Reply> | Reply {
+  const { app, data } = ctx
+  const to = splitRecipient(rest, app.household)
+  if (!to) {
+    const names = people(app.household).map(([, m]) => m.displayName).join(', ')
+    return { text: `Who should I text? Start with their name, e.g. "text ${names.split(', ')[0] ?? 'Linda'} I picked up milk". People: ${names}.` }
+  }
+  const { about, message } = splitAbout(to.rest)
+  const name = targetName(to.uid, app.household)
+  const compose = (subject?: Task): Reply => {
+    const body = textBody(message, subject && { title: subject.title, when: whenText(subject), link: taskLink(subject.id) })
+    if (!body) return { text: `What should the text to ${name} say? e.g. "text ${name} running late".` }
+    const copy = { label: 'Copy text', run: async () => void (await navigator.clipboard?.writeText(body)) }
+    const phone = app.household.members[to.uid]?.phone
+    if (!phone) {
+      return {
+        text: `${name} hasn't added a mobile number yet (⚙ Settings in Align). Here's the text to copy:`,
+        lines: [body],
+        actions: [copy],
+      }
+    }
+    return {
+      text: `Text to ${name}:`,
+      lines: body.split('\n'),
+      actions: [{ label: `📱 Send text to ${name}`, run: () => void (window.location.href = smsUrl(phone, body)) }, copy],
+    }
+  }
+  if (!about) return compose()
+  // Tasks, checklist items and notes can all be texted about.
+  return pick(about, [...data.tasks, ...data.listItems], (t) => t.title, 'task, item or note', compose)
 }
 
 function showTasks(title: string, tasks: Task[], ctx: ExecContext): Reply {
@@ -150,7 +184,7 @@ export async function execute(input: string, ctx: ExecContext): Promise<Reply> {
   const cmd = parse(input)
   const { app, data } = ctx
   const open = data.tasks.filter((t) => !isFinished(t))
-  const needsMember = !['help', 'show', 'showBoard', 'showNamed', 'error'].includes(cmd.type)
+  const needsMember = !['help', 'show', 'showBoard', 'showNamed', 'text', 'error'].includes(cmd.type)
   if (needsMember && !app.isMember) return { text: 'Viewers can look but not change things.' }
 
   switch (cmd.type) {
@@ -169,6 +203,8 @@ export async function execute(input: string, ctx: ExecContext): Promise<Reply> {
           return { text: errorText(err) }
         }
       })
+    case 'text':
+      return textCommand(cmd.rest, ctx)
     case 'cancel':
       return pick(cmd.task, open.filter(app.canEdit), (t) => t.title, 'task', async (t) => {
         const before = t.status

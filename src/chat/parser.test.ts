@@ -58,6 +58,14 @@ describe('parse', () => {
     expect(parse('add task x on someday soon', ref).type).toBe('error')
   })
 
+  it('parses text, keeping the message as typed', () => {
+    expect(parse('text Linda are you getting Camilla?', ref)).toEqual({ type: 'text', rest: 'Linda are you getting Camilla?' })
+    expect(parse('Text Linda about pick up camilla: are you getting her?', ref)).toEqual({
+      type: 'text',
+      rest: 'Linda about pick up camilla: are you getting her?',
+    })
+  })
+
   it('parses cancel', () => {
     expect(parse('cancel paint the door', ref)).toEqual({ type: 'cancel', task: 'paint the door' })
     expect(parse('Cancelled paint the door.', ref)).toEqual({ type: 'cancel', task: 'paint the door' })

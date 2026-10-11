@@ -6,6 +6,7 @@ import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Dependency, Priority, Status, Task } from '../../types'
 import { googleCalendarDayUrl } from '../../utils/calendar'
 import { NumberField } from './NumberField'
+import { TextAbout } from './TextAbout'
 import { isFinished, isItemList, people as humans, privacyText, STATUS_LABEL, targetName } from '../../utils/tasks'
 
 /** ✓ done, ✕ canceled, ⏳ not finished yet. */
@@ -163,7 +164,7 @@ export function TaskDetails({ task }: { task: Task }) {
         </label>
         {(() => {
           const target = lists.find((l) => l.id === form.listId)
-          return target && <p className="privacy-note small">{privacyText(target, 'task')}</p>
+          return target && <p className="privacy-note small">{privacyText(target, 'task', app.household, app.uid)}</p>
         })()}
         <div className="grid2">
           <label>
@@ -318,6 +319,7 @@ export function TaskDetails({ task }: { task: Task }) {
         </div>
       )}
 
+      <TextAbout task={task} />
       {error && <p className="error">{error}</p>}
       {editable && (
         <>

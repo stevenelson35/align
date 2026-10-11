@@ -3,15 +3,31 @@ import { topoSort } from '../engine/graph'
 import { applyPreview, conflictsById, finish, type ShiftPreview } from '../engine/scheduling'
 import type { Context, Household, List, Priority, Role, Status, Task } from '../types'
 
-export function canEditTask(task: Pick<Task, 'visibility' | 'ownerId'>, uid: string, role: Role): boolean {
-  return role === 'member' && (task.visibility === 'family' || task.ownerId === uid)
+export type Shareable = Pick<Task, 'visibility' | 'ownerId' | 'sharedWith'>
+
+export function canEditTask(task: Shareable, uid: string, role: Role): boolean {
+  return role === 'member' && (task.visibility === 'family' || task.ownerId === uid || !!task.sharedWith?.includes(uid))
 }
 
-export const PRIVACY_ICON: Record<List['visibility'], string> = { private: '🔒', family: '👪' }
+export const PRIVACY_ICON: Record<List['visibility'], string> = { private: '🔒', family: '👪', shared: '👥' }
+
+/** "You, Linda and Grandma" for a sharedWith list (you first). */
+export function sharedNames(sharedWith: string[], household: Household, uid: string): string {
+  const names = [...sharedWith].sort((a, b) => (a === uid ? -1 : b === uid ? 1 : 0)).map((id) => (id === uid ? 'You' : targetName(id, household)))
+  return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+}
 
 /** Plain words for who can see something in this list ("task", "item", "note", "list"). */
-export function privacyText(list: Pick<List, 'visibility' | 'viewerVisible'>, noun: string): string {
+export function privacyText(
+  list: Pick<List, 'visibility' | 'viewerVisible' | 'sharedWith'>,
+  noun: string,
+  household?: Household,
+  uid?: string,
+): string {
   if (list.visibility === 'private') return `🔒 Only you can see this ${noun}.`
+  if (list.visibility === 'shared') {
+    return `👥 Shared: ${household && uid ? sharedNames(list.sharedWith ?? [], household, uid) : 'the people chosen'} can see this ${noun}.`
+  }
   return `👪 Everyone in the family can see this ${noun}${list.viewerVisible ? ', and so can viewers' : ''}.`
 }
 
@@ -34,7 +50,7 @@ export function waitingOn(t: Task, byId: Map<string, Task>): Task[] {
 }
 
 /** Color key from DESIGN.md §8: project lists are green regardless of visibility; finished is gray. */
-export function colorKey(task: Task, list: List | undefined): 'private' | 'family' | 'project' | 'done' {
+export function colorKey(task: Task, list: List | undefined): 'private' | 'family' | 'shared' | 'project' | 'done' {
   if (isFinished(task)) return 'done'
   if (list?.kind === 'project') return 'project'
   return task.visibility

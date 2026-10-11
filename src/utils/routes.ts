@@ -9,6 +9,8 @@ export type Route =
   | { view: 'list'; listId: string; timeline: boolean }
   | { view: 'boards' }
   | { view: 'board'; boardId: string }
+  /** A link to one task / item / note (e.g. in a text): opens it in its list. */
+  | { view: 'task'; taskId: string }
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent)
@@ -27,6 +29,9 @@ export function parseRoute(hash: string): Route {
     case 'board':
       if (parts[1]) return { view: 'board', boardId: parts[1] }
       break
+    case 'task':
+      if (parts[1]) return { view: 'task', taskId: parts[1] }
+      break
   }
   // Today is the start page.
   return { view: 'today' }
@@ -40,6 +45,8 @@ export function routeHash(route: Route): string {
       return `#/list/${encodeURIComponent(route.listId)}${route.timeline ? '/timeline' : ''}`
     case 'board':
       return `#/board/${encodeURIComponent(route.boardId)}`
+    case 'task':
+      return `#/task/${encodeURIComponent(route.taskId)}`
     default:
       return `#/${route.view}`
   }

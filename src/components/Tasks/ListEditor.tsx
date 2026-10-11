@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { createList, deleteList, updateList, type ListInput } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
-import { people } from '../../utils/tasks'
+import { people, sharedNames } from '../../utils/tasks'
 
 /** Create or edit a list/project. Visibility changes rewrite the copied fields on its tasks in the same batch. */
 export function ListEditor({ list, onClose }: { list: List | null; onClose: () => void }) {
@@ -18,6 +18,18 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
   const [busy, setBusy] = useState(false)
   const set = (patch: Partial<ListInput>) => setForm((f) => ({ ...f, ...patch }))
   const members = people(app.household, true)
+  // Anyone can be chosen for a shared list, viewers (grandparents) included; the owner always stays on it.
+  const everyone = people(app.household)
+  const owner = form.ownerId || app.uid
+  const chosen = new Set([owner, ...(form.sharedWith ?? [])])
+  const parents = (app.household.groups?.parents ?? []).filter((id) => app.household.members[id])
+  const toggle = (id: string) => {
+    if (id === owner) return
+    const next = new Set(chosen)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    set({ sharedWith: [...next] })
+  }
   // Only the owner may hand a list to someone else (rules), and private lists always belong to their owner.
   const canChangeOwner = list !== null && list.ownerId === app.uid && form.visibility === 'family'
 
@@ -25,7 +37,17 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const data = { ...form, name: form.name.trim(), viewerVisible: form.visibility === 'family' && form.viewerVisible }
+    const data = {
+      ...form,
+      name: form.name.trim(),
+      viewerVisible: form.visibility === 'family' && form.viewerVisible,
+      sharedWith: form.visibility === 'shared' ? [...chosen] : undefined,
+    }
+    if (data.visibility === 'shared' && chosen.size < 2) {
+      setError('Pick at least one other person to share with, or choose "Just me".')
+      setBusy(false)
+      return
+    }
     try {
       if (list) {
         await updateList(list, data, tasks)
@@ -77,8 +99,9 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
               value={form.visibility}
               onChange={(e) => set({ visibility: e.target.value as List['visibility'], ownerId: list?.ownerId ?? app.uid })}
             >
-              <option value="private">Just me</option>
-              <option value="family">Family</option>
+              <option value="private">🔒 Just me</option>
+              <option value="family">👪 Family</option>
+              <option value="shared">👥 Chosen people</option>
             </select>
           </label>
           <label>
@@ -101,6 +124,34 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
             </label>
           )}
         </div>
+        {form.visibility === 'shared' && (
+          <div className="share-picker">
+            <span className="label">Share with</span>
+            <div className="chips">
+              {parents.length > 0 && (
+                <button
+                  type="button"
+                  className="secondary small"
+                  onClick={() => set({ sharedWith: [...new Set([owner, ...parents])] })}
+                  title={`Just the parents: ${parents.map((id) => app.household.members[id].displayName).join(', ')}`}
+                >
+                  Parents
+                </button>
+              )}
+              {everyone.map(([id, m]) => (
+                <label key={id} className={`chip-toggle${chosen.has(id) ? ' on' : ''}`} title={id === owner ? 'The owner is always included' : ''}>
+                  <input type="checkbox" checked={chosen.has(id)} disabled={id === owner} onChange={() => toggle(id)} />
+                  {id === app.uid ? 'You' : m.displayName}
+                  {m.role === 'viewer' && ' (viewer)'}
+                </label>
+              ))}
+            </div>
+            <p className="muted small">
+              👥 {sharedNames([...chosen], app.household, app.uid)} will see this list and everything in it. Only people on it can open it.
+              {parents.length === 0 && ' (Set who the parents are in ⚙ Settings for a one-tap "Parents" choice.)'}
+            </p>
+          </div>
+        )}
         {form.visibility === 'family' && (
           <label className="inline">
             <input type="checkbox" checked={form.viewerVisible} onChange={(e) => set({ viewerVisible: e.target.checked })} />

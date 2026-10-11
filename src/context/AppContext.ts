@@ -1,7 +1,8 @@
 import { createContext } from 'react'
 import type { ShiftPreview } from '../engine/scheduling'
-import type { Household, HouseholdMember, List, Task } from '../types'
+import type { Household, HouseholdMember, List } from '../types'
 import type { Route } from '../utils/routes'
+import type { Shareable } from '../utils/tasks'
 
 export interface PendingShift {
   title: string
@@ -23,7 +24,7 @@ export interface AppState {
   /** Open the list editor (null = new list). */
   editList: (list: List | null) => void
   // Works for lists too: both carry visibility and ownerId.
-  canEdit: (item: Pick<Task, 'visibility' | 'ownerId'>) => boolean
+  canEdit: (item: Shareable) => boolean
   openChat: (text?: string) => void
 }
 

@@ -1,12 +1,40 @@
 import { useEffect, useState } from 'react'
-import { setDefaultVisibility } from '../../firebase/db'
+import { setDefaultVisibility, setParents, setPhone } from '../../firebase/db'
+import { people } from '../../utils/tasks'
 import { useApp } from '../../hooks/useApp'
 import type { Visibility } from '../../types'
 import { loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
 
 /** Your own settings. Default privacy is saved with your household entry (every device); the theme is per device. */
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
-  const { uid, member, isMember } = useApp()
+  const { uid, member, isMember, household } = useApp()
+  const [phone, setPhoneDraft] = useState(member.phone ?? '')
+  const [phoneNote, setPhoneNote] = useState<string | null>(null)
+  const parents = new Set(household.groups?.parents ?? [])
+  const adults = people(household, true)
+
+  async function savePhone() {
+    setError(null)
+    setPhoneNote(null)
+    try {
+      await setPhone(uid, phone)
+      setPhoneNote(phone.trim() ? 'Saved.' : 'Removed.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  async function toggleParent(id: string) {
+    const next = new Set(parents)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setError(null)
+    try {
+      await setParents([...next])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
   const [visibility, setVisibility] = useState<Visibility>(member.defaultVisibility ?? 'private')
   const [theme, setTheme] = useState<ThemeChoice>(loadTheme)
   const [error, setError] = useState<string | null>(null)
@@ -51,6 +79,44 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               {visibility === 'family' ? 'Quick adds go to the shared "Family Inbox" list.' : 'Quick adds go to your private "Inbox" list.'}
               {saved && ' Saved.'}
             </p>
+          </fieldset>
+        )}
+        {isMember && (
+          <fieldset className="setting">
+            <legend>Your mobile number</legend>
+            <p className="muted small">So others can use "text {member.displayName} …" in chat. Only household members see it.</p>
+            <div className="row">
+              <input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="+1 555 123 4567"
+                value={phone}
+                maxLength={24}
+                onChange={(e) => setPhoneDraft(e.target.value)}
+                aria-label="Your mobile number"
+              />
+              <button type="button" className="small" onClick={savePhone} disabled={(member.phone ?? '') === phone.trim()}>
+                Save
+              </button>
+            </div>
+            {phoneNote && <p className="muted small">{phoneNote}</p>}
+          </fieldset>
+        )}
+        {isMember && (
+          <fieldset className="setting">
+            <legend>Parents</legend>
+            <p className="muted small">
+              Who the "Parents" shortcut picks when you share a list with chosen people. The people on each shared list are always shown by name.
+            </p>
+            <div className="chips">
+              {adults.map(([id, m]) => (
+                <label key={id} className={`chip-toggle${parents.has(id) ? ' on' : ''}`}>
+                  <input type="checkbox" checked={parents.has(id)} onChange={() => toggleParent(id)} />
+                  {id === uid ? 'You' : m.displayName}
+                </label>
+              ))}
+            </div>
           </fieldset>
         )}
         <fieldset className="setting">
