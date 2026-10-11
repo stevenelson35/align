@@ -57,6 +57,14 @@ service cloud.firestore {
         && (!('phone' in after[uid]) || (after[uid].phone is string && after[uid].phone.size() <= 24));
     }
 
+    // Once someone is in the Parents group, only a parent can change who's in it (so a child can't opt in).
+    // While it's empty, any member can set it up.
+    function parentsChangeOk() {
+      let before = resource.data.get('groups', {}).get('parents', []);
+      let after = request.resource.data.get('groups', {}).get('parents', []);
+      return after == before || before.size() == 0 || request.auth.uid in before;
+    }
+
     function householdExists() {
       return exists(/databases/$(database)/documents/household/main);
     }
@@ -82,7 +90,8 @@ service cloud.firestore {
         && ownMemberEntryOnly()
         // groups: { parents: [uid, ...] } for the "Parents" sharing shortcut. Only a convenience: who can read a
         // shared list is always its own sharedWith list, shown by name when you share.
-        && (!('groups' in request.resource.data) || request.resource.data.groups is map);
+        && (!('groups' in request.resource.data) || request.resource.data.groups is map)
+        && parentsChangeOk();
     }
 
     // ---- Lists ----

@@ -1030,3 +1030,34 @@ a.button-link.primary-link {
   border-color: var(--color-family);
   color: white;
 }
+
+/* Radio rows in Settings: the "fill the width" input style made radios sit unevenly. */
+label.inline input[type='radio'] {
+  width: auto;
+  margin: 0;
+}
+.setting label.inline {
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+.chip-toggle.readonly {
+  cursor: default;
+  opacity: 0.85;
+}
+
+/* 💬 at the right end of a task / checklist row: text someone about it. */
+.row-action {
+  flex-shrink: 0;
+  align-self: center;
+  background: none;
+  color: var(--muted);
+  padding: 0.2rem 0.35rem;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+.row-action:hover,
+.row-action:focus-visible {
+  opacity: 1;
+  background: var(--bg);
+}

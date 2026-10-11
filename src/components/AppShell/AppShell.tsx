@@ -30,6 +30,7 @@ export function AppShell({ uid, household, member }: Props) {
   const [chat, setChat] = useState<{ open: boolean; draft: string; key: number }>({ open: false, draft: '', key: 0 })
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [textingId, setTextingId] = useState<string | null>(null)
   const openSettings = useCallback(() => {
     setSidebarOpen(false)
     setSettingsOpen(true)
@@ -55,8 +56,16 @@ export function AppShell({ uid, household, member }: Props) {
     (id: string | null) => {
       if (route.view === 'task') navigate(linked ? { view: 'list', listId: linked.listId, timeline: false } : { view: 'today' })
       selectTask(id)
+      setTextingId(null)
     },
     [route.view, linked, navigate],
+  )
+  const textAbout = useCallback(
+    (id: string) => {
+      choose(id)
+      setTextingId(id)
+    },
+    [choose],
   )
 
   const app = useMemo<AppState>(
@@ -69,12 +78,14 @@ export function AppShell({ uid, household, member }: Props) {
       navigate: go,
       selectedTaskId: shownTaskId,
       selectTask: choose,
+      textAbout,
+      textingId,
       proposeShift,
       editList: (list) => setListEditor({ list }),
       canEdit,
       openChat,
     }),
-    [uid, household, member, route, go, shownTaskId, choose, canEdit, openChat],
+    [uid, household, member, route, go, shownTaskId, choose, textAbout, textingId, canEdit, openChat],
   )
 
   const selectedTask = data.tasks.find((t) => t.id === shownTaskId)

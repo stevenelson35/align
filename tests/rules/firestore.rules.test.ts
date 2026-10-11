@@ -162,6 +162,10 @@ describe('household', () => {
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.steve.phone': '+1 555 010 0199' }))
     await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { groups: { parents: ['steve', 'wife'] } }))
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { groups: 'parents' }))
+    // Once set, only a parent can change who the parents are: the daughter can't opt in.
+    await assertFails(updateDoc(doc(db('daughter'), 'household/main'), { 'groups.parents': ['steve', 'wife', 'daughter'] }))
+    await assertSucceeds(updateDoc(doc(db('daughter'), 'household/main'), { 'members.daughter.displayName': 'Kiddo' }))
+    await assertSucceeds(updateDoc(doc(db('steve'), 'household/main'), { 'groups.parents': ['steve'] }))
     await assertFails(updateDoc(doc(db('grandma'), 'household/main'), { groups: { parents: ['grandma'] } }))
   })
 

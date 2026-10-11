@@ -11,6 +11,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const [phone, setPhoneDraft] = useState(member.phone ?? '')
   const [phoneNote, setPhoneNote] = useState<string | null>(null)
   const parents = new Set(household.groups?.parents ?? [])
+  // Matches the rules: anyone may set the group up while it's empty; after that only a parent may change it.
+  const canSetParents = parents.size === 0 || parents.has(uid)
   const adults = people(household, true)
 
   async function savePhone() {
@@ -111,12 +113,19 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             </p>
             <div className="chips">
               {adults.map(([id, m]) => (
-                <label key={id} className={`chip-toggle${parents.has(id) ? ' on' : ''}`}>
-                  <input type="checkbox" checked={parents.has(id)} onChange={() => toggleParent(id)} />
+                <label key={id} className={`chip-toggle${parents.has(id) ? ' on' : ''}${canSetParents ? '' : ' readonly'}`}>
+                  <input type="checkbox" checked={parents.has(id)} disabled={!canSetParents} onChange={() => toggleParent(id)} />
                   {id === uid ? 'You' : m.displayName}
                 </label>
               ))}
             </div>
+            <p className="muted small">
+              {canSetParents
+                ? parents.size === 0
+                  ? 'Tick yourself (and the other parent). Once set, only parents can change this.'
+                  : 'Only parents can change this.'
+                : 'Only a parent can change who the parents are.'}
+            </p>
           </fieldset>
         )}
         <fieldset className="setting">

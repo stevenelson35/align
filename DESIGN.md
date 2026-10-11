@@ -371,6 +371,11 @@ firestore.indexes.json
     - No Align messages or push notifications: replies are normal texts.
   - Tests: 56 unit (texting helpers, parser), 30 rules (sharing, phone, groups). Checked with Playwright across three accounts.
 
+- **2026-10-11 (later):**
+  - **Who can change the Parents group:** the rules (`parentsChangeOk`, tested) let anyone set it while it's empty; after that, only someone already in it can change it, so a child can't opt in. Settings shows the chips read-only to anyone else.
+  - **Text about this:** always shown in the task, item and note panels; with no one else in the household yet it explains why and offers Copy. A **💬** at the right end of each task row and checklist row opens the item with the form ready (`AppState.textAbout`/`textingId`), scrolled into view with the cursor in the message.
+  - Settings radio rows are aligned.
+
 ### Next stages
 7. **First deploy (mostly done):** re-upload with `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` after each change. Confirm the permissions-race fix in production.
 8. Polish ideas, in no particular order: code-split the Firebase SDK, a settings screen (weekly tokens, pets), recurring tasks (§3.2), and committing the Playwright smoke tests.

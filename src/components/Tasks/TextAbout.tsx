@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../../hooks/useApp'
 import type { Task } from '../../types'
 import { people } from '../../utils/tasks'
@@ -9,14 +9,21 @@ import { smsUrl, taskLink, textBody, whenText } from '../../utils/text'
  * link filled in, and you press Send. A real text from your phone, so replies come back as normal texts.
  */
 export function TextAbout({ task }: { task: Task }) {
-  const { household, uid } = useApp()
-  const [open, setOpen] = useState(false)
+  const { household, uid, textingId } = useApp()
+  const [open, setOpen] = useState(textingId === task.id) // the 💬 on a list row opens it ready to write
   const others = people(household).filter(([id]) => id !== uid)
   const firstWithPhone = others.find(([, m]) => m.phone)?.[0] ?? others[0]?.[0] ?? ''
   const [to, setTo] = useState(firstWithPhone)
   const [message, setMessage] = useState('')
   const [copied, setCopied] = useState(false)
-  if (others.length === 0) return null
+  const boxRef = useRef<HTMLTextAreaElement>(null)
+  // Opened from a list row's 💬: the form sits at the bottom of a long panel, so bring it into view, ready to type.
+  const fromRow = textingId === task.id
+  useEffect(() => {
+    if (!fromRow || !boxRef.current) return
+    boxRef.current.scrollIntoView({ block: 'center' })
+    boxRef.current.focus({ preventScroll: true })
+  }, [fromRow])
 
   const body = textBody(message, { title: task.title, when: whenText(task), link: taskLink(task.id) })
   const phone = household.members[to]?.phone
@@ -29,7 +36,13 @@ export function TextAbout({ task }: { task: Task }) {
       ) : (
         <>
           <span className="label">Text about this</span>
-          <div className="row">
+          {others.length === 0 && (
+            <p className="muted small">
+              No one else has an Align account yet. Once they do, and add their mobile number in ⚙ Settings, you can text them from here.
+              Meanwhile you can copy the text below.
+            </p>
+          )}
+          <div className="row" hidden={others.length === 0}>
             <select value={to} onChange={(e) => setTo(e.target.value)} aria-label="Text to">
               {others.map(([id, m]) => (
                 <option key={id} value={id}>
@@ -39,7 +52,7 @@ export function TextAbout({ task }: { task: Task }) {
               ))}
             </select>
           </div>
-          <textarea rows={2} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Your message (optional)" aria-label="Message" />
+          <textarea ref={boxRef} rows={2} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Your message (optional)" aria-label="Message" />
           <pre className="text-preview small">{body}</pre>
           <div className="row">
             {phone ? (
@@ -47,7 +60,9 @@ export function TextAbout({ task }: { task: Task }) {
                 📱 Send text
               </a>
             ) : (
-              <span className="muted small">{household.members[to]?.displayName} hasn't added a mobile number in ⚙ Settings yet.</span>
+              others.length > 0 && (
+                <span className="muted small">{household.members[to]?.displayName} hasn't added a mobile number in ⚙ Settings yet.</span>
+              )
             )}
             <button
               type="button"

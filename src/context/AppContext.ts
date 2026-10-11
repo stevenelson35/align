@@ -19,6 +19,10 @@ export interface AppState {
   navigate: (route: Route) => void
   selectedTaskId: string | null
   selectTask: (id: string | null) => void
+  /** Opens a task / item with its "💬 Text about this" form showing (the 💬 on list rows). */
+  textAbout: (taskId: string) => void
+  /** The task whose text form should start open, if any. */
+  textingId: string | null
   /** Show a shift preview; nothing is written until the user applies it (DESIGN.md §6.3). */
   proposeShift: (shift: PendingShift) => void
   /** Open the list editor (null = new list). */

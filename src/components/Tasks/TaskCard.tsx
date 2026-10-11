@@ -13,7 +13,7 @@ interface Props {
 }
 
 export function TaskCard({ task, showList = true, onTicked }: Props) {
-  const { household, selectTask, selectedTaskId, canEdit } = useApp()
+  const { household, selectTask, selectedTaskId, canEdit, textAbout } = useApp()
   const { lists, conflicts, taskById, dependents } = useData()
   const list = lists.find((l) => l.id === task.listId)
   const conflict = conflicts.get(task.id)
@@ -96,6 +96,18 @@ export function TaskCard({ task, showList = true, onTicked }: Props) {
           {conflict && <span className="badge danger">⚠ {conflict}</span>}
         </div>
       </div>
+      <button
+        type="button"
+        className="row-action"
+        title="Text someone about this"
+        aria-label={`Text someone about ${task.title}`}
+        onClick={(e) => {
+          e.stopPropagation()
+          textAbout(task.id)
+        }}
+      >
+        💬
+      </button>
     </article>
   )
 }

@@ -69,6 +69,15 @@ export function ChecklistView({ list }: { list: List }) {
               {t.title}
               {t.notes && <span className="muted small"> · {t.notes.split('\n')[0]}</span>}
             </button>
+            <button
+              type="button"
+              className="row-action"
+              title="Text someone about this"
+              aria-label={`Text someone about ${t.title}`}
+              onClick={() => app.textAbout(t.id)}
+            >
+              💬
+            </button>
           </li>
         ))}
       </ul>
