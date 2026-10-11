@@ -357,6 +357,8 @@ firestore.indexes.json
   - **Shown:** 🔒 on private lists in the menu and on the list badge of private tasks in mixed views. List badges say "🔒 Private" or "👪 Family". There's a color key on the task views. The task and item panels say "🔒 Only you can see this task" or "👪 Everyone in the family can see this…", following the chosen list. Chat says "Added … to Inbox (🔒 private)".
   - Tests: 48 unit, 24 rules. Checked with Playwright.
 
+- **2026-10-10: Google Calendar link:** next to ↻ Refresh calendar (Today, and the calendar list) is **📅 Google Calendar ↗**, opening today's day view in a new tab (members only). After you open Google Calendar from there, coming back to Align (the tab becomes visible again) refreshes the calendar automatically; the script's one-minute skip still applies. An imported event's task panel has **Open in Google Calendar ↗** for that event's day. `CalendarRefresh` became `CalendarActions`; links are built by `utils/calendar.ts`. The sync script also stores each event's own page (`htmlLink`) as `calendar.link`, so the panel's link opens the event itself (falling back to the day for tasks synced by an older script). `sameSynced_` compares with sorted keys (`stableJson_`), so a map read back in another key order isn't rewritten every run. Tests: 51 unit, plus the calendar emulator run.
+
 ### Next stages
 7. **First deploy (mostly done):** re-upload with `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` after each change. Confirm the permissions-race fix in production.
 8. Polish ideas, in no particular order: code-split the Firebase SDK, a settings screen (weekly tokens, pets), recurring tasks (§3.2), and committing the Playwright smoke tests.

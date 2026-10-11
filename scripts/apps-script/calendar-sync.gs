@@ -213,6 +213,8 @@ function eventToTask_(ev, fmt) {
     calendar.time = fmt.time(start) + '–' + fmt.time(end)
   }
   if (ev.location) calendar.location = ev.location
+  // The event's own page in Google Calendar, for Align's "Open in Google Calendar" link.
+  if (ev.htmlLink) calendar.link = ev.htmlLink
   return {
     docId: 'gcal_' + ev.id.replace(/[^A-Za-z0-9_@.-]/g, '_'),
     fields: {
@@ -226,8 +228,27 @@ function eventToTask_(ev, fmt) {
 
 function sameSynced_(a, b) {
   return SYNCED_FIELDS.every(function (f) {
-    return JSON.stringify(a[f]) === JSON.stringify(b[f])
+    return stableJson_(a[f]) === stableJson_(b[f])
   })
+}
+
+/** JSON with object keys sorted, so a map read back from Firestore in another key order still compares equal. */
+function stableJson_(v) {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v)
+  if (Array.isArray(v)) return '[' + v.map(stableJson_).join(',') + ']'
+  return (
+    '{' +
+    Object.keys(v)
+      .filter(function (k) {
+        return v[k] !== undefined
+      })
+      .sort()
+      .map(function (k) {
+        return JSON.stringify(k) + ':' + stableJson_(v[k])
+      })
+      .join(',') +
+    '}'
+  )
 }
 
 /**

@@ -2,7 +2,7 @@ import { today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import { isForToday } from '../../utils/tasks'
 import { TimelineView } from '../Dependencies/TimelineView'
-import { CalendarRefresh } from '../Tasks/CalendarRefresh'
+import { CalendarActions } from '../Tasks/CalendarActions'
 import { ChecklistView } from '../Tasks/ChecklistView'
 import { CombinedView } from '../Tasks/CombinedView'
 import { NotesView } from '../Tasks/NotesView'
@@ -27,7 +27,7 @@ export function MainView() {
       const day = today()
       // Done ones are included so "Any status" / "Done" can show them; "Not done" (the default) hides them.
       return (
-        <CombinedView key="today" title="Today" tasks={tasks.filter((t) => isForToday(t, day, true))} actions={<CalendarRefresh />} />
+        <CombinedView key="today" title="Today" tasks={tasks.filter((t) => isForToday(t, day, true))} actions={<CalendarActions />} />
       )
     }
     case 'list': {

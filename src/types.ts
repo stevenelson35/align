@@ -75,7 +75,7 @@ export interface Task {
   dependsOn: Dependency[]
   conflict?: string
   /** Set by the Google Calendar sync; title and dates are overwritten by it (DESIGN.md §5.5). */
-  calendar?: { eventId: string; time?: string; location?: string }
+  calendar?: { eventId: string; time?: string; location?: string; /** The event's page in Google Calendar. */ link?: string }
 
   createdBy: string
   /** Firestore timestamp; null until the server confirms a new doc. Orders checklist items as added. */

@@ -49,8 +49,23 @@ describe('eventToTask_', () => {
     expect(before.docId).toBe('gcal_r_20261012T170000Z')
   })
 
+  it("keeps the event's Google Calendar link", () => {
+    const ev = { id: 'v', summary: 'Vet', start: { date: '2026-10-20' }, end: { date: '2026-10-21' }, htmlLink: 'https://www.google.com/calendar/event?eid=abc' }
+    expect(eventToTask(ev).fields.calendar).toEqual({ eventId: 'v', link: 'https://www.google.com/calendar/event?eid=abc' })
+  })
+
   it('names untitled events', () => {
     expect(eventToTask({ id: 'x', start: { date: '2026-10-01' }, end: { date: '2026-10-02' } }).fields.title).toBe('(no title)')
+  })
+})
+
+describe('sameSynced_', () => {
+  const same = gs.sameSynced_ as (a: object, b: object) => boolean
+  it('ignores the key order of the calendar map (Firestore may return it differently)', () => {
+    const a = { title: 'T', startDate: '2026-10-20', durationDays: 1, calendar: { eventId: 'e', time: '9:00 AM', link: 'L' } }
+    const b = { title: 'T', startDate: '2026-10-20', durationDays: 1, calendar: { link: 'L', eventId: 'e', time: '9:00 AM' } }
+    expect(same(a, b)).toBe(true)
+    expect(same(a, { ...b, calendar: { ...b.calendar, link: 'other' } })).toBe(false)
   })
 })
 

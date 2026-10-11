@@ -4,6 +4,7 @@ import { wouldCreateCycle } from '../../engine/graph'
 import { deleteTask, updateTask, type TaskInput } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Dependency, Priority, Status, Task } from '../../types'
+import { googleCalendarDayUrl } from '../../utils/calendar'
 import { NumberField } from './NumberField'
 import { isFinished, isItemList, people as humans, privacyText, STATUS_LABEL, targetName } from '../../utils/tasks'
 
@@ -131,7 +132,13 @@ export function TaskDetails({ task }: { task: Task }) {
       {task.calendar && (
         <p className="calendar-note small">
           📅 From the family Google Calendar{task.calendar.time && ` · ${task.calendar.time}`}
-          {task.calendar.location && ` · ${task.calendar.location}`}. The sync (every 15 minutes, or ↻ Refresh calendar) keeps the title and dates in step with
+          {task.calendar.location && ` · ${task.calendar.location}`}.{' '}
+          {/* The event itself when the sync stored its link (newer script), otherwise that day. */}
+          {(task.calendar.link || task.startDate) && (
+            <a href={task.calendar.link ?? googleCalendarDayUrl(task.startDate!)} target="_blank" rel="noopener noreferrer">
+              Open in Google Calendar ↗
+            </a>
+          )} The sync (every 15 minutes, or ↻ Refresh calendar) keeps the title and dates in step with
           the calendar; everything else here is yours to edit.
         </p>
       )}

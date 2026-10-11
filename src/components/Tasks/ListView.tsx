@@ -5,7 +5,7 @@ import { useApp, useData } from '../../hooks/useApp'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { List } from '../../types'
 import { isFinished, sortTasks } from '../../utils/tasks'
-import { CalendarRefresh } from './CalendarRefresh'
+import { CalendarActions } from './CalendarActions'
 import { ListHeader } from './ListHeader'
 import { TaskCard } from './TaskCard'
 
@@ -49,7 +49,7 @@ export function ListView({ list }: { list: List }) {
   return (
     <section>
       <ListHeader list={list}>
-        {listTasks.some((t) => t.calendar) && <CalendarRefresh />}
+        {listTasks.some((t) => t.calendar) && <CalendarActions />}
         {list.kind === 'project' && (
           <>
             <button type="button" className="secondary small" onClick={() => app.navigate({ view: 'list', listId: list.id, timeline: true })}>

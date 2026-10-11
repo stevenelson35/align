@@ -31,6 +31,7 @@ const timed = (id, summary, offset, hour, location) => ({
   id,
   summary,
   location,
+  htmlLink: `https://www.google.com/calendar/event?eid=${id}`,
   start: { dateTime: `${dayStr(offset)}T${String(hour).padStart(2, '0')}:00:00-05:00` },
   end: { dateTime: `${dayStr(offset)}T${String(hour + 1).padStart(2, '0')}:00:00-05:00` },
 })
@@ -109,6 +110,7 @@ let tasks = await imported()
 check(tasks.length === 4 && tasks.every((t) => t.createdBy === 'calendar-bot' && t.visibility === 'family'), 'tasks land in the family list as the bot')
 check(tasks.find((t) => t.title === 'Lake trip')?.durationDays === 3, 'all-day trip spans 3 days')
 check(/3:00\s?PM/.test(tasks.find((t) => t.title === 'Vet: Dog 1')?.calendar.time ?? ''), 'timed event keeps its time in the calendar zone')
+check(tasks.find((t) => t.title === 'Vet: Dog 1')?.calendar.link === 'https://www.google.com/calendar/event?eid=vet1', "the event's Google Calendar link is stored")
 
 // A family member completes the vet task and adds a note; then the event moves and piano #2 is cancelled.
 const vet = tasks.find((t) => t.title === 'Vet: Dog 1')

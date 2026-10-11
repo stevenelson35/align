@@ -980,3 +980,18 @@ button.avatar {
 .setting p {
   margin: 0;
 }
+
+/* A link that looks like a small secondary button (e.g. "📅 Google Calendar ↗"). */
+a.button-link {
+  display: inline-block;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  text-decoration: none;
+}
+a.button-link:hover {
+  border-color: var(--muted);
+}

@@ -60,6 +60,8 @@ Align can ask the script to sync right away. The button appears on **Today** and
 5. **Give it to Align:** add a line to `.env.production.local` in the align repo: `VITE_CALENDAR_SYNC_URL=https://script.google.com/macros/s/…/exec`. Then rebuild and upload: `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` (in a terminal, for the password prompt).
 6. **Try it:** in Align, open **Today** and tap **↻ Refresh calendar**. You'll see "Calendar refreshed: N new, N changed, N removed" or "Calendar is up to date".
 
+**Event links (2026-10-10):** the script also saves each event's Google Calendar link, so an event's task panel in Align can open the event itself. After you deploy this version, the next sync adds the link to every imported event (a one-time update of each one).
+
 **Updating the script later:** after pasting new code, use **Deploy → Manage deployments → ✏ (edit) → Version: New version → Deploy**. That keeps the same URL. A *New deployment* would give a new URL, which you'd then have to put in `.env.production.local` again.
 
 ## Testing locally
