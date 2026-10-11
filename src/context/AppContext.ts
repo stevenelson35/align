@@ -3,10 +3,12 @@ import type { ShiftPreview } from '../engine/scheduling'
 import type { Household, HouseholdMember, List } from '../types'
 import type { Route } from '../utils/routes'
 import type { Shareable } from '../utils/tasks'
+import type { DependencyChange } from '../utils/project'
 
 export interface PendingShift {
   title: string
   preview: ShiftPreview
+  dependencies?: DependencyChange[]
 }
 
 /** UI state shared by the shell, views and chat. */

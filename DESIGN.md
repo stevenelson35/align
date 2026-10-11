@@ -332,10 +332,18 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
+### Local Changes Pending Deployment (2026-10-11)
+- Task-panel prerequisite choices default to the selected project; **Show other tasks** includes visible tasks outside it. The top header now has **Delete** beside Save, using the existing confirmation.
+- The task panel can quick-add an item to any editable checklist without saving or closing the task. Choose the checklist, enter the item, then **Add item** (or Enter). Items keep the checklist's privacy and stay out of scheduling.
+- Project task creation defaults an unset start date to today. Moving an undated task into a project also defaults to today; existing dates are retained.
+- Project quick-add offers **Next task follows [last task added]**, initially off. The option applies to additions in the current visit; a linked addition offers a schedule preview if its date needs moving.
+- Project views have prerequisite / priority / date ordering. Prerequisite order breaks ties by priority and date. **Select order** enables numbered selection checkboxes; Ctrl/Cmd-click can start selection on desktop. Select tasks in sequence, then preview and confirm prerequisite links and date moves. Existing prerequisites and offsets are retained; loops are rejected. Canceling the preview writes nothing. A changed prerequisite list prevents applying a stale preview.
+- No new stored fields or Firestore rules are needed. Browser smoke checks passed against the emulators at 390×800 and 1280×900; the live app has not been updated.
+
 ### Where things stand (2026-10-11)
 - **Everything below is built, tested, committed, pushed and deployed.** `main` = `1595fc9`; the live site (https://align.itsallonesong.com) serves that build, and the Firestore rules from that commit are deployed to `align-a32c1`. The calendar sync script with event links is deployed in Apps Script.
 - **In use by:** Steve only so far. Linda's and Camilla's accounts haven't been created (see "Waiting on the user").
-- **Tests:** 56 unit (`npm test`), 30 security-rule (`npm run test:rules`), and the calendar script's emulator run (`npm run test:calendar`, 17 checks). Each feature was also checked in a phone-sized browser with Playwright against the emulators (scripts are throwaway, kept outside the repo; see "How to work on it").
+- **Tests:** 69 unit (`npm test`), including project linking, date defaults and batched writes; 30 security-rule (`npm run test:rules`), and the calendar script's emulator run (`npm run test:calendar`, 17 checks). Each feature was also checked in a phone-sized browser with Playwright against the emulators (scripts are throwaway, kept outside the repo; see "How to work on it").
 
 ### What's built (by area; details in the spec sections)
 - **Tasks and lists** (§5, §8, §10): task lists, projects (dependencies, scheduling engine, timeline, shift previews, conflicts), checklists, notes. Statuses To do / Doing / Done / Canceled. Today / Everything / My / Family / Work views with filters, sorts, color key, Ready-to-do filter. Quick add that keeps focus; finished items crossed off with remembered hide toggles.

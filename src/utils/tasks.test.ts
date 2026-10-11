@@ -83,6 +83,15 @@ describe('time of day', () => {
   })
 })
 
+describe('project task ordering', () => {
+  it('puts prerequisites first even when their dependent has higher priority', () => {
+    const tasks = [t({ id: 'install', priority: 1, dependsOn: [{ taskId: 'buy', offsetDays: 0 }] }),
+      t({ id: 'buy', priority: 3 }), t({ id: 'call', priority: 2 })]
+    expect(sortTasks(tasks, 'dependency').map((task) => task.id)).toEqual(['call', 'buy', 'install'])
+    expect(sortTasks(tasks, 'priority').map((task) => task.id)).toEqual(['install', 'call', 'buy'])
+  })
+})
+
 describe('canceled and dependencies', () => {
   it('treats done and canceled as finished everywhere', () => {
     const canceled = t({ id: 'c', status: 'canceled', startDate: day })

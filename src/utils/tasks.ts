@@ -102,7 +102,7 @@ function dateKey(t: Task): string {
 }
 
 export function sortTasks(tasks: Task[], by: SortKey): Task[] {
-  if (by === 'dependency') return topoSort(tasks)
+  if (by === 'dependency') return topoSort(sortTasks(tasks, 'priority'))
   const sorted = [...tasks]
   sorted.sort((a, b) =>
     by === 'priority'

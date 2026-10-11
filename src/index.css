@@ -221,12 +221,14 @@ fieldset {
 
 .form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
 }
 
 .form label,
 .label {
   display: grid;
+  min-width: 0;
   gap: 0.25rem;
   font-size: 0.85rem;
   color: var(--muted);
@@ -265,7 +267,7 @@ label.inline input[type='checkbox'] {
 
 .grid2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.75rem;
   align-items: end;
 }
@@ -879,6 +881,34 @@ table.moves td {
   background: var(--surface);
   padding: 0.25rem 0;
   margin: -0.25rem 0 0.25rem;
+}
+
+.task-details summary {
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.task-details .meet {
+  flex-wrap: wrap;
+}
+
+.task-details label.row {
+  display: flex;
+  align-items: center;
+}
+
+.task-details label.row input[type='checkbox'],
+.add-task + label.row input[type='checkbox'],
+.ordered-task input[type='checkbox'] {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.ordered-task {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: center;
 }
 
 /* Checklists: items to tick off; checked ones stay, crossed off. */

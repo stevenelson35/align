@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { finish, meetDate, shiftForward } from '../../engine/scheduling'
 import { wouldCreateCycle } from '../../engine/graph'
-import { deleteTask, updateTask, type TaskInput } from '../../firebase/db'
+import { createTask, deleteTask, updateTask, type TaskInput } from '../../firebase/db'
+import { today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Dependency, Priority, Status, Task } from '../../types'
 import { googleCalendarDayUrl } from '../../utils/calendar'
@@ -21,9 +22,14 @@ export function TaskDetails({ task }: { task: Task }) {
   const editable = app.canEdit(task)
   const [form, setForm] = useState(task)
   const [newDep, setNewDep] = useState({ taskId: '', offsetDays: 0 })
+  const [showOtherTasks, setShowOtherTasks] = useState(false)
   const [meetBy, setMeetBy] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [itemListId, setItemListId] = useState('')
+  const [itemTitle, setItemTitle] = useState('')
+  const [addingItem, setAddingItem] = useState(false)
+  const [itemMessage, setItemMessage] = useState('')
 
   const set = (patch: Partial<Task>) => setForm((f) => ({ ...f, ...patch }))
   const byId = new Map(tasks.map((t) => [t.id, t]))
@@ -35,7 +41,10 @@ export function TaskDetails({ task }: { task: Task }) {
   const targets = [...people.map(([id, m]) => ({ id, name: m.displayName })), ...app.household.pets.map((p) => ({ id: p.id, name: p.name }))]
   // Lists this task can move to: ones the user can edit.
   const listChoices = lists.filter((l) => app.canEdit(l) && !isItemList(l))
-  const depChoices = tasks.filter((t) => t.id !== task.id && !form.dependsOn.some((d) => d.taskId === t.id))
+  const itemLists = lists.filter((l) => app.canEdit(l) && l.kind === 'checklist')
+  const inProject = lists.find((l) => l.id === form.listId)?.kind === 'project'
+  const depChoices = tasks.filter((t) => t.id !== task.id && !form.dependsOn.some((d) => d.taskId === t.id)
+    && (!inProject || showOtherTasks || t.listId === form.listId))
 
   async function save(e: FormEvent) {
     e.preventDefault()
@@ -75,6 +84,23 @@ export function TaskDetails({ task }: { task: Task }) {
       setError(err instanceof Error ? err.message : String(err))
     }
     setBusy(false)
+  }
+
+  async function addItem() {
+    const list = itemLists.find((l) => l.id === itemListId)
+    if (!list || !itemTitle.trim() || addingItem) return
+    setAddingItem(true)
+    setItemMessage('')
+    try {
+      await createTask(list, { title: itemTitle.trim(), priority: 2, status: 'todo', context: list.defaultContext,
+        durationDays: 1, dependsOn: [] }, app.uid)
+      setItemMessage(`Added ${itemTitle.trim()} to ${list.name}.`)
+      setItemTitle('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setAddingItem(false)
+    }
   }
 
   function addDependency() {
@@ -121,9 +147,10 @@ export function TaskDetails({ task }: { task: Task }) {
       <header className="row panel-header">
         <h3 className="grow">{editable ? 'Edit task' : 'Task'}</h3>
         {editable && (
-          <button type="submit" className="small" disabled={busy}>
-            Save
-          </button>
+          <>
+            <button type="submit" className="small" disabled={busy}>Save</button>
+            <button type="button" className="danger small" onClick={remove} disabled={busy}>Delete</button>
+          </>
         )}
         <button type="button" className="link" onClick={() => app.selectTask(null)} aria-label="Close">
           ✕
@@ -154,7 +181,12 @@ export function TaskDetails({ task }: { task: Task }) {
         </label>
         <label>
           List
-          <select value={form.listId} onChange={(e) => set({ listId: e.target.value })}>
+          <select value={form.listId} onChange={(e) => {
+            const listId = e.target.value
+            set({ listId, startDate: form.startDate || (lists.find((l) => l.id === listId)?.kind === 'project' ? today() : undefined) })
+            setNewDep({ taskId: '', offsetDays: 0 })
+            setShowOtherTasks(false)
+          }}>
             {(listChoices.some((l) => l.id === task.listId) ? listChoices : [...listChoices, ...lists.filter((l) => l.id === task.listId)]).map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name} ({l.visibility})
@@ -166,6 +198,27 @@ export function TaskDetails({ task }: { task: Task }) {
           const target = lists.find((l) => l.id === form.listId)
           return target && <p className="privacy-note small">{privacyText(target, 'task', app.household, app.uid)}</p>
         })()}
+        {itemLists.length > 0 && (
+          <details>
+            <summary>Add a shopping / checklist item</summary>
+            <label>
+              Checklist
+              <select value={itemListId} onChange={(e) => setItemListId(e.target.value)}>
+                <option value="">Choose a list…</option>
+                {itemLists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            </label>
+            <label>
+              Item
+              <input value={itemTitle} onChange={(e) => setItemTitle(e.target.value)} onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); void addItem() }
+              }} />
+            </label>
+            <button type="button" className="secondary small" onClick={addItem}
+              disabled={addingItem || !itemListId || !itemTitle.trim()}>Add item</button>
+            {itemMessage && <p className="small" role="status">{itemMessage}</p>}
+          </details>
+        )}
         <div className="grid2">
           <label>
             Priority
@@ -295,6 +348,15 @@ export function TaskDetails({ task }: { task: Task }) {
               Add
             </button>
           </div>
+          {inProject && (
+            <label className="row small">
+              <input type="checkbox" checked={showOtherTasks} onChange={(e) => {
+                setShowOtherTasks(e.target.checked)
+                setNewDep({ taskId: '', offsetDays: 0 })
+              }} />
+              Show other tasks
+            </label>
+          )}
         </div>
       </fieldset>
 

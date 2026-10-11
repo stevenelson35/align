@@ -4,6 +4,7 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  getDoc,
   onSnapshot,
   query,
   serverTimestamp,
@@ -19,6 +20,8 @@ import {
 import type { Move } from '../engine/scheduling'
 import type { Board, BoardItem, Household, ItemStatus, List, Role, Task, Visibility, Vote } from '../types'
 import { db } from './config'
+import { today } from '../engine/dates'
+import type { DependencyChange } from '../utils/project'
 
 export const householdRef = doc(db, 'household', 'main')
 
@@ -201,6 +204,7 @@ export async function createTask(list: List, input: TaskInput, uid: string) {
   const { sharedWith, ...copied } = copiedFields(list)
   await setDoc(ref, {
     ...input,
+    ...(list.kind === 'project' && !input.startDate ? { startDate: today() } : {}),
     listId: list.id,
     ...copied,
     ...(list.visibility === 'shared' ? { sharedWith } : {}),
@@ -212,7 +216,11 @@ export async function createTask(list: List, input: TaskInput, uid: string) {
 }
 
 /** Patch a task. Undefined values clear the field. Moving to another list re-copies that list's fields. */
-export function updateTask(id: string, patch: Partial<TaskInput>, moveTo?: List) {
+export async function updateTask(id: string, patch: Partial<TaskInput>, moveTo?: List) {
+  if (moveTo?.kind === 'project' && !patch.startDate) {
+    const existing = await getDoc(doc(db, 'tasks', id))
+    patch = { ...patch, startDate: existing.data()?.startDate || today() }
+  }
   const data: Record<string, unknown> = { updatedAt: serverTimestamp() }
   for (const [k, v] of Object.entries(patch)) data[k] = v === undefined ? deleteField() : v
   if (moveTo) Object.assign(data, { listId: moveTo.id, ...copiedFields(moveTo) })
@@ -224,14 +232,16 @@ export function deleteTask(id: string) {
 }
 
 /** Apply a shift preview plus refreshed conflict flags as one batch (DESIGN.md §6.3). */
-export function applySchedule(moves: Move[], conflicts: Map<string, string | undefined>) {
+export function applySchedule(moves: Move[], conflicts: Map<string, string | undefined>, dependencies: DependencyChange[] = []) {
   const batch = writeBatch(db)
-  const ids = new Set([...moves.map((m) => m.id), ...conflicts.keys()])
+  const ids = new Set([...moves.map((m) => m.id), ...conflicts.keys(), ...dependencies.map((change) => change.id)])
   for (const id of ids) {
     const m = moves.find((x) => x.id === id)
     const data: Record<string, unknown> = { updatedAt: serverTimestamp() }
     if (m) data.startDate = m.to
     if (m?.durationDays) data.durationDays = m.durationDays
+    const dependency = dependencies.find((change) => change.id === id)
+    if (dependency) data.dependsOn = dependency.after
     if (conflicts.has(id)) data.conflict = conflicts.get(id) ?? deleteField()
     batch.update(doc(db, 'tasks', id), data)
   }
