@@ -16,7 +16,7 @@ export function BottomNav({ onChat }: { onChat: () => void }) {
         <button
           key={i.label}
           type="button"
-          className={route.view === i.route.view || (i.route.view === 'boards' && route.view === 'board') ? 'active' : ''}
+          className={route.view === i.route.view || (i.route.view === 'boards' && route.view === 'board') || (i.route.view === 'today' && route.view === 'day') ? 'active' : ''}
           onClick={() => navigate(i.route)}
         >
           {i.label}

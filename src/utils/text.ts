@@ -15,6 +15,11 @@ export function smsUrl(phone: string, body: string): string {
   return `sms:${phoneDigits(phone)}?&body=${encodeURIComponent(body)}`
 }
 
+/** What to send for an item: a link's own address, or a link that opens the task / item / note in Align. */
+export function shareLink(t: Pick<Task, 'id' | 'url'>): string {
+  return t.url ?? taskLink(t.id)
+}
+
 /** A link that opens this task (or checklist item / note) in Align. */
 export function taskLink(id: string, base = `${window.location.origin}${window.location.pathname}`): string {
   return `${base}#/task/${encodeURIComponent(id)}`

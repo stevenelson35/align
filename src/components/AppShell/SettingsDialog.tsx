@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { setDefaultVisibility, setParents, setPhone } from '../../firebase/db'
 import { people } from '../../utils/tasks'
+import { githubToken, setGithubToken, testToken } from '../../blog/github'
 import { useApp } from '../../hooks/useApp'
 import type { Visibility } from '../../types'
 import { loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
@@ -9,6 +10,22 @@ import { loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../uti
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const { uid, member, isMember, household } = useApp()
   const [phone, setPhoneDraft] = useState(member.phone ?? '')
+  const [token, setToken] = useState('')
+  const [hasToken, setHasToken] = useState(!!githubToken())
+  const [tokenNote, setTokenNote] = useState<string | null>(null)
+
+  async function saveToken() {
+    setGithubToken(token)
+    setToken('')
+    setHasToken(true)
+    setTokenNote('Saved on this device. Checking it…')
+    try {
+      await testToken()
+      setTokenNote('Saved on this device, and GitHub accepts it.')
+    } catch (err) {
+      setTokenNote(err instanceof Error ? err.message : String(err))
+    }
+  }
   const [phoneNote, setPhoneNote] = useState<string | null>(null)
   const parents = new Set(household.groups?.parents ?? [])
   // Matches the rules: anyone may set the group up while it's empty; after that only a parent may change it.
@@ -126,6 +143,39 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                   : 'Only parents can change this.'
                 : 'Only a parent can change who the parents are.'}
             </p>
+          </fieldset>
+        )}
+        {isMember && (
+          <fieldset className="setting">
+            <legend>Blog posting (this device)</legend>
+            <p className="muted small">
+              ✍ New blog post needs a GitHub fine-grained token for the blog repository (Contents: read and write). It's kept only on this device, never
+              in Align's data or code.
+            </p>
+            {hasToken ? (
+              <div className="row">
+                <span className="grow">✓ A token is saved on this device.</span>
+                <button
+                  type="button"
+                  className="secondary small"
+                  onClick={() => {
+                    setGithubToken('')
+                    setHasToken(false)
+                    setTokenNote('Removed from this device.')
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="row">
+                <input type="password" autoComplete="off" placeholder="github_pat_…" value={token} onChange={(e) => setToken(e.target.value)} aria-label="GitHub token" />
+                <button type="button" className="small" onClick={saveToken} disabled={!token.trim()}>
+                  Save
+                </button>
+              </div>
+            )}
+            {tokenNote && <p className="muted small">{tokenNote}</p>}
           </fieldset>
         )}
         <fieldset className="setting">

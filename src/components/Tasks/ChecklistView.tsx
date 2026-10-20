@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { createTask, deleteTask, updateTask } from '../../firebase/db'
+import { createTask, deleteTask, updateTask, withStatus } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { List, Task } from '../../types'
@@ -63,7 +63,7 @@ export function ChecklistView({ list }: { list: List }) {
               aria-label={`Check off ${t.title}`}
               checked={t.status === 'done'}
               disabled={!editable}
-              onChange={(e) => updateTask(t.id, { status: e.target.checked ? 'done' : 'todo' }).catch((err) => setError(String(err)))}
+              onChange={(e) => updateTask(t.id, withStatus(t, e.target.checked ? 'done' : 'todo')).catch((err) => setError(String(err)))}
             />
             <button type="button" className="check-title" onClick={() => app.selectTask(t.id)}>
               {t.title}

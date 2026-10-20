@@ -98,7 +98,7 @@ service cloud.firestore {
 
     function validList(d) {
       return d.name is string && d.name.size() > 0
-        && d.kind in ['list', 'project', 'checklist', 'notes']
+        && d.kind in ['list', 'project', 'checklist', 'notes', 'links']
         && d.visibility in ['private', 'family', 'shared']
         && sharedOk(d)
         && d.viewerVisible is bool
@@ -120,6 +120,33 @@ service cloud.firestore {
       allow delete: if canWrite(resource.data);
     }
 
+    // ---- Goals (daily: check, tally, progressive, measure) ----
+    // Same privacy as lists (private / family / shared). The day-by-day log lives on the goal doc.
+
+    function validGoal(d) {
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 100
+        && d.kind in ['check', 'tally', 'progressive', 'measure']
+        && d.visibility in ['private', 'family', 'shared']
+        && sharedOk(d)
+        && d.viewerVisible is bool
+        && (d.visibility == 'family' || d.viewerVisible == false)
+        && d.ownerId is string
+        && (!('log' in d) || d.log is map)
+        && (!('weekdays' in d) || d.weekdays is list);
+    }
+
+    match /goals/{goalId} {
+      allow read: if canRead(resource.data);
+      allow create: if canWrite(request.resource.data)
+        && request.resource.data.ownerId == request.auth.uid
+        && validGoal(request.resource.data);
+      allow update: if canWrite(resource.data)
+        && canWrite(request.resource.data)
+        && (request.resource.data.ownerId == resource.data.ownerId || resource.data.ownerId == request.auth.uid)
+        && validGoal(request.resource.data);
+      allow delete: if canWrite(resource.data);
+    }
+
     // ---- Tasks ----
 
     // getAfter() so a batch that changes a list and its tasks together is checked against the new list.
@@ -133,6 +160,12 @@ service cloud.firestore {
         && d.dependsOn is list
         // Set only by the calendar sync (scripts/apps-script): { eventId, time?, location? }.
         && (!('calendar' in d) || d.calendar is map)
+        // Day history: the day it was finished, and the days it was pushed off.
+        && (!('finishedOn' in d) || (d.finishedOn is string && d.finishedOn.size() == 10))
+        && (!('pushedFrom' in d) || d.pushedFrom is list)
+        // Links lists: the address and an optional "Home/Utilities" category.
+        && (!('url' in d) || (d.url is string && d.url.size() <= 2048))
+        && (!('category' in d) || (d.category is string && d.category.size() <= 200))
         && d.visibility == list.visibility
         && d.get('sharedWith', null) == list.get('sharedWith', null)
         && d.ownerId == list.ownerId

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { finish, meetDate, shiftForward } from '../../engine/scheduling'
 import { wouldCreateCycle } from '../../engine/graph'
-import { createTask, deleteTask, updateTask, type TaskInput } from '../../firebase/db'
+import { createTask, deleteTask, updateTask, type TaskInput, withStatus } from '../../firebase/db'
 import { today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Dependency, Priority, Status, Task } from '../../types'
@@ -54,7 +54,7 @@ export function TaskDetails({ task }: { task: Task }) {
       title: form.title.trim() || task.title,
       notes: form.notes || undefined,
       priority: form.priority,
-      status: form.status,
+      ...withStatus(task, form.status),
       context: form.context,
       assigneeId: form.assigneeId || undefined,
       for: form.for?.length ? form.for : undefined,

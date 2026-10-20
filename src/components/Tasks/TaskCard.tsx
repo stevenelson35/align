@@ -1,6 +1,6 @@
 import { formatDay } from '../../engine/dates'
 import { finish } from '../../engine/scheduling'
-import { updateTask } from '../../firebase/db'
+import { updateTask, withStatus } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Task } from '../../types'
 import { colorKey, isFinished, PRIORITY_LABEL, PRIVACY_ICON, STATUS_LABEL, targetName, waitingOn } from '../../utils/tasks'
@@ -10,9 +10,15 @@ interface Props {
   showList?: boolean
   /** Told when the box is ticked here, so the view can keep the task visible for an untick. */
   onTicked?: (id: string) => void
+  /** The day a tick counts for (a day view of yesterday records it as done yesterday). Default today. */
+  day?: string
+  /** Day view: "⏭ next day" and "✕ won't do" buttons on unfinished tasks. */
+  dayActions?: { push?: () => void; skip: () => void }
+  /** A line under the title, e.g. "→ moved to Wed, Oct 21". */
+  note?: string
 }
 
-export function TaskCard({ task, showList = true, onTicked }: Props) {
+export function TaskCard({ task, showList = true, onTicked, day, dayActions, note }: Props) {
   const { household, selectTask, selectedTaskId, canEdit, textAbout } = useApp()
   const { lists, conflicts, taskById, dependents } = useData()
   const list = lists.find((l) => l.id === task.listId)
@@ -27,7 +33,7 @@ export function TaskCard({ task, showList = true, onTicked }: Props) {
   function toggleDone(checked: boolean) {
     if (checked && waiting.length && !window.confirm(`${waiting.map((w) => `"${w.title}"`).join(', ')} isn't finished yet. Mark "${task.title}" done anyway?`)) return
     if (checked) onTicked?.(task.id)
-    updateTask(task.id, { status: checked ? 'done' : 'todo' })
+    updateTask(task.id, withStatus(task, checked ? 'done' : 'todo', day))
   }
 
   return (
@@ -45,6 +51,7 @@ export function TaskCard({ task, showList = true, onTicked }: Props) {
       />
       <div className="grow">
         <div className="task-title">{task.title}</div>
+        {note && <div className="muted small">{note}</div>}
         <div className="chips">
           <span className={`badge priority-${task.priority}`}>{PRIORITY_LABEL[task.priority]}</span>
           {task.status === 'doing' && <span className="badge">{STATUS_LABEL.doing}</span>}
@@ -96,6 +103,36 @@ export function TaskCard({ task, showList = true, onTicked }: Props) {
           {conflict && <span className="badge danger">⚠ {conflict}</span>}
         </div>
       </div>
+      {dayActions && editable && !finished && (
+        <>
+          {dayActions.push && (
+          <button
+            type="button"
+            className="row-action"
+            title="Push to the next day"
+            aria-label={`Push ${task.title} to the next day`}
+            onClick={(e) => {
+              e.stopPropagation()
+              dayActions.push?.()
+            }}
+          >
+            ⏭
+          </button>
+          )}
+          <button
+            type="button"
+            className="row-action"
+            title="Won't do (cancel it)"
+            aria-label={`Won't do ${task.title}`}
+            onClick={(e) => {
+              e.stopPropagation()
+              dayActions.skip()
+            }}
+          >
+            ✕
+          </button>
+        </>
+      )}
       <button
         type="button"
         className="row-action"

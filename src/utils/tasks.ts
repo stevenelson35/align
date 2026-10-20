@@ -33,7 +33,7 @@ export function privacyText(
 
 /** Checklists and notes hold items, not tasks: they stay out of the task views, chat and scheduling. */
 export function isItemList(list: Pick<List, 'kind'>): boolean {
-  return list.kind === 'checklist' || list.kind === 'notes'
+  return list.kind === 'checklist' || list.kind === 'notes' || list.kind === 'links'
 }
 
 /** Done or canceled: nothing more to do, and it no longer holds up the tasks that depend on it. */

@@ -1,10 +1,13 @@
 import { today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
-import { isForToday } from '../../utils/tasks'
 import { TimelineView } from '../Dependencies/TimelineView'
-import { CalendarActions } from '../Tasks/CalendarActions'
 import { ChecklistView } from '../Tasks/ChecklistView'
 import { CombinedView } from '../Tasks/CombinedView'
+import { DayView } from '../Tasks/DayView'
+import { BlogPostView } from '../Blog/BlogPostView'
+import { GoalDetail } from '../Goals/GoalDetail'
+import { GoalsView } from '../Goals/GoalsView'
+import { LinksView } from '../Tasks/LinksView'
 import { NotesView } from '../Tasks/NotesView'
 import { ListView } from '../Tasks/ListView'
 import { BoardsView } from '../Voting/BoardsView'
@@ -12,7 +15,7 @@ import { BoardView } from '../Voting/BoardView'
 
 export function MainView() {
   const { route, uid } = useApp()
-  const { lists, boards, tasks, listItems, loaded } = useData()
+  const { lists, boards, tasks, listItems, goals, loaded } = useData()
 
   switch (route.view) {
     case 'home':
@@ -23,13 +26,10 @@ export function MainView() {
       return <CombinedView key="family" title="Family tasks" tasks={tasks.filter((t) => t.visibility === 'family')} />
     case 'work':
       return <CombinedView key="work" title="Work" tasks={tasks.filter((t) => t.context === 'work')} />
-    case 'today': {
-      const day = today()
-      // Done ones are included so "Any status" / "Done" can show them; "Not done" (the default) hides them.
-      return (
-        <CombinedView key="today" title="Today" tasks={tasks.filter((t) => isForToday(t, day, true))} actions={<CalendarActions />} />
-      )
-    }
+    case 'today':
+      return <DayView key="today" day={today()} />
+    case 'day':
+      return <DayView key={route.day} day={route.day} />
     case 'task': {
       // A link to one task: its list (AppShell opens the task in the side panel).
       const t = tasks.find((x) => x.id === route.taskId) ?? listItems.find((x) => x.id === route.taskId)
@@ -38,6 +38,7 @@ export function MainView() {
       if (!list) return <p className="muted">That list isn't shared with you.</p>
       if (list.kind === 'checklist') return <ChecklistView key={list.id} list={list} />
       if (list.kind === 'notes') return <NotesView key={list.id} list={list} />
+      if (list.kind === 'links') return <LinksView key={list.id} list={list} />
       return <ListView key={list.id} list={list} />
     }
     case 'list': {
@@ -45,7 +46,17 @@ export function MainView() {
       if (!list) return <p className="muted">That list doesn't exist or isn't shared with you.</p>
       if (list.kind === 'checklist') return <ChecklistView key={list.id} list={list} />
       if (list.kind === 'notes') return <NotesView key={list.id} list={list} />
+      if (list.kind === 'links') return <LinksView key={list.id} list={list} />
       return route.timeline ? <TimelineView list={list} /> : <ListView key={list.id} list={list} />
+    }
+    case 'goals':
+      return <GoalsView />
+    case 'blog':
+      return <BlogPostView />
+    case 'goal': {
+      const goal = goals.find((g) => g.id === route.goalId)
+      if (!goal) return <p className="muted">{loaded ? "That goal isn't shared with you, or it was deleted." : 'Opening…'}</p>
+      return <GoalDetail key={goal.id} goal={goal} />
     }
     case 'boards':
       return <BoardsView />

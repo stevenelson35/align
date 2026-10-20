@@ -27,7 +27,7 @@ export function ShiftDialog({ shift, onClose }: { shift: PendingShift; onClose: 
         }
       }
       const linked = withDependencyChanges(tasks, dependencies)
-      await applySchedule(moves, conflictUpdates(linked, shift.preview, canEdit), dependencies)
+      await applySchedule(moves, conflictUpdates(linked, shift.preview, canEdit), dependencies, shift.extra)
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

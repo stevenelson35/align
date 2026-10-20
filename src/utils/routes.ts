@@ -5,10 +5,16 @@ export type Route =
   | { view: 'mine' }
   | { view: 'family' }
   | { view: 'today' }
+  /** Another day's view (today is `today`). */
+  | { view: 'day'; day: string }
   | { view: 'work' }
   | { view: 'list'; listId: string; timeline: boolean }
   | { view: 'boards' }
   | { view: 'board'; boardId: string }
+  | { view: 'goals' }
+  /** ✍ New blog post. */
+  | { view: 'blog' }
+  | { view: 'goal'; goalId: string }
   /** A link to one task / item / note (e.g. in a text): opens it in its list. */
   | { view: 'task'; taskId: string }
 
@@ -22,6 +28,8 @@ export function parseRoute(hash: string): Route {
     case 'today':
     case 'work':
     case 'boards':
+    case 'goals':
+    case 'blog':
       return { view: parts[0] }
     case 'list':
       if (parts[1]) return { view: 'list', listId: parts[1], timeline: parts[2] === 'timeline' }
@@ -31,6 +39,12 @@ export function parseRoute(hash: string): Route {
       break
     case 'task':
       if (parts[1]) return { view: 'task', taskId: parts[1] }
+      break
+    case 'goal':
+      if (parts[1]) return { view: 'goal', goalId: parts[1] }
+      break
+    case 'day':
+      if (/^\d{4}-\d{2}-\d{2}$/.test(parts[1] ?? '')) return { view: 'day', day: parts[1] }
       break
   }
   // Today is the start page.
@@ -47,6 +61,10 @@ export function routeHash(route: Route): string {
       return `#/board/${encodeURIComponent(route.boardId)}`
     case 'task':
       return `#/task/${encodeURIComponent(route.taskId)}`
+    case 'day':
+      return `#/day/${route.day}`
+    case 'goal':
+      return `#/goal/${encodeURIComponent(route.goalId)}`
     default:
       return `#/${route.view}`
   }

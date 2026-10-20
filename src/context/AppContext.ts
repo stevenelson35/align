@@ -1,5 +1,6 @@
 import { createContext } from 'react'
 import type { ShiftPreview } from '../engine/scheduling'
+import type { TaskInput } from '../firebase/db'
 import type { Household, HouseholdMember, List } from '../types'
 import type { Route } from '../utils/routes'
 import type { Shareable } from '../utils/tasks'
@@ -9,6 +10,8 @@ export interface PendingShift {
   title: string
   preview: ShiftPreview
   dependencies?: DependencyChange[]
+  /** Other fields written in the same batch (e.g. `pushedFrom` for "⏭ next day"). */
+  extra?: { id: string; data: Partial<TaskInput> }[]
 }
 
 /** UI state shared by the shell, views and chat. */
@@ -22,6 +25,8 @@ export interface AppState {
   selectedTaskId: string | null
   selectTask: (id: string | null) => void
   /** Opens a task / item with its "💬 Text about this" form showing (the 💬 on list rows). */
+  /** Opens ⚙ Settings (e.g. from the blog page when the token is missing). */
+  openSettings: () => void
   textAbout: (taskId: string) => void
   /** The task whose text form should start open, if any. */
   textingId: string | null

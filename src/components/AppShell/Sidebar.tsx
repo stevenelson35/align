@@ -1,7 +1,7 @@
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
 import type { Route } from '../../utils/routes'
-import { isFinished, PRIVACY_ICON } from '../../utils/tasks'
+import { isFinished, isItemList, PRIVACY_ICON } from '../../utils/tasks'
 
 function NavLink({ route, label, color, count }: { route: Route; label: string; color?: string; count?: number }) {
   const app = useApp()
@@ -20,7 +20,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
   const { lists, boards, tasks, listItems } = useData()
   // Unfinished tasks or unchecked items; for notes, how many there are.
   const openCount = (l: List) =>
-    (l.kind === 'checklist' || l.kind === 'notes' ? listItems : tasks).filter((t) => t.listId === l.id && (l.kind === 'notes' || !isFinished(t))).length
+    (isItemList(l) ? listItems : tasks).filter((t) => t.listId === l.id && (l.kind === 'notes' || l.kind === 'links' || !isFinished(t))).length
   const color = (l: List) => `var(--color-${l.visibility})`
 
   const sections: { title: string; lists: List[]; color: string }[] = [
@@ -30,6 +30,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
     { title: 'Projects', lists: lists.filter((l) => l.kind === 'project'), color: 'var(--color-project)' },
     { title: 'Checklists', lists: lists.filter((l) => l.kind === 'checklist'), color: '' },
     { title: 'Notes', lists: lists.filter((l) => l.kind === 'notes'), color: '' },
+    { title: 'Links', lists: lists.filter((l) => l.kind === 'links'), color: '' },
   ]
 
   return (
@@ -39,6 +40,8 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
       {isMember && <NavLink route={{ view: 'mine' }} label="My tasks" />}
       <NavLink route={{ view: 'family' }} label="Family tasks" />
       <NavLink route={{ view: 'work' }} label="Work" />
+      <NavLink route={{ view: 'goals' }} label="🎯 Goals" />
+      {isMember && <NavLink route={{ view: 'blog' }} label="✍ New blog post" />}
 
       {sections.map((s) => (
         <div key={s.title} className="nav-section">
@@ -57,7 +60,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
       ))}
       {isMember && (
         <button type="button" className="secondary small" onClick={() => editList(null)}>
-          + New list, project, checklist or notes
+          + New list
         </button>
       )}
 

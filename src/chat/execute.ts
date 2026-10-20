@@ -3,11 +3,11 @@ import type { AppState } from '../context/AppContext'
 import type { DataState } from '../context/DataContext'
 import { formatDay, today } from '../engine/dates'
 import { meetDate, recalculate, shiftForward } from '../engine/scheduling'
-import { createList, createTask, setVote, updateTask } from '../firebase/db'
+import { createTask, inboxFor, setVote, updateTask, withStatus } from '../firebase/db'
 import type { Board, BoardItem, List, Task } from '../types'
 import { fuzzyMatch } from '../utils/fuzzy'
 import { isFinished, isForToday, people, PRIVACY_ICON, targetName } from '../utils/tasks'
-import { smsUrl, splitAbout, splitRecipient, taskLink, textBody, whenText } from '../utils/text'
+import { shareLink, smsUrl, splitAbout, splitRecipient, textBody, whenText } from '../utils/text'
 import { HELP_TEXT, parse, type Command } from './parser'
 
 export interface Action {
@@ -56,8 +56,6 @@ function describeTask(t: Task, lists: List[]) {
   return `${t.title}${list ? ` (${list.name})` : ''}${when}`
 }
 
-const FAMILY_INBOX = 'Family Inbox'
-
 async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext, chosen?: List): Promise<Reply> {
   const { app, data } = ctx
   const editable = data.lists.filter((l) => app.canEdit(l))
@@ -74,21 +72,9 @@ async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext,
     // No such list: "to ..." was probably part of the title ("take dog to vet").
     else if (cmd.titleWithoutList) title = cmd.titleWithoutList
   }
-  // No list named: your inbox for your default privacy (Settings). Private: your own "Inbox" (or first private
-  // task list). Family: the shared "Family Inbox".
-  const family = (app.member.defaultVisibility ?? 'private') === 'family'
-  if (!list) {
-    list = family
-      ? editable.find((l) => l.visibility === 'family' && l.kind === 'list' && l.name === FAMILY_INBOX)
-      : editable.find((l) => l.visibility === 'private' && l.ownerId === app.uid && l.kind === 'list')
-  }
   try {
-    if (!list) {
-      const inbox: Omit<List, 'id'> = family
-        ? { name: FAMILY_INBOX, kind: 'list', visibility: 'family', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' }
-        : { name: 'Inbox', kind: 'list', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' }
-      list = { ...inbox, id: await createList(inbox) }
-    }
+    // No list named: your inbox for your default privacy (Settings).
+    if (!list) list = await inboxFor(app.uid, app.member.defaultVisibility, editable)
     const names = [
       ...people(app.household).map(([id, m]) => ({ id, name: m.displayName })),
       ...app.household.pets.map((p) => ({ id: p.id, name: p.name })),
@@ -145,7 +131,7 @@ function textCommand(rest: string, ctx: ExecContext): Promise<Reply> | Reply {
   const { about, message } = splitAbout(to.rest)
   const name = targetName(to.uid, app.household)
   const compose = (subject?: Task): Reply => {
-    const body = textBody(message, subject && { title: subject.title, when: whenText(subject), link: taskLink(subject.id) })
+    const body = textBody(message, subject && { title: subject.title, when: whenText(subject), link: shareLink(subject) })
     if (!body) return { text: `What should the text to ${name} say? e.g. "text ${name} running late".` }
     const copy = { label: 'Copy text', run: async () => void (await navigator.clipboard?.writeText(body)) }
     const phone = app.household.members[to.uid]?.phone
@@ -197,8 +183,8 @@ export async function execute(input: string, ctx: ExecContext): Promise<Reply> {
     case 'done':
       return pick(cmd.task, open.filter(app.canEdit), (t) => t.title, 'task', async (t) => {
         try {
-          await updateTask(t.id, { status: 'done' })
-          return { text: `Marked "${t.title}" done.`, actions: [{ label: 'Undo', run: async () => void (await updateTask(t.id, { status: 'todo' })) }] }
+          await updateTask(t.id, withStatus(t, 'done'))
+          return { text: `Marked "${t.title}" done.`, actions: [{ label: 'Undo', run: async () => void (await updateTask(t.id, withStatus(t, 'todo'))) }] }
         } catch (err) {
           return { text: errorText(err) }
         }
@@ -209,8 +195,8 @@ export async function execute(input: string, ctx: ExecContext): Promise<Reply> {
       return pick(cmd.task, open.filter(app.canEdit), (t) => t.title, 'task', async (t) => {
         const before = t.status
         try {
-          await updateTask(t.id, { status: 'canceled' })
-          return { text: `Canceled "${t.title}".`, actions: [{ label: 'Undo', run: async () => void (await updateTask(t.id, { status: before })) }] }
+          await updateTask(t.id, withStatus(t, 'canceled'))
+          return { text: `Canceled "${t.title}".`, actions: [{ label: 'Undo', run: async () => void (await updateTask(t.id, withStatus(t, before))) }] }
         } catch (err) {
           return { text: errorText(err) }
         }

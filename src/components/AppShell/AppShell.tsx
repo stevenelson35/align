@@ -10,6 +10,7 @@ import { ListEditor } from '../Tasks/ListEditor'
 import { ItemDetails } from '../Tasks/ItemDetails'
 import { TaskDetails } from '../Tasks/TaskDetails'
 import { BottomNav } from './BottomNav'
+import { SearchDialog } from './SearchDialog'
 import { SettingsDialog } from './SettingsDialog'
 import { MainView } from './MainView'
 import { Sidebar } from './Sidebar'
@@ -30,6 +31,7 @@ export function AppShell({ uid, household, member }: Props) {
   const [chat, setChat] = useState<{ open: boolean; draft: string; key: number }>({ open: false, draft: '', key: 0 })
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const [textingId, setTextingId] = useState<string | null>(null)
   const openSettings = useCallback(() => {
     setSidebarOpen(false)
@@ -80,17 +82,38 @@ export function AppShell({ uid, household, member }: Props) {
       selectTask: choose,
       textAbout,
       textingId,
+      openSettings,
       proposeShift,
       editList: (list) => setListEditor({ list }),
       canEdit,
       openChat,
     }),
-    [uid, household, member, route, go, shownTaskId, choose, textAbout, textingId, canEdit, openChat],
+    [uid, household, member, route, go, shownTaskId, choose, textAbout, textingId, openSettings, canEdit, openChat],
   )
 
   const selectedTask = data.tasks.find((t) => t.id === shownTaskId)
   const selectedItem = selectedTask ? undefined : data.listItems.find((t) => t.id === shownTaskId)
   const selectedItemList = selectedItem && data.lists.find((l) => l.id === selectedItem.listId)
+
+  // Keyboard shortcuts (desktop): "/" search, "n" new task (chat quick add), "t" today. Not while typing.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const el = e.target as HTMLElement | null
+      if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return
+      if (e.key === '/') {
+        e.preventDefault()
+        setSearchOpen(true)
+      } else if (e.key === 'n' && member.role === 'member') {
+        e.preventDefault()
+        openChat('add task ')
+      } else if (e.key === 't') {
+        go({ view: 'today' })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [go, openChat, member.role])
 
   // Escape closes the phone menu, like tapping outside it.
   useEffect(() => {
@@ -109,6 +132,7 @@ export function AppShell({ uid, household, member }: Props) {
           onMenu={() => setSidebarOpen((o) => !o)}
           onChat={() => setChat((c) => ({ ...c, open: !c.open }))}
           onSettings={openSettings}
+          onSearch={() => setSearchOpen(true)}
         />
         <div className="app-body">
           <Sidebar open={sidebarOpen} onSettings={openSettings} />
@@ -141,6 +165,7 @@ export function AppShell({ uid, household, member }: Props) {
         {shift && <ShiftDialog shift={shift} onClose={() => proposeShift(null)} />}
         {listEditor && <ListEditor list={listEditor.list} onClose={() => setListEditor(null)} />}
         {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+        {searchOpen && <SearchDialog onClose={() => setSearchOpen(false)} />}
       </div>
     </AppContext.Provider>
   )

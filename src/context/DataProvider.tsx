@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { conflictsById } from '../engine/scheduling'
-import { subscribeBoards, subscribeItems, subscribeLists, subscribeMyVotes, subscribeTasks } from '../firebase/db'
-import type { Board, BoardItem, List, Role, Task, Vote } from '../types'
+import { subscribeBoards, subscribeGoals, subscribeItems, subscribeLists, subscribeMyVotes, subscribeTasks } from '../firebase/db'
+import type { Board, BoardItem, Goal, List, Role, Task, Vote } from '../types'
 import { isFinished, isItemList } from '../utils/tasks'
 import { DataContext, type DataState } from './DataContext'
 
@@ -10,6 +10,7 @@ export function DataProvider({ uid, role, children }: { uid: string; role: Role;
   const [lists, setLists] = useState<List[] | null>(null)
   const [tasks, setTasks] = useState<Task[] | null>(null)
   const [boards, setBoards] = useState<Board[] | null>(null)
+  const [goals, setGoals] = useState<Goal[]>([])
   const [itemsByBoard, setItemsByBoard] = useState<Record<string, BoardItem[]>>({})
   const [myVotes, setMyVotes] = useState<Vote[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -20,6 +21,7 @@ export function DataProvider({ uid, role, children }: { uid: string; role: Role;
       subscribeLists(uid, role, setLists, onError),
       subscribeTasks(uid, role, setTasks, onError),
       subscribeBoards(role, setBoards, onError),
+      subscribeGoals(uid, role, setGoals, onError),
     ]
     if (role === 'member') unsubs.push(subscribeMyVotes(uid, setMyVotes, onError))
     return () => unsubs.forEach((u) => u())
@@ -51,6 +53,7 @@ export function DataProvider({ uid, role, children }: { uid: string; role: Role;
       lists: [...(lists ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
       tasks: allTasks,
       listItems,
+      goals: [...goals].sort((a, b) => a.name.localeCompare(b.name)),
       boards: [...(boards ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
       items: Object.entries(itemsByBoard)
         .filter(([id]) => liveBoards.has(id))
@@ -60,7 +63,7 @@ export function DataProvider({ uid, role, children }: { uid: string; role: Role;
       taskById: new Map(allTasks.map((t) => [t.id, t])),
       dependents,
     }
-  }, [lists, tasks, boards, itemsByBoard, myVotes, error])
+  }, [lists, tasks, boards, goals, itemsByBoard, myVotes, error])
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }

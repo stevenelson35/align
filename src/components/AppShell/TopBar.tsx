@@ -9,9 +9,10 @@ interface Props {
   onMenu: () => void
   onChat: () => void
   onSettings: () => void
+  onSearch: () => void
 }
 
-export function TopBar({ householdName, member, onMenu, onChat, onSettings }: Props) {
+export function TopBar({ householdName, member, onMenu, onChat, onSettings, onSearch }: Props) {
   const { isMember, openChat } = useApp()
   return (
     <header className="top-bar">
@@ -24,12 +25,15 @@ export function TopBar({ householdName, member, onMenu, onChat, onSettings }: Pr
       </div>
       <div className="user">
         {isMember && (
-          <button type="button" className="small" onClick={() => openChat('add task ')}>
-            + Quick add
+          <button type="button" className="small" onClick={() => openChat('add task ')} title="Quick add (n)" aria-label="Quick add">
+            +<span className="hide-mobile"> Quick add</span>
           </button>
         )}
         <button type="button" className="link hide-mobile" onClick={onChat}>
           Chat
+        </button>
+        <button type="button" className="link search-button" onClick={onSearch} title="Search (/)" aria-label="Search">
+          🔍
         </button>
         <ThemeToggle />
         {member.role === 'viewer' && <span className="badge">View only</span>}

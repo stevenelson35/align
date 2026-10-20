@@ -107,7 +107,7 @@ A single document.
 ```ts
 {
   name: string,
-  kind: "list" | "project" | "checklist" | "notes",
+  kind: "list" | "project" | "checklist" | "notes" | "links",
   visibility: "private" | "family" | "shared",
   sharedWith?: uid[],           // only when shared: 1–20 people, always including ownerId
   ownerId: uid,
@@ -117,7 +117,7 @@ A single document.
 }
 ```
 
-- **Kinds:** `list` and `project` hold **tasks** (projects add dependencies, the timeline and recalculate). `checklist` holds things to tick off that aren't tasks (shopping, gifts, people to call). `notes` holds reference info (title + text). Checklist items and notes are stored in `tasks` (same rules and copied fields) but are kept out of every task view, chat command and the scheduling engine (`DataState.listItems` vs `tasks`).
+- **Kinds:** `list` and `project` hold **tasks** (projects add dependencies, the timeline and recalculate). `checklist` holds things to tick off that aren't tasks (shopping, gifts, people to call). `notes` holds reference info (title + text). `links` holds bookmarks (name, address, optional note, and a `Home/Utilities`-style category that nests into a collapsible tree). Checklist items and notes are stored in `tasks` (same rules and copied fields) but are kept out of every task view, chat command and the scheduling engine (`DataState.listItems` vs `tasks`).
 - **Privacy:** `private` = the owner only; `family` = every member (and viewers if `viewerVisible`); `shared` = exactly the people in `sharedWith` (members can edit; viewers in it can read).
 
 ### 5.3 `tasks/{taskId}`
@@ -145,6 +145,9 @@ A single document.
   dependsOn: [{ taskId: string, offsetDays: number }],
   conflict?: string,                // set by the engine, e.g. "starts before prerequisite"
   calendar?: { eventId, time?, location?, link? },  // set only by the calendar sync (§5.5)
+  finishedOn?: string,              // "YYYY-MM-DD" it became done/canceled (withStatus); cleared if reopened
+  pushedFrom?: string[],            // days it was pushed off with "⏭ next day"
+  url?: string, category?: string,  // links lists only
 
   createdBy: uid, createdAt, updatedAt   // createdAt orders checklist items
 }
@@ -178,6 +181,29 @@ The family Google Calendar is copied one way into a family list named **Family C
 - **The sync owns `title`, `startDate`, `durationDays` and `calendar`.** Updates use an update mask limited to those fields, so status, notes, priority, assignee, `for` and dependencies set in Align survive.
 - **Time zone:** times and dates use the `TIME_ZONE` script property, or else the script's zone from `appsscript.json`. They never use the calendar's own zone setting: the family calendar turned out to be set to UTC, which showed 4 PM events as 8 PM.
 - **Removals:** an imported task whose event is gone is deleted only if its date falls inside the sync window (7 days back to 8 weeks ahead). Tasks family members add to the list by hand are never touched.
+
+### 5.6 `goals/{goalId}`
+
+Daily goals (not tasks): shown on each day they apply, logged per day, charted over time.
+
+```ts
+{
+  name: string,
+  kind: "check" | "tally" | "progressive" | "measure",
+  unit?: string,
+  perDay?: number,                               // tally: taps per day (e.g. 8 glasses)
+  progression?: { start, step, every, per: "day" | "week", min?, max?, from: "YYYY-MM-DD" },  // progressive
+  target?: number, direction?: "down" | "up",    // measure (weight: 180, lower is better)
+  weekdays?: number[],                           // 0 = Sunday; absent = every day
+  visibility, sharedWith?, ownerId, viewerVisible, // same privacy as lists
+  log?: { [day]: { done?, count?, value?, by? } },  // one entry per day, on the goal doc (~20 KB/year)
+  archived?: boolean, createdBy, createdAt, updatedAt
+}
+```
+
+- **Suggested amount** (progressive) on a day = `start + step × floor(days since from ÷ (every × 1|7))`, kept within min..max (`utils/goals.ts`).
+- **Met:** check = done; tally = count ≥ perDay; progressive = value ≥ suggestion; measure = at/below (or above) target.
+- `logGoal` writes only that day's fields (`log.<day>.…`), so two people logging a family goal don't overwrite each other.
 
 ## 6. Scheduling Engine
 
@@ -237,7 +263,8 @@ Shifting always shows a **preview** first. Then it applies the changes as one ba
 - Badges: Work, `for` chips, assignee, 📅 time for calendar events, ⏳ Waiting on …, Unblocks N, ✕ Canceled, conflict ⚠. In mixed views the list badge carries 🔒 / 👥 for non-family lists.
 - **Filters:** list, context, `for`, assignee, priority, status (Not done / Any / To do / Doing / Done / Canceled), date range, **Ready to do only** (hides tasks waiting on an unfinished prerequisite).
 - **Sort:** date (with clock time for calendar events: all-day, then timed in clock order, then untimed), priority, or dependency order.
-- **Today** lists tasks in progress, scheduled or due today, or overdue, plus today's calendar events. Finished tasks that were on for today are included for the *Any status* / *Done* filters. A task ticked in a view stays (grayed) until you leave the view.
+- **Today is a day view** (`DayView`, `#/today`; other days `#/day/YYYY-MM-DD` with ‹ ›): the day's **Goals** strip, quick add for that day, then **To do** (today: in progress, scheduled/due today, overdue; a past day: what was on for it and is still open, labeled "Not done"), **Done** (finishedOn that day), **Won't do** (canceled that day) and **Pushed to a later day** (pushedFrom includes it, with "→ moved to …"). Rows have ✓, **⏭ next day** and **✕ won't do**; **⏭ Push the rest** is the end-of-day sweep. A push that would move dependents opens the schedule preview (pushedFrom is written in the same batch). Ticking on a past day records it as done that day (`utils/day.ts`). Tasks finished before 2026-10-20 have no finishedOn, so they don't appear on past days.
+- Everything / My / Family / Work keep the filters below; a task ticked there stays (grayed) until you leave the view.
 - Calendar events that are over are hidden by **Not done**. Dates show the weekday, e.g. "Wed, Oct 7".
 - Today's header has **📅 Google Calendar ↗** and **↻ Refresh calendar** (§5.5).
 
@@ -275,14 +302,31 @@ The chat panel runs a local, rule-based parser (`src/chat/parser.ts`, dates by `
 - **Viewers** see the same screens, but editing controls are hidden.
 - **Links:** hash routes (`src/utils/routes.ts`): `#/today`, `#/all`, `#/mine`, `#/family`, `#/work`, `#/list/<id>[/timeline]`, `#/boards`, `#/board/<id>`, and `#/task/<id>` (opens that task in its list; used in texts).
 
+- **🎯 Goals** (`GoalsView`, `#/goals`; one goal `#/goal/<id>`): log today's goals, open one for its chart (check: day squares with streak; tally: a column per day with the daily goal line; progressive/measure: actual vs suggestion/target, two lines with a crosshair tooltip), 14/30/90/365-day ranges, a table view, a log-any-day box, edit, archive. Logging controls (`GoalControl`): a checkbox, one dot per time (tap the last to take it back), "✓ <suggestion>" or type an amount. Chart colors are the dataviz reference palette slots 1–2 (`--series-1/2`), validated on both themes.
+- **Links** (`LinksView`): paste an address (https:// added; only http/https/mailto/tel are clickable, so a `javascript:` address can't run), optional name (defaults to the host) and category; a collapsible tree (closed state remembered per list); **Addresses** / **Notes** switches; ✎ edit; 💬 texts the link's own address.
+- **🔍 Search** (top bar, or `/`): tasks, checklist items, notes, links and list names (`utils/search.ts`). **Keyboard (desktop):** `/` search, `n` quick add, `t` today.
+- **Home-screen install:** `public/manifest.json`, icons (`icon-192/512`, maskable, `apple-touch-icon`), `theme-color`; opens full screen at `#/today`. No service worker (nothing is cached offline).
+- **✍ New blog post** (`#/blog`, §10.2).
+
+### 10.2 Blog posting
+
+`BlogPostView` replaces the old `blogupdate.html` flow inside Align:
+- Same post shape (title, date, author, categories, tags, up to 6 text+photo blocks, YouTube id, closing text, quote) and the same `repository_dispatch` "new-post" body (`src/blog/post.ts`, tested against blogupdate's), sent to the blog repo's `process-blog-post.yml` Action, which renders the post, makes image sizes, uploads them to Turbify and commits (about 2 minutes).
+- Photos go through the same Cloudinary upload widget and unsigned preset (`src/blog/cloudinary.ts`, loaded on demand).
+- **The GitHub token** (fine-grained, only the blog repo, Contents read+write) is entered once per device in ⚙ Settings → Blog posting and kept in `localStorage` (`align-github-token`), never in Firestore or the code. Settings tests it.
+- After posting: the post's address (`/<categories>/YYYY/MM/DD/<slug>.html`), **Open post ↗**, and **💬 Text the link**. The blog's top nav has **✍ Post** linking here.
+- The old `turbify_only/blogupdate.html` and `image-rotation.html` (blog repo, git-ignored, served from Turbify) no longer contain a token: they ask once and keep it in that browser.
+
 ### 10.1 Folder structure
 
 ```
 src/
   components/
-    AppShell/      AppShell, TopBar, Sidebar, BottomNav, MainView, SettingsDialog, ThemeToggle
-    Tasks/         CombinedView, ListView, ChecklistView, NotesView, ListHeader, ListEditor, TaskCard,
-                   TaskDetails, ItemDetails, TextAbout, CalendarActions, NumberField
+    AppShell/      AppShell, TopBar, Sidebar, BottomNav, MainView, SettingsDialog, SearchDialog, ThemeToggle
+    Tasks/         DayView, CombinedView, ListView, ChecklistView, NotesView, LinksView, ListHeader, ListEditor,
+                   SharePicker, TaskCard, TaskDetails, ItemDetails, TextAbout (TextForm), CalendarActions, NumberField
+    Goals/         GoalsStrip, GoalsView, GoalDetail, GoalControl, GoalEditor, GoalChart
+    Blog/          BlogPostView
     Dependencies/  TimelineView, ShiftDialog
     Voting/        BoardsView, BoardView
     Chat/          ChatPanel
@@ -291,10 +335,11 @@ src/
   chat/            parser.ts (+ tests), execute.ts
   voting/          tokens.ts (+ tests)
   firebase/        config.ts, auth.ts, db.ts (all Firestore access), calendarSync.ts
+  blog/            post.ts (+ tests), github.ts (token per device), cloudinary.ts
   context/         DataProvider (live data: tasks, listItems, dependents…), AppContext, Session*
   hooks/           useApp, useHashRoute, useSession, useStoredFlag, useVoting
-  utils/           tasks.ts (filters, privacy, finished/waiting), text.ts (texting), calendar.ts, theme.ts,
-                   routes.ts, fuzzy.ts (+ tests)
+  utils/           tasks.ts (filters, privacy, finished/waiting), day.ts (day buckets, push), goals.ts, links.ts,
+                   search.ts, text.ts (texting), calendar.ts, theme.ts, routes.ts, fuzzy.ts (+ tests)
 scripts/           deploy-turbify.sh, seed-emulator.mjs, apps-script/ (calendar sync + README)
 tests/             rules/ (security rules), apps-script/ (unit + emulator run)
 firestore.rules, firestore.indexes.json
@@ -302,7 +347,7 @@ firestore.rules, firestore.indexes.json
 
 ## 11. Security Rules (outline)
 
-`firestore.rules`, tested in `tests/rules/` (30 tests) against the emulator.
+`firestore.rules`, tested in `tests/rules/` (34 tests) against the emulator.
 
 - `isMember()` means `household/main.members[uid].role == "member"`. `isViewer()` means `"viewer"`.
 - **`household/main`:**
@@ -313,11 +358,12 @@ firestore.rules, firestore.indexes.json
   - read: `private` → owner; `family` → members, or viewers if `viewerVisible`; anyone (member or viewer) whose uid is in `sharedWith`.
   - write: members, if `family`, or owner, or in `sharedWith`. Only the current owner may hand a list to someone else.
   - `sharedOk`: `sharedWith` exists **if and only if** visibility is `shared`, has 1–20 entries and includes the owner. Because only shared docs have it, "shared with me" is the single query `where('sharedWith','array-contains',uid)`.
-  - Lists: `kind` in list/project/checklist/notes. Tasks: valid status (incl. `canceled`), priority, context, duration, `dependsOn` list, optional `calendar` map, and copied fields equal to the list's (incl. `sharedWith`).
+  - Lists: `kind` in list/project/checklist/notes/links. Tasks: valid status (incl. `canceled`), priority, context, duration, `dependsOn` list, optional `calendar` map, `finishedOn` (10-char string), `pushedFrom` (list), `url` (≤ 2048), `category` (≤ 200), and copied fields equal to the list's (incl. `sharedWith`).
+- **`goals`** (`validGoal`): same read/write and owner-change rules as lists (private/family/shared via `canRead`/`canWrite`/`sharedOk`); `kind` in check/tally/progressive/measure; name 1–100 chars; `log` a map; `weekdays` a list.
 - **`boards` and `items`:** members can read and write. Viewers can read if the board is `viewerVisible`.
 - **`votes/{uid}`:** members can read; users write only their own document, `tokens` a whole number ≥ 0.
 - Everything else is denied.
-- **Queries must match the rules** (`visibleQueries` in `db.ts`): members query own private docs, family docs and shared-with-me docs; viewers query viewer-visible family docs and shared-with-me docs.
+- **Queries must match the rules** (`visibleQueries` in `db.ts`, for lists, tasks and goals): members query own private docs, family docs and shared-with-me docs; viewers query viewer-visible family docs and shared-with-me docs.
 
 ## 12. Development and Deployment
 
@@ -332,13 +378,18 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### Local Changes Pending Deployment (2026-10-11)
-- Task-panel prerequisite choices default to the selected project; **Show other tasks** includes visible tasks outside it. The top header now has **Delete** beside Save, using the existing confirmation.
-- The task panel can quick-add an item to any editable checklist without saving or closing the task. Choose the checklist, enter the item, then **Add item** (or Enter). Items keep the checklist's privacy and stay out of scheduling.
-- Project task creation defaults an unset start date to today. Moving an undated task into a project also defaults to today; existing dates are retained.
-- Project quick-add offers **Next task follows [last task added]**, initially off. The option applies to additions in the current visit; a linked addition offers a schedule preview if its date needs moving.
-- Project views have prerequisite / priority / date ordering. Prerequisite order breaks ties by priority and date. **Select order** enables numbered selection checkboxes; Ctrl/Cmd-click can start selection on desktop. Select tasks in sequence, then preview and confirm prerequisite links and date moves. Existing prerequisites and offsets are retained; loops are rejected. Canceling the preview writes nothing. A changed prerequisite list prevents applying a stale preview.
-- No new stored fields or Firestore rules are needed. Browser smoke checks passed against the emulators at 390×800 and 1280×900; the live app has not been updated.
+### 2026-10-20: built, tested, NOT yet deployed (uncommitted until the user asks)
+- **Day view** as Today (§8): done / won't do / pushed per day, ⏭ next day, ✕ won't do, Push the rest; `finishedOn` + `pushedFrom` on tasks (rules + tests).
+- **🎯 Goals** (§5.6, §10): check / tally / progressive / measure, day strip, Goals page, goal page with chart + table; `goals` collection (rules + tests).
+- **Links** lists (§5.2, §10) with a category tree, address/notes switches, sharing the address.
+- **✍ New blog post** in Align with Text the link (§10.2); GitHub token per device in Settings. Blog nav **✍ Post** (blog repo commit `bfb15f4`, unpushed).
+- **🔍 Search**, keyboard shortcuts, home-screen install (manifest + icons), phone top bar "+".
+- Tests: 85 unit, 34 rules, calendar run. Checked with Playwright at 390px (day view, goals incl. charts in light/dark, links, blog posting with GitHub and Cloudinary mocked).
+- **Deploy order:** rules first (`npm run deploy:rules`), then the web app (the user runs `deploy:web`).
+- **Security fix (2026-10-20):** the old `blogupdate.html` / `image-rotation.html` had a classic GitHub token written into them; the user revoked it. Both pages now ask for a token and keep it in the browser (not in git; the user uploads them to Turbify).
+
+### 2026-10-11 (other agent, deployed): project prerequisites and task editing
+- Task-panel prerequisite choices default to the selected project (**Show other tasks** widens it); **Delete** beside Save; quick-add a checklist item from the task panel; project tasks default their start to today; **Next task follows [last task]**; prerequisite / priority / date ordering with **Select order** linking. No new stored fields. This is live (verified 2026-10-20).
 
 ### Where things stand (2026-10-11)
 - **Everything below is built, tested, committed, pushed and deployed.** `main` = `1595fc9`; the live site (https://align.itsallonesong.com) serves that build, and the Firestore rules from that commit are deployed to `align-a32c1`. The calendar sync script with event links is deployed in Apps Script.
@@ -362,6 +413,7 @@ firestore.rules, firestore.indexes.json
 4. Optional: grandparents as `viewer` accounts the same way.
 
 ### Next ideas (not started; ask before building)
+- Goals: reminders, and a weekly goals summary; recurring *tasks* are still separate from goals.
 - Recurring tasks (watering, monthly flea meds) (§3.2).
 - Reminders / phone alerts: web push needs a sender; the Apps Script could send via Firebase Cloud Messaging for free, but setup is heavier and iPhones need Align added to the home screen.
 - "I'll do it" / claim buttons on family tasks and calendar events (answers "who's picking up Camilla?" in the app).
@@ -406,4 +458,5 @@ firestore.rules, firestore.indexes.json
 - **2026-10-08:** Today fixes (ticked tasks, clock order), quick-add "for" fallback, phone task panel; Canceled status; visible dependencies; menu backdrop; dark mode; 15-minute sync + Refresh button; number boxes.
 - **2026-10-09:** checklists and notes; crossed-off finished items with hide toggles; Save at the top of panels; per-person default privacy, markers, color key; chat buttons close the chat.
 - **2026-10-10:** Google Calendar link with auto-refresh on return; event links stored by the sync.
-- **2026-10-11:** 👥 sharing with chosen people + Parents; texting (chat and panels) with task links; Parents group lock; 💬 on rows; Settings alignment.
+- **2026-10-11:** 👥 sharing with chosen people + Parents; texting (chat and panels) with task links; Parents group lock; 💬 on rows; Settings alignment. (Other agent:) project prerequisite ordering and task-panel streamlining.
+- **2026-10-20:** day view with day history; Goals with charts; Links; blog posting in Align; search, shortcuts, home-screen install; blog pages' embedded token removed.

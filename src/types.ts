@@ -42,7 +42,7 @@ export interface List {
    * tasks (shopping, gifts, people to call). notes: reference info. Checklist items and notes are stored like tasks
    * (same collection and rules) but stay out of the task views.
    */
-  kind: 'list' | 'project' | 'checklist' | 'notes'
+  kind: 'list' | 'project' | 'checklist' | 'notes' | 'links'
   visibility: Visibility
   /** Who can see and edit it when visibility is 'shared' (uids, always including the owner). Tasks copy their list's. */
   sharedWith?: string[]
@@ -83,12 +83,55 @@ export interface Task {
   targetDate?: string
   dependsOn: Dependency[]
   conflict?: string
+  /** The day ('YYYY-MM-DD') it became done or canceled; cleared if reopened. Places it on that day's view. */
+  finishedOn?: string
+  /** Links lists: the address it opens, and its category ("Home/Utilities" nests). */
+  url?: string
+  category?: string
+  /** Days it was pushed off ("⏭ next day"), so a past day can show what was rescheduled. */
+  pushedFrom?: string[]
   /** Set by the Google Calendar sync; title and dates are overwritten by it (DESIGN.md §5.5). */
   calendar?: { eventId: string; time?: string; location?: string; /** The event's page in Google Calendar. */ link?: string }
 
   createdBy: string
   /** Firestore timestamp; null until the server confirms a new doc. Orders checklist items as added. */
   createdAt?: { seconds: number; nanoseconds: number } | null
+}
+
+/** One day's entry on a goal. */
+export interface GoalEntry {
+  done?: boolean // check
+  count?: number // tally: how many times today
+  value?: number // progressive: what you did; measure: what you measured
+  by?: string // who logged it last (shared goals)
+}
+
+/**
+ * A daily goal (DESIGN.md §5.6): shown on each day it applies to, logged per day, charted over time. Not a task.
+ * check: done or not ("walk dogs"). tally: tap once each time, up to perDay ("12 oz water × 8"). progressive: a
+ * suggested amount that grows on a schedule, and what you did ("push-ups, suggested 10"). measure: a target and
+ * what you measured ("weight").
+ */
+export interface Goal {
+  id: string
+  name: string
+  kind: 'check' | 'tally' | 'progressive' | 'measure'
+  unit?: string
+  perDay?: number
+  /** progressive: start at `start` on `from`, add `step` every `every` days or weeks, kept within min..max. */
+  progression?: { start: number; step: number; every: number; per: 'day' | 'week'; min?: number; max?: number; from: string }
+  /** measure: the goal value, and whether lower or higher is better. */
+  target?: number
+  direction?: 'down' | 'up'
+  /** Days of the week it applies (0 = Sunday); absent = every day. */
+  weekdays?: number[]
+  visibility: Visibility
+  sharedWith?: string[]
+  ownerId: string
+  viewerVisible: boolean
+  log?: Record<string, GoalEntry>
+  archived?: boolean
+  createdBy: string
 }
 
 export interface Board {

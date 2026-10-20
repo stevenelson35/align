@@ -18,7 +18,7 @@ import {
   type Query,
 } from 'firebase/firestore'
 import type { Move } from '../engine/scheduling'
-import type { Board, BoardItem, Household, ItemStatus, List, Role, Task, Visibility, Vote } from '../types'
+import type { Board, BoardItem, Goal, GoalEntry, Household, ItemStatus, List, Role, Task, Visibility, Vote } from '../types'
 import { db } from './config'
 import { today } from '../engine/dates'
 import type { DependencyChange } from '../utils/project'
@@ -76,7 +76,7 @@ function subscribeUnion<T>(
  * Queries must match the rules (DESIGN.md §11): own private docs, family docs (viewer-visible ones for viewers),
  * and docs shared with you by name.
  */
-function visibleQueries(name: 'lists' | 'tasks', uid: string, role: Role) {
+function visibleQueries(name: 'lists' | 'tasks' | 'goals', uid: string, role: Role) {
   const c = collection(db, name)
   const shared = query(c, where('sharedWith', 'array-contains', uid))
   return role === 'member'
@@ -92,6 +92,57 @@ export function subscribeLists(uid: string, role: Role, onData: (lists: List[]) 
 
 export function subscribeTasks(uid: string, role: Role, onData: (tasks: Task[]) => void, onError: OnError) {
   return subscribeUnion(visibleQueries('tasks', uid, role), (id, d) => ({ ...d, id }) as Task, onData, onError)
+}
+
+export function subscribeGoals(uid: string, role: Role, onData: (goals: Goal[]) => void, onError: OnError) {
+  return subscribeUnion(visibleQueries('goals', uid, role), (id, d) => ({ ...d, id }) as Goal, onData, onError)
+}
+
+// ---- Goals (DESIGN.md §5.6) ----
+
+export type GoalInput = Omit<Goal, 'id' | 'log' | 'createdBy'>
+
+/** Privacy fields as stored: sharedWith only when shared, viewerVisible only for family. */
+function goalPrivacy(g: Pick<Goal, 'visibility' | 'sharedWith' | 'ownerId' | 'viewerVisible'>) {
+  return {
+    visibility: g.visibility,
+    ownerId: g.ownerId,
+    viewerVisible: g.visibility === 'family' ? g.viewerVisible : false,
+    sharedWith: g.visibility === 'shared' ? (g.sharedWith ?? [g.ownerId]) : deleteField(),
+  }
+}
+
+/** Undefined optional fields are dropped (ignoreUndefinedProperties), so an emptied field isn't stored. */
+export async function createGoal(input: GoalInput, uid: string) {
+  const ref = doc(collection(db, 'goals'))
+  const { sharedWith, ...privacy } = goalPrivacy(input)
+  await setDoc(ref, {
+    ...input,
+    ...privacy,
+    ...(input.visibility === 'shared' ? { sharedWith } : {}),
+    createdBy: uid,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export function updateGoal(goal: Goal, patch: Partial<GoalInput>) {
+  const next = { ...goal, ...patch }
+  const data: Record<string, unknown> = { updatedAt: serverTimestamp() }
+  for (const [k, v] of Object.entries(patch)) data[k] = v === undefined ? deleteField() : v
+  return updateDoc(doc(db, 'goals', goal.id), { ...data, ...goalPrivacy(next) })
+}
+
+export function deleteGoal(id: string) {
+  return deleteDoc(doc(db, 'goals', id))
+}
+
+/** Log one day: only that day's fields change, so two people logging a shared goal don't overwrite other days. */
+export function logGoal(goalId: string, day: string, entry: GoalEntry, uid: string) {
+  const data: Record<string, unknown> = { [`log.${day}.by`]: uid, updatedAt: serverTimestamp() }
+  for (const [k, v] of Object.entries(entry)) data[`log.${day}.${k}`] = v === undefined ? deleteField() : v
+  return updateDoc(doc(db, 'goals', goalId), data)
 }
 
 export function subscribeBoards(role: Role, onData: (boards: Board[]) => void, onError: OnError) {
@@ -199,6 +250,35 @@ export function deleteList(listId: string, tasks: Task[]) {
 
 export type TaskInput = Omit<Task, 'id' | 'listId' | 'visibility' | 'ownerId' | 'viewerVisible' | 'createdBy' | 'createdAt'>
 
+/**
+ * A status change plus `finishedOn`: the day it became done/canceled (`day`, default today), kept if it was already
+ * finished, cleared when reopened. Every status change should go through this so day views stay right.
+ */
+export function withStatus(task: Pick<Task, 'status' | 'finishedOn'>, status: Task['status'], day = today()): Partial<TaskInput> {
+  const finished = (s: Task['status']) => s === 'done' || s === 'canceled'
+  if (!finished(status)) return { status, finishedOn: undefined }
+  return { status, finishedOn: finished(task.status) && task.finishedOn && task.status === status ? task.finishedOn : day }
+}
+
+const FAMILY_INBOX = 'Family Inbox'
+
+/**
+ * Where an add goes when no list is named: your inbox for your default privacy (Settings). Private: your own task
+ * list named "Inbox" (or your first private task list). Family: the shared "Family Inbox". Created if missing.
+ */
+export async function inboxFor(uid: string, defaultVisibility: List['visibility'] | undefined, editable: List[]): Promise<List> {
+  const family = (defaultVisibility ?? 'private') === 'family'
+  const found = family
+    ? editable.find((l) => l.visibility === 'family' && l.kind === 'list' && l.name === FAMILY_INBOX)
+    : (editable.find((l) => l.visibility === 'private' && l.ownerId === uid && l.kind === 'list' && l.name === 'Inbox') ??
+      editable.find((l) => l.visibility === 'private' && l.ownerId === uid && l.kind === 'list'))
+  if (found) return found
+  const inbox: Omit<List, 'id'> = family
+    ? { name: FAMILY_INBOX, kind: 'list', visibility: 'family', ownerId: uid, viewerVisible: false, defaultContext: 'family' }
+    : { name: 'Inbox', kind: 'list', visibility: 'private', ownerId: uid, viewerVisible: false, defaultContext: 'family' }
+  return { ...inbox, id: await createList(inbox) }
+}
+
 export async function createTask(list: List, input: TaskInput, uid: string) {
   const ref = doc(collection(db, 'tasks'))
   const { sharedWith, ...copied } = copiedFields(list)
@@ -232,9 +312,15 @@ export function deleteTask(id: string) {
 }
 
 /** Apply a shift preview plus refreshed conflict flags as one batch (DESIGN.md §6.3). */
-export function applySchedule(moves: Move[], conflicts: Map<string, string | undefined>, dependencies: DependencyChange[] = []) {
+export function applySchedule(
+  moves: Move[],
+  conflicts: Map<string, string | undefined>,
+  dependencies: DependencyChange[] = [],
+  /** Other fields to write in the same batch, e.g. `pushedFrom` when "⏭ next day" moves dependents too. */
+  extra: { id: string; data: Partial<TaskInput> }[] = [],
+) {
   const batch = writeBatch(db)
-  const ids = new Set([...moves.map((m) => m.id), ...conflicts.keys(), ...dependencies.map((change) => change.id)])
+  const ids = new Set([...moves.map((m) => m.id), ...conflicts.keys(), ...dependencies.map((change) => change.id), ...extra.map((e) => e.id)])
   for (const id of ids) {
     const m = moves.find((x) => x.id === id)
     const data: Record<string, unknown> = { updatedAt: serverTimestamp() }
@@ -243,6 +329,7 @@ export function applySchedule(moves: Move[], conflicts: Map<string, string | und
     const dependency = dependencies.find((change) => change.id === id)
     if (dependency) data.dependsOn = dependency.after
     if (conflicts.has(id)) data.conflict = conflicts.get(id) ?? deleteField()
+    for (const e of extra.filter((x) => x.id === id)) Object.assign(data, e.data)
     batch.update(doc(db, 'tasks', id), data)
   }
   return batch.commit()

@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { Board, BoardItem, List, Task, Vote } from '../types'
+import type { Board, BoardItem, Goal, List, Task, Vote } from '../types'
 
 export interface DataState {
   loaded: boolean
@@ -9,6 +9,8 @@ export interface DataState {
   tasks: Task[]
   /** Checklist items and notes (stored like tasks, but never shown or counted as tasks). */
   listItems: Task[]
+  /** Daily goals you can see (DESIGN.md §5.6). */
+  goals: Goal[]
   boards: Board[]
   /** Items of every visible board. */
   items: BoardItem[]
@@ -27,6 +29,7 @@ export const emptyData: DataState = {
   lists: [],
   tasks: [],
   listItems: [],
+  goals: [],
   boards: [],
   items: [],
   myVotes: [],

@@ -2,15 +2,22 @@ import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../../hooks/useApp'
 import type { Task } from '../../types'
 import { people } from '../../utils/tasks'
-import { smsUrl, taskLink, textBody, whenText } from '../../utils/text'
+import { shareLink, smsUrl, textBody, whenText } from '../../utils/text'
 
 /**
  * "💬 Text about this": pick a person, type a note; Messages opens with your note plus this task's title, time and
  * link filled in, and you press Send. A real text from your phone, so replies come back as normal texts.
  */
 export function TextAbout({ task }: { task: Task }) {
-  const { household, uid, textingId } = useApp()
-  const [open, setOpen] = useState(textingId === task.id) // the 💬 on a list row opens it ready to write
+  const { textingId } = useApp()
+  // The 💬 on a list row opens it ready to write.
+  return <TextForm subject={{ title: task.title, when: whenText(task), link: shareLink(task) }} startOpen={textingId === task.id} label="Text about this" />
+}
+
+/** The texting form for any subject (a task, a link, a new blog post): pick a person, add a note, open Messages. */
+export function TextForm({ subject, startOpen, label }: { subject: { title: string; when: string; link: string }; startOpen: boolean; label: string }) {
+  const { household, uid } = useApp()
+  const [open, setOpen] = useState(startOpen)
   const others = people(household).filter(([id]) => id !== uid)
   const firstWithPhone = others.find(([, m]) => m.phone)?.[0] ?? others[0]?.[0] ?? ''
   const [to, setTo] = useState(firstWithPhone)
@@ -18,24 +25,24 @@ export function TextAbout({ task }: { task: Task }) {
   const [copied, setCopied] = useState(false)
   const boxRef = useRef<HTMLTextAreaElement>(null)
   // Opened from a list row's 💬: the form sits at the bottom of a long panel, so bring it into view, ready to type.
-  const fromRow = textingId === task.id
+  const fromRow = startOpen
   useEffect(() => {
     if (!fromRow || !boxRef.current) return
     boxRef.current.scrollIntoView({ block: 'center' })
     boxRef.current.focus({ preventScroll: true })
   }, [fromRow])
 
-  const body = textBody(message, { title: task.title, when: whenText(task), link: taskLink(task.id) })
+  const body = textBody(message, subject)
   const phone = household.members[to]?.phone
   return (
     <div className="text-about">
       {!open ? (
         <button type="button" className="secondary small" onClick={() => setOpen(true)}>
-          💬 Text about this
+          💬 {label}
         </button>
       ) : (
         <>
-          <span className="label">Text about this</span>
+          <span className="label">{label}</span>
           {others.length === 0 && (
             <p className="muted small">
               No one else has an Align account yet. Once they do, and add their mobile number in ⚙ Settings, you can text them from here.

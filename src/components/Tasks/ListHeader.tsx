@@ -3,7 +3,7 @@ import { useApp } from '../../hooks/useApp'
 import type { List } from '../../types'
 import { sharedNames } from '../../utils/tasks'
 
-const KIND_LABEL: Record<List['kind'], string> = { list: '', project: ' project', checklist: ' checklist', notes: ' notes' }
+const KIND_LABEL: Record<List['kind'], string> = { list: '', project: ' project', checklist: ' checklist', notes: ' notes', links: ' links' }
 
 /** Name, who can see it, and Edit list; `children` adds view-specific buttons. */
 export function ListHeader({ list, children }: { list: List; children?: ReactNode }) {
@@ -19,7 +19,7 @@ export function ListHeader({ list, children }: { list: List; children?: ReactNod
       {list.visibility === 'shared' && (
         <span className="muted small">with {sharedNames(list.sharedWith ?? [], app.household, app.uid)}</span>
       )}
-      {list.defaultContext === 'work' && list.kind !== 'checklist' && list.kind !== 'notes' && <span className="badge work">Work</span>}
+      {list.defaultContext === 'work' && (list.kind === 'list' || list.kind === 'project') && <span className="badge work">Work</span>}
       <span className="grow" />
       {children}
       {app.canEdit(list) && (

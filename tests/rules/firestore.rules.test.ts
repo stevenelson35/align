@@ -93,6 +93,36 @@ beforeEach(async () => {
   })
 })
 
+describe('goals', () => {
+  const goal = (over: Record<string, unknown> = {}) => ({
+    name: 'Push-ups', kind: 'progressive', visibility: 'private', ownerId: 'steve', viewerVisible: false,
+    progression: { start: 10, step: 1, every: 2, per: 'day', from: '2026-10-20' }, createdBy: 'steve', ...over,
+  })
+
+  it('keeps a private goal to its owner, who can log days', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'goals/p'), goal()))
+    await assertSucceeds(updateDoc(doc(db('steve'), 'goals/p'), { 'log.2026-10-20.value': 12 }))
+    await assertFails(getDoc(doc(db('daughter'), 'goals/p')))
+    await assertFails(updateDoc(doc(db('daughter'), 'goals/p'), { 'log.2026-10-20.value': 50 }))
+  })
+
+  it('shares family and chosen-people goals like lists', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'goals/dogs'), goal({ name: 'Walk dogs', kind: 'check', visibility: 'family', progression: null })))
+    await assertSucceeds(updateDoc(doc(db('daughter'), 'goals/dogs'), { 'log.2026-10-20.done': true }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'goals/both'), goal({ visibility: 'shared', sharedWith: ['steve', 'wife'] })))
+    await assertSucceeds(getDoc(doc(db('wife'), 'goals/both')))
+    await assertFails(getDoc(doc(db('daughter'), 'goals/both')))
+    await assertSucceeds(getDocs(query(collection(db('wife'), 'goals'), where('sharedWith', 'array-contains', 'wife'))))
+  })
+
+  it('rejects malformed goals and viewer writes', async () => {
+    await assertFails(setDoc(doc(db('steve'), 'goals/bad'), goal({ kind: 'diet' })))
+    await assertFails(setDoc(doc(db('steve'), 'goals/bad2'), goal({ name: '' })))
+    await assertFails(setDoc(doc(db('steve'), 'goals/bad3'), goal({ ownerId: 'wife' })))
+    await assertFails(setDoc(doc(db('grandma'), 'goals/g'), goal({ ownerId: 'grandma', createdBy: 'grandma' })))
+  })
+})
+
 describe('sharing with chosen people', () => {
   it('lets only the people on a shared list read it and its items', async () => {
     for (const uid of ['steve', 'wife']) {
@@ -232,7 +262,10 @@ describe('lists', () => {
     await assertSucceeds(updateDoc(doc(db('steve'), 'lists/familyVisible'), { ownerId: 'daughter' }))
   })
 
-  it('accepts checklists and notes lists', async () => {
+  it('accepts checklists, notes and links lists', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'lists/bookmarks'), { ...lists.familyVisible, kind: 'links' }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'tasks/link1'), task('familyVisible', { url: 'https://example.com', category: 'Home/Utilities' })))
+    await assertFails(setDoc(doc(db('steve'), 'tasks/link2'), task('familyVisible', { url: 'x'.repeat(3000) })))
     await assertSucceeds(setDoc(doc(db('steve'), 'lists/shopping'), { ...lists.familyVisible, kind: 'checklist' }))
     await assertSucceeds(setDoc(doc(db('steve'), 'lists/wifi'), { ...lists.familyVisible, kind: 'notes' }))
   })
@@ -269,6 +302,12 @@ describe('tasks', () => {
     batch.update(doc(steve, 'lists/familyHidden'), { viewerVisible: true })
     batch.update(doc(steve, 'tasks/familyHiddenTask'), { viewerVisible: true })
     await assertSucceeds(batch.commit())
+  })
+
+  it('accepts day history fields, and rejects malformed ones', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'tasks/h1'), task('familyVisible', { status: 'done', finishedOn: '2026-10-19', pushedFrom: ['2026-10-18'] })))
+    await assertFails(setDoc(doc(db('steve'), 'tasks/h2'), task('familyVisible', { finishedOn: 20261019 })))
+    await assertFails(setDoc(doc(db('steve'), 'tasks/h3'), task('familyVisible', { pushedFrom: '2026-10-18' })))
   })
 
   it('accepts every task status, including canceled', async () => {
