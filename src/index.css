@@ -1174,6 +1174,9 @@ label.inline input[type='radio'] {
 .goals-strip h3 .link {
   margin-left: auto;
 }
+.goals-strip h3 .link + .link {
+  margin-left: 0;
+}
 .goal-list {
   display: grid;
   gap: 0.35rem;

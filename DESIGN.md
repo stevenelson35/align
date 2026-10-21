@@ -192,6 +192,7 @@ The family Google Calendar is copied one way into a family list named **Family C
 ```
 
 - Added from any details section (**+ Add a picture**): the phone's own picker (photo library, camera or files) → `PictureEditor` (Original / Square / 4:3 / 3:4 / 16:9, drag to position, zoom, rotate) → `addImage` (returns the id at once, like `addTaskNow`). Entries keep `"align-image:<id>"` in `images` beside ordinary addresses (`utils/pictures.ts`); `<Picture>` shows either, and `PictureLightbox` shows one full screen.
+- **HEIC** (iPhone / some Android photos): the browser's own decoder is tried first (Safari opens HEIC); otherwise `heic-to` (LGPL, loaded only for HEIC files, ~3 MB, its own chunk) converts it to JPEG in the browser. Other unreadable files get a message naming the file and its type.
 - **Access:** any household account can `get` one by id, nobody can `list` the collection, so a picture is reachable only through an entry you can see. Never updated; the person who added it can delete it. Removing a picture and saving, or deleting a task / list / goal, deletes the stored pictures you added (`deleteRemovedImages`).
 - **Free tier:** about 150–300 KB a picture against Firestore's 1 GiB, so a few thousand pictures. Cloudinary is now used only as the blog's temporary upload step; pictures uploaded to Cloudinary from Align before this keep working as addresses.
 
@@ -340,7 +341,7 @@ The chat panel runs a local, rule-based parser (`src/chat/parser.ts`, dates by `
 ### 10.3 Favorite photos (psort)
 psort's `publish-browse` puts the family's starred, non-private photos on Turbify for the blog's photo browser: web sizes at `https://www.itsallonesong.com/pics/browse/<size>/<id>-<size>.jpg` and `browse-manifest.json` (id, taken_at, people's names, event, top). psort's `.htaccess` lets the blog read the manifest, and lets Align read it too, but only for requests from Align. Align only reads it (`src/photos/favorites.ts`, loaded once per session):
 - **📷 Photos** (`#/photos`): a searchable grid (names, years, months, events; Top picks), a larger view, **Full size**, and **Text this photo** (sends the 2048px image link). It also links to the blog's photo browser.
-- **On this day** on the day view (`photosForDay`): favorites from the same date in earlier years ("6 years ago"); if none, **Near this day** (the nearest date within a week, wrapping at New Year); if still none, **From the archive** (3 picked at random, the same pick all day). Hide is remembered (`align-on-this-day-hidden`). It doesn't show if the list can't be reached.
+- **On this day** on the day view (`photosForDay`): favorites from the same date in earlier years ("6 years ago"); if none, **Near this day** (the nearest date within a week, wrapping at New Year); if still none, **From the archive** (3 picked at random, the same pick all day). Hide lasts for the rest of the day (`useDailyFlag`). It doesn't show if the list can't be reached.
 - **From favorites** next to Upload in the blog composer (the 2048px copy; the blog's Action downloads it like a Cloudinary upload; alt text starts as the caption) and in every note/link/picture box (goal entries, voting items; the 1024px copy).
 - Dev servers (localhost) aren't allowed to read the manifest, so browser tests serve a copy with `page.route`.
 
@@ -406,7 +407,11 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-21 (stored pictures): built, tested, NOT yet committed or deployed
+### 2026-10-21 (HEIC): built, tested, NOT yet committed
+- Day view: **Goals** has Show / Hide and starts hidden each morning; **On this day** starts shown each morning. A change lasts for the rest of that day on that device (`useDailyFlag`, keys `align-goals-hidden`, `align-on-this-day-hidden`).
+- The picture editor converts HEIC photos (the user hit "That file isn't a picture this browser can open" on the live site). No rules change.
+
+### 2026-10-21 (stored pictures): built and deployed (`c709097`, rules deployed)
 - **Pictures are stored in Align (Firestore), not Cloudinary** (§5.7): the phone's own picker, a built-in crop / rotate editor, full-screen view, and cleanup when removed or deleted. Blog posts still upload through Cloudinary (its Action copies them to Turbify).
 - Menu: **Travelin' On blog** link (opens blog.itsallonesong.com in a new tab) under New blog post and Photos.
 - Rules: `images/{id}` (get by id for the household, no list, create own ≤ 1 MB data URL, delete own), plus a test. **Deploy the rules before the web app.**

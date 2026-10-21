@@ -5,17 +5,46 @@ import { Icon } from './Icon'
 /** Working copy size: big enough to crop from, small enough for a phone's memory. */
 const WORK_SIDE = 2400
 
-function loadImage(file: File): Promise<HTMLImageElement> {
+function imageFrom(blob: Blob): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file)
+    const url = URL.createObjectURL(blob)
     const img = new Image()
     img.onload = () => resolve(img) // the browser applies the photo's orientation (EXIF) when drawing
     img.onerror = () => {
       URL.revokeObjectURL(url)
-      reject(new Error('That file isn’t a picture this browser can open (try a JPEG or PNG).'))
+      reject(new Error('undecodable'))
     }
     img.src = url
   })
+}
+
+/** HEIC / HEIF (iPhones' usual format, some Android phones): by type, name, or the file's first bytes. */
+async function looksHeic(file: File): Promise<boolean> {
+  if (/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name)) return true
+  const head = new Uint8Array(await file.slice(4, 12).arrayBuffer())
+  return /^ftyp(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(String.fromCharCode(...head))
+}
+
+/**
+ * Opens a chosen file as an image. The browser's own decoder first (Safari opens HEIC itself); if it can't and the
+ * file is HEIC, a converter is loaded (only then: it's about 3 MB) and turns it into a JPEG in the browser.
+ */
+async function loadImage(file: File, onStatus: (s: string) => void): Promise<HTMLImageElement> {
+  try {
+    return await imageFrom(file)
+  } catch {
+    // fall through
+  }
+  if (await looksHeic(file)) {
+    onStatus('Converting the HEIC photo…')
+    try {
+      const { heicTo } = await import('heic-to')
+      return await imageFrom(await heicTo({ blob: file, type: 'image/jpeg', quality: 0.92 }))
+    } catch {
+      throw new Error(`Couldn’t convert “${file.name}” (HEIC). Try again, or choose a JPEG copy of it.`)
+    }
+  }
+  throw new Error(`“${file.name}” (${file.type || 'unknown type'}) isn’t a picture this browser can open. JPEG, PNG, WebP and HEIC work.`)
 }
 
 /** The picture, rotated by quarter turns, on a canvas no bigger than WORK_SIDE. */
@@ -59,6 +88,7 @@ function encode(source: HTMLCanvasElement, r: { x: number; y: number; w: number;
 export function PictureEditor({ file, onDone, onCancel }: { file: File; onDone: (p: { data: string; width: number; height: number }) => void; onCancel: () => void }) {
   const [img, setImg] = useState<HTMLImageElement | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState('Opening…')
   const [turns, setTurns] = useState(0)
   const [aspect, setAspect] = useState<number | null>(null)
   const [zoom, setZoom] = useState(1)
@@ -69,7 +99,7 @@ export function PictureEditor({ file, onDone, onCancel }: { file: File; onDone: 
 
   useEffect(() => {
     let live = true
-    loadImage(file)
+    loadImage(file, (st) => live && setStatus(st))
       .then((i) => live && setImg(i))
       .catch((err) => live && setError(err.message))
     return () => {
@@ -139,7 +169,7 @@ export function PictureEditor({ file, onDone, onCancel }: { file: File; onDone: 
           </button>
         </header>
         {error && <p className="error">{error}</p>}
-        {!img && !error && <p className="muted">Opening…</p>}
+        {!img && !error && <p className="muted">{status}</p>}
         {img && (
           <>
             <canvas

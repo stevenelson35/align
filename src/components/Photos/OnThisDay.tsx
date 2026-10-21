@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useFavorites } from '../../hooks/useFavorites'
-import { useStoredFlag } from '../../hooks/useStoredFlag'
+import { useDailyFlag } from '../../hooks/useDailyFlag'
 import { photoCaption, photoDate, photosForDay, photoUrl, yearsAgo, type Favorite } from '../../photos/favorites'
 import { Icon } from '../UI/Icon'
 import { PhotoViewer } from './PhotoViewer'
@@ -11,7 +11,8 @@ import { PhotoViewer } from './PhotoViewer'
  */
 export function OnThisDay({ day }: { day: string }) {
   const { manifest } = useFavorites()
-  const [hidden, setHidden] = useStoredFlag('align-on-this-day-hidden', false)
+  // Shown each morning; Hide lasts for the rest of the day.
+  const [hidden, setHidden] = useDailyFlag('align-on-this-day-hidden', false)
   const [open, setOpen] = useState<Favorite | null>(null)
   const found = manifest ? photosForDay(manifest.photos, day) : null
   const photos = found?.photos ?? []
