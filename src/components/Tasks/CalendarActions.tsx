@@ -3,6 +3,7 @@ import { today } from '../../engine/dates'
 import { calendarSyncUrl, refreshCalendar } from '../../firebase/calendarSync'
 import { useApp } from '../../hooks/useApp'
 import { googleCalendarDayUrl } from '../../utils/calendar'
+import { Icon } from '../UI/Icon'
 
 /**
  * "📅 Google Calendar ↗" (opens today in a new tab, to check or change the family calendar) and "↻ Refresh calendar"
@@ -61,11 +62,11 @@ export function CalendarActions() {
         title="Open the family calendar in Google Calendar (new tab)"
         onClick={() => (wentToCalendar.current = true)}
       >
-        📅 Google Calendar ↗
+        <Icon name="calendar" /> Google Calendar <Icon name="external" />
       </a>
       {canRefresh && (
         <button type="button" className="secondary small" onClick={run} disabled={busy} title="Sync Google Calendar now">
-          {busy ? 'Refreshing…' : '↻ Refresh calendar'}
+          {busy ? 'Refreshing…' : <><Icon name="refresh" /> Refresh calendar</>}
         </button>
       )}
       {note && <span className={`small${note.error ? ' error-text' : ' muted'}`}>{note.text}</span>}

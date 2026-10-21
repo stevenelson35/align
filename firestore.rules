@@ -166,6 +166,8 @@ service cloud.firestore {
         // Links lists: the address and an optional "Home/Utilities" category.
         && (!('url' in d) || (d.url is string && d.url.size() <= 2048))
         && (!('category' in d) || (d.category is string && d.category.size() <= 200))
+        // A reading-list task: the link (in a links list) it's about.
+        && (!('linkId' in d) || (d.linkId is string && d.linkId.size() <= 100))
         && d.visibility == list.visibility
         && d.get('sharedWith', null) == list.get('sharedWith', null)
         && d.ownerId == list.ownerId
@@ -191,6 +193,10 @@ service cloud.firestore {
         || (isViewer() && get(/databases/$(database)/documents/boards/$(boardId)).data.viewerVisible == true);
     }
 
+    function validComment(d) {
+      return d.text is string && d.text.size() > 0 && d.text.size() <= 2000 && d.uid is string;
+    }
+
     match /boards/{boardId} {
       allow read: if isMember() || (isViewer() && resource.data.viewerVisible == true);
       allow create, update: if isMember()
@@ -198,12 +204,33 @@ service cloud.firestore {
         && request.resource.data.viewerVisible is bool;
       allow delete: if isMember();
 
+      // Comments on a board, or on an item (below): members write their own; anyone who can see the board reads.
+      match /comments/{commentId} {
+        allow read: if boardVisible(boardId);
+        allow create: if isMember() && validComment(request.resource.data) && request.resource.data.uid == request.auth.uid;
+        allow update: if isMember() && resource.data.uid == request.auth.uid
+          && validComment(request.resource.data) && request.resource.data.uid == resource.data.uid;
+        allow delete: if isMember() && resource.data.uid == request.auth.uid;
+      }
+
       match /items/{itemId} {
         allow read: if boardVisible(boardId);
+        // Optional note, link and picture (an image address, e.g. from the Cloudinary upload).
         allow create, update: if isMember()
           && request.resource.data.title is string && request.resource.data.title.size() > 0
-          && request.resource.data.status in ['open', 'chosen', 'archived'];
+          && request.resource.data.status in ['open', 'chosen', 'archived']
+          && (!('note' in request.resource.data) || (request.resource.data.note is string && request.resource.data.note.size() <= 5000))
+          && (!('url' in request.resource.data) || (request.resource.data.url is string && request.resource.data.url.size() <= 2048))
+          && (!('imageUrl' in request.resource.data) || (request.resource.data.imageUrl is string && request.resource.data.imageUrl.size() <= 2048));
         allow delete: if isMember();
+
+        match /comments/{commentId} {
+          allow read: if boardVisible(boardId);
+          allow create: if isMember() && validComment(request.resource.data) && request.resource.data.uid == request.auth.uid;
+          allow update: if isMember() && resource.data.uid == request.auth.uid
+            && validComment(request.resource.data) && request.resource.data.uid == resource.data.uid;
+          allow delete: if isMember() && resource.data.uid == request.auth.uid;
+        }
 
         match /votes/{voterId} {
           allow read: if boardVisible(boardId);

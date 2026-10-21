@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { addDays, formatDay, today } from '../../engine/dates'
 import { shiftForward } from '../../engine/scheduling'
-import { createTask, inboxFor, updateTask, withStatus } from '../../firebase/db'
+import { addTaskNow, inboxFor, updateTask, withStatus } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Task } from '../../types'
 import { dayBuckets, pushToNextDay, relativeDay } from '../../utils/day'
@@ -9,6 +9,7 @@ import { sortTasks } from '../../utils/tasks'
 import { GoalsStrip } from '../Goals/GoalsStrip'
 import { CalendarActions } from './CalendarActions'
 import { TaskCard } from './TaskCard'
+import { Icon } from '../UI/Icon'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -58,14 +59,16 @@ export function DayView({ day }: { day: string }) {
 
   async function add(e: FormEvent) {
     e.preventDefault()
-    if (!title.trim()) return
+    const text = title.trim()
+    if (!text) return
     setError(null)
+    setTitle('') // clear at once, so a second tap can't add it twice
     try {
       const list = await inboxFor(app.uid, app.member.defaultVisibility, lists.filter((l) => app.canEdit(l)))
-      await createTask(list, { title: title.trim(), priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [], startDate: day }, app.uid)
-      setTitle('')
+      await addTaskNow(list, { title: text, priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [], startDate: day }, app.uid).written
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+      setTitle(text)
     }
   }
 
@@ -126,7 +129,7 @@ export function DayView({ day }: { day: string }) {
           {day < now ? 'Not done' : 'To do'} <span className="muted">{b.todo.length}</span>
           {b.todo.length > 0 && day <= now && app.isMember && (
             <button type="button" className="link small" onClick={pushRest} title="End of day: move what's left to the next day">
-              ⏭ Push the rest to {day === now ? 'tomorrow' : 'the next day'}
+              <Icon name="skip" /> Push the rest to {day === now ? 'tomorrow' : 'the next day'}
             </button>
           )}
         </h3>

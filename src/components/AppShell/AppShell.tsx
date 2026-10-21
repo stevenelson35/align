@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppContext, type AppState, type PendingShift } from '../../context/AppContext'
 import { useData } from '../../hooks/useApp'
 import { useHashRoute } from '../../hooks/useHashRoute'
@@ -9,6 +9,7 @@ import { ShiftDialog } from '../Dependencies/ShiftDialog'
 import { ListEditor } from '../Tasks/ListEditor'
 import { ItemDetails } from '../Tasks/ItemDetails'
 import { TaskDetails } from '../Tasks/TaskDetails'
+import { AppSkeleton } from './AppSkeleton'
 import { BottomNav } from './BottomNav'
 import { SearchDialog } from './SearchDialog'
 import { SettingsDialog } from './SettingsDialog'
@@ -115,6 +116,14 @@ export function AppShell({ uid, household, member }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [go, openChat, member.role])
 
+  // A new page starts at the top (picking a list lower down the menu used to leave you scrolled down).
+  const mainRef = useRef<HTMLElement>(null)
+  const pageKey = route.view === 'task' ? 'task' : JSON.stringify(route)
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    mainRef.current?.scrollTo?.(0, 0)
+  }, [pageKey])
+
   // Escape closes the phone menu, like tapping outside it.
   useEffect(() => {
     if (!sidebarOpen) return
@@ -137,7 +146,7 @@ export function AppShell({ uid, household, member }: Props) {
         <div className="app-body">
           <Sidebar open={sidebarOpen} onSettings={openSettings} />
           {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
-          <main className="main-panel">
+          <main className="main-panel" ref={mainRef}>
             {data.error && (
               <p className="error card">
                 Couldn't load data: {data.error}{' '}
@@ -146,7 +155,7 @@ export function AppShell({ uid, household, member }: Props) {
                 </button>
               </p>
             )}
-            {data.loaded ? <MainView /> : <p className="muted">Loading…</p>}
+            {data.loaded ? <MainView /> : <AppSkeleton note="Loading your lists…" />}
           </main>
           {selectedTask && (
             <aside className="right-panel">

@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { createTask, deleteTask, updateTask, withStatus } from '../../firebase/db'
+import { addTaskNow, deleteTask, updateTask, withStatus } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { List, Task } from '../../types'
 import { ListHeader } from './ListHeader'
+import { Icon } from '../UI/Icon'
 
 /** When it was added (to the nanosecond: quick additions land in the same second); one still being saved is newest. */
 const added = (t: Task) => (t.createdAt ? t.createdAt.seconds + t.createdAt.nanoseconds / 1e9 : Infinity)
@@ -24,16 +25,16 @@ export function ChecklistView({ list }: { list: List }) {
   const checked = items.filter((t) => t.status === 'done').sort(addedOrder)
   const shown = hideChecked ? open : [...open, ...checked]
 
-  async function add(e: FormEvent) {
+  function add(e: FormEvent) {
     e.preventDefault()
-    if (!title.trim()) return
+    const text = title.trim()
+    if (!text) return
     setError(null)
-    try {
-      await createTask(list, { title: title.trim(), priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] }, app.uid)
-      setTitle('')
-    } catch (err) {
+    setTitle('') // clear at once: the item shows immediately, and a second tap finds nothing to add
+    addTaskNow(list, { title: text, priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] }, app.uid).written.catch((err) => {
       setError(err instanceof Error ? err.message : String(err))
-    }
+      setTitle(text)
+    })
   }
 
   async function clearChecked() {
@@ -76,7 +77,7 @@ export function ChecklistView({ list }: { list: List }) {
               aria-label={`Text someone about ${t.title}`}
               onClick={() => app.textAbout(t.id)}
             >
-              💬
+              <Icon name="message" />
             </button>
           </li>
         ))}

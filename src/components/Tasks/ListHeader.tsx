@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useApp } from '../../hooks/useApp'
 import type { List } from '../../types'
 import { sharedNames } from '../../utils/tasks'
+import { Icon } from '../UI/Icon'
 
 const KIND_LABEL: Record<List['kind'], string> = { list: '', project: ' project', checklist: ' checklist', notes: ' notes', links: ' links' }
 
@@ -12,7 +13,7 @@ export function ListHeader({ list, children }: { list: List; children?: ReactNod
     <header className="view-header">
       <h2>{list.name}</h2>
       <span className={`badge ${list.kind === 'project' ? 'color-project' : `color-${list.visibility}`}`}>
-        {{ private: '🔒 Private', family: '👪 Family', shared: '👥 Shared' }[list.visibility]}
+        <Icon name={{ private: 'lock', family: 'family', shared: 'shared' }[list.visibility] as 'lock' | 'family' | 'shared'} /> {{ private: 'Private', family: 'Family', shared: 'Shared' }[list.visibility]}
         {KIND_LABEL[list.kind]}
       </span>
       {list.viewerVisible && <span className="badge">Visible to viewers</span>}

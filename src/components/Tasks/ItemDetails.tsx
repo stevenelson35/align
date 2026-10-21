@@ -1,15 +1,17 @@
 import { useState, type FormEvent } from 'react'
-import { deleteTask, updateTask } from '../../firebase/db'
+import { addReadingTask, deleteTask, readingListFor, updateTask } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
 import { cleanCategory, safeUrl } from '../../utils/links'
 import { privacyText } from '../../utils/tasks'
 import { TextAbout } from './TextAbout'
+import { Icon } from '../UI/Icon'
 
 /** Side panel for a checklist item or a note: title, text, move, delete. Save and ✕ are at the top. */
 export function ItemDetails({ item, list }: { item: Task; list: List }) {
   const app = useApp()
-  const { lists } = useData()
+  const { lists, tasks } = useData()
+  const reading = tasks.find((t) => t.linkId === item.id)
   const editable = app.canEdit(item)
   const isNote = list.kind === 'notes'
   const isLink = list.kind === 'links'
@@ -108,8 +110,31 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
       </fieldset>
       {(() => {
         const target = lists.find((l) => l.id === listId) ?? list
-        return <p className="privacy-note small">{privacyText(target, noun, app.household, app.uid)}</p>
+        return <p className="privacy-note small"><Icon name={target.visibility === 'private' ? 'lock' : target.visibility === 'shared' ? 'shared' : 'family'} /> {privacyText(target, noun, app.household, app.uid).replace(/^\S+\s/, '')}</p>
       })()}
+      {isLink && item.url && (
+        <div className="row">
+          {reading ? (
+            <button type="button" className="link small" onClick={() => app.navigate({ view: 'task', taskId: reading.id })}>
+              {reading.status === 'done' ? '✓ Read (open its task)' : <><Icon name="book" /> On the reading list (open its task)</>}
+            </button>
+          ) : (
+            editable && (
+              <button
+                type="button"
+                className="secondary small"
+                onClick={() =>
+                  readingListFor(app.uid, app.member.defaultVisibility, lists.filter((l) => app.canEdit(l)))
+                    .then((target) => addReadingTask(target, { id: item.id, title: item.title, url: item.url }, app.uid).written)
+                    .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                }
+              >
+                <Icon name="book" /> Add to reading list
+              </button>
+            )
+          )}
+        </div>
+      )}
       <TextAbout task={item} />
       {error && <p className="error">{error}</p>}
       {editable && (

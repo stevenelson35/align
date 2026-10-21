@@ -2,6 +2,7 @@ import { signOut } from '../../firebase/auth'
 import { useApp } from '../../hooks/useApp'
 import type { HouseholdMember } from '../../types'
 import { ThemeToggle } from './ThemeToggle'
+import { Icon } from '../UI/Icon'
 
 interface Props {
   householdName: string
@@ -18,7 +19,7 @@ export function TopBar({ householdName, member, onMenu, onChat, onSettings, onSe
     <header className="top-bar">
       <div className="brand">
         <button type="button" className="link menu-button" onClick={onMenu} aria-label="Menu">
-          ☰
+          <Icon name="menu" />
         </button>
         <strong>Align</strong>
         <span className="muted hide-mobile">{householdName}</span>
@@ -33,7 +34,7 @@ export function TopBar({ householdName, member, onMenu, onChat, onSettings, onSe
           Chat
         </button>
         <button type="button" className="link search-button" onClick={onSearch} title="Search (/)" aria-label="Search">
-          🔍
+          <Icon name="search" />
         </button>
         <ThemeToggle />
         {member.role === 'viewer' && <span className="badge">View only</span>}

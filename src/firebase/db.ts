@@ -18,7 +18,7 @@ import {
   type Query,
 } from 'firebase/firestore'
 import type { Move } from '../engine/scheduling'
-import type { Board, BoardItem, Goal, GoalEntry, Household, ItemStatus, List, Role, Task, Visibility, Vote } from '../types'
+import type { Board, BoardItem, Comment, Goal, GoalEntry, Household, ItemStatus, List, Role, Task, Visibility, Vote } from '../types'
 import { db } from './config'
 import { today } from '../engine/dates'
 import type { DependencyChange } from '../utils/project'
@@ -261,6 +261,21 @@ export function withStatus(task: Pick<Task, 'status' | 'finishedOn'>, status: Ta
 }
 
 const FAMILY_INBOX = 'Family Inbox'
+export const READING_LIST = 'Reading list'
+
+/** Your "Reading list" task list (for your default privacy), created the first time it's needed. */
+export async function readingListFor(uid: string, defaultVisibility: List['visibility'] | undefined, editable: List[]): Promise<List> {
+  const visibility = (defaultVisibility ?? 'private') === 'family' ? 'family' : 'private'
+  const found = editable.find((l) => l.kind === 'list' && l.name === READING_LIST && (visibility === 'family' ? l.visibility === 'family' : l.ownerId === uid))
+  if (found) return found
+  const list: Omit<List, 'id'> = { name: READING_LIST, kind: 'list', visibility, ownerId: uid, viewerVisible: false, defaultContext: 'family' }
+  return { ...list, id: await createList(list) }
+}
+
+/** A "Read: <name>" task for a link, in `list`, carrying the address so the task opens it. */
+export function addReadingTask(list: List, link: Pick<Task, 'id' | 'title' | 'url'>, uid: string) {
+  return addTaskNow(list, { title: `Read: ${link.title}`, url: link.url, linkId: link.id, priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] }, uid)
+}
 
 /**
  * Where an add goes when no list is named: your inbox for your default privacy (Settings). Private: your own task
@@ -280,9 +295,20 @@ export async function inboxFor(uid: string, defaultVisibility: List['visibility'
 }
 
 export async function createTask(list: List, input: TaskInput, uid: string) {
+  const { id, written } = addTaskNow(list, input, uid)
+  await written
+  return id
+}
+
+/**
+ * Adds a task (or item) and returns its id straight away: the new doc shows at once from the local write, and
+ * `written` settles when the server confirms. Quick-add boxes clear immediately with this, so a second tap on a
+ * slow connection can't add the same thing twice (that made 6 copies of one link).
+ */
+export function addTaskNow(list: List, input: TaskInput, uid: string): { id: string; written: Promise<void> } {
   const ref = doc(collection(db, 'tasks'))
   const { sharedWith, ...copied } = copiedFields(list)
-  await setDoc(ref, {
+  const written = setDoc(ref, {
     ...input,
     ...(list.kind === 'project' && !input.startDate ? { startDate: today() } : {}),
     listId: list.id,
@@ -292,7 +318,7 @@ export async function createTask(list: List, input: TaskInput, uid: string) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
-  return ref.id
+  return { id: ref.id, written }
 }
 
 /** Patch a task. Undefined values clear the field. Moving to another list re-copies that list's fields. */
@@ -357,6 +383,44 @@ export async function createItem(boardId: string, title: string, uid: string, ca
 
 export function setItemStatus(item: BoardItem, status: ItemStatus) {
   return updateDoc(doc(db, 'boards', item.boardId, 'items', item.id), { title: item.title, status })
+}
+
+/** Edit an item's title and optional note / link / picture (an empty value removes it). */
+export function updateItem(item: BoardItem, patch: Partial<Pick<BoardItem, 'title' | 'note' | 'url' | 'imageUrl'>>) {
+  const data: Record<string, unknown> = { title: patch.title ?? item.title, status: item.status, updatedAt: serverTimestamp() }
+  for (const k of ['note', 'url', 'imageUrl'] as const) if (k in patch) data[k] = patch[k] ? patch[k] : deleteField()
+  return updateDoc(doc(db, 'boards', item.boardId, 'items', item.id), data)
+}
+
+// ---- Comments on boards and items ----
+
+function commentsRef(boardId: string, itemId?: string) {
+  return itemId ? collection(db, 'boards', boardId, 'items', itemId, 'comments') : collection(db, 'boards', boardId, 'comments')
+}
+
+/** Live comments on a board (no itemId) or one item, oldest first. */
+export function subscribeComments(boardId: string, itemId: string | undefined, onData: (comments: Comment[]) => void, onError: OnError) {
+  return onSnapshot(
+    commentsRef(boardId, itemId),
+    (snap) => {
+      const list = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Comment)
+      const at = (c: Comment) => (c.createdAt ? c.createdAt.seconds + c.createdAt.nanoseconds / 1e9 : Infinity)
+      onData(list.sort((a, b) => at(a) - at(b)))
+    },
+    onError,
+  )
+}
+
+export function addComment(boardId: string, itemId: string | undefined, text: string, uid: string) {
+  return setDoc(doc(commentsRef(boardId, itemId)), { text: text.trim(), uid, createdAt: serverTimestamp() })
+}
+
+export function editComment(boardId: string, itemId: string | undefined, comment: Comment, text: string) {
+  return updateDoc(doc(commentsRef(boardId, itemId), comment.id), { text: text.trim(), uid: comment.uid, edited: true })
+}
+
+export function deleteComment(boardId: string, itemId: string | undefined, commentId: string) {
+  return deleteDoc(doc(commentsRef(boardId, itemId), commentId))
 }
 
 export function setVote(boardId: string, itemId: string, uid: string, tokens: number) {

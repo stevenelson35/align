@@ -5,6 +5,10 @@ import { githubToken, setGithubToken, testToken } from '../../blog/github'
 import { useApp } from '../../hooks/useApp'
 import type { Visibility } from '../../types'
 import { loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
+import { ICON_STYLES, saveIconStyle, useIconStyle } from '../../utils/iconStyle'
+import { Icon, type IconName } from '../UI/Icon'
+
+const PREVIEW: IconName[] = ['compose', 'goal', 'message', 'lock', 'family', 'book', 'calendar', 'search', 'settings', 'skip']
 
 /** Your own settings. Default privacy is saved with your household entry (every device); the theme is per device. */
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
@@ -56,6 +60,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   }
   const [visibility, setVisibility] = useState<Visibility>(member.defaultVisibility ?? 'private')
   const [theme, setTheme] = useState<ThemeChoice>(loadTheme)
+  const iconStyle = useIconStyle()
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   useEffect(() => onThemeChange(setTheme), [])
@@ -88,11 +93,11 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             <p className="muted small">For lists you create and quick adds that don't name a list. You can still choose for each list.</p>
             <label className="inline">
               <input type="radio" name="visibility" checked={visibility === 'private'} onChange={() => chooseVisibility('private')} />
-              🔒 Just me
+              <Icon name="lock" /> Just me
             </label>
             <label className="inline">
               <input type="radio" name="visibility" checked={visibility === 'family'} onChange={() => chooseVisibility('family')} />
-              👪 Family
+              <Icon name="family" /> Family
             </label>
             <p className="muted small">
               {visibility === 'family' ? 'Quick adds go to the shared "Family Inbox" list.' : 'Quick adds go to your private "Inbox" list.'}
@@ -179,6 +184,20 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           </fieldset>
         )}
         <fieldset className="setting">
+          <legend>Icons (this device)</legend>
+          {ICON_STYLES.map((st) => (
+            <label key={st.value} className="inline icon-choice" title={st.hint}>
+              <input type="radio" name="icons" checked={iconStyle === st.value} onChange={() => saveIconStyle(st.value)} />
+              <span className="icon-choice-name">{st.label}</span>
+              <span className="icon-preview" aria-hidden="true">
+                {PREVIEW.map((n) => (
+                  <Icon key={n} name={n} style={st.value} />
+                ))}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="setting">
           <legend>Theme (this device)</legend>
           {(['system', 'light', 'dark'] as ThemeChoice[]).map((t) => (
             <label key={t} className="inline">
@@ -191,7 +210,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                   setTheme(t)
                 }}
               />
-              {t === 'system' ? '◐ Match device' : t === 'light' ? '☀ Light' : '☾ Dark'}
+              <Icon name={t === 'system' ? 'auto' : t === 'light' ? 'sun' : 'moon'} /> {t === 'system' ? 'Match device' : t === 'light' ? 'Light' : 'Dark'}
             </label>
           ))}
         </fieldset>

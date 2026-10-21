@@ -88,6 +88,8 @@ export interface Task {
   /** Links lists: the address it opens, and its category ("Home/Utilities" nests). */
   url?: string
   category?: string
+  /** A reading-list task: the link it's about ("Read: …"); the link shows 📖 until this task is done. */
+  linkId?: string
   /** Days it was pushed off ("⏭ next day"), so a past day can show what was rescheduled. */
   pushedFrom?: string[]
   /** Set by the Google Calendar sync; title and dates are overwritten by it (DESIGN.md §5.5). */
@@ -148,7 +150,21 @@ export interface BoardItem {
   title: string
   category?: string
   status: ItemStatus
+  /** Optional details: a note, a link, and a picture (an image address, e.g. uploaded through Cloudinary). */
+  note?: string
+  url?: string
+  imageUrl?: string
   createdBy: string
+}
+
+/** A comment on a board or on one of its items. */
+export interface Comment {
+  id: string
+  text: string
+  uid: string
+  /** Firestore timestamp; null until the server confirms a new comment. */
+  createdAt?: { seconds: number; nanoseconds: number } | null
+  edited?: boolean
 }
 
 export interface Vote {

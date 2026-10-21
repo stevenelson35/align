@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { createBoard, STARTER_BOARDS } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import { useTokenBalance } from '../../hooks/useVoting'
+import { Icon } from '../UI/Icon'
 
 export function BoardsView() {
   const app = useApp()
@@ -35,7 +36,7 @@ export function BoardsView() {
       <header className="view-header">
         <h2>Voting</h2>
         <span className="grow" />
-        {app.isMember && <span className="badge tokens">🪙 {balance} tokens</span>}
+        {app.isMember && <span className="badge tokens"><Icon name="coin" /> {balance} tokens</span>}
       </header>
       {app.isMember && (
         <p className="muted small">

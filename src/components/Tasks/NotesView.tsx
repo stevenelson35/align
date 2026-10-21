@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { createTask } from '../../firebase/db'
+import { addTaskNow } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
 import { ListHeader } from './ListHeader'
@@ -13,17 +13,18 @@ export function NotesView({ list }: { list: List }) {
   const [error, setError] = useState<string | null>(null)
   const notes = listItems.filter((t) => t.listId === list.id).sort((a, b) => a.title.localeCompare(b.title))
 
-  async function add(e: FormEvent) {
+  function add(e: FormEvent) {
     e.preventDefault()
-    if (!title.trim()) return
+    const text = title.trim()
+    if (!text) return
     setError(null)
-    try {
-      const id = await createTask(list, { title: title.trim(), priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] }, app.uid)
-      setTitle('')
-      app.selectTask(id) // straight to writing it
-    } catch (err) {
+    setTitle('')
+    const { id, written } = addTaskNow(list, { title: text, priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] }, app.uid)
+    app.selectTask(id) // straight to writing it
+    written.catch((err) => {
       setError(err instanceof Error ? err.message : String(err))
-    }
+      setTitle(text)
+    })
   }
 
   return (

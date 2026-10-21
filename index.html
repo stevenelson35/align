@@ -20,9 +20,37 @@
         document.documentElement.dataset.theme = dark ? 'dark' : 'light'
       } catch (e) {}
     </script>
+    <style>
+      /* Shown the moment the page opens, before the app's code arrives (React replaces #root). The app reuses
+         these classes while the first data loads (AppSkeleton). Kept inline so it needs no other download. */
+      body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      :root { --boot-bg: #f6f8fa; --boot-surface: #fff; --boot-line: #d0d7de; --boot-block: #e6e9ed; --boot-text: #656d76; }
+      :root[data-theme='dark'] { --boot-bg: #0d1117; --boot-surface: #161b22; --boot-line: #30363d; --boot-block: #21262d; --boot-text: #8d96a0; }
+      .boot { min-height: 100vh; background: var(--boot-bg); color: var(--boot-text); }
+      .boot-bar { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; background: var(--boot-surface); border-bottom: 1px solid var(--boot-line); }
+      .boot-logo { width: 1.75rem; height: 1.75rem; border-radius: 0.45rem; background: #8250df; color: #fff; display: grid; place-items: center; font-weight: 700; }
+      .boot-name { font-weight: 700; color: inherit; }
+      .boot-body { padding: 1rem; display: grid; gap: 0.6rem; max-width: 46rem; }
+      .boot-block { height: 3.2rem; border-radius: 8px; background: var(--boot-block); animation: boot-pulse 1.4s ease-in-out infinite; }
+      .boot-block.short { height: 1.4rem; width: 45%; }
+      .boot-note { font-size: 0.85rem; }
+      @keyframes boot-pulse { 50% { opacity: 0.55; } }
+      @media (prefers-reduced-motion: reduce) { .boot-block { animation: none; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot" aria-busy="true">
+        <div class="boot-bar"><span class="boot-logo">A</span><span class="boot-name">Align</span></div>
+        <div class="boot-body">
+          <div class="boot-block short"></div>
+          <div class="boot-block"></div>
+          <div class="boot-block"></div>
+          <div class="boot-block"></div>
+          <span class="boot-note">Opening Align…</span>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,9 +1,11 @@
+import { useState, type ReactNode } from 'react'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
 import type { Route } from '../../utils/routes'
-import { isFinished, isItemList, PRIVACY_ICON } from '../../utils/tasks'
+import { isFinished, isItemList } from '../../utils/tasks'
+import { Icon } from '../UI/Icon'
 
-function NavLink({ route, label, color, count }: { route: Route; label: string; color?: string; count?: number }) {
+function NavLink({ route, label, color, count }: { route: Route; label: ReactNode; color?: string; count?: number }) {
   const app = useApp()
   const active = JSON.stringify({ ...app.route, timeline: undefined }) === JSON.stringify({ ...route, timeline: undefined })
   return (
@@ -15,8 +17,35 @@ function NavLink({ route, label, color, count }: { route: Route; label: string; 
   )
 }
 
+const OPEN_KEY = 'align-menu-open'
+
+/**
+ * A collapsible menu section. One is open at a time (opening one closes the others), and the open one is
+ * remembered on this device. A collapsed heading is highlighted when the page you're on is inside it.
+ */
+function Section({ title, count, active, isOpen, onToggle, children }: { title: string; count: number; active: boolean; isOpen: boolean; onToggle: () => void; children: ReactNode }) {
+  return (
+    <div className={`nav-section${isOpen ? ' open' : ''}`}>
+      <button type="button" className={`nav-heading${active && !isOpen ? ' has-active' : ''}`} onClick={onToggle} aria-expanded={isOpen}>
+        <span className="caret">{isOpen ? '▾' : '▸'}</span>
+        <span className="grow">{title}</span>
+        {count > 0 && <span className="muted small">{count}</span>}
+      </button>
+      {isOpen && children}
+    </div>
+  )
+}
+
 export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () => void }) {
-  const { uid, isMember, editList } = useApp()
+  const { uid, isMember, editList, route } = useApp()
+  const [openSection, setOpenSection] = useState<string | null>(() => localStorage.getItem(OPEN_KEY))
+  const toggle = (title: string) => {
+    const next = openSection === title ? null : title
+    if (next) localStorage.setItem(OPEN_KEY, next)
+    else localStorage.removeItem(OPEN_KEY)
+    setOpenSection(next)
+  }
+  const activeListId = route.view === 'list' ? route.listId : null
   const { lists, boards, tasks, listItems } = useData()
   // Unfinished tasks or unchecked items; for notes, how many there are.
   const openCount = (l: List) =>
@@ -40,23 +69,29 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
       {isMember && <NavLink route={{ view: 'mine' }} label="My tasks" />}
       <NavLink route={{ view: 'family' }} label="Family tasks" />
       <NavLink route={{ view: 'work' }} label="Work" />
-      <NavLink route={{ view: 'goals' }} label="🎯 Goals" />
-      {isMember && <NavLink route={{ view: 'blog' }} label="✍ New blog post" />}
+      <NavLink route={{ view: 'goals' }} label={<><Icon name="goal" /> Goals</>} />
+      {isMember && <NavLink route={{ view: 'blog' }} label={<><Icon name="compose" /> New blog post</>} />}
 
       {sections.map((s) => (
-        <div key={s.title} className="nav-section">
-          <h3>{s.title}</h3>
+        <Section
+          key={s.title}
+          title={s.title}
+          count={s.lists.length}
+          active={s.lists.some((l) => l.id === activeListId)}
+          isOpen={openSection === s.title}
+          onToggle={() => toggle(s.title)}
+        >
           {s.lists.map((l) => (
             <NavLink
               key={l.id}
               route={{ view: 'list', listId: l.id, timeline: false }}
-              label={l.visibility === 'family' ? l.name : `${l.name} ${PRIVACY_ICON[l.visibility]}`}
+              label={l.visibility === 'family' ? l.name : <>{l.name} <Icon name={l.visibility === 'private' ? 'lock' : 'shared'} label={l.visibility === 'private' ? 'private' : 'shared'} /></>}
               color={s.color || color(l)}
               count={openCount(l)}
             />
           ))}
           {s.lists.length === 0 && <p className="muted small">None yet</p>}
-        </div>
+        </Section>
       ))}
       {isMember && (
         <button type="button" className="secondary small" onClick={() => editList(null)}>
@@ -64,16 +99,21 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
         </button>
       )}
 
-      <div className="nav-section">
-        <h3>Voting</h3>
+      <Section
+        title="Voting"
+        count={boards.length}
+        active={route.view === 'boards' || route.view === 'board'}
+        isOpen={openSection === 'Voting'}
+        onToggle={() => toggle('Voting')}
+      >
         <NavLink route={{ view: 'boards' }} label="All boards" />
         {boards.map((b) => (
           <NavLink key={b.id} route={{ view: 'board', boardId: b.id }} label={b.name} />
         ))}
-      </div>
+      </Section>
       <div className="nav-section">
         <button type="button" className="nav-link" onClick={onSettings}>
-          ⚙ Settings
+          <Icon name="settings" /> Settings
         </button>
       </div>
     </nav>

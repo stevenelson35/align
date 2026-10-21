@@ -6,9 +6,11 @@ import { today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Dependency, Priority, Status, Task } from '../../types'
 import { googleCalendarDayUrl } from '../../utils/calendar'
+import { safeUrl } from '../../utils/links'
 import { NumberField } from './NumberField'
 import { TextAbout } from './TextAbout'
 import { isFinished, isItemList, people as humans, privacyText, STATUS_LABEL, targetName } from '../../utils/tasks'
+import { Icon } from '../UI/Icon'
 
 /** ✓ done, ✕ canceled, ⏳ not finished yet. */
 function statusIcon(t: Task) {
@@ -156,10 +158,17 @@ export function TaskDetails({ task }: { task: Task }) {
           ✕
         </button>
       </header>
-      {conflict && <p className="badge danger">⚠ {conflict}</p>}
+      {conflict && <p className="badge danger"><Icon name="warning" /> {conflict}</p>}
+      {task.url && safeUrl(task.url) && (
+        <p className="small">
+          <a href={safeUrl(task.url)!} target="_blank" rel="noopener noreferrer">
+            Open the link ↗
+          </a>
+        </p>
+      )}
       {task.calendar && (
         <p className="calendar-note small">
-          📅 From the family Google Calendar{task.calendar.time && ` · ${task.calendar.time}`}
+          <Icon name="calendar" /> From the family Google Calendar{task.calendar.time && ` · ${task.calendar.time}`}
           {task.calendar.location && ` · ${task.calendar.location}`}.{' '}
           {/* The event itself when the sync stored its link (newer script), otherwise that day. */}
           {(task.calendar.link || task.startDate) && (
@@ -196,7 +205,7 @@ export function TaskDetails({ task }: { task: Task }) {
         </label>
         {(() => {
           const target = lists.find((l) => l.id === form.listId)
-          return target && <p className="privacy-note small">{privacyText(target, 'task', app.household, app.uid)}</p>
+          return target && <p className="privacy-note small"><Icon name={target.visibility === 'private' ? 'lock' : target.visibility === 'shared' ? 'shared' : 'family'} /> {privacyText(target, 'task', app.household, app.uid).replace(/^\S+\s/, '')}</p>
         })()}
         {itemLists.length > 0 && (
           <details>

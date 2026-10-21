@@ -10,7 +10,7 @@ npm run emulators      # terminal 1 (Auth + Firestore emulators, project demo-al
 npm run seed           # terminal 2: test accounts + household (password "align-dev")
 npm run dev            # http://localhost:5173
 npm test               # 85 unit tests (vitest: engine, tokens, parser, utils, DB writes, Apps Script helpers)
-npm run test:rules     # 34 security-rule tests; starts its own emulators (stop `npm run emulators` first); must stay green
+npm run test:rules     # 36 security-rule tests; starts its own emulators (stop `npm run emulators` first); must stay green
 npm run test:calendar  # Apps Script calendar sync + web app against the running emulators (after seed)
 npx tsc -b && npm run lint && npm run build
 npm run deploy:rules   # real project align-a32c1 (firebase login is done)
@@ -25,6 +25,9 @@ ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web   # the USER runs this
 - **Every status change goes through `withStatus(task, status, day)`** (db.ts) so `finishedOn` stays right for day views; pushes record `pushedFrom`.
 - **Goals** are their own collection (`goals`, same privacy as lists) with a per-day `log` map; log with `logGoal` (writes only that day's fields).
 - **The blog GitHub token lives only in each device's localStorage** (Settings); never put a token in code, Firestore, or a served page.
+- **Quick-add boxes use `addTaskNow` and clear immediately** (don't await the server before clearing; it caused duplicate adds on slow phones).
+- **Firestore has a persistent device cache**; sign-out clears it (`auth.ts`).
+- **Icons go through `<Icon name=… />`** (`components/UI/Icon.tsx`) so the Settings icon style applies; add new drawings there (fill / line / detail layers).
 - **Checklist items, notes and links are task docs** kept in `DataState.listItems`, not `tasks`. They stay out of task views, chat task commands and scheduling.
 - Hash routing (static hosting on Turbify, no rewrites), including `#/task/<id>` links. No spaces in generated names.
 - Match the existing style: functional React components, typed Firestore data in `src/types.ts`, small modules, comments that explain *why*, plain user-facing wording.

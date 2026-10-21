@@ -3,6 +3,10 @@ import { createItem, setItemStatus, setVote, updateBoard } from '../../firebase/
 import { useApp, useData } from '../../hooks/useApp'
 import { useBoardVotes, useTokenBalance } from '../../hooks/useVoting'
 import type { Board, BoardItem, ItemStatus } from '../../types'
+import { safeUrl } from '../../utils/links'
+import { Comments } from './Comments'
+import { ItemDetail } from './ItemDetail'
+import { Icon } from '../UI/Icon'
 
 export function BoardView({ board }: { board: Board }) {
   const app = useApp()
@@ -10,6 +14,18 @@ export function BoardView({ board }: { board: Board }) {
   const balance = useTokenBalance()
   const [title, setTitle] = useState('')
   const [showClosed, setShowClosed] = useState(false)
+  const [openItem, setOpenItem] = useState<string | null>(null) // the item showing its details and comments
+  const toggleItem = (id: string) => setOpenItem((o) => (o === id ? null : id))
+  /** The title as a button that opens the item, with small marks for what it holds. */
+  const itemTitle = (item: BoardItem) => (
+    <button type="button" className="item-title" onClick={() => toggleItem(item.id)} aria-expanded={openItem === item.id} title="Details and comments">
+      {safeUrl(item.imageUrl) && <img src={safeUrl(item.imageUrl)!} alt="" className="item-thumb" loading="lazy" />}
+      <strong>{item.title}</strong>
+      {item.note && <span title="Has a note"> <Icon name="note" /></span>}
+      {item.url && <span title="Has a link"> <Icon name="link" /></span>}
+      <span className="muted small"> {openItem === item.id ? '▾' : '▸'}</span>
+    </button>
+  )
   const [error, setError] = useState<string | null>(null)
 
   const items = allItems.filter((i) => i.boardId === board.id)
@@ -65,7 +81,7 @@ export function BoardView({ board }: { board: Board }) {
         <h2>{board.name}</h2>
         {board.viewerVisible && <span className="badge">Visible to viewers</span>}
         <span className="grow" />
-        {app.isMember && <span className="badge tokens">🪙 {balance} left</span>}
+        {app.isMember && <span className="badge tokens"><Icon name="coin" /> {balance} left</span>}
       </header>
       {app.isMember && (
         <label className="inline small">
@@ -80,10 +96,11 @@ export function BoardView({ board }: { board: Board }) {
             <span className="rank">{rank + 1}</span>
             <div className="grow">
               <div className="row">
-                <strong className="grow">{item.title}</strong>
+                <span className="grow">{itemTitle(item)}</span>
                 <span className="muted small">{total(item)} tokens</span>
               </div>
               {bar(item)}
+              {openItem === item.id && <ItemDetail key={item.id + JSON.stringify([item.title, item.note, item.url, item.imageUrl])} item={item} />}
             </div>
             {app.isMember && (
               <div className="vote-controls">
@@ -127,18 +144,25 @@ export function BoardView({ board }: { board: Board }) {
           <div key={status}>
             <h3>{status === 'chosen' ? 'Chosen' : 'Archived'}</h3>
             {ranked(status).map((item) => (
-              <div key={item.id} className="row item-closed">
-                <span className="grow">{item.title}</span>
+              <div key={item.id} className="item-closed">
+                <div className="row">
+                <span className="grow">{itemTitle(item)}</span>
                 <span className="muted small">{total(item)} tokens</span>
                 {app.isMember && (
                   <button type="button" className="link small" onClick={() => run(setItemStatus(item, 'open'))}>
                     Reopen
                   </button>
                 )}
+                </div>
+                {openItem === item.id && <ItemDetail item={item} />}
               </div>
             ))}
           </div>
         ))}
+      <div className="board-discussion">
+        <h3><Icon name="message" /> Discussion</h3>
+        <Comments boardId={board.id} placeholder="Say something about this board…" />
+      </div>
     </section>
   )
 }

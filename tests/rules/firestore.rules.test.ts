@@ -266,6 +266,8 @@ describe('lists', () => {
     await assertSucceeds(setDoc(doc(db('steve'), 'lists/bookmarks'), { ...lists.familyVisible, kind: 'links' }))
     await assertSucceeds(setDoc(doc(db('steve'), 'tasks/link1'), task('familyVisible', { url: 'https://example.com', category: 'Home/Utilities' })))
     await assertFails(setDoc(doc(db('steve'), 'tasks/link2'), task('familyVisible', { url: 'x'.repeat(3000) })))
+    await assertSucceeds(setDoc(doc(db('steve'), 'tasks/read1'), task('familyVisible', { title: 'Read: x', url: 'https://example.com', linkId: 'link1' })))
+    await assertFails(setDoc(doc(db('steve'), 'tasks/read2'), task('familyVisible', { linkId: 42 })))
     await assertSucceeds(setDoc(doc(db('steve'), 'lists/shopping'), { ...lists.familyVisible, kind: 'checklist' }))
     await assertSucceeds(setDoc(doc(db('steve'), 'lists/wifi'), { ...lists.familyVisible, kind: 'notes' }))
   })
@@ -356,6 +358,26 @@ describe('voting', () => {
     await assertSucceeds(setDoc(doc(db('daughter'), 'boards/movies/items/m2'), { title: 'Moana', status: 'open', createdBy: 'daughter' }))
     await assertFails(setDoc(doc(db('daughter'), 'boards/movies/items/m3'), { title: 'Moana 2', status: 'maybe' }))
     await assertFails(setDoc(doc(db('grandma'), 'boards/movies/items/m4'), { title: 'Casablanca', status: 'open' }))
+  })
+
+  it('lets members add a note, link and picture to items', async () => {
+    await assertSucceeds(updateDoc(doc(db('daughter'), 'boards/movies/items/m1'), { note: 'The bear one', url: 'https://example.com', imageUrl: 'https://res.cloudinary.com/x/p.jpg' }))
+    await assertFails(updateDoc(doc(db('daughter'), 'boards/movies/items/m1'), { note: 'x'.repeat(6000) }))
+    await assertFails(updateDoc(doc(db('grandma'), 'boards/movies/items/m1'), { note: 'viewers cannot' }))
+  })
+
+  it('lets members comment on boards and items, and change only their own comments', async () => {
+    const c = (uid: string, text = 'Yes please') => ({ text, uid, createdAt: new Date() })
+    await assertSucceeds(setDoc(doc(db('steve'), 'boards/movies/comments/c1'), c('steve')))
+    await assertSucceeds(setDoc(doc(db('daughter'), 'boards/movies/items/m1/comments/c2'), c('daughter')))
+    await assertFails(setDoc(doc(db('daughter'), 'boards/movies/comments/c3'), c('steve'))) // posing as someone else
+    await assertFails(updateDoc(doc(db('daughter'), 'boards/movies/comments/c1'), { text: 'edited by someone else' }))
+    await assertSucceeds(updateDoc(doc(db('steve'), 'boards/movies/comments/c1'), { text: 'Changed my mind' }))
+    await assertFails(deleteDoc(doc(db('daughter'), 'boards/movies/comments/c1')))
+    await assertSucceeds(deleteDoc(doc(db('steve'), 'boards/movies/comments/c1')))
+    await assertSucceeds(getDocs(collection(db('grandma'), 'boards/movies/items/m1/comments'))) // viewers read visible boards
+    await assertFails(setDoc(doc(db('grandma'), 'boards/movies/comments/c4'), c('grandma')))
+    await assertFails(getDocs(collection(db('grandma'), 'boards/secret/comments')))
   })
 
   it('lets members cast only their own whole-number votes', async () => {

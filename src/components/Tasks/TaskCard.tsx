@@ -3,7 +3,9 @@ import { finish } from '../../engine/scheduling'
 import { updateTask, withStatus } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Task } from '../../types'
-import { colorKey, isFinished, PRIORITY_LABEL, PRIVACY_ICON, STATUS_LABEL, targetName, waitingOn } from '../../utils/tasks'
+import { safeUrl } from '../../utils/links'
+import { colorKey, isFinished, PRIORITY_LABEL, STATUS_LABEL, targetName, waitingOn } from '../../utils/tasks'
+import { Icon } from '../UI/Icon'
 
 interface Props {
   task: Task
@@ -58,7 +60,7 @@ export function TaskCard({ task, showList = true, onTicked, day, dayActions, not
           {task.status === 'canceled' && <span className="badge canceled">✕ {STATUS_LABEL.canceled}</span>}
           {waiting.length > 0 && (
             <span className="badge waiting" title={`Waiting on: ${waiting.map((w) => w.title).join(', ')}`}>
-              ⏳ Waiting on {waiting[0].title}
+              <Icon name="waiting" /> Waiting on {waiting[0].title}
               {waiting.length > 1 && ` +${waiting.length - 1}`}
             </span>
           )}
@@ -72,13 +74,13 @@ export function TaskCard({ task, showList = true, onTicked, day, dayActions, not
               className="badge"
               title={{ private: 'Private: only you can see it', family: 'Family: everyone can see it', shared: 'Shared with chosen people' }[task.visibility]}
             >
-              {task.visibility !== 'family' && `${PRIVACY_ICON[task.visibility]} `}
+              {task.visibility !== 'family' && <><Icon name={task.visibility === 'private' ? 'lock' : 'shared'} />{' '}</>}
               {list.name}
             </span>
           )}
           {task.calendar && (
             <span className="badge calendar" title={task.calendar.location}>
-              📅 {task.calendar.time ?? 'All day'}
+              <Icon name="calendar" /> {task.calendar.time ?? 'All day'}
             </span>
           )}
           {task.context === 'work' && <span className="badge work">Work</span>}
@@ -97,12 +99,25 @@ export function TaskCard({ task, showList = true, onTicked, day, dayActions, not
           {task.targetDate && <span className="muted small">due {formatDay(task.targetDate)}</span>}
           {task.dependsOn.length > 0 && (
             <span className="muted small" title="Has prerequisites">
-              ⛓ {task.dependsOn.length}
+              <Icon name="chain" /> {task.dependsOn.length}
             </span>
           )}
-          {conflict && <span className="badge danger">⚠ {conflict}</span>}
+          {conflict && <span className="badge danger"><Icon name="warning" /> {conflict}</span>}
         </div>
       </div>
+      {task.url && safeUrl(task.url) && (
+        <a
+          className="row-action"
+          href={safeUrl(task.url)!}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open the link"
+          aria-label={`Open the link for ${task.title}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Icon name="external" />
+        </a>
+      )}
       {dayActions && editable && !finished && (
         <>
           {dayActions.push && (
@@ -116,7 +131,7 @@ export function TaskCard({ task, showList = true, onTicked, day, dayActions, not
               dayActions.push?.()
             }}
           >
-            ⏭
+            <Icon name="skip" />
           </button>
           )}
           <button
@@ -129,7 +144,7 @@ export function TaskCard({ task, showList = true, onTicked, day, dayActions, not
               dayActions.skip()
             }}
           >
-            ✕
+            <Icon name="close" />
           </button>
         </>
       )}
@@ -143,7 +158,7 @@ export function TaskCard({ task, showList = true, onTicked, day, dayActions, not
           textAbout(task.id)
         }}
       >
-        💬
+        <Icon name="message" />
       </button>
     </article>
   )

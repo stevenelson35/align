@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { followSystem, loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
+import { Icon } from '../UI/Icon'
 
 const NEXT: Record<ThemeChoice, ThemeChoice> = { system: 'light', light: 'dark', dark: 'system' }
 const LABEL: Record<ThemeChoice, string> = { system: 'Match device', light: 'Light', dark: 'Dark' }
-const ICON: Record<ThemeChoice, string> = { system: '◐', light: '☀', dark: '☾' }
+const ICON = { system: 'auto', light: 'sun', dark: 'moon' } as const
 
 /** Cycles Match device → Light → Dark. Remembered on this device. */
 export function ThemeToggle() {
@@ -22,7 +23,7 @@ export function ThemeToggle() {
         setChoice(next)
       }}
     >
-      {ICON[choice]}
+      <Icon name={ICON[choice]} />
     </button>
   )
 }

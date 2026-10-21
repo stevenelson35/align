@@ -5,6 +5,7 @@ import { BLOG_CATEGORIES, dispatchBody, hasContent, postFilename, postUrl, split
 import { formatDay, today } from '../../engine/dates'
 import { useApp } from '../../hooks/useApp'
 import { TextForm } from '../Tasks/TextAbout'
+import { Icon } from '../UI/Icon'
 
 const MAX_IMAGES = 6
 const emptyBlock = (): ImageBlock => ({ textBefore: '', imageUrl: '', alt: '', fileName: '' })
@@ -96,7 +97,7 @@ export function BlogPostView() {
   return (
     <section className="blog-post">
       <header className="view-header">
-        <h2>✍ New blog post</h2>
+        <h2><Icon name="compose" /> New blog post</h2>
         <span className="grow" />
         <a className="button-link small" href="https://blog.itsallonesong.com" target="_blank" rel="noopener noreferrer">
           The blog ↗
@@ -106,7 +107,7 @@ export function BlogPostView() {
         <p className="error">
           Posting needs the blog's GitHub token on this device: add it in{' '}
           <button type="button" className="link inline-link" onClick={() => app.openSettings()}>
-            ⚙ Settings
+            <Icon name="settings" /> Settings
           </button>
           , then come back.
         </p>
@@ -184,7 +185,7 @@ export function BlogPostView() {
                 className="secondary small"
                 onClick={() => chooseImage(({ url, fileName }) => setBlock(i, { imageUrl: url, fileName })).catch((err) => setError(String(err.message ?? err)))}
               >
-                {b.imageUrl ? 'Change photo' : '📷 Choose photo'}
+                {b.imageUrl ? 'Change photo' : <><Icon name="camera" /> Choose photo</>}
               </button>
               {b.imageUrl && <img src={b.imageUrl} alt="" className="blog-thumb" />}
               {b.imageUrl && <span className="muted small">{b.fileName}</span>}

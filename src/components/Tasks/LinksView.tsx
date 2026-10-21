@@ -1,15 +1,16 @@
 import { useState, type FormEvent } from 'react'
-import { createTask } from '../../firebase/db'
+import { addReadingTask, addTaskNow, READING_LIST, readingListFor } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { List, Task } from '../../types'
 import { allCategories, cleanCategory, defaultName, linkTree, safeUrl, type LinkNode } from '../../utils/links'
 import { ListHeader } from './ListHeader'
+import { Icon } from '../UI/Icon'
 
 /** Links (bookmarks) in a collapsible category tree. Tapping a name opens it in a new tab; 💬 texts the address. */
 export function LinksView({ list }: { list: List }) {
   const app = useApp()
-  const { listItems } = useData()
+  const { listItems, lists, tasks } = useData()
   const editable = app.canEdit(list)
   const links = listItems.filter((t) => t.listId === list.id)
   const [showUrls, setShowUrls] = useStoredFlag(`align-links-urls:${list.id}`, false)
@@ -19,6 +20,12 @@ export function LinksView({ list }: { list: List }) {
   const [url, setUrl] = useState('')
   const [name, setName] = useState('')
   const [category, setCategory] = useState('')
+  // "📖 Add to a reading list": also make a "Read: …" task, in your Reading list or another task list.
+  const [toRead, setToRead] = useState(false)
+  const taskLists = lists.filter((l) => (l.kind === 'list' || l.kind === 'project') && app.canEdit(l))
+  const [readList, setReadList] = useState('')
+  // The reading task for each link, if any (done or not), to show 📖 / ✓ on the row.
+  const readingTask = new Map(tasks.filter((t) => t.linkId).map((t) => [t.linkId!, t]))
   const [error, setError] = useState<string | null>(null)
 
   function toggle(path: string) {
@@ -29,24 +36,39 @@ export function LinksView({ list }: { list: List }) {
     setClosed(next)
   }
 
-  async function add(e: FormEvent) {
+  function add(e: FormEvent) {
     e.preventDefault()
     const href = safeUrl(url)
     if (!href) {
       setError('That doesn’t look like a web address (http, https, mailto or tel).')
       return
     }
+    const existing = links.find((l) => l.url === href)
+    if (existing) {
+      setError(`That address is already here as "${existing.title}".`)
+      return
+    }
     setError(null)
-    try {
-      await createTask(
-        list,
-        { title: name.trim() || defaultName(href), url: href, category: cleanCategory(category) || undefined, priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] },
-        app.uid,
-      )
-      setUrl('')
-      setName('')
-    } catch (err) {
+    const typed = { url, name }
+    // Clear at once (the link shows immediately): a second tap on a slow connection used to add it again.
+    setUrl('')
+    setName('')
+    const title = name.trim() || defaultName(href)
+    const { id, written } = addTaskNow(
+      list,
+      { title, url: href, category: cleanCategory(category) || undefined, priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] },
+      app.uid,
+    )
+    written.catch((err) => {
       setError(err instanceof Error ? err.message : String(err))
+      setUrl(typed.url)
+      setName(typed.name)
+    })
+    if (toRead) {
+      const chosen = taskLists.find((l) => l.id === readList)
+      ;(chosen ? Promise.resolve(chosen) : readingListFor(app.uid, app.member.defaultVisibility, taskLists))
+        .then((target) => addReadingTask(target, { id, title, url: href }, app.uid).written)
+        .catch((err) => setError(`The link was added, but not to the reading list: ${err instanceof Error ? err.message : String(err)}`))
     }
   }
 
@@ -65,11 +87,21 @@ export function LinksView({ list }: { list: List }) {
           {showUrls && l.url && <div className="muted small link-url">{l.url}</div>}
           {showNotes && l.notes && <div className="small link-note">{l.notes}</div>}
         </div>
+        {readingTask.has(l.id) && (
+          <button
+            type="button"
+            className={`badge reading${readingTask.get(l.id)!.status === 'done' ? ' read' : ''}`}
+            onClick={() => app.navigate({ view: 'task', taskId: readingTask.get(l.id)!.id })}
+            title="Open its reading-list task"
+          >
+            {readingTask.get(l.id)!.status === 'done' ? '✓ read' : <><Icon name="book" /> to read</>}
+          </button>
+        )}
         <button type="button" className="row-action" title="Edit" aria-label={`Edit ${l.title}`} onClick={() => app.selectTask(l.id)}>
-          ✎
+          <Icon name="edit" />
         </button>
         <button type="button" className="row-action" title="Text someone this link" aria-label={`Text someone ${l.title}`} onClick={() => app.textAbout(l.id)}>
-          💬
+          <Icon name="message" />
         </button>
       </li>
     )
@@ -111,6 +143,23 @@ export function LinksView({ list }: { list: List }) {
               ))}
             </datalist>
             <button type="submit">Add</button>
+          </div>
+          <div className="row reading-option">
+            <label className="inline small">
+              <input type="checkbox" checked={toRead} onChange={(e) => setToRead(e.target.checked)} /> <Icon name="book" /> Add to a reading list
+            </label>
+            {toRead && (
+              <select value={readList} onChange={(e) => setReadList(e.target.value)} aria-label="Reading list">
+                <option value="">{taskLists.some((l) => l.name === READING_LIST) ? READING_LIST : `${READING_LIST} (new)`}</option>
+                {taskLists
+                  .filter((l) => l.name !== READING_LIST)
+                  .map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+              </select>
+            )}
           </div>
         </form>
       )}

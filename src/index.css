@@ -1440,3 +1440,179 @@ label.inline input[type='radio'] {
   word-break: break-all;
   font-weight: 600;
 }
+
+/* Collapsible menu sections (one open at a time). */
+.nav-section {
+  margin-top: 0.35rem;
+}
+.nav-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  background: none;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+.nav-heading:hover {
+  background: var(--bg);
+}
+.nav-heading.has-active {
+  color: var(--text);
+}
+.nav-heading .caret {
+  width: 0.8rem;
+}
+
+/* Reading list: 📖 on links that have a "Read: …" task. */
+.badge.reading {
+  background: var(--tint-yellow-bg);
+  border-color: var(--tint-yellow-border);
+  color: var(--text);
+  cursor: pointer;
+}
+.badge.reading.read {
+  background: var(--tint-green-bg);
+  border-color: var(--tint-green-border);
+}
+.reading-option select {
+  width: auto;
+}
+a.row-action {
+  text-decoration: none;
+}
+
+/* Voting items: details and comments */
+.item-title {
+  background: none;
+  color: var(--text);
+  padding: 0;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.item-thumb {
+  width: 2rem;
+  height: 2rem;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.item-detail {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+.item-note {
+  white-space: pre-wrap;
+  margin: 0;
+}
+.item-picture {
+  max-width: 100%;
+  max-height: 18rem;
+  border-radius: var(--radius);
+}
+.comments {
+  display: grid;
+  gap: 0.4rem;
+}
+.comment {
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 0.35rem 0.55rem;
+}
+.comment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.comment-text {
+  white-space: pre-wrap;
+}
+.board-discussion {
+  margin-top: 1.25rem;
+}
+.item-closed {
+  padding: 0.25rem 0;
+}
+
+/* Voting rows: the title keeps room; on a phone the vote buttons wrap onto their own line below it. */
+.item-row {
+  flex-wrap: wrap;
+}
+.item-row > .grow {
+  min-width: min(14rem, 100%);
+  flex: 1 1 14rem;
+}
+@media (max-width: 760px) {
+  .item-row .vote-controls {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* Icons (components/UI/Icon.tsx): one drawing, three flat styles, or emoji. */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.icon svg {
+  width: 1.15em;
+  height: 1.15em;
+  overflow: visible;
+}
+.icon path {
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+.icon-solid .i-fill {
+  fill: currentColor;
+}
+/* Inner marks knocked out of the solid shape, in the color behind the icon. */
+.icon-solid .i-detail {
+  stroke: var(--icon-cut, var(--surface));
+}
+.icon-duotone .i-fill {
+  fill: currentColor;
+  fill-opacity: 0.32;
+}
+.icon-emoji.mono {
+  filter: grayscale(1);
+}
+button:not(.secondary):not(.link):not(.row-action):not(.star):not(.nav-link):not(.nav-heading) .icon,
+.primary-link .icon {
+  --icon-cut: var(--color-family);
+}
+
+/* Settings → Icons: each style with a preview row */
+.icon-choice {
+  flex-wrap: wrap;
+  row-gap: 0.15rem;
+}
+.icon-choice-name {
+  min-width: 6.5rem;
+}
+.icon-preview {
+  display: inline-flex;
+  gap: 0.45rem;
+  font-size: 1.05rem;
+  color: var(--text);
+}

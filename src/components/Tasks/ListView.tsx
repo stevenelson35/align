@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { recalculate } from '../../engine/scheduling'
-import { createTask } from '../../firebase/db'
+import { addTaskNow } from '../../firebase/db'
 import { today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
@@ -35,26 +35,30 @@ export function ListView({ list }: { list: List }) {
 
   async function add(e: FormEvent) {
     e.preventDefault()
-    if (!title.trim() || adding) return
+    const text = title.trim()
+    if (!text || adding) return
     setError(null)
     setAdding(true)
+    setTitle('') // clear at once: a second tap on a slow connection finds nothing to add
     try {
       const previous = lastAdded && tasks.find((t) => t.id === lastAdded.id && t.listId === list.id)
-      const input = { title: title.trim(), priority: 2 as const, status: 'todo' as const, context: list.defaultContext,
+      const input = { title: text, priority: 2 as const, status: 'todo' as const, context: list.defaultContext,
         durationDays: 1, dependsOn: followPrevious && previous ? [{ taskId: previous.id, offsetDays: 0 }] : [],
         ...(list.kind === 'project' ? { startDate: today() } : {}) }
-      const id = await createTask(list, input, app.uid)
+      const { id, written } = addTaskNow(list, input, app.uid)
       const added: Task = { ...input, id, listId: list.id, visibility: list.visibility, ownerId: list.ownerId,
         viewerVisible: list.viewerVisible, createdBy: app.uid }
       setLastAdded(added)
-      setTitle('')
       if (input.dependsOn.length) {
         const current = [...tasks.filter((t) => t.id !== id), added]
         const preview = recalculate(current, (taskId) => taskId === id)
         if (preview.moves.length) app.proposeShift({ title: `Schedule ${added.title}`, preview })
       }
+      setAdding(false)
+      await written
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+      setTitle(text)
     } finally {
       setAdding(false)
     }

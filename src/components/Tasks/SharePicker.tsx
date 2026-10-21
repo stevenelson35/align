@@ -1,5 +1,6 @@
 import { useApp } from '../../hooks/useApp'
 import { people, sharedNames } from '../../utils/tasks'
+import { Icon } from '../UI/Icon'
 
 /**
  * "👥 Chosen people": name chips plus a Parents shortcut. The owner is always included. Used by the list and goal
@@ -40,7 +41,7 @@ export function SharePicker({ ownerId, sharedWith, onChange, noun }: { ownerId: 
         ))}
       </div>
       <p className="muted small">
-        👥 {sharedNames([...chosen], app.household, app.uid)} will see this {noun}. Only people on it can open it.
+        <Icon name="shared" /> {sharedNames([...chosen], app.household, app.uid)} will see this {noun}. Only people on it can open it.
         {parents.length === 0 && ' (Set who the parents are in ⚙ Settings for a one-tap "Parents" choice.)'}
       </p>
     </div>

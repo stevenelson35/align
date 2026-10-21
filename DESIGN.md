@@ -347,7 +347,7 @@ firestore.rules, firestore.indexes.json
 
 ## 11. Security Rules (outline)
 
-`firestore.rules`, tested in `tests/rules/` (34 tests) against the emulator.
+`firestore.rules`, tested in `tests/rules/` (36 tests) against the emulator.
 
 - `isMember()` means `household/main.members[uid].role == "member"`. `isViewer()` means `"viewer"`.
 - **`household/main`:**
@@ -360,7 +360,8 @@ firestore.rules, firestore.indexes.json
   - `sharedOk`: `sharedWith` exists **if and only if** visibility is `shared`, has 1–20 entries and includes the owner. Because only shared docs have it, "shared with me" is the single query `where('sharedWith','array-contains',uid)`.
   - Lists: `kind` in list/project/checklist/notes/links. Tasks: valid status (incl. `canceled`), priority, context, duration, `dependsOn` list, optional `calendar` map, `finishedOn` (10-char string), `pushedFrom` (list), `url` (≤ 2048), `category` (≤ 200), and copied fields equal to the list's (incl. `sharedWith`).
 - **`goals`** (`validGoal`): same read/write and owner-change rules as lists (private/family/shared via `canRead`/`canWrite`/`sharedOk`); `kind` in check/tally/progressive/measure; name 1–100 chars; `log` a map; `weekdays` a list.
-- **`boards` and `items`:** members can read and write. Viewers can read if the board is `viewerVisible`.
+- **`boards` and `items`:** members can read and write (items may carry `note` ≤ 5000, `url` and `imageUrl` ≤ 2048). Viewers can read if the board is `viewerVisible`.
+- **`comments`** (on a board or an item): readable by anyone who can see the board; members create with their own `uid`, and edit or delete only their own (`validComment`: text 1–2000).
 - **`votes/{uid}`:** members can read; users write only their own document, `tokens` a whole number ≥ 0.
 - Everything else is denied.
 - **Queries must match the rules** (`visibleQueries` in `db.ts`, for lists, tasks and goals): members query own private docs, family docs and shared-with-me docs; viewers query viewer-visible family docs and shared-with-me docs.
@@ -377,6 +378,17 @@ firestore.rules, firestore.indexes.json
 - **Verify a web deploy:** fetch https://align.itsallonesong.com/, read the `assets/index-*.js` name, and grep that bundle for a string from the latest change.
 
 ## 13. Status & Handoff
+
+### 2026-10-21: built, tested, not yet committed or deployed
+- **Faster start:** `index.html` holds a static outline (top bar + placeholder blocks, theme-aware, inline CSS) that shows before any code downloads; `AppSkeleton` reuses it while the session and first data load. Firestore uses a **persistent device cache** (`persistentLocalCache`, multi-tab), so later opens show the last data at once; **Sign out** terminates Firestore and clears the cache, then reloads.
+- **Menu sections collapse** (`Sidebar` `Section`): one open at a time, remembered (`align-menu-open`); a collapsed heading shows its count and is highlighted when the current page is inside it.
+- **Quick adds clear at once** (`addTaskNow` returns the id immediately; `createTask` still awaits): repeated taps on a slow connection had added one link 6 times. Links also refuse an address already in the list.
+- **New pages start at the top** (AppShell scrolls window and main panel on route change).
+- **Reading list:** adding a link can also make a "Read: <name>" task (`linkId`, `url`) in the "Reading list" task list (created on first use, default privacy) or any task list; links show 📖 to read / ✓ read; tasks with a `url` show ↗ and "Open the link". Rules + test for `linkId`.
+- **Voting items:** editable title plus optional note, link and picture (`note`/`url`/`imageUrl`; pictures via the blog's Cloudinary widget or a pasted address); tap an item for details and **comments**; each board has a **Discussion**. Comments live in `boards/{b}/comments` and `boards/{b}/items/{i}/comments` (members write their own, edit/delete only their own; anyone who can see the board reads). Rules + tests. Phone layout of vote rows fixed (title keeps room; buttons wrap below).
+- Tests: 85 unit, 36 rules. Playwright at 390px, plus the startup outline checked on the production build with the JS held back.
+- **Icon styles** (⚙ Settings → Icons, per device, `align-icons`): Emoji, Emoji gray, Outline, Solid, Duotone. `components/UI/Icon.tsx` draws each icon once on a 24×24 grid in three layers (`fill`, `line`, `detail`), so the three flat styles come from one drawing (Solid knocks the detail out in the background color). The top bar, menu, row actions, badges, privacy markers and main buttons use it; option text, chat replies and ✓/✕ glyphs stay text. Isometric was considered and left out (it's an illustration style that doesn't read at 16–20px).
+- **Blog nav:** ✍ Post removed (blog repo `1a0b16e`); posting starts in Align.
 
 ### 2026-10-20: built, tested, NOT yet deployed (uncommitted until the user asks)
 - **Day view** as Today (§8): done / won't do / pushed per day, ⏭ next day, ✕ won't do, Push the rest; `finishedOn` + `pushedFrom` on tasks (rules + tests).

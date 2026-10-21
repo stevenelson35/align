@@ -3,6 +3,7 @@ import { useApp } from '../../hooks/useApp'
 import type { Task } from '../../types'
 import { people } from '../../utils/tasks'
 import { shareLink, smsUrl, textBody, whenText } from '../../utils/text'
+import { Icon } from '../UI/Icon'
 
 /**
  * "💬 Text about this": pick a person, type a note; Messages opens with your note plus this task's title, time and
@@ -38,7 +39,7 @@ export function TextForm({ subject, startOpen, label }: { subject: { title: stri
     <div className="text-about">
       {!open ? (
         <button type="button" className="secondary small" onClick={() => setOpen(true)}>
-          💬 {label}
+          <Icon name="message" /> {label}
         </button>
       ) : (
         <>
@@ -64,7 +65,7 @@ export function TextForm({ subject, startOpen, label }: { subject: { title: stri
           <div className="row">
             {phone ? (
               <a className="button-link small primary-link" href={smsUrl(phone, body)}>
-                📱 Send text
+                <Icon name="phone" /> Send text
               </a>
             ) : (
               others.length > 0 && (

@@ -1,4 +1,5 @@
 import { AppShell } from './components/AppShell/AppShell'
+import { AppSkeleton } from './components/AppShell/AppSkeleton'
 import { NotAuthorized } from './components/Auth/NotAuthorized'
 import { Setup } from './components/Auth/Setup'
 import { SignIn } from './components/Auth/SignIn'
@@ -10,7 +11,7 @@ function App() {
 
   switch (session.status) {
     case 'loading':
-      return <main className="center muted">Loading…</main>
+      return <AppSkeleton bar note="Opening Align…" />
     case 'signedOut':
       return <SignIn />
     case 'unauthorized':
