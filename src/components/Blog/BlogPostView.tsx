@@ -6,6 +6,8 @@ import { formatDay, today } from '../../engine/dates'
 import { useApp } from '../../hooks/useApp'
 import { TextForm } from '../Tasks/TextAbout'
 import { Icon } from '../UI/Icon'
+import { PhotoPicker } from '../Photos/PhotoPicker'
+import { photoCaption, photoUrl } from '../../photos/favorites'
 
 const MAX_IMAGES = 6
 const emptyBlock = (): ImageBlock => ({ textBefore: '', imageUrl: '', alt: '', fileName: '' })
@@ -34,6 +36,8 @@ export function BlogPostView() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [posted, setPosted] = useState<{ title: string; url: string } | null>(null)
+  // Which block is choosing from the favorites (the blog's Action downloads the 2048px copy like any upload).
+  const [pickingFor, setPickingFor] = useState<number | null>(null)
 
   useEffect(() => {
     if (!githubToken()) return
@@ -185,7 +189,10 @@ export function BlogPostView() {
                 className="secondary small"
                 onClick={() => chooseImage(({ url, fileName }) => setBlock(i, { imageUrl: url, fileName })).catch((err) => setError(String(err.message ?? err)))}
               >
-                {b.imageUrl ? 'Change photo' : <><Icon name="camera" /> Choose photo</>}
+                {b.imageUrl ? 'Change photo' : <><Icon name="camera" /> Upload photo</>}
+              </button>
+              <button type="button" className="secondary small" onClick={() => setPickingFor(i)}>
+                <Icon name="photo" /> From favorites
               </button>
               {b.imageUrl && <img src={b.imageUrl} alt="" className="blog-thumb" />}
               {b.imageUrl && <span className="muted small">{b.fileName}</span>}
@@ -193,6 +200,14 @@ export function BlogPostView() {
             {b.imageUrl && <input value={b.alt} onChange={(e) => setBlock(i, { alt: e.target.value })} placeholder="Describe the photo (alt text)" aria-label={`Photo ${i + 1} description`} />}
           </fieldset>
         ))}
+        {pickingFor !== null && (
+          <PhotoPicker
+            onPick={(p) =>
+              setBlock(pickingFor, { imageUrl: photoUrl(p.id, 2048), fileName: `${p.id}.jpg`, ...(blocks[pickingFor].alt.trim() ? {} : { alt: photoCaption(p) }) })
+            }
+            onClose={() => setPickingFor(null)}
+          />
+        )}
         {blocks.length < MAX_IMAGES && (
           <button type="button" className="secondary small" onClick={() => setBlocks([...blocks, emptyBlock()])}>
             + Add text and photo

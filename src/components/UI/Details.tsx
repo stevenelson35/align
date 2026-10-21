@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { chooseImage } from '../../blog/cloudinary'
+import { photoUrl } from '../../photos/favorites'
+import { PhotoPicker } from '../Photos/PhotoPicker'
 import { safeUrl } from '../../utils/links'
 import type { DetailsDraft } from '../../utils/details'
 import { Icon } from './Icon'
 
 /**
  * The note / link / picture boxes. Pictures upload through the same Cloudinary widget as blog posts (anyone with
- * the image's long address can open it), or paste an image address.
+ * the image's long address can open it), come from the favorite photos, or are a pasted image address.
  */
 export function DetailsFields({
   value,
@@ -18,6 +21,7 @@ export function DetailsFields({
   onError: (message: string) => void
   linkHint?: string
 }) {
+  const [picking, setPicking] = useState(false)
   return (
     <>
       <label>
@@ -38,6 +42,9 @@ export function DetailsFields({
           >
             <Icon name="camera" /> {value.imageUrl ? 'Change picture' : 'Upload picture'}
           </button>
+          <button type="button" className="secondary small" onClick={() => setPicking(true)}>
+            <Icon name="photo" /> From favorites
+          </button>
           {value.imageUrl && (
             <button type="button" className="link small" onClick={() => onChange({ ...value, imageUrl: '' })}>
               Remove
@@ -53,6 +60,7 @@ export function DetailsFields({
           placeholder="…or paste a picture's address"
           aria-label="Picture address"
         />
+        {picking && <PhotoPicker onPick={(p) => onChange({ ...value, imageUrl: photoUrl(p.id, 1024) })} onClose={() => setPicking(false)} />}
       </div>
     </>
   )

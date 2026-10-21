@@ -10,6 +10,7 @@ import { GoalsView } from '../Goals/GoalsView'
 import { LinksView } from '../Tasks/LinksView'
 import { NotesView } from '../Tasks/NotesView'
 import { ListView } from '../Tasks/ListView'
+import { PhotosView } from '../Photos/PhotosView'
 import { BoardsView } from '../Voting/BoardsView'
 import { BoardView } from '../Voting/BoardView'
 
@@ -53,6 +54,8 @@ export function MainView() {
       return <GoalsView />
     case 'blog':
       return <BlogPostView />
+    case 'photos':
+      return <PhotosView />
     case 'goal': {
       const goal = goals.find((g) => g.id === route.goalId)
       if (!goal) return <p className="muted">{loaded ? "That goal isn't shared with you, or it was deleted." : 'Opening…'}</p>

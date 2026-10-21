@@ -20,8 +20,6 @@ function NavLink({ route, label, color, count }: { route: Route; label: ReactNod
 }
 
 const OPEN_KEY = 'align-menu-open'
-/** psort publishes favorite photos here (the blog's browse page). */
-export const PHOTOS_URL = 'https://blog.itsallonesong.com/browse.html'
 
 /**
  * A collapsible menu section. One is open at a time (opening one closes the others), and the open one is
@@ -75,12 +73,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
       <NavLink route={{ view: 'family' }} label="Family tasks" />
       <NavLink route={{ view: 'work' }} label="Work" />
       {isMember && <NavLink route={{ view: 'blog' }} label={<><Icon name="compose" /> New blog post</>} />}
-      <a className="nav-link" href={PHOTOS_URL} target="_blank" rel="noopener noreferrer">
-        <span className="grow">
-          <Icon name="photo" /> Photos
-        </span>
-        <Icon name="external" label="opens the blog's photo browser" />
-      </a>
+      <NavLink route={{ view: 'photos' }} label={<><Icon name="photo" /> Photos</>} />
 
       <Section
         title="Goals"

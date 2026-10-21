@@ -14,6 +14,8 @@ export type Route =
   | { view: 'goals' }
   /** ✍ New blog post. */
   | { view: 'blog' }
+  /** Favorite photos (psort). */
+  | { view: 'photos' }
   | { view: 'goal'; goalId: string }
   /** A link to one task / item / note (e.g. in a text): opens it in its list. */
   | { view: 'task'; taskId: string }
@@ -30,6 +32,7 @@ export function parseRoute(hash: string): Route {
     case 'boards':
     case 'goals':
     case 'blog':
+    case 'photos':
       return { view: parts[0] }
     case 'list':
       if (parts[1]) return { view: 'list', listId: parts[1], timeline: parts[2] === 'timeline' }

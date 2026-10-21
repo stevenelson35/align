@@ -7,6 +7,7 @@ import type { Task } from '../../types'
 import { dayBuckets, pushToNextDay, relativeDay } from '../../utils/day'
 import { sortTasks } from '../../utils/tasks'
 import { GoalsStrip } from '../Goals/GoalsStrip'
+import { OnThisDay } from '../Photos/OnThisDay'
 import { CalendarActions } from './CalendarActions'
 import { TaskCard } from './TaskCard'
 import { Icon } from '../UI/Icon'
@@ -110,6 +111,7 @@ export function DayView({ day }: { day: string }) {
       </header>
 
       <GoalsStrip day={day} />
+      <OnThisDay day={day} />
 
       {app.isMember && (
         <form className="row add-task" onSubmit={add}>

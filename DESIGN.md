@@ -326,6 +326,13 @@ The chat panel runs a local, rule-based parser (`src/chat/parser.ts`, dates by `
 - After posting: the post's address (`/<categories>/YYYY/MM/DD/<slug>.html`), **Open post ↗**, and **💬 Text the link**. The blog's top nav has **✍ Post** linking here.
 - The old `turbify_only/blogupdate.html` and `image-rotation.html` (blog repo, git-ignored, served from Turbify) no longer contain a token: they ask once and keep it in that browser.
 
+### 10.3 Favorite photos (psort)
+psort's `publish-browse` puts the family's starred, non-private photos on Turbify for the blog's photo browser: web sizes at `https://www.itsallonesong.com/pics/browse/<size>/<id>-<size>.jpg` and `browse-manifest.json` (id, taken_at, people's names, event, top). psort's `.htaccess` lets the blog read the manifest, and lets Align read it too, but only for requests from Align. Align only reads it (`src/photos/favorites.ts`, loaded once per session):
+- **📷 Photos** (`#/photos`): a searchable grid (names, years, months, events; Top picks), a larger view, **Full size**, and **Text this photo** (sends the 2048px image link). It also links to the blog's photo browser.
+- **On this day** on the day view: favorites from the same date in earlier years ("6 years ago"), with Hide (`align-on-this-day-hidden`). It doesn't show when there are none or the list can't be reached.
+- **From favorites** next to Upload in the blog composer (the 2048px copy; the blog's Action downloads it like a Cloudinary upload; alt text starts as the caption) and in every note/link/picture box (goal entries, voting items; the 1024px copy).
+- Dev servers (localhost) aren't allowed to read the manifest, so browser tests serve a copy with `page.route`.
+
 ### 10.1 Folder structure
 
 ```
@@ -388,7 +395,12 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-21 (later): built, tested, NOT yet committed or deployed
+### 2026-10-21 (photos): built, tested, NOT yet committed or deployed
+- **Favorite photos from psort in Align** (§10.3): Photos page with Text this photo, On this day on the day view, From favorites in the blog composer and in note/link/picture boxes. No rules change. Blog photo boxes no longer overflow on phones.
+- **psort** (separate repo): `publish-browse` writes an `.htaccess` that also lets Align read the manifest. The user needs to run `psort publish-browse` once to upload it; until then Align's photo features stay empty (On this day hides itself).
+- Tests: 95 unit, 37 rules. Playwright at 390px with the manifest served by the test.
+
+### 2026-10-21 (later): built and deployed (`b595580`)
 - **Five privacy choices everywhere** (§5.2): Only me · Parents · Family · Chosen people · Everyone, through one `AudiencePicker`; default Everyone (lists, goals, Settings "Who can see new things", inbox / reading list, new voting boards). No "grandparents" wording anywhere; boards offer Family / Everyone.
 - **Goals: who can view vs who can log** (§5.6): two pickers (view default Everyone, log default Only me); others see progress read-only; menu ▸ Goals groups goals (My / Shared / <Name>'s). Only the owner changes a goal's settings.
 - **Progressive toward a goal** (down or up, stops at the goal; the axis doesn't start at 0 for decreasing goals; no suggestion before the start date) and a **Running total** kind (Add amount, several people, stepped chart vs target).
@@ -445,7 +457,6 @@ firestore.rules, firestore.indexes.json
 
 ### Next ideas (not started; ask before building)
 - Goals: reminders, and a weekly goals summary; recurring *tasks* are still separate from goals.
-- psort / blog integration ideas (proposed 2026-10-21, not started): pick blog-post images from psort favorites (needs the browse manifest's CORS to allow align.itsallonesong.com); "On this day" photos in the day view; pictures for goals / voting items from favorites; text a photo link.
 - Recurring tasks (watering, monthly flea meds) (§3.2).
 - Reminders / phone alerts: web push needs a sender; the Apps Script could send via Firebase Cloud Messaging for free, but setup is heavier and iPhones need Align added to the home screen.
 - "I'll do it" / claim buttons on family tasks and calendar events (answers "who's picking up Camilla?" in the app).
