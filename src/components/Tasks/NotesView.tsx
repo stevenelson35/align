@@ -3,6 +3,7 @@ import { addTaskNow } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
 import { ListHeader } from './ListHeader'
+import { DetailsMarks } from '../UI/Details'
 
 /** Notes: reference info (Wi-Fi password, sizes, the plumber's number). Alphabetical; tap one to read or edit it. */
 export function NotesView({ list }: { list: List }) {
@@ -45,7 +46,10 @@ export function NotesView({ list }: { list: List }) {
             className={`note-card${app.selectedTaskId === n.id ? ' selected' : ''}`}
             onClick={() => app.selectTask(n.id)}
           >
-            <strong>{n.title}</strong>
+            <strong>
+              {n.title}
+              <DetailsMarks links={n.links} images={n.images} />
+            </strong>
             {n.notes ? <span className="note-preview">{n.notes}</span> : <span className="muted small">Empty</span>}
           </button>
         ))}

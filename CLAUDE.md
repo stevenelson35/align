@@ -9,8 +9,8 @@ npm install
 npm run emulators      # terminal 1 (Auth + Firestore emulators, project demo-align)
 npm run seed           # terminal 2: test accounts + household (password "align-dev")
 npm run dev            # http://localhost:5173
-npm test               # 95 unit tests (vitest: engine, tokens, parser, utils, DB writes, Apps Script helpers)
-npm run test:rules     # 37 security-rule tests; starts its own emulators (stop `npm run emulators` first); must stay green
+npm test               # 97 unit tests (vitest: engine, tokens, parser, utils, DB writes, Apps Script helpers)
+npm run test:rules     # 38 security-rule tests; starts its own emulators (stop `npm run emulators` first); must stay green
 npm run test:calendar  # Apps Script calendar sync + web app against the running emulators (after seed)
 npx tsc -b && npm run lint && npm run build
 npm run deploy:rules   # real project align-a32c1 (firebase login is done)
@@ -28,6 +28,7 @@ ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web   # the USER runs this
 - **The blog GitHub token lives only in each device's localStorage** (Settings); never put a token in code, Firestore, or a served page.
 - **Quick-add boxes use `addTaskNow` and clear immediately** (don't await the server before clearing; it caused duplicate adds on slow phones).
 - **Firestore has a persistent device cache**; sign-out clears it (`auth.ts`).
+- **Every entry has the same details** (note, `links[]`, `images[]`) via `utils/details.ts` + `components/UI/Details.tsx`, and a Text about this; reuse them for any new kind of entry.
 - **Icons go through `<Icon name=… />`** (`components/UI/Icon.tsx`) so the Settings icon style applies; add new drawings there (fill / line / detail layers).
 - **Checklist items, notes and links are task docs** kept in `DataState.listItems`, not `tasks`. They stay out of task views, chat task commands and scheduling.
 - Hash routing (static hosting on Turbify, no rewrites), including `#/task/<id>` links. No spaces in generated names.

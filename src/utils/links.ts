@@ -71,3 +71,14 @@ export function allCategories(links: Task[]): string[] {
   }
   return [...out].sort()
 }
+
+/** A short label for a link in a list of them: "example.com/menu" (long ones trimmed). */
+export function linkLabel(url: string): string {
+  try {
+    const u = new URL(safeUrl(url) ?? url)
+    const label = `${u.hostname.replace(/^www\./, '')}${u.pathname === '/' ? '' : u.pathname}`
+    return label.length > 48 ? `${label.slice(0, 47)}…` : label
+  } catch {
+    return url
+  }
+}

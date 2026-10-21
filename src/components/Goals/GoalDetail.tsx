@@ -5,9 +5,11 @@ import { useApp } from '../../hooks/useApp'
 import type { Goal } from '../../types'
 import { appliesOn, goalHint, history, totalTo } from '../../utils/goals'
 import { canLogGoal, privacyText, sharedNames } from '../../utils/tasks'
-import { cleanDetails, draftOf, hasDetails } from '../../utils/details'
+import { cleanDetails, detailsOf, hasDetails, storedDetails } from '../../utils/details'
 import { DetailsFields, DetailsView } from '../UI/Details'
 import { Icon } from '../UI/Icon'
+import { TextForm } from '../Tasks/TextAbout'
+import { goalLink } from '../../utils/text'
 import { GoalChart } from './GoalChart'
 import { GoalControl } from './GoalControl'
 import { GoalEditor } from './GoalEditor'
@@ -113,8 +115,8 @@ export function GoalDetail({ goal }: { goal: Goal }) {
                   {hasDetails(r.entry) && (
                     <button type="button" className="link small" onClick={() => setLogDay(r.day)} title={r.entry?.note ?? 'Show the details'}>
                       {r.entry?.note && <Icon name="note" label="Note" />}
-                      {r.entry?.url && <Icon name="link" label="Link" />}
-                      {r.entry?.imageUrl && <Icon name="photo" label="Picture" />}
+                      {detailsOf(r.entry ?? {}).links.length > 0 && <Icon name="link" label="Links" />}
+                      {detailsOf(r.entry ?? {}).images.length > 0 && <Icon name="photo" label="Pictures" />}
                     </button>
                   )}
                 </td>
@@ -131,11 +133,12 @@ export function GoalDetail({ goal }: { goal: Goal }) {
             .map((r) => (
               <div key={r.day} className="card">
                 <strong className="small">{formatDay(r.day)}</strong>
-                <DetailsView {...r.entry} alt={`${goal.name}, ${formatDay(r.day)}`} />
+                <DetailsView {...detailsOf(r.entry ?? {})} alt={`${goal.name}, ${formatDay(r.day)}`} />
               </div>
             ))}
         </div>
       )}
+      {app.isMember && <TextForm subject={{ title: goal.name, when: goalHint(goal, today()), link: goalLink(goal.id) }} startOpen={false} label="Text about this" />}
       {editing && <GoalEditor goal={goal} onClose={() => setEditing(false)} />}
     </section>
   )
@@ -146,14 +149,14 @@ function EntryDetails({ goal, day }: { goal: Goal; day: string }) {
   const { uid } = useApp()
   const entry = goal.log?.[day]
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState(draftOf(entry ?? {}))
+  const [form, setForm] = useState(detailsOf(entry ?? {}))
   const [error, setError] = useState<string | null>(null)
 
   function save() {
     const d = cleanDetails(form)
     if (typeof d === 'string') return setError(d)
     setError(null)
-    logGoal(goal.id, day, { note: d.note || undefined, url: d.url || undefined, imageUrl: d.imageUrl || undefined }, uid)
+    logGoal(goal.id, day, { note: d.note || undefined, ...storedDetails(d) }, uid)
       .then(() => setEditing(false))
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
   }
@@ -161,9 +164,9 @@ function EntryDetails({ goal, day }: { goal: Goal; day: string }) {
   if (!editing) {
     return (
       <div className="entry-details">
-        <DetailsView {...entry} alt={`${goal.name}, ${formatDay(day)}`} />
+        <DetailsView {...detailsOf(entry ?? {})} alt={`${goal.name}, ${formatDay(day)}`} />
         <button type="button" className="link small" onClick={() => setEditing(true)} disabled={day > today()}>
-          <Icon name="note" /> {hasDetails(entry) ? 'Edit note, link or picture' : 'Add a note, link or picture'}
+          <Icon name="note" /> {hasDetails(entry) ? 'Edit note, links or pictures' : 'Add a note, links or pictures'}
         </button>
       </div>
     )

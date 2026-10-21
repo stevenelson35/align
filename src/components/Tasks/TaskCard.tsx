@@ -7,6 +7,7 @@ import { safeUrl } from '../../utils/links'
 import { colorKey, isFinished, PRIORITY_LABEL, STATUS_LABEL, targetName, waitingOn } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
+import { DetailsMarks } from '../UI/Details'
 
 interface Props {
   task: Task
@@ -53,7 +54,10 @@ export function TaskCard({ task, showList = true, onTicked, day, dayActions, not
         onChange={(e) => toggleDone(e.target.checked)}
       />
       <div className="grow">
-        <div className="task-title">{task.title}</div>
+        <div className="task-title">
+          {task.title}
+          <DetailsMarks links={task.links} images={task.images} />
+        </div>
         {note && <div className="muted small">{note}</div>}
         <div className="chips">
           <span className={`badge priority-${task.priority}`}>{PRIORITY_LABEL[task.priority]}</span>

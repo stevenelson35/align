@@ -25,6 +25,16 @@ export function taskLink(id: string, base = `${window.location.origin}${window.l
   return `${base}#/task/${encodeURIComponent(id)}`
 }
 
+/** A link that opens a goal (its chart and history). */
+export function goalLink(goalId: string, base = `${window.location.origin}${window.location.pathname}`): string {
+  return `${base}#/goal/${encodeURIComponent(goalId)}`
+}
+
+/** A link that opens a voting item (its details and comments) on its board. */
+export function itemLink(boardId: string, itemId: string, base = `${window.location.origin}${window.location.pathname}`): string {
+  return `${base}#/board/${encodeURIComponent(boardId)}/${encodeURIComponent(itemId)}`
+}
+
 /** When it happens, for the text: "Fri, Oct 9 · 3:00 PM–4:00 PM", "Sat, Oct 10", "due Mon, Oct 12", or nothing. */
 export function whenText(t: Pick<Task, 'startDate' | 'targetDate' | 'calendar'>): string {
   if (t.startDate) return `${formatDay(t.startDate)}${t.calendar?.time ? ` · ${t.calendar.time}` : ''}`

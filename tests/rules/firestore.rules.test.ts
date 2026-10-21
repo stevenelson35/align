@@ -387,6 +387,15 @@ describe('voting', () => {
     await assertFails(updateDoc(doc(db('grandma'), 'boards/movies/items/m1'), { note: 'viewers cannot' }))
   })
 
+  it('allows up to 10 links and 10 pictures on items and tasks', async () => {
+    const ten = Array.from({ length: 10 }, (_, i) => `https://example.com/${i}`)
+    await assertSucceeds(updateDoc(doc(db('daughter'), 'boards/movies/items/m1'), { links: ten, images: ['https://example.com/a.jpg'] }))
+    await assertFails(updateDoc(doc(db('daughter'), 'boards/movies/items/m1'), { links: [...ten, 'https://example.com/11'] }))
+    await assertFails(updateDoc(doc(db('daughter'), 'boards/movies/items/m1'), { images: 'https://example.com/a.jpg' }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'tasks/pics1'), task('familyVisible', { links: ten, images: ten })))
+    await assertFails(setDoc(doc(db('steve'), 'tasks/pics2'), task('familyVisible', { images: [...ten, 'https://example.com/x.jpg'] })))
+  })
+
   it('lets members comment on boards and items, and change only their own comments', async () => {
     const c = (uid: string, text = 'Yes please') => ({ text, uid, createdAt: new Date() })
     await assertSucceeds(setDoc(doc(db('steve'), 'boards/movies/comments/c1'), c('steve')))

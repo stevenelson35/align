@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { detailsOf } from '../../utils/details'
 import { createItem, setItemStatus, setVote, updateBoard } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import { useBoardVotes, useTokenBalance } from '../../hooks/useVoting'
@@ -8,21 +9,26 @@ import { Comments } from './Comments'
 import { ItemDetail } from './ItemDetail'
 import { Icon } from '../UI/Icon'
 
-export function BoardView({ board }: { board: Board }) {
+export function BoardView({ board, openItemId }: { board: Board; openItemId?: string }) {
   const app = useApp()
   const { items: allItems } = useData()
   const balance = useTokenBalance()
   const [title, setTitle] = useState('')
-  const [showClosed, setShowClosed] = useState(false)
-  const [openItem, setOpenItem] = useState<string | null>(null) // the item showing its details and comments
+  // A link to a closed item (Text about this) opens the closed list too.
+  const [showClosed, setShowClosed] = useState(() => !!openItemId && allItems.some((i) => i.id === openItemId && i.status !== 'open'))
+  useEffect(() => {
+    if (openItemId) document.getElementById(`item-${openItemId}`)?.scrollIntoView({ block: 'start' })
+  }, [openItemId])
+  const [openItem, setOpenItem] = useState<string | null>(openItemId ?? null) // the item showing its details and comments
   const toggleItem = (id: string) => setOpenItem((o) => (o === id ? null : id))
   /** The title as a button that opens the item, with small marks for what it holds. */
   const itemTitle = (item: BoardItem) => (
     <button type="button" className="item-title" onClick={() => toggleItem(item.id)} aria-expanded={openItem === item.id} title="Details and comments">
-      {safeUrl(item.imageUrl) && <img src={safeUrl(item.imageUrl)!} alt="" className="item-thumb" loading="lazy" />}
+      {safeUrl(detailsOf(item).images[0]) && <img src={safeUrl(detailsOf(item).images[0])!} alt="" className="item-thumb" loading="lazy" />}
       <strong>{item.title}</strong>
       {item.note && <span title="Has a note"> <Icon name="note" /></span>}
-      {item.url && <span title="Has a link"> <Icon name="link" /></span>}
+      {detailsOf(item).links.length > 0 && <span title="Has links"> <Icon name="link" /></span>}
+      {detailsOf(item).images.length > 1 && <span className="muted small" title="Pictures"> <Icon name="photo" /> {detailsOf(item).images.length}</span>}
       <span className="muted small"> {openItem === item.id ? '▾' : '▸'}</span>
     </button>
   )
@@ -95,7 +101,7 @@ export function BoardView({ board }: { board: Board }) {
 
       <div className="items">
         {open.map((item, rank) => (
-          <div key={item.id} className="card item-row">
+          <div key={item.id} id={`item-${item.id}`} className="card item-row">
             <span className="rank">{rank + 1}</span>
             <div className="grow">
               <div className="row">
@@ -103,7 +109,7 @@ export function BoardView({ board }: { board: Board }) {
                 <span className="muted small">{total(item)} tokens</span>
               </div>
               {bar(item)}
-              {openItem === item.id && <ItemDetail key={item.id + JSON.stringify([item.title, item.note, item.url, item.imageUrl])} item={item} />}
+              {openItem === item.id && <ItemDetail key={item.id + JSON.stringify([item.title, item.note, item.url, item.imageUrl, item.links, item.images])} item={item} />}
             </div>
             {app.isMember && (
               <div className="vote-controls">
@@ -147,7 +153,7 @@ export function BoardView({ board }: { board: Board }) {
           <div key={status}>
             <h3>{status === 'chosen' ? 'Chosen' : 'Archived'}</h3>
             {ranked(status).map((item) => (
-              <div key={item.id} className="item-closed">
+              <div key={item.id} id={`item-${item.id}`} className="item-closed">
                 <div className="row">
                 <span className="grow">{itemTitle(item)}</span>
                 <span className="muted small">{total(item)} tokens</span>

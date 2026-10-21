@@ -7,9 +7,14 @@ import { privacyText } from '../../utils/tasks'
 import { TextAbout } from './TextAbout'
 import { Icon } from '../UI/Icon'
 import { parentsOf } from '../../utils/audience'
-import { AUDIENCE_ICON, audienceOf } from '../../utils/audience'
+import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
+import { cleanUrls, detailsOf, MAX_IMAGES, MAX_LINKS, taskDetails } from '../../utils/details'
+import { DetailsView, LinksAndPictures } from '../UI/Details'
 
-/** Side panel for a checklist item or a note: title, text, move, delete. Save and ✕ are at the top. */
+/**
+ * Side panel for a checklist item, a note or a link: title, text, more links and pictures (the shared details),
+ * move, delete, Text about this. Save and ✕ are at the top.
+ */
 export function ItemDetails({ item, list }: { item: Task; list: List }) {
   const app = useApp()
   const { lists, tasks } = useData()
@@ -22,6 +27,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
   const [url, setUrl] = useState(item.url ?? '')
   const [category, setCategory] = useState(item.category ?? '')
   const [text, setText] = useState(item.notes ?? '')
+  const [extras, setExtras] = useState(() => detailsOf(item, false))
   const [listId, setListId] = useState(item.listId)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -36,9 +42,18 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
       const moveTo = listId !== item.listId ? lists.find((l) => l.id === listId) : undefined
       const link = isLink ? safeUrl(url) : null
       if (isLink && !link) throw new Error('That doesn’t look like a web address (http, https, mailto or tel).')
+      const links = cleanUrls(extras.links, MAX_LINKS, 'links')
+      const images = cleanUrls(extras.images, MAX_IMAGES, 'pictures')
+      if (typeof links === 'string') throw new Error(links)
+      if (typeof images === 'string') throw new Error(images)
       await updateTask(
         item.id,
-        { title: title.trim() || item.title, notes: text.trim() ? text : undefined, ...(isLink ? { url: link!, category: cleanCategory(category) || undefined } : {}) },
+        {
+          title: title.trim() || item.title,
+          notes: text.trim() ? text : undefined,
+          ...taskDetails({ links, images }),
+          ...(isLink ? { url: link!, category: cleanCategory(category) || undefined } : {}),
+        },
         moveTo,
       )
       app.selectTask(null)
@@ -97,13 +112,18 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
             placeholder={isNote ? 'Anything worth keeping: numbers, sizes, passwords, instructions…' : isLink ? 'Anything to remember about it (optional)' : 'Size, brand, where to get it…'}
           />
         </label>
+        {editable ? (
+          <LinksAndPictures value={extras} onChange={(d) => setExtras({ ...extras, ...d })} onError={setError} linkHint={isLink ? 'Another address (optional)' : undefined} />
+        ) : (
+          <DetailsView links={extras.links} images={extras.images} alt={item.title} />
+        )}
         {moveChoices.length > 1 && (
           <label>
             {isNote ? 'Notes list' : isLink ? 'Links list' : 'Checklist'}
             <select value={listId} onChange={(e) => setListId(e.target.value)}>
               {moveChoices.map((l) => (
                 <option key={l.id} value={l.id}>
-                  {l.name} ({l.visibility})
+                  {l.name} ({audienceLabel(audienceOf(l))})
                 </option>
               ))}
             </select>

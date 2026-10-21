@@ -411,9 +411,9 @@ export function setItemStatus(item: BoardItem, status: ItemStatus) {
 }
 
 /** Edit an item's title and optional note / link / picture (an empty value removes it). */
-export function updateItem(item: BoardItem, patch: Partial<Pick<BoardItem, 'title' | 'note' | 'url' | 'imageUrl'>>) {
+export function updateItem(item: BoardItem, patch: Partial<Pick<BoardItem, 'title' | 'note' | 'url' | 'imageUrl' | 'links' | 'images'>>) {
   const data: Record<string, unknown> = { title: patch.title ?? item.title, status: item.status, updatedAt: serverTimestamp() }
-  for (const k of ['note', 'url', 'imageUrl'] as const) if (k in patch) data[k] = patch[k] ? patch[k] : deleteField()
+  for (const k of ['note', 'url', 'imageUrl', 'links', 'images'] as const) if (k in patch) data[k] = patch[k]?.length ? patch[k] : deleteField()
   return updateDoc(doc(db, 'boards', item.boardId, 'items', item.id), data)
 }
 

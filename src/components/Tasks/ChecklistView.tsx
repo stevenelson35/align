@@ -5,6 +5,7 @@ import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { List, Task } from '../../types'
 import { ListHeader } from './ListHeader'
 import { Icon } from '../UI/Icon'
+import { DetailsMarks } from '../UI/Details'
 
 /** When it was added (to the nanosecond: quick additions land in the same second); one still being saved is newest. */
 const added = (t: Task) => (t.createdAt ? t.createdAt.seconds + t.createdAt.nanoseconds / 1e9 : Infinity)
@@ -68,6 +69,7 @@ export function ChecklistView({ list }: { list: List }) {
             />
             <button type="button" className="check-title" onClick={() => app.selectTask(t.id)}>
               {t.title}
+              <DetailsMarks links={t.links} images={t.images} />
               {t.notes && <span className="muted small"> · {t.notes.split('\n')[0]}</span>}
             </button>
             <button

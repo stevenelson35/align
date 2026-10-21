@@ -182,6 +182,9 @@ service cloud.firestore {
         && (!('category' in d) || (d.category is string && d.category.size() <= 200))
         // A reading-list task: the link (in a links list) it's about.
         && (!('linkId' in d) || (d.linkId is string && d.linkId.size() <= 100))
+        // Details, as on every entry: extra links and pictures (addresses).
+        && (!('links' in d) || (d.links is list && d.links.size() <= 10))
+        && (!('images' in d) || (d.images is list && d.images.size() <= 10))
         && d.visibility == list.visibility
         && d.get('sharedWith', null) == list.get('sharedWith', null)
         && d.ownerId == list.ownerId
@@ -229,13 +232,15 @@ service cloud.firestore {
 
       match /items/{itemId} {
         allow read: if boardVisible(boardId);
-        // Optional note, link and picture (an image address, e.g. from the Cloudinary upload).
+        // Optional note, links and pictures (image addresses); url / imageUrl are the older single ones.
         allow create, update: if isMember()
           && request.resource.data.title is string && request.resource.data.title.size() > 0
           && request.resource.data.status in ['open', 'chosen', 'archived']
           && (!('note' in request.resource.data) || (request.resource.data.note is string && request.resource.data.note.size() <= 5000))
           && (!('url' in request.resource.data) || (request.resource.data.url is string && request.resource.data.url.size() <= 2048))
-          && (!('imageUrl' in request.resource.data) || (request.resource.data.imageUrl is string && request.resource.data.imageUrl.size() <= 2048));
+          && (!('imageUrl' in request.resource.data) || (request.resource.data.imageUrl is string && request.resource.data.imageUrl.size() <= 2048))
+          && (!('links' in request.resource.data) || (request.resource.data.links is list && request.resource.data.links.size() <= 10))
+          && (!('images' in request.resource.data) || (request.resource.data.images is list && request.resource.data.images.size() <= 10));
         allow delete: if isMember();
 
         match /comments/{commentId} {

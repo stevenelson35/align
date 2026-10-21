@@ -66,7 +66,7 @@ export function MainView() {
     case 'board': {
       const board = boards.find((b) => b.id === route.boardId)
       if (!board) return <p className="muted">That board doesn't exist or isn't shared with you.</p>
-      return <BoardView board={board} />
+      return <BoardView key={`${board.id}:${route.itemId ?? ''}`} board={board} openItemId={route.itemId} />
     }
   }
 }

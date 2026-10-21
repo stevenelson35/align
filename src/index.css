@@ -1724,3 +1724,69 @@ button:not(.secondary):not(.link):not(.row-action):not(.star):not(.nav-link):not
   white-space: nowrap;
   flex: 1 1 6rem;
 }
+
+/* Details (any entry): several links and pictures */
+.links-pictures {
+  display: grid;
+  gap: 0.6rem;
+}
+.links-pictures .detail-link-row {
+  margin-bottom: 0.3rem;
+}
+.row.wrap {
+  flex-wrap: wrap;
+}
+.picture-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 6px;
+}
+.picture-thumb {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+.picture-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.thumb-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.7rem;
+  line-height: 1;
+}
+.detail-links {
+  list-style: none;
+  padding: 0;
+  margin: 0.25rem 0;
+}
+.detail-links li {
+  margin: 0.2rem 0;
+}
+.detail-pictures {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+  margin: 0.4rem 0;
+}
+.detail-pictures.single {
+  grid-template-columns: 1fr;
+}
+.detail-pictures:not(.single) .item-picture {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  margin: 0;
+}

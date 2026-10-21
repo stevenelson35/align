@@ -7,6 +7,7 @@ import { allCategories, cleanCategory, defaultName, linkTree, safeUrl, type Link
 import { ListHeader } from './ListHeader'
 import { Icon } from '../UI/Icon'
 import { parentsOf } from '../../utils/audience'
+import { DetailsMarks } from '../UI/Details'
 
 /** Links (bookmarks) in a collapsible category tree. Tapping a name opens it in a new tab; 💬 texts the address. */
 export function LinksView({ list }: { list: List }) {
@@ -85,6 +86,7 @@ export function LinksView({ list }: { list: List }) {
           ) : (
             <span className="link-name">{l.title}</span>
           )}
+          <DetailsMarks links={l.links} images={l.images} />
           {showUrls && l.url && <div className="muted small link-url">{l.url}</div>}
           {showNotes && l.notes && <div className="small link-note">{l.notes}</div>}
         </div>

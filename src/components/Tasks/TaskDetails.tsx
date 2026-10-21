@@ -11,7 +11,9 @@ import { NumberField } from './NumberField'
 import { TextAbout } from './TextAbout'
 import { isFinished, isItemList, people as humans, privacyText, STATUS_LABEL, targetName } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
-import { AUDIENCE_ICON, audienceOf } from '../../utils/audience'
+import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
+import { cleanUrls, detailsOf, MAX_IMAGES, MAX_LINKS, taskDetails } from '../../utils/details'
+import { DetailsView, LinksAndPictures } from '../UI/Details'
 
 /** ✓ done, ✕ canceled, ⏳ not finished yet. */
 function statusIcon(t: Task) {
@@ -24,6 +26,7 @@ export function TaskDetails({ task }: { task: Task }) {
   const { tasks, lists, conflicts, dependents } = useData()
   const editable = app.canEdit(task)
   const [form, setForm] = useState(task)
+  const [extras, setExtras] = useState(() => detailsOf(task, false))
   const [newDep, setNewDep] = useState({ taskId: '', offsetDays: 0 })
   const [showOtherTasks, setShowOtherTasks] = useState(false)
   const [meetBy, setMeetBy] = useState('')
@@ -53,7 +56,15 @@ export function TaskDetails({ task }: { task: Task }) {
     e.preventDefault()
     setBusy(true)
     setError(null)
+    const links = cleanUrls(extras.links, MAX_LINKS, 'links')
+    const images = cleanUrls(extras.images, MAX_IMAGES, 'pictures')
+    if (typeof links === 'string' || typeof images === 'string') {
+      setError(typeof links === 'string' ? links : (images as string))
+      setBusy(false)
+      return
+    }
     const patch: Partial<TaskInput> = {
+      ...taskDetails({ links, images }),
       title: form.title.trim() || task.title,
       notes: form.notes || undefined,
       priority: form.priority,
@@ -189,6 +200,11 @@ export function TaskDetails({ task }: { task: Task }) {
           Notes
           <textarea rows={3} value={form.notes ?? ''} onChange={(e) => set({ notes: e.target.value })} />
         </label>
+        {editable ? (
+          <LinksAndPictures value={extras} onChange={(d) => setExtras({ ...extras, ...d })} onError={setError} />
+        ) : (
+          <DetailsView links={extras.links} images={extras.images} alt={task.title} />
+        )}
         <label>
           List
           <select value={form.listId} onChange={(e) => {
@@ -199,7 +215,7 @@ export function TaskDetails({ task }: { task: Task }) {
           }}>
             {(listChoices.some((l) => l.id === task.listId) ? listChoices : [...listChoices, ...lists.filter((l) => l.id === task.listId)]).map((l) => (
               <option key={l.id} value={l.id}>
-                {l.name} ({l.visibility})
+                {l.name} ({audienceLabel(audienceOf(l))})
               </option>
             ))}
           </select>

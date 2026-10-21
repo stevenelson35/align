@@ -4,14 +4,19 @@ import { useApp } from '../../hooks/useApp'
 import type { BoardItem } from '../../types'
 import { Comments } from './Comments'
 import { Icon } from '../UI/Icon'
-import { cleanDetails } from '../../utils/details'
+import { cleanDetails, detailsOf, hasDetails, storedDetails } from '../../utils/details'
+import { itemLink } from '../../utils/text'
 import { DetailsFields, DetailsView } from '../UI/Details'
+import { TextForm } from '../Tasks/TextAbout'
 
-/** A voting item opened up: its note, link and picture (the shared Details boxes), an Edit form, and comments. */
+/**
+ * A voting item opened up: its note, links and pictures (the shared Details boxes), an Edit form, Text about this
+ * (a link that opens this item), and comments.
+ */
 export function ItemDetail({ item }: { item: BoardItem }) {
   const { isMember } = useApp()
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({ title: item.title, note: item.note ?? '', url: item.url ?? '', imageUrl: item.imageUrl ?? '' })
+  const [form, setForm] = useState({ title: item.title, ...detailsOf(item) })
   const [error, setError] = useState<string | null>(null)
 
   function save(e: FormEvent) {
@@ -22,7 +27,7 @@ export function ItemDetail({ item }: { item: BoardItem }) {
       return
     }
     setError(null)
-    updateItem(item, { title: form.title.trim() || item.title, ...details })
+    updateItem(item, { title: form.title.trim() || item.title, note: details.note, ...storedDetails(details) })
       .then(() => setEditing(false))
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
   }
@@ -48,14 +53,15 @@ export function ItemDetail({ item }: { item: BoardItem }) {
         </form>
       ) : (
         <>
-          <DetailsView note={item.note} url={item.url} imageUrl={item.imageUrl} alt={item.title} />
+          <DetailsView {...detailsOf(item)} alt={item.title} />
           {isMember && (
             <button type="button" className="secondary small" onClick={() => setEditing(true)}>
-              <Icon name="edit" /> Edit {item.note || item.url || item.imageUrl ? '' : '(add a note, link or picture)'}
+              <Icon name="edit" /> Edit {hasDetails(item) ? '' : '(add a note, links or pictures)'}
             </button>
           )}
         </>
       )}
+      {isMember && <TextForm subject={{ title: item.title, when: '', link: itemLink(item.boardId, item.id) }} startOpen={false} label="Text about this" />}
       <Comments boardId={item.boardId} itemId={item.id} />
     </div>
   )

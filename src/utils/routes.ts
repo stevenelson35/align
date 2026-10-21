@@ -10,7 +10,8 @@ export type Route =
   | { view: 'work' }
   | { view: 'list'; listId: string; timeline: boolean }
   | { view: 'boards' }
-  | { view: 'board'; boardId: string }
+  /** A board; `itemId` opens one item's details (links in texts). */
+  | { view: 'board'; boardId: string; itemId?: string }
   | { view: 'goals' }
   /** ✍ New blog post. */
   | { view: 'blog' }
@@ -38,7 +39,7 @@ export function parseRoute(hash: string): Route {
       if (parts[1]) return { view: 'list', listId: parts[1], timeline: parts[2] === 'timeline' }
       break
     case 'board':
-      if (parts[1]) return { view: 'board', boardId: parts[1] }
+      if (parts[1]) return parts[2] ? { view: 'board', boardId: parts[1], itemId: parts[2] } : { view: 'board', boardId: parts[1] }
       break
     case 'task':
       if (parts[1]) return { view: 'task', taskId: parts[1] }
@@ -61,7 +62,7 @@ export function routeHash(route: Route): string {
     case 'list':
       return `#/list/${encodeURIComponent(route.listId)}${route.timeline ? '/timeline' : ''}`
     case 'board':
-      return `#/board/${encodeURIComponent(route.boardId)}`
+      return `#/board/${encodeURIComponent(route.boardId)}${route.itemId ? `/${encodeURIComponent(route.itemId)}` : ''}`
     case 'task':
       return `#/task/${encodeURIComponent(route.taskId)}`
     case 'day':

@@ -211,7 +211,7 @@ Daily goals (not tasks): shown on each day they apply, logged per day, charted o
 - **Running total** (vacation savings): each day's `value` is what was added; `addToTotal` uses `increment()`, so several people adding on one day all count. The chart steps up toward the target.
 - **View vs log:** viewers see the goal, chart, table and notes, read-only. The rules let the owner change anything; others who can log (`canLogGoal`: Family / Everyone = all members, Parents / Chosen people = `editors`) may change only `log` and `updatedAt`. The editor widens "who can view" to cover everyone who can log (`viewCoveringEditors`), so the normal visibility queries find the goal for them. Goals made before `editAudience` keep the old rule (anyone who could edit them).
 - **Grouping** (`goalGroups`, menu ▸ Goals and the Goals page): My goals (only you log), Shared goals (others can log too), then "<Name>'s goals" (view only). The day strip shows only goals you can log.
-- **Details:** any day's entry can carry a note, link and picture (`components/UI/Details.tsx`, shared with voting items; pictures via the blog's Cloudinary widget or a pasted address).
+- **Details:** any day's entry can carry a note, links and pictures (the shared details, as on every entry).
 - `logGoal` writes only that day's fields (`log.<day>.…`), so two people logging a family goal don't overwrite each other.
 
 ## 6. Scheduling Engine
@@ -395,7 +395,13 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-21 (photos): built, tested, NOT yet committed or deployed
+### 2026-10-21 (details): built, tested, NOT yet committed or deployed
+- **The same details on every entry** (`utils/details.ts`, `components/UI/Details.tsx`): a note, up to 10 links ("+ Add link", ✕ each) and up to 10 pictures (Upload / From favorites / paste an address; ✕ each). Used by voting items, goal entries, tasks, checklist items, notes and links. Stored as `links` / `images` arrays; the older single `url` / `imageUrl` on items and goal entries read as the first of each and are cleared on the next save. A task's `url` stays its own address (links-list item, "Read:" task), so its `links` are extras. Rows show link / picture marks (`DetailsMarks`).
+- **Text about this everywhere:** voting items (link `#/board/<board>/<item>` opens and scrolls to the item, closed ones too) and goals (`#/goal/<id>`), as tasks, items and photos already had.
+- Rules: `links` / `images` lists (≤10) on tasks and voting items, plus a test. **Deploy the rules before the web app.**
+- Tests: 97 unit, 38 rules. Playwright at 390px.
+
+### 2026-10-21 (photos): built and pushed (`72b1ab9`; psort `dbd94e2`)
 - **Favorite photos from psort in Align** (§10.3): Photos page with Text this photo, On this day on the day view, From favorites in the blog composer and in note/link/picture boxes. No rules change. Blog photo boxes no longer overflow on phones.
 - **psort** (separate repo): `publish-browse` writes an `.htaccess` that also lets Align read the manifest. The user needs to run `psort publish-browse` once to upload it; until then Align's photo features stay empty (On this day hides itself).
 - Tests: 95 unit, 37 rules. Playwright at 390px with the manifest served by the test.

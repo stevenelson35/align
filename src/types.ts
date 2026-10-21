@@ -90,6 +90,9 @@ export interface Task {
   /** Links lists: the address it opens, and its category ("Home/Utilities" nests). */
   url?: string
   category?: string
+  /** Extra details, as on every entry: more links and pictures (utils/details.ts). `notes` is the note. */
+  links?: string[]
+  images?: string[]
   /** A reading-list task: the link it's about ("Read: …"); the link shows 📖 until this task is done. */
   linkId?: string
   /** Days it was pushed off ("⏭ next day"), so a past day can show what was rescheduled. */
@@ -108,8 +111,10 @@ export interface GoalEntry {
   count?: number // tally: how many times today
   value?: number // progressive: what you did; measure: what you measured; total: amount added that day
   by?: string // who logged it last (shared goals)
-  /** Optional details for the day: a note, a link, a picture. */
+  /** Optional details for the day: a note, links, pictures (utils/details.ts; url / imageUrl are the older single ones). */
   note?: string
+  links?: string[]
+  images?: string[]
   url?: string
   imageUrl?: string
 }
@@ -162,8 +167,10 @@ export interface BoardItem {
   title: string
   category?: string
   status: ItemStatus
-  /** Optional details: a note, a link, and a picture (an image address, e.g. uploaded through Cloudinary). */
+  /** Optional details: a note, links and pictures (utils/details.ts; url / imageUrl are the older single ones). */
   note?: string
+  links?: string[]
+  images?: string[]
   url?: string
   imageUrl?: string
   createdBy: string
