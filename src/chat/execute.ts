@@ -9,6 +9,7 @@ import { fuzzyMatch } from '../utils/fuzzy'
 import { isFinished, isForToday, people, PRIVACY_ICON, targetName } from '../utils/tasks'
 import { shareLink, smsUrl, splitAbout, splitRecipient, textBody, whenText } from '../utils/text'
 import { HELP_TEXT, parse, type Command } from './parser'
+import { audienceLabel, audienceOf, parentsOf } from '../utils/audience'
 
 export interface Action {
   label: string
@@ -74,7 +75,7 @@ async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext,
   }
   try {
     // No list named: your inbox for your default privacy (Settings).
-    if (!list) list = await inboxFor(app.uid, app.member.defaultVisibility, editable)
+    if (!list) list = await inboxFor(app.uid, app.member.defaultVisibility, editable, parentsOf(app.household))
     const names = [
       ...people(app.household).map(([id, m]) => ({ id, name: m.displayName })),
       ...app.household.pets.map((p) => ({ id: p.id, name: p.name })),
@@ -108,7 +109,7 @@ async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext,
       app.uid,
     )
     return {
-      text: `Added "${title}" to ${target.name} (${PRIVACY_ICON[target.visibility]} ${target.visibility})${cmd.startDate ? ` on ${formatDay(cmd.startDate)}` : ''}.`,
+      text: `Added "${title}" to ${target.name} (${PRIVACY_ICON[target.visibility]} ${audienceLabel(audienceOf(target))})${cmd.startDate ? ` on ${formatDay(cmd.startDate)}` : ''}.`,
       lines: unknown.length ? [`I didn't recognize: ${unknown.join(', ')}.`] : undefined,
       actions: [
         { label: 'Open it', run: () => app.selectTask(id), showsSomething: true },

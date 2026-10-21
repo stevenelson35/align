@@ -1616,3 +1616,26 @@ button:not(.secondary):not(.link):not(.row-action):not(.star):not(.nav-link):not
   font-size: 1.05rem;
   color: var(--text);
 }
+
+/* Five-choice "who" picker, goal groups, entry details */
+.audience-picker label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.audience-note {
+  margin: 4px 0 0;
+}
+.nav-group-title {
+  margin: 8px 0 2px 12px;
+}
+.goal-group h3 {
+  margin: 16px 0 6px;
+  font-size: 1rem;
+}
+.entry-details {
+  margin-top: 8px;
+}
+.goal-notes .card {
+  margin: 8px 0;
+}

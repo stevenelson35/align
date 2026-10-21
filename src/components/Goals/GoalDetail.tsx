@@ -1,27 +1,44 @@
 import { useState } from 'react'
 import { addDays, formatDay, today } from '../../engine/dates'
-import { updateGoal } from '../../firebase/db'
+import { logGoal, updateGoal } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
 import type { Goal } from '../../types'
-import { appliesOn, goalHint, history } from '../../utils/goals'
-import { privacyText } from '../../utils/tasks'
+import { appliesOn, goalHint, history, totalTo } from '../../utils/goals'
+import { canLogGoal, privacyText, sharedNames } from '../../utils/tasks'
+import { cleanDetails, draftOf, hasDetails } from '../../utils/details'
+import { DetailsFields, DetailsView } from '../UI/Details'
+import { Icon } from '../UI/Icon'
 import { GoalChart } from './GoalChart'
 import { GoalControl } from './GoalControl'
 import { GoalEditor } from './GoalEditor'
 
 const RANGES = [14, 30, 90, 365]
 
-/** One goal: log today (or another day), its chart, a table of every day, and edit / archive. */
+/**
+ * One goal: log today (or another day) with an optional note / link / picture, its chart, a table of every day, and
+ * (for its owner) edit / archive. People who can only view see the same page without the log box.
+ */
 export function GoalDetail({ goal }: { goal: Goal }) {
   const app = useApp()
   const [editing, setEditing] = useState(false)
   const [days, setDays] = useState(30)
   const [showTable, setShowTable] = useState(false)
   const [logDay, setLogDay] = useState(today())
-  const editable = app.canEdit(goal)
+  // Settings (and archiving) are the owner's; logging follows "who can log" (the rules say the same).
+  const editable = app.isMember && goal.ownerId === app.uid
+  const canLog = canLogGoal(goal, app.uid, app.member.role)
   const rows = history(goal, addDays(today(), -(days - 1)), today()).reverse()
   const value = (r: (typeof rows)[number]) =>
     goal.kind === 'check' ? (r.entry?.done ? '✓' : '') : goal.kind === 'tally' ? String(r.entry?.count ?? '') : String(r.entry?.value ?? '')
+  const owner = goal.ownerId === app.uid ? 'you' : (app.household.members[goal.ownerId]?.displayName ?? 'the owner')
+  const loggers =
+    goal.editAudience === undefined
+      ? null
+      : goal.editAudience === 'private'
+        ? `only ${owner}`
+        : goal.editAudience === 'parents' || goal.editAudience === 'shared'
+          ? sharedNames(goal.editors ?? [goal.ownerId], app.household, app.uid)
+          : 'every household member'
 
   return (
     <section>
@@ -47,16 +64,18 @@ export function GoalDetail({ goal }: { goal: Goal }) {
         {goalHint(goal, today())}
         {goalHint(goal, today()) && ' · '}
         {goal.weekdays?.length ? `On ${goal.weekdays.map((d) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]).join(', ')}` : 'Every day'} ·{' '}
-        {privacyText(goal, 'goal', app.household, app.uid).replace(/^\S+ /, '')}
+        {privacyText(goal, 'goal', app.household, app.uid)}
+        {loggers && ` Who can log it: ${loggers}.`}
       </p>
 
-      {!goal.archived && (
+      {!goal.archived && canLog && (
         <div className="goal-log card">
           <div className="row">
             <strong className="grow">Log</strong>
             <input type="date" value={logDay} max={today()} onChange={(e) => setLogDay(e.target.value || today())} aria-label="Day to log" />
           </div>
           {appliesOn(goal, logDay) ? <GoalControl goal={goal} day={logDay} showName={false} /> : <p className="muted small">This goal isn't on for {formatDay(logDay)}.</p>}
+          {appliesOn(goal, logDay) && <EntryDetails key={logDay} goal={goal} day={logDay} />}
         </div>
       )}
 
@@ -77,8 +96,10 @@ export function GoalDetail({ goal }: { goal: Goal }) {
           <thead>
             <tr>
               <th>Day</th>
-              <th>{goal.kind === 'check' ? 'Done' : goal.kind === 'tally' ? `Times (goal ${goal.perDay ?? 1})` : goal.kind === 'progressive' ? 'Did' : 'Measured'}</th>
+              <th>{goal.kind === 'check' ? 'Done' : goal.kind === 'tally' ? `Times (goal ${goal.perDay ?? 1})` : goal.kind === 'progressive' ? 'Did' : goal.kind === 'total' ? 'Added' : 'Measured'}</th>
+              {goal.kind === 'total' && <th>Total</th>}
               {(goal.kind === 'progressive' || goal.kind === 'measure') && <th>{goal.kind === 'progressive' ? 'Suggested' : 'Target'}</th>}
+              <th>Details</th>
             </tr>
           </thead>
           <tbody>
@@ -86,13 +107,79 @@ export function GoalDetail({ goal }: { goal: Goal }) {
               <tr key={r.day}>
                 <td>{formatDay(r.day)}</td>
                 <td>{value(r)}</td>
+                {goal.kind === 'total' && <td>{r.entry?.value !== undefined ? totalTo(goal, r.day) : ''}</td>}
                 {(goal.kind === 'progressive' || goal.kind === 'measure') && <td>{r.suggested ?? ''}</td>}
+                <td>
+                  {hasDetails(r.entry) && (
+                    <button type="button" className="link small" onClick={() => setLogDay(r.day)} title={r.entry?.note ?? 'Show the details'}>
+                      {r.entry?.note && <Icon name="note" label="Note" />}
+                      {r.entry?.url && <Icon name="link" label="Link" />}
+                      {r.entry?.imageUrl && <Icon name="photo" label="Picture" />}
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+      {!canLog && rows.some((r) => hasDetails(r.entry)) && (
+        <div className="goal-notes">
+          <h3>Notes and pictures</h3>
+          {rows
+            .filter((r) => hasDetails(r.entry))
+            .map((r) => (
+              <div key={r.day} className="card">
+                <strong className="small">{formatDay(r.day)}</strong>
+                <DetailsView {...r.entry} alt={`${goal.name}, ${formatDay(r.day)}`} />
+              </div>
+            ))}
+        </div>
+      )}
       {editing && <GoalEditor goal={goal} onClose={() => setEditing(false)} />}
     </section>
+  )
+}
+
+/** The day's note, link and picture: shown under the log box, with Add / Edit. */
+function EntryDetails({ goal, day }: { goal: Goal; day: string }) {
+  const { uid } = useApp()
+  const entry = goal.log?.[day]
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState(draftOf(entry ?? {}))
+  const [error, setError] = useState<string | null>(null)
+
+  function save() {
+    const d = cleanDetails(form)
+    if (typeof d === 'string') return setError(d)
+    setError(null)
+    logGoal(goal.id, day, { note: d.note || undefined, url: d.url || undefined, imageUrl: d.imageUrl || undefined }, uid)
+      .then(() => setEditing(false))
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+  }
+
+  if (!editing) {
+    return (
+      <div className="entry-details">
+        <DetailsView {...entry} alt={`${goal.name}, ${formatDay(day)}`} />
+        <button type="button" className="link small" onClick={() => setEditing(true)} disabled={day > today()}>
+          <Icon name="note" /> {hasDetails(entry) ? 'Edit note, link or picture' : 'Add a note, link or picture'}
+        </button>
+      </div>
+    )
+  }
+  return (
+    <div className="entry-details form">
+      <DetailsFields value={form} onChange={setForm} onError={setError} />
+      {error && <p className="error small">{error}</p>}
+      <div className="row">
+        <button type="button" className="small" onClick={save}>
+          Save
+        </button>
+        <button type="button" className="secondary small" onClick={() => setEditing(false)}>
+          Cancel
+        </button>
+      </div>
+    </div>
   )
 }

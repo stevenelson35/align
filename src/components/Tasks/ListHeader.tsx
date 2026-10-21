@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useApp } from '../../hooks/useApp'
 import type { List } from '../../types'
+import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 import { sharedNames } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
 
@@ -13,10 +14,9 @@ export function ListHeader({ list, children }: { list: List; children?: ReactNod
     <header className="view-header">
       <h2>{list.name}</h2>
       <span className={`badge ${list.kind === 'project' ? 'color-project' : `color-${list.visibility}`}`}>
-        <Icon name={{ private: 'lock', family: 'family', shared: 'shared' }[list.visibility] as 'lock' | 'family' | 'shared'} /> {{ private: 'Private', family: 'Family', shared: 'Shared' }[list.visibility]}
+        <Icon name={AUDIENCE_ICON[audienceOf(list)]} /> {audienceLabel(audienceOf(list))}
         {KIND_LABEL[list.kind]}
       </span>
-      {list.viewerVisible && <span className="badge">Visible to viewers</span>}
       {list.visibility === 'shared' && (
         <span className="muted small">with {sharedNames(list.sharedWith ?? [], app.household, app.uid)}</span>
       )}

@@ -47,3 +47,48 @@ describe('goals', () => {
     ])
   })
 })
+
+describe('progressive toward a goal, and running totals', () => {
+  it('declines weight toward the goal and stops there; lower counts as met', async () => {
+    const { suggested, met, decreasing } = await import('./goals')
+    const weight = g({ kind: 'progressive', unit: 'lb', target: 169, progression: { start: 200, step: -1, every: 2, per: 'day', from: '2026-10-01' } })
+    expect(decreasing(weight)).toBe(true)
+    expect(suggested(weight, '2026-10-01')).toBe(200)
+    expect(suggested(weight, '2026-10-11')).toBe(195)
+    expect(suggested(weight, '2027-03-01')).toBe(169) // reached the goal: stays there
+    expect(met(weight, { value: 194 }, '2026-10-11')).toBe(true)
+    expect(met(weight, { value: 196 }, '2026-10-11')).toBe(false)
+    const pushups = g({ kind: 'progressive', target: 30, progression: { start: 10, step: 2, every: 1, per: 'week', from: '2026-10-01' } })
+    expect(suggested(pushups, '2027-06-01')).toBe(30)
+  })
+  it('adds up a running total toward its target', async () => {
+    const { totalTo, met, goalHint } = await import('./goals')
+    const savings = g({ kind: 'total', unit: '$', target: 500, log: { '2026-10-01': { value: 200 }, '2026-10-05': { value: 150.5 }, '2026-11-01': { value: 200 } } })
+    expect(totalTo(savings, '2026-10-20')).toBe(350.5)
+    expect(met(savings, undefined, '2026-10-20')).toBe(false)
+    expect(met(savings, undefined, '2026-11-02')).toBe(true)
+    expect(goalHint(savings, '2026-10-20')).toBe('$350.5 of $500')
+  })
+})
+
+describe('goalGroups', () => {
+  it('groups goals by who can log them: mine, shared, and view-only per person', async () => {
+    const { goalGroups } = await import('./goals')
+    const household = { members: { me: { displayName: 'Steve', role: 'member' }, wife: { displayName: 'Linda', role: 'member' } } } as never
+    const base = { kind: 'check', ownerId: 'me', visibility: 'family', viewerVisible: true, createdBy: 'me' } as const
+    const goals = [
+      { ...base, id: 'w', name: 'Weight', editAudience: 'private' },
+      { ...base, id: 'v', name: 'Vacation', kind: 'total', editAudience: 'shared', editors: ['me', 'wife'] },
+      { ...base, id: 'r', name: 'Run', ownerId: 'wife', editAudience: 'private' },
+      { ...base, id: 'a', name: 'Old', archived: true },
+    ] as never
+    expect(goalGroups(goals, 'me', 'member', household).map((g) => [g.title, g.goals.map((x) => x.id)])).toEqual([
+      ['My goals', ['w']],
+      ['Shared goals', ['v']],
+      ["Linda's goals", ['r']],
+    ])
+    // Linda sees the vacation goal as shared (she can log it) and the weight as Steve's, view only.
+    expect(goalGroups(goals, 'wife', 'member', household).map((g) => g.title)).toEqual(['My goals', 'Shared goals', "Steve's goals"])
+    expect(goalGroups(goals, 'wife', 'viewer', household).map((g) => g.title)).toEqual(["Steve's goals", "Linda's goals"])
+  })
+})

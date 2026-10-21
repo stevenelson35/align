@@ -3,10 +3,13 @@ import { setDefaultVisibility, setParents, setPhone } from '../../firebase/db'
 import { people } from '../../utils/tasks'
 import { githubToken, setGithubToken, testToken } from '../../blog/github'
 import { useApp } from '../../hooks/useApp'
-import type { Visibility } from '../../types'
+import type { HouseholdMember } from '../../types'
+import { AUDIENCE_ICON, AUDIENCES } from '../../utils/audience'
 import { loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
 import { ICON_STYLES, saveIconStyle, useIconStyle } from '../../utils/iconStyle'
 import { Icon, type IconName } from '../UI/Icon'
+
+type DefaultAudience = NonNullable<HouseholdMember['defaultVisibility']>
 
 const PREVIEW: IconName[] = ['compose', 'goal', 'message', 'lock', 'family', 'book', 'calendar', 'search', 'settings', 'skip']
 
@@ -58,14 +61,14 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       setError(err instanceof Error ? err.message : String(err))
     }
   }
-  const [visibility, setVisibility] = useState<Visibility>(member.defaultVisibility ?? 'private')
+  const [visibility, setVisibility] = useState<DefaultAudience>(member.defaultVisibility ?? 'everyone')
   const [theme, setTheme] = useState<ThemeChoice>(loadTheme)
   const iconStyle = useIconStyle()
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   useEffect(() => onThemeChange(setTheme), [])
 
-  async function chooseVisibility(v: Visibility) {
+  async function chooseVisibility(v: DefaultAudience) {
     setVisibility(v)
     setError(null)
     setSaved(false)
@@ -73,7 +76,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       await setDefaultVisibility(uid, v)
       setSaved(true)
     } catch (err) {
-      setVisibility(member.defaultVisibility ?? 'private')
+      setVisibility(member.defaultVisibility ?? 'everyone')
       setError(err instanceof Error ? err.message : String(err))
     }
   }
@@ -89,18 +92,16 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </header>
         {isMember && (
           <fieldset className="setting">
-            <legend>Default privacy</legend>
+            <legend>Who can see new things</legend>
             <p className="muted small">For lists you create and quick adds that don't name a list. You can still choose for each list.</p>
-            <label className="inline">
-              <input type="radio" name="visibility" checked={visibility === 'private'} onChange={() => chooseVisibility('private')} />
-              <Icon name="lock" /> Just me
-            </label>
-            <label className="inline">
-              <input type="radio" name="visibility" checked={visibility === 'family'} onChange={() => chooseVisibility('family')} />
-              <Icon name="family" /> Family
-            </label>
+            {AUDIENCES.filter((a) => a.value !== 'shared').map((a) => (
+              <label key={a.value} className="inline" title={a.hint}>
+                <input type="radio" name="visibility" checked={visibility === a.value} onChange={() => chooseVisibility(a.value as DefaultAudience)} />
+                <Icon name={AUDIENCE_ICON[a.value]} /> {a.label}
+              </label>
+            ))}
             <p className="muted small">
-              {visibility === 'family' ? 'Quick adds go to the shared "Family Inbox" list.' : 'Quick adds go to your private "Inbox" list.'}
+              Quick adds go to {visibility === 'private' ? 'your "Inbox"' : visibility === 'parents' ? 'the "Parents Inbox"' : 'the "Family Inbox"'}.
               {saved && ' Saved.'}
             </p>
           </fieldset>
@@ -131,7 +132,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           <fieldset className="setting">
             <legend>Parents</legend>
             <p className="muted small">
-              Who the "Parents" shortcut picks when you share a list with chosen people. The people on each shared list are always shown by name.
+              Who "Parents" means when you choose who can see or log something. The people are always shown by name.
             </p>
             <div className="chips">
               {adults.map(([id, m]) => (

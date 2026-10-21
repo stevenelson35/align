@@ -6,6 +6,8 @@ import { cleanCategory, safeUrl } from '../../utils/links'
 import { privacyText } from '../../utils/tasks'
 import { TextAbout } from './TextAbout'
 import { Icon } from '../UI/Icon'
+import { parentsOf } from '../../utils/audience'
+import { AUDIENCE_ICON, audienceOf } from '../../utils/audience'
 
 /** Side panel for a checklist item or a note: title, text, move, delete. Save and ✕ are at the top. */
 export function ItemDetails({ item, list }: { item: Task; list: List }) {
@@ -110,7 +112,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
       </fieldset>
       {(() => {
         const target = lists.find((l) => l.id === listId) ?? list
-        return <p className="privacy-note small"><Icon name={target.visibility === 'private' ? 'lock' : target.visibility === 'shared' ? 'shared' : 'family'} /> {privacyText(target, noun, app.household, app.uid).replace(/^\S+\s/, '')}</p>
+        return <p className="privacy-note small"><Icon name={AUDIENCE_ICON[audienceOf(target)]} /> {privacyText(target, noun, app.household, app.uid)}</p>
       })()}
       {isLink && item.url && (
         <div className="row">
@@ -124,7 +126,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
                 type="button"
                 className="secondary small"
                 onClick={() =>
-                  readingListFor(app.uid, app.member.defaultVisibility, lists.filter((l) => app.canEdit(l)))
+                  readingListFor(app.uid, app.member.defaultVisibility, lists.filter((l) => app.canEdit(l)), parentsOf(app.household))
                     .then((target) => addReadingTask(target, { id: item.id, title: item.title, url: item.url }, app.uid).written)
                     .catch((err) => setError(err instanceof Error ? err.message : String(err)))
                 }

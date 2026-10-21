@@ -52,9 +52,9 @@ export function CombinedView({ title, tasks, defaultSort = 'date', actions }: Pr
         </button>
       </header>
       <p className="color-key small muted" aria-label="Color key">
-        <span className="key color-private">Private <Icon name="lock" /></span>
-        <span className="key color-family">Family</span>
-        <span className="key color-shared">Shared <Icon name="shared" /></span>
+        <span className="key color-private">Only me <Icon name="lock" /></span>
+        <span className="key color-family">Family / Everyone</span>
+        <span className="key color-shared">Parents <Icon name="parents" /> · Chosen people <Icon name="shared" /></span>
         <span className="key color-project">Project</span>
         <span className="key color-done">Finished</span>
       </p>

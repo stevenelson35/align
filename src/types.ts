@@ -7,7 +7,7 @@ export interface HouseholdMember {
   displayName: string
   color: string
   /** Who can see the lists this person creates, and their quick adds, unless they choose otherwise. Default private. */
-  defaultVisibility?: Visibility
+  defaultVisibility?: 'private' | 'parents' | 'family' | 'everyone'
   /** Their mobile number, for "text <name> …" (they enter it in Settings). */
   phone?: string
   /** The calendar-sync account: a member for the rules, hidden from people pickers. Set in the console. */
@@ -49,6 +49,8 @@ export interface List {
   ownerId: string
   viewerVisible: boolean
   defaultContext: Context
+  /** 'parents' when chosen as Parents (sharedWith holds them), so it shows as Parents rather than Chosen people. */
+  audience?: 'parents'
 }
 
 export interface Dependency {
@@ -104,8 +106,12 @@ export interface Task {
 export interface GoalEntry {
   done?: boolean // check
   count?: number // tally: how many times today
-  value?: number // progressive: what you did; measure: what you measured
+  value?: number // progressive: what you did; measure: what you measured; total: amount added that day
   by?: string // who logged it last (shared goals)
+  /** Optional details for the day: a note, a link, a picture. */
+  note?: string
+  url?: string
+  imageUrl?: string
 }
 
 /**
@@ -117,18 +123,24 @@ export interface GoalEntry {
 export interface Goal {
   id: string
   name: string
-  kind: 'check' | 'tally' | 'progressive' | 'measure'
+  kind: 'check' | 'tally' | 'progressive' | 'measure' | 'total'
   unit?: string
   perDay?: number
   /** progressive: start at `start` on `from`, add `step` every `every` days or weeks, kept within min..max. */
   progression?: { start: number; step: number; every: number; per: 'day' | 'week'; min?: number; max?: number; from: string }
-  /** measure: the goal value, and whether lower or higher is better. */
+  /** The goal value. measure: lower or higher is better (`direction`). progressive: the suggestion moves toward it
+   *  and stops there. total: the running total to reach. */
   target?: number
   direction?: 'down' | 'up'
   /** Days of the week it applies (0 = Sunday); absent = every day. */
   weekdays?: number[]
   visibility: Visibility
   sharedWith?: string[]
+  /** 'parents' when the view audience was chosen as Parents (sharedWith holds them). */
+  audience?: 'parents'
+  /** Who can log it (utils/audience): the owner only, Parents / Chosen people (`editors`), or every member. */
+  editAudience?: 'private' | 'parents' | 'family' | 'shared' | 'everyone'
+  editors?: string[]
   ownerId: string
   viewerVisible: boolean
   log?: Record<string, GoalEntry>

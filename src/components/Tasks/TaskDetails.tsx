@@ -11,6 +11,7 @@ import { NumberField } from './NumberField'
 import { TextAbout } from './TextAbout'
 import { isFinished, isItemList, people as humans, privacyText, STATUS_LABEL, targetName } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
+import { AUDIENCE_ICON, audienceOf } from '../../utils/audience'
 
 /** ✓ done, ✕ canceled, ⏳ not finished yet. */
 function statusIcon(t: Task) {
@@ -205,7 +206,7 @@ export function TaskDetails({ task }: { task: Task }) {
         </label>
         {(() => {
           const target = lists.find((l) => l.id === form.listId)
-          return target && <p className="privacy-note small"><Icon name={target.visibility === 'private' ? 'lock' : target.visibility === 'shared' ? 'shared' : 'family'} /> {privacyText(target, 'task', app.household, app.uid).replace(/^\S+\s/, '')}</p>
+          return target && <p className="privacy-note small"><Icon name={AUDIENCE_ICON[audienceOf(target)]} /> {privacyText(target, 'task', app.household, app.uid)}</p>
         })()}
         {itemLists.length > 0 && (
           <details>

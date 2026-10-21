@@ -9,8 +9,8 @@ npm install
 npm run emulators      # terminal 1 (Auth + Firestore emulators, project demo-align)
 npm run seed           # terminal 2: test accounts + household (password "align-dev")
 npm run dev            # http://localhost:5173
-npm test               # 85 unit tests (vitest: engine, tokens, parser, utils, DB writes, Apps Script helpers)
-npm run test:rules     # 36 security-rule tests; starts its own emulators (stop `npm run emulators` first); must stay green
+npm test               # 92 unit tests (vitest: engine, tokens, parser, utils, DB writes, Apps Script helpers)
+npm run test:rules     # 37 security-rule tests; starts its own emulators (stop `npm run emulators` first); must stay green
 npm run test:calendar  # Apps Script calendar sync + web app against the running emulators (after seed)
 npx tsc -b && npm run lint && npm run build
 npm run deploy:rules   # real project align-a32c1 (firebase login is done)
@@ -23,7 +23,8 @@ ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web   # the USER runs this
 - **Tasks copy their list's `visibility` / `ownerId` / `viewerVisible` / `sharedWith`.** Update them in the same batch as the list (`updateList`, `copiedFields` in `src/firebase/db.ts`).
 - **`sharedWith` exists only on shared docs** (`visibility: 'shared'`), so "shared with me" stays one rule-provable query.
 - **Every status change goes through `withStatus(task, status, day)`** (db.ts) so `finishedOn` stays right for day views; pushes record `pushedFrom`.
-- **Goals** are their own collection (`goals`, same privacy as lists) with a per-day `log` map; log with `logGoal` (writes only that day's fields).
+- **Privacy is five choices** (Only me · Parents · Family · Chosen people · Everyone; default Everyone) mapped onto the stored fields by `utils/audience.ts`; pick with `AudiencePicker`. Don't write "grandparents" in the UI.
+- **Goals** are their own collection (`goals`) with a per-day `log` map. "Who can view" uses list privacy; "who can log" is `editAudience` / `editors` (rules `canLogGoal`; non-owners may change only `log`). Log with `logGoal` (that day's fields only) or `addToTotal` (running totals, `increment`).
 - **The blog GitHub token lives only in each device's localStorage** (Settings); never put a token in code, Firestore, or a served page.
 - **Quick-add boxes use `addTaskNow` and clear immediately** (don't await the server before clearing; it caused duplicate adds on slow phones).
 - **Firestore has a persistent device cache**; sign-out clears it (`auth.ts`).

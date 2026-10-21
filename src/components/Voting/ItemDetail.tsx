@@ -1,34 +1,28 @@
 import { useState, type FormEvent } from 'react'
-import { chooseImage } from '../../blog/cloudinary'
 import { updateItem } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
 import type { BoardItem } from '../../types'
-import { safeUrl } from '../../utils/links'
 import { Comments } from './Comments'
 import { Icon } from '../UI/Icon'
+import { cleanDetails } from '../../utils/details'
+import { DetailsFields, DetailsView } from '../UI/Details'
 
-/**
- * A voting item opened up: its note, link and picture, an Edit form, and comments. Pictures upload through the same
- * Cloudinary widget as blog posts (anyone with the image's long address can open it), or paste an image address.
- */
+/** A voting item opened up: its note, link and picture (the shared Details boxes), an Edit form, and comments. */
 export function ItemDetail({ item }: { item: BoardItem }) {
   const { isMember } = useApp()
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ title: item.title, note: item.note ?? '', url: item.url ?? '', imageUrl: item.imageUrl ?? '' })
   const [error, setError] = useState<string | null>(null)
-  const link = safeUrl(item.url)
-  const picture = safeUrl(item.imageUrl)
 
   function save(e: FormEvent) {
     e.preventDefault()
-    const url = form.url.trim() ? safeUrl(form.url) : ''
-    const imageUrl = form.imageUrl.trim() ? safeUrl(form.imageUrl) : ''
-    if (url === null || imageUrl === null) {
-      setError('That doesn’t look like a web address.')
+    const details = cleanDetails(form)
+    if (typeof details === 'string') {
+      setError(details)
       return
     }
     setError(null)
-    updateItem(item, { title: form.title.trim() || item.title, note: form.note.trim(), url, imageUrl })
+    updateItem(item, { title: form.title.trim() || item.title, ...details })
       .then(() => setEditing(false))
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
   }
@@ -41,40 +35,7 @@ export function ItemDetail({ item }: { item: BoardItem }) {
             Title
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
           </label>
-          <label>
-            Note
-            <textarea rows={3} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} maxLength={5000} />
-          </label>
-          <label>
-            Link
-            <input type="text" inputMode="url" autoCapitalize="off" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="e.g. a trailer or menu" />
-          </label>
-          <div>
-            <span className="label">Picture</span>
-            <div className="row">
-              <button
-                type="button"
-                className="secondary small"
-                onClick={() => chooseImage(({ url }) => setForm((f) => ({ ...f, imageUrl: url }))).catch((err) => setError(String(err.message ?? err)))}
-              >
-                <Icon name="camera" /> {form.imageUrl ? 'Change picture' : 'Upload picture'}
-              </button>
-              {form.imageUrl && (
-                <button type="button" className="link small" onClick={() => setForm({ ...form, imageUrl: '' })}>
-                  Remove
-                </button>
-              )}
-            </div>
-            <input
-              type="text"
-              inputMode="url"
-              autoCapitalize="off"
-              value={form.imageUrl}
-              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-              placeholder="…or paste a picture's address"
-              aria-label="Picture address"
-            />
-          </div>
+          <DetailsFields value={form} onChange={(d) => setForm({ ...form, ...d })} onError={setError} linkHint="e.g. a trailer or menu" />
           {error && <p className="error small">{error}</p>}
           <div className="row">
             <button type="submit" className="small">
@@ -87,19 +48,7 @@ export function ItemDetail({ item }: { item: BoardItem }) {
         </form>
       ) : (
         <>
-          {item.note && <p className="item-note">{item.note}</p>}
-          {link && (
-            <p className="small">
-              <a href={link} target="_blank" rel="noopener noreferrer">
-                {item.url} ↗
-              </a>
-            </p>
-          )}
-          {picture && (
-            <a href={picture} target="_blank" rel="noopener noreferrer">
-              <img src={picture} alt={item.title} className="item-picture" loading="lazy" />
-            </a>
-          )}
+          <DetailsView note={item.note} url={item.url} imageUrl={item.imageUrl} alt={item.title} />
           {isMember && (
             <button type="button" className="secondary small" onClick={() => setEditing(true)}>
               <Icon name="edit" /> Edit {item.note || item.url || item.imageUrl ? '' : '(add a note, link or picture)'}

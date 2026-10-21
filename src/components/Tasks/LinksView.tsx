@@ -6,6 +6,7 @@ import type { List, Task } from '../../types'
 import { allCategories, cleanCategory, defaultName, linkTree, safeUrl, type LinkNode } from '../../utils/links'
 import { ListHeader } from './ListHeader'
 import { Icon } from '../UI/Icon'
+import { parentsOf } from '../../utils/audience'
 
 /** Links (bookmarks) in a collapsible category tree. Tapping a name opens it in a new tab; 💬 texts the address. */
 export function LinksView({ list }: { list: List }) {
@@ -66,7 +67,7 @@ export function LinksView({ list }: { list: List }) {
     })
     if (toRead) {
       const chosen = taskLists.find((l) => l.id === readList)
-      ;(chosen ? Promise.resolve(chosen) : readingListFor(app.uid, app.member.defaultVisibility, taskLists))
+      ;(chosen ? Promise.resolve(chosen) : readingListFor(app.uid, app.member.defaultVisibility, taskLists, parentsOf(app.household)))
         .then((target) => addReadingTask(target, { id, title, url: href }, app.uid).written)
         .catch((err) => setError(`The link was added, but not to the reading list: ${err instanceof Error ? err.message : String(err)}`))
     }

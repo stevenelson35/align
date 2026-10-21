@@ -2,6 +2,8 @@ import { useState, type ReactNode } from 'react'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
 import type { Route } from '../../utils/routes'
+import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
+import { goalGroups } from '../../utils/goals'
 import { isFinished, isItemList } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
 
@@ -18,6 +20,8 @@ function NavLink({ route, label, color, count }: { route: Route; label: ReactNod
 }
 
 const OPEN_KEY = 'align-menu-open'
+/** psort publishes favorite photos here (the blog's browse page). */
+export const PHOTOS_URL = 'https://blog.itsallonesong.com/browse.html'
 
 /**
  * A collapsible menu section. One is open at a time (opening one closes the others), and the open one is
@@ -37,7 +41,7 @@ function Section({ title, count, active, isOpen, onToggle, children }: { title: 
 }
 
 export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () => void }) {
-  const { uid, isMember, editList, route } = useApp()
+  const { uid, member, household, isMember, editList, route } = useApp()
   const [openSection, setOpenSection] = useState<string | null>(() => localStorage.getItem(OPEN_KEY))
   const toggle = (title: string) => {
     const next = openSection === title ? null : title
@@ -46,7 +50,8 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
     setOpenSection(next)
   }
   const activeListId = route.view === 'list' ? route.listId : null
-  const { lists, boards, tasks, listItems } = useData()
+  const { lists, boards, tasks, listItems, goals } = useData()
+  const groups = goalGroups(goals, uid, member.role, household)
   // Unfinished tasks or unchecked items; for notes, how many there are.
   const openCount = (l: List) =>
     (isItemList(l) ? listItems : tasks).filter((t) => t.listId === l.id && (l.kind === 'notes' || l.kind === 'links' || !isFinished(t))).length
@@ -69,8 +74,31 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
       {isMember && <NavLink route={{ view: 'mine' }} label="My tasks" />}
       <NavLink route={{ view: 'family' }} label="Family tasks" />
       <NavLink route={{ view: 'work' }} label="Work" />
-      <NavLink route={{ view: 'goals' }} label={<><Icon name="goal" /> Goals</>} />
       {isMember && <NavLink route={{ view: 'blog' }} label={<><Icon name="compose" /> New blog post</>} />}
+      <a className="nav-link" href={PHOTOS_URL} target="_blank" rel="noopener noreferrer">
+        <span className="grow">
+          <Icon name="photo" /> Photos
+        </span>
+        <Icon name="external" label="opens the blog's photo browser" />
+      </a>
+
+      <Section
+        title="Goals"
+        count={groups.reduce((n, g) => n + g.goals.length, 0)}
+        active={route.view === 'goals' || route.view === 'goal'}
+        isOpen={openSection === 'Goals'}
+        onToggle={() => toggle('Goals')}
+      >
+        <NavLink route={{ view: 'goals' }} label={<><Icon name="goal" /> All goals</>} />
+        {groups.map((g) => (
+          <div key={g.key} className="nav-group">
+            <p className="nav-group-title muted small">{g.title}</p>
+            {g.goals.map((goal) => (
+              <NavLink key={goal.id} route={{ view: 'goal', goalId: goal.id }} label={goal.name} />
+            ))}
+          </div>
+        ))}
+      </Section>
 
       {sections.map((s) => (
         <Section
@@ -85,7 +113,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
             <NavLink
               key={l.id}
               route={{ view: 'list', listId: l.id, timeline: false }}
-              label={l.visibility === 'family' ? l.name : <>{l.name} <Icon name={l.visibility === 'private' ? 'lock' : 'shared'} label={l.visibility === 'private' ? 'private' : 'shared'} /></>}
+              label={l.visibility === 'family' ? l.name : <>{l.name} <Icon name={AUDIENCE_ICON[audienceOf(l)]} label={audienceLabel(audienceOf(l))} /></>}
               color={s.color || color(l)}
               count={openCount(l)}
             />

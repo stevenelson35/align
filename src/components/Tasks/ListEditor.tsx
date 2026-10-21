@@ -2,8 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { createList, deleteList, updateList, type ListInput } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
+import { audienceOf, parentsOf, privacyFields, type Audience } from '../../utils/audience'
 import { people } from '../../utils/tasks'
-import { SharePicker } from './SharePicker'
+import { AudiencePicker } from '../UI/AudiencePicker'
 
 /** Create or edit a list/project. Visibility changes rewrite the copied fields on its tasks in the same batch. */
 export function ListEditor({ list, onClose }: { list: List | null; onClose: () => void }) {
@@ -13,29 +14,41 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
   const tasks = [...taskDocs, ...listItems]
   const [form, setForm] = useState<ListInput>(
     // New lists start with your own default privacy (Settings).
-    list ?? { name: '', kind: 'list', visibility: app.member.defaultVisibility ?? 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' },
+    list ?? { name: '', kind: 'list', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' },
   )
+  // New lists start with your own default (Settings), which is Everyone unless you changed it.
+  const [audience, setAudience] = useState<Audience>(list ? audienceOf(list) : (app.member.defaultVisibility ?? 'everyone'))
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const set = (patch: Partial<ListInput>) => setForm((f) => ({ ...f, ...patch }))
   const members = people(app.household, true)
   const owner = form.ownerId || app.uid
   const chosen = new Set([owner, ...(form.sharedWith ?? [])])
-  // Only the owner may hand a list to someone else (rules), and private lists always belong to their owner.
-  const canChangeOwner = list !== null && list.ownerId === app.uid && form.visibility === 'family'
+  const parents = parentsOf(app.household)
+  // Only the owner may hand a list to someone else (rules), and only Family / Everyone lists can change hands.
+  const canChangeOwner = list !== null && list.ownerId === app.uid && (audience === 'family' || audience === 'everyone')
 
   async function save(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const data = {
+    const ownerId = canChangeOwner ? owner : (list?.ownerId ?? app.uid)
+    const data: ListInput = {
       ...form,
       name: form.name.trim(),
-      viewerVisible: form.visibility === 'family' && form.viewerVisible,
-      sharedWith: form.visibility === 'shared' ? [...chosen] : undefined,
+      ownerId,
+      sharedWith: undefined,
+      audience: undefined,
+      ...privacyFields(audience, ownerId, [...chosen], parents),
     }
-    if (data.visibility === 'shared' && chosen.size < 2) {
-      setError('Pick at least one other person to share with, or choose "Just me".')
+    const problem =
+      audience === 'shared' && chosen.size < 2
+        ? 'Pick at least one other person to share with, or choose "Only me".'
+        : audience === 'parents' && !parents.length
+          ? 'Nobody is set as a parent yet: tick the parents in ⚙ Settings → Parents first.'
+          : null
+    if (problem) {
+      setError(problem)
       setBusy(false)
       return
     }
@@ -86,17 +99,6 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
             </select>
           </label>
           <label>
-            Who can see it
-            <select
-              value={form.visibility}
-              onChange={(e) => set({ visibility: e.target.value as List['visibility'], ownerId: list?.ownerId ?? app.uid })}
-            >
-              <option value="private">🔒 Just me</option>
-              <option value="family">👪 Family</option>
-              <option value="shared">👥 Chosen people</option>
-            </select>
-          </label>
-          <label>
             Default context
             <select value={form.defaultContext} onChange={(e) => set({ defaultContext: e.target.value as List['defaultContext'] })}>
               <option value="family">Family</option>
@@ -116,16 +118,19 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
             </label>
           )}
         </div>
-        {form.visibility === 'shared' && (
-          <SharePicker ownerId={owner} sharedWith={[...chosen]} onChange={(uids) => set({ sharedWith: uids })} noun="list and everything in it" />
-        )}
-        {form.visibility === 'family' && (
-          <label className="inline">
-            <input type="checkbox" checked={form.viewerVisible} onChange={(e) => set({ viewerVisible: e.target.checked })} />
-            Visible to viewers (grandparents, etc.)
-          </label>
-        )}
-        {list && list.visibility === 'family' && form.visibility === 'private' && list.ownerId !== app.uid && (
+        <AudiencePicker
+          label="Who can see it"
+          value={audience}
+          onChange={(a) => {
+            setAudience(a)
+            if (a !== 'family' && a !== 'everyone') set({ ownerId: list?.ownerId ?? app.uid })
+          }}
+          ownerId={owner}
+          chosen={[...chosen]}
+          onChosen={(uids) => set({ sharedWith: uids })}
+          noun="list and everything in it"
+        />
+        {list && list.visibility === 'family' && audience === 'private' && list.ownerId !== app.uid && (
           <p className="error small">Only the list's owner can make it private.</p>
         )}
         {error && <p className="error">{error}</p>}

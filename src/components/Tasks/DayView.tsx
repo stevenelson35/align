@@ -10,6 +10,7 @@ import { GoalsStrip } from '../Goals/GoalsStrip'
 import { CalendarActions } from './CalendarActions'
 import { TaskCard } from './TaskCard'
 import { Icon } from '../UI/Icon'
+import { parentsOf } from '../../utils/audience'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -64,7 +65,7 @@ export function DayView({ day }: { day: string }) {
     setError(null)
     setTitle('') // clear at once, so a second tap can't add it twice
     try {
-      const list = await inboxFor(app.uid, app.member.defaultVisibility, lists.filter((l) => app.canEdit(l)))
+      const list = await inboxFor(app.uid, app.member.defaultVisibility, lists.filter((l) => app.canEdit(l)), parentsOf(app.household))
       await addTaskNow(list, { title: text, priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [], startDate: day }, app.uid).written
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

@@ -53,7 +53,7 @@ service cloud.firestore {
         && after[uid].role == before[uid].role
         && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone'])
         // Their own default for new lists and quick adds, and their mobile number for "text …" (Settings).
-        && (!('defaultVisibility' in after[uid]) || after[uid].defaultVisibility in ['private', 'family'])
+        && (!('defaultVisibility' in after[uid]) || after[uid].defaultVisibility in ['private', 'parents', 'family', 'everyone'])
         && (!('phone' in after[uid]) || (after[uid].phone is string && after[uid].phone.size() <= 24));
     }
 
@@ -125,7 +125,9 @@ service cloud.firestore {
 
     function validGoal(d) {
       return d.name is string && d.name.size() > 0 && d.name.size() <= 100
-        && d.kind in ['check', 'tally', 'progressive', 'measure']
+        && d.kind in ['check', 'tally', 'progressive', 'measure', 'total']
+        && (!('editAudience' in d) || d.editAudience in ['private', 'parents', 'family', 'shared', 'everyone'])
+        && (!('editors' in d) || (d.editors is list && d.editors.size() <= 20))
         && d.visibility in ['private', 'family', 'shared']
         && sharedOk(d)
         && d.viewerVisible is bool
@@ -135,16 +137,28 @@ service cloud.firestore {
         && (!('weekdays' in d) || d.weekdays is list);
     }
 
+    // Who can log a goal ("who can log"): the owner; every member for Family / Everyone; the people in
+    // `editors` for Parents / Chosen people. Goals made before editAudience existed keep the old rule (anyone who
+    // could write the doc).
+    function canLogGoal(d) {
+      return isMember() && (d.ownerId == request.auth.uid
+        || d.get('editAudience', '') in ['family', 'everyone']
+        || request.auth.uid in d.get('editors', [])
+        || (!('editAudience' in d) && canWrite(d)));
+    }
+
     match /goals/{goalId} {
-      allow read: if canRead(resource.data);
-      allow create: if canWrite(request.resource.data)
+      // People who can log a goal can also see it (the app keeps them inside "who can view" too).
+      allow read: if canRead(resource.data) || (isMember() && request.auth.uid in resource.data.get('editors', []));
+      allow create: if isMember()
         && request.resource.data.ownerId == request.auth.uid
         && validGoal(request.resource.data);
-      allow update: if canWrite(resource.data)
-        && canWrite(request.resource.data)
-        && (request.resource.data.ownerId == resource.data.ownerId || resource.data.ownerId == request.auth.uid)
-        && validGoal(request.resource.data);
-      allow delete: if canWrite(resource.data);
+      // Only the owner changes the goal itself; everyone else who can log it changes only the log.
+      allow update: if canLogGoal(resource.data)
+        && validGoal(request.resource.data)
+        && (resource.data.ownerId == request.auth.uid
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['log', 'updatedAt']));
+      allow delete: if isMember() && resource.data.ownerId == request.auth.uid;
     }
 
     // ---- Tasks ----

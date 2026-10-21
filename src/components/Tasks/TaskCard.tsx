@@ -6,6 +6,7 @@ import type { Task } from '../../types'
 import { safeUrl } from '../../utils/links'
 import { colorKey, isFinished, PRIORITY_LABEL, STATUS_LABEL, targetName, waitingOn } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
+import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 
 interface Props {
   task: Task
@@ -72,9 +73,9 @@ export function TaskCard({ task, showList = true, onTicked, day, dayActions, not
           {showList && list && (
             <span
               className="badge"
-              title={{ private: 'Private: only you can see it', family: 'Family: everyone can see it', shared: 'Shared with chosen people' }[task.visibility]}
+              title={`Who can see it: ${audienceLabel(audienceOf(list))}`}
             >
-              {task.visibility !== 'family' && <><Icon name={task.visibility === 'private' ? 'lock' : 'shared'} />{' '}</>}
+              {list.visibility !== 'family' && <><Icon name={AUDIENCE_ICON[audienceOf(list)]} />{' '}</>}
               {list.name}
             </span>
           )}

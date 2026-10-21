@@ -79,14 +79,17 @@ export function BoardView({ board }: { board: Board }) {
     <section>
       <header className="view-header">
         <h2>{board.name}</h2>
-        {board.viewerVisible && <span className="badge">Visible to viewers</span>}
         <span className="grow" />
         {app.isMember && <span className="badge tokens"><Icon name="coin" /> {balance} left</span>}
       </header>
       {app.isMember && (
         <label className="inline small">
-          <input type="checkbox" checked={board.viewerVisible} onChange={(e) => run(updateBoard(board, { viewerVisible: e.target.checked }))} />
-          Visible to viewers
+          Who can see it
+          {/* Boards belong to the whole household, so they offer the two household-wide choices. */}
+          <select value={board.viewerVisible ? 'everyone' : 'family'} onChange={(e) => run(updateBoard(board, { viewerVisible: e.target.value === 'everyone' }))}>
+            <option value="family">Family</option>
+            <option value="everyone">Everyone</option>
+          </select>
         </label>
       )}
 

@@ -1,7 +1,8 @@
 import { today } from '../engine/dates'
 import { topoSort } from '../engine/graph'
 import { applyPreview, conflictsById, finish, type ShiftPreview } from '../engine/scheduling'
-import type { Context, Household, List, Priority, Role, Status, Task } from '../types'
+import type { Context, Goal, Household, List, Priority, Role, Status, Task } from '../types'
+import { audienceOf } from './audience'
 
 export type Shareable = Pick<Task, 'visibility' | 'ownerId' | 'sharedWith'>
 
@@ -9,7 +10,7 @@ export function canEditTask(task: Shareable, uid: string, role: Role): boolean {
   return role === 'member' && (task.visibility === 'family' || task.ownerId === uid || !!task.sharedWith?.includes(uid))
 }
 
-export const PRIVACY_ICON: Record<List['visibility'], string> = { private: '🔒', family: '👪', shared: '👥' }
+export const PRIVACY_ICON: Record<List['visibility'], string> = { private: '🔒', family: '👪', shared: '👥' } // plain-text places (chat, search)
 
 /** "You, Linda and Grandma" for a sharedWith list (you first). */
 export function sharedNames(sharedWith: string[], household: Household, uid: string): string {
@@ -17,18 +18,37 @@ export function sharedNames(sharedWith: string[], household: Household, uid: str
   return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
 }
 
-/** Plain words for who can see something in this list ("task", "item", "note", "list"). */
+/** Plain words for who can see something ("task", "item", "note", "list", "goal"), for the five choices. */
 export function privacyText(
-  list: Pick<List, 'visibility' | 'viewerVisible' | 'sharedWith'>,
+  list: Pick<List, 'visibility' | 'viewerVisible' | 'sharedWith' | 'audience'>,
   noun: string,
   household?: Household,
   uid?: string,
 ): string {
-  if (list.visibility === 'private') return `🔒 Only you can see this ${noun}.`
-  if (list.visibility === 'shared') {
-    return `👥 Shared: ${household && uid ? sharedNames(list.sharedWith ?? [], household, uid) : 'the people chosen'} can see this ${noun}.`
+  const names = () => (household && uid ? sharedNames(list.sharedWith ?? [], household, uid) : 'the people chosen')
+  switch (audienceOf(list)) {
+    case 'private':
+      return `Only you can see this ${noun}.`
+    case 'parents':
+      return `Parents (${names()}) can see this ${noun}.`
+    case 'shared':
+      return `${names()} can see this ${noun}.`
+    case 'family':
+      return `The family can see this ${noun}.`
+    case 'everyone':
+      return `Everyone can see this ${noun}.`
   }
-  return `👪 Everyone in the family can see this ${noun}${list.viewerVisible ? ', and so can viewers' : ''}.`
+}
+
+/**
+ * Who can log a goal, mirroring the rules: the owner; every member for Family / Everyone; the people in `editors`
+ * for Parents / Chosen people. Older goals (no editAudience) follow their list-style privacy.
+ */
+export function canLogGoal(g: Pick<Goal, 'ownerId' | 'editAudience' | 'editors'> & Shareable, uid: string, role: Role): boolean {
+  if (role !== 'member') return false
+  if (g.ownerId === uid) return true
+  if (g.editAudience === undefined) return canEditTask(g, uid, role)
+  return g.editAudience === 'family' || g.editAudience === 'everyone' || !!g.editors?.includes(uid)
 }
 
 /** Checklists and notes hold items, not tasks: they stay out of the task views, chat and scheduling. */

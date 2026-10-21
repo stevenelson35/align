@@ -5,6 +5,7 @@ import {
   deleteField,
   doc,
   getDoc,
+  increment,
   onSnapshot,
   query,
   serverTimestamp,
@@ -18,8 +19,9 @@ import {
   type Query,
 } from 'firebase/firestore'
 import type { Move } from '../engine/scheduling'
-import type { Board, BoardItem, Comment, Goal, GoalEntry, Household, ItemStatus, List, Role, Task, Visibility, Vote } from '../types'
+import type { Board, BoardItem, Comment, Goal, GoalEntry, Household, ItemStatus, List, Role, Task, Vote } from '../types'
 import { db } from './config'
+import { audienceOf, privacyFields, type Audience } from '../utils/audience'
 import { today } from '../engine/dates'
 import type { DependencyChange } from '../utils/project'
 
@@ -103,23 +105,32 @@ export function subscribeGoals(uid: string, role: Role, onData: (goals: Goal[]) 
 export type GoalInput = Omit<Goal, 'id' | 'log' | 'createdBy'>
 
 /** Privacy fields as stored: sharedWith only when shared, viewerVisible only for family. */
-function goalPrivacy(g: Pick<Goal, 'visibility' | 'sharedWith' | 'ownerId' | 'viewerVisible'>) {
+function goalPrivacy(g: Pick<Goal, 'visibility' | 'sharedWith' | 'ownerId' | 'viewerVisible' | 'audience' | 'editAudience' | 'editors'>) {
+  const shared = g.visibility === 'shared'
+  const listEdit = g.editAudience === 'parents' || g.editAudience === 'shared'
   return {
     visibility: g.visibility,
     ownerId: g.ownerId,
     viewerVisible: g.visibility === 'family' ? g.viewerVisible : false,
-    sharedWith: g.visibility === 'shared' ? (g.sharedWith ?? [g.ownerId]) : deleteField(),
+    sharedWith: shared ? (g.sharedWith ?? [g.ownerId]) : deleteField(),
+    audience: shared && g.audience === 'parents' ? 'parents' : deleteField(),
+    editAudience: g.editAudience ?? 'private',
+    editors: listEdit ? [...new Set([g.ownerId, ...(g.editors ?? [])])] : deleteField(),
   }
+}
+
+/** For setDoc: the same fields without the "delete this field" markers (nothing to delete in a new doc). */
+function withoutDeletes(o: Record<string, unknown>) {
+  const sentinel = deleteField()
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => !(v && typeof v === 'object' && (v as object).constructor === sentinel.constructor)))
 }
 
 /** Undefined optional fields are dropped (ignoreUndefinedProperties), so an emptied field isn't stored. */
 export async function createGoal(input: GoalInput, uid: string) {
   const ref = doc(collection(db, 'goals'))
-  const { sharedWith, ...privacy } = goalPrivacy(input)
   await setDoc(ref, {
     ...input,
-    ...privacy,
-    ...(input.visibility === 'shared' ? { sharedWith } : {}),
+    ...withoutDeletes(goalPrivacy(input)),
     createdBy: uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -136,6 +147,11 @@ export function updateGoal(goal: Goal, patch: Partial<GoalInput>) {
 
 export function deleteGoal(id: string) {
   return deleteDoc(doc(db, 'goals', id))
+}
+
+/** Running total: add an amount to the day's entry (several people adding on one day all count). */
+export function addToTotal(goalId: string, day: string, amount: number, uid: string) {
+  return updateDoc(doc(db, 'goals', goalId), { [`log.${day}.value`]: increment(amount), [`log.${day}.by`]: uid, updatedAt: serverTimestamp() })
 }
 
 /** Log one day: only that day's fields change, so two people logging a shared goal don't overwrite other days. */
@@ -177,7 +193,7 @@ export function subscribeMyVotes(uid: string, onData: (votes: Vote[]) => void, o
 // ---- Lists ----
 
 /** Your own default privacy for new lists and quick adds (Settings). The rules allow only your own entry. */
-export function setDefaultVisibility(uid: string, visibility: Visibility) {
+export function setDefaultVisibility(uid: string, visibility: NonNullable<Household['members'][string]['defaultVisibility']>) {
   return updateDoc(householdRef, { [`members.${uid}.defaultVisibility`]: visibility })
 }
 
@@ -225,7 +241,7 @@ export function updateList(list: List, patch: Partial<ListInput>, tasks: Task[])
   const { id, ...data } = next
   const copied = copiedFields(next)
   const batch = writeBatch(db)
-  batch.update(doc(db, 'lists', id), { ...data, ...copied, updatedAt: serverTimestamp() })
+  batch.update(doc(db, 'lists', id), { ...data, ...copied, audience: next.visibility === 'shared' && next.audience === 'parents' ? 'parents' : deleteField(), updatedAt: serverTimestamp() })
   const copiedChanged =
     next.visibility !== list.visibility ||
     next.ownerId !== list.ownerId ||
@@ -261,14 +277,30 @@ export function withStatus(task: Pick<Task, 'status' | 'finishedOn'>, status: Ta
 }
 
 const FAMILY_INBOX = 'Family Inbox'
+const PARENTS_INBOX = 'Parents Inbox'
 export const READING_LIST = 'Reading list'
 
 /** Your "Reading list" task list (for your default privacy), created the first time it's needed. */
-export async function readingListFor(uid: string, defaultVisibility: List['visibility'] | undefined, editable: List[]): Promise<List> {
-  const visibility = (defaultVisibility ?? 'private') === 'family' ? 'family' : 'private'
-  const found = editable.find((l) => l.kind === 'list' && l.name === READING_LIST && (visibility === 'family' ? l.visibility === 'family' : l.ownerId === uid))
+export async function readingListFor(uid: string, defaultAudience: Audience | undefined, editable: List[], parents: string[]): Promise<List> {
+  return listForAudience(READING_LIST, READING_LIST, uid, defaultAudience, editable, parents)
+}
+
+/**
+ * A task list named for an audience (your default visibility): found among the lists you can edit, or created.
+ * Only me looks for your own private list; Parents for a Parents list; Family / Everyone for a family list.
+ */
+async function listForAudience(privateName: string, sharedName: string, uid: string, defaultAudience: Audience | undefined, editable: List[], parents: string[]): Promise<List> {
+  const a = defaultAudience ?? 'everyone'
+  const name = a === 'private' ? privateName : sharedName
+  const matches = (l: List) => {
+    const la = audienceOf(l)
+    if (a === 'private') return la === 'private' && l.ownerId === uid
+    if (a === 'parents') return la === 'parents'
+    return la === 'family' || la === 'everyone'
+  }
+  const found = editable.find((l) => l.kind === 'list' && l.name === name && matches(l))
   if (found) return found
-  const list: Omit<List, 'id'> = { name: READING_LIST, kind: 'list', visibility, ownerId: uid, viewerVisible: false, defaultContext: 'family' }
+  const list: Omit<List, 'id'> = { name, kind: 'list', ownerId: uid, defaultContext: 'family', ...privacyFields(a === 'shared' ? 'everyone' : a, uid, [], parents) }
   return { ...list, id: await createList(list) }
 }
 
@@ -281,17 +313,9 @@ export function addReadingTask(list: List, link: Pick<Task, 'id' | 'title' | 'ur
  * Where an add goes when no list is named: your inbox for your default privacy (Settings). Private: your own task
  * list named "Inbox" (or your first private task list). Family: the shared "Family Inbox". Created if missing.
  */
-export async function inboxFor(uid: string, defaultVisibility: List['visibility'] | undefined, editable: List[]): Promise<List> {
-  const family = (defaultVisibility ?? 'private') === 'family'
-  const found = family
-    ? editable.find((l) => l.visibility === 'family' && l.kind === 'list' && l.name === FAMILY_INBOX)
-    : (editable.find((l) => l.visibility === 'private' && l.ownerId === uid && l.kind === 'list' && l.name === 'Inbox') ??
-      editable.find((l) => l.visibility === 'private' && l.ownerId === uid && l.kind === 'list'))
-  if (found) return found
-  const inbox: Omit<List, 'id'> = family
-    ? { name: FAMILY_INBOX, kind: 'list', visibility: 'family', ownerId: uid, viewerVisible: false, defaultContext: 'family' }
-    : { name: 'Inbox', kind: 'list', visibility: 'private', ownerId: uid, viewerVisible: false, defaultContext: 'family' }
-  return { ...inbox, id: await createList(inbox) }
+export async function inboxFor(uid: string, defaultAudience: Audience | undefined, editable: List[], parents: string[]): Promise<List> {
+  const a = defaultAudience ?? 'everyone'
+  return listForAudience('Inbox', a === 'parents' ? PARENTS_INBOX : FAMILY_INBOX, uid, a, editable, parents)
 }
 
 export async function createTask(list: List, input: TaskInput, uid: string) {
@@ -365,7 +389,8 @@ export function applySchedule(
 
 export const STARTER_BOARDS = ['Movies & Shows', 'Restaurants & Meals', 'Weekend Activities', 'Travel Plans']
 
-export async function createBoard(name: string, viewerVisible = false) {
+// New boards default to Everyone (the family and view-only accounts), like everything else.
+export async function createBoard(name: string, viewerVisible = true) {
   const ref = doc(collection(db, 'boards'))
   await setDoc(ref, { name, viewerVisible, createdAt: serverTimestamp() })
   return ref.id

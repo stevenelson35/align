@@ -3,22 +3,34 @@ import { today } from '../../engine/dates'
 import { createGoal, deleteGoal, updateGoal, type GoalInput } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
 import type { Goal } from '../../types'
-import { SharePicker } from '../Tasks/SharePicker'
+import { audienceLabel, audienceOf, parentsOf, privacyFields, viewCoveringEditors, type Audience } from '../../utils/audience'
+import { AudiencePicker } from '../UI/AudiencePicker'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const KIND_HELP: Record<Goal['kind'], string> = {
   check: 'Done or not, each day (walk the dogs).',
   tally: 'Tap once each time, up to a number a day (12 oz water × 8).',
-  progressive: 'A suggested amount that grows on a schedule; enter what you did (push-ups, suggested 10).',
-  measure: 'A target and what you measured (weight).',
+  progressive: 'A suggested amount that changes on a schedule toward a goal; enter what you did (push-ups up from 10; weight down 1 lb every 2 days to 169).',
+  measure: 'A fixed target and what you measured.',
+  total: 'Amounts add up toward a target (vacation savings: everyone who can log adds what they put in).',
 }
 
-/** Create or edit a goal. Privacy works like lists; new goals start as "Just me". */
+/** Create or edit a goal: who can view it (default Everyone) and who can log it (default Only me) are separate. */
 export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () => void }) {
   const app = useApp()
   const [form, setForm] = useState<GoalInput>(
-    goal ?? { name: '', kind: 'check', visibility: 'private', ownerId: app.uid, viewerVisible: false, perDay: 8, progression: { start: 10, step: 1, every: 2, per: 'day', from: today() }, direction: 'down' },
+    goal ?? { name: '', kind: 'check', visibility: 'family', ownerId: app.uid, viewerVisible: true, perDay: 8, progression: { start: 10, step: 1, every: 2, per: 'day', from: today() }, direction: 'down' },
   )
+  const parents = parentsOf(app.household)
+  const others = (ids: string[] | undefined) => (ids ?? []).filter((id) => id !== form.ownerId)
+  const [view, setView] = useState<Audience>(goal ? audienceOf(goal) : 'everyone')
+  const [viewChosen, setViewChosen] = useState<string[]>(others(goal?.visibility === 'shared' ? goal.sharedWith : []))
+  // Older goals (before "who can log") were loggable by anyone who could edit them: Family, or the chosen people.
+  const [edit, setEdit] = useState<Audience>(
+    goal?.editAudience ?? (goal && goal.visibility !== 'private' ? (audienceOf(goal) === 'everyone' ? 'family' : audienceOf(goal)) : 'private'),
+  )
+  const [editChosen, setEditChosen] = useState<string[]>(others(goal?.editors ?? (goal?.visibility === 'shared' ? goal.sharedWith : [])))
+  const effective = viewCoveringEditors(view, viewChosen, edit, editChosen, form.ownerId, parents)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const set = (patch: Partial<GoalInput>) => setForm((f) => ({ ...f, ...patch }))
@@ -36,10 +48,27 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
       name: form.name.trim(),
       perDay: form.kind === 'tally' ? Math.max(1, Math.round(form.perDay ?? 1)) : undefined,
       progression: form.kind === 'progressive' ? prog : undefined,
-      target: form.kind === 'measure' ? form.target : undefined,
+      target: form.kind === 'measure' || form.kind === 'progressive' || form.kind === 'total' ? form.target : undefined,
       direction: form.kind === 'measure' ? (form.direction ?? 'down') : undefined,
       weekdays: form.weekdays?.length ? [...form.weekdays].sort() : undefined,
-      sharedWith: form.visibility === 'shared' ? [...new Set([form.ownerId, ...(form.sharedWith ?? [])])] : undefined,
+      sharedWith: undefined,
+      audience: undefined,
+      ...privacyFields(effective.view, form.ownerId, effective.viewChosen, parents),
+      editAudience: edit,
+      editors: edit === 'parents' || edit === 'shared' ? privacyFields(edit, form.ownerId, editChosen, parents).sharedWith : undefined,
+    }
+    const problem =
+      (view === 'shared' && !viewChosen.length) || (edit === 'shared' && !editChosen.length)
+        ? 'Pick at least one other person for "Chosen people", or choose another option.'
+        : (view === 'parents' || edit === 'parents') && !parents.length
+          ? 'Nobody is set as a parent yet: tick the parents in ⚙ Settings → Parents first.'
+          : form.kind === 'total' && !(form.target! > 0)
+            ? 'A running total needs a target above 0.'
+            : null
+    if (problem) {
+      setError(problem)
+      setBusy(false)
+      return
     }
     try {
       if (goal) await updateGoal(goal, data)
@@ -79,8 +108,9 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
           <select value={form.kind} onChange={(e) => set({ kind: e.target.value as Goal['kind'] })}>
             <option value="check">Check (done or not)</option>
             <option value="tally">Tally (tap each time)</option>
-            <option value="progressive">Progressive (growing suggestion)</option>
-            <option value="measure">Measure (target vs actual)</option>
+            <option value="progressive">Progressive (suggestion moves toward a goal)</option>
+            <option value="measure">Measure (fixed target vs actual)</option>
+            <option value="total">Running total (amounts add up to a target)</option>
           </select>
         </label>
         <p className="muted small">{KIND_HELP[form.kind]}</p>
@@ -102,7 +132,7 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
               <input type="date" value={prog.from} onChange={(e) => setProg({ from: e.target.value || today() })} />
             </label>
             <label>
-              Increase by
+              Change by (− to go down)
               <input type="number" step="any" value={prog.step} onChange={(e) => setProg({ step: num(e.target.value) ?? 0 })} />
             </label>
             <label>
@@ -116,14 +146,25 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
               </span>
             </label>
             <label>
-              Minimum (optional)
-              <input type="number" step="any" value={prog.min ?? ''} onChange={(e) => setProg({ min: num(e.target.value) })} />
-            </label>
-            <label>
-              Maximum (optional)
-              <input type="number" step="any" value={prog.max ?? ''} onChange={(e) => setProg({ max: num(e.target.value) })} />
+              Goal (optional; stops there)
+              <input type="number" step="any" value={form.target ?? ''} onChange={(e) => set({ target: num(e.target.value) })} />
             </label>
           </div>
+        )}
+        {form.kind === 'progressive' && (
+          <p className="muted small">
+            {prog.start}
+            {form.unit ? ` ${form.unit}` : ''}, {prog.step < 0 ? 'down' : 'up'} {Math.abs(prog.step)} every {prog.every > 1 ? `${prog.every} ` : ''}
+            {prog.per}
+            {prog.every > 1 ? 's' : ''}
+            {form.target !== undefined ? `, until ${form.target}` : ''}. {prog.step < 0 ? 'At or below the suggestion counts as met.' : 'At or above the suggestion counts as met.'}
+          </p>
+        )}
+        {form.kind === 'total' && (
+          <label>
+            Target
+            <input type="number" step="any" min={0} value={form.target ?? ''} onChange={(e) => set({ target: num(e.target.value) })} placeholder="e.g. 3000" />
+          </label>
         )}
         {form.kind === 'measure' && (
           <div className="grid2">
@@ -143,7 +184,7 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
         {form.kind !== 'check' && (
           <label>
             Unit (optional)
-            <input value={form.unit ?? ''} onChange={(e) => set({ unit: e.target.value || undefined })} placeholder={form.kind === 'tally' ? 'glasses' : form.kind === 'measure' ? 'lb' : 'reps'} maxLength={20} />
+            <input value={form.unit ?? ''} onChange={(e) => set({ unit: e.target.value || undefined })} placeholder={form.kind === 'tally' ? 'glasses' : form.kind === 'measure' ? 'lb' : form.kind === 'total' ? '$' : 'reps or lb'} maxLength={20} />
           </label>
         )}
 
@@ -164,23 +205,32 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
           <p className="muted small">{days.size ? 'Only on the ticked days.' : 'Every day (tick days to limit it).'}</p>
         </div>
 
-        <label>
-          Who can see it
-          <select value={form.visibility} onChange={(e) => set({ visibility: e.target.value as Goal['visibility'] })}>
-            <option value="private">🔒 Just me</option>
-            <option value="family">👪 Family (anyone can log it)</option>
-            <option value="shared">👥 Chosen people</option>
-          </select>
-        </label>
-        {form.visibility === 'shared' && (
-          <SharePicker ownerId={form.ownerId} sharedWith={form.sharedWith ?? []} onChange={(uids) => set({ sharedWith: uids })} noun="goal" />
+        <AudiencePicker
+          label="Who can view it (see progress)"
+          value={view}
+          onChange={setView}
+          ownerId={form.ownerId}
+          chosen={viewChosen}
+          onChosen={(ids) => setViewChosen(others(ids))}
+          noun="goal"
+        />
+        <AudiencePicker
+          label="Who can log it (add entries)"
+          value={edit}
+          onChange={setEdit}
+          ownerId={form.ownerId}
+          chosen={editChosen}
+          onChosen={(ids) => setEditChosen(others(ids))}
+          noun="goal"
+          everyoneHint="Everyone with a household account (view-only accounts can't log)."
+          forLogging
+        />
+        {effective.widened && (
+          <p className="muted small">
+            Everyone who can log it can also see it, so it will be visible to {effective.view === 'shared' ? 'the chosen people plus the loggers' : audienceLabel(effective.view)}.
+          </p>
         )}
-        {form.visibility === 'family' && (
-          <label className="inline">
-            <input type="checkbox" checked={form.viewerVisible} onChange={(e) => set({ viewerVisible: e.target.checked })} />
-            Visible to viewers (grandparents, etc.)
-          </label>
-        )}
+        <p className="muted small">Only you can change the goal's settings.</p>
 
         {error && <p className="error">{error}</p>}
         <div className="row">

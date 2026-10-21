@@ -1,19 +1,21 @@
 import { useState } from 'react'
 import { today } from '../../engine/dates'
-import { logGoal } from '../../firebase/db'
+import { addToTotal, logGoal } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
 import type { Goal, GoalEntry } from '../../types'
-import { goalHint, met, suggested } from '../../utils/goals'
+import { amount, goalHint, met, suggested } from '../../utils/goals'
+import { canLogGoal } from '../../utils/tasks'
 
 /**
  * Log one goal for one day, in as few taps as possible: a checkbox (check), one tap per time (tally), one tap for
- * "did the suggestion" or type the amount (progressive), or type the measurement (measure).
+ * "did the suggestion" or type the amount (progressive), type the measurement (measure), or add an amount (total).
+ * People who can only view see the same thing, read-only.
  */
 export function GoalControl({ goal, day, showName = true }: { goal: Goal; day: string; showName?: boolean }) {
-  const { uid, canEdit, navigate } = useApp()
+  const { uid, member, navigate } = useApp()
   const [error, setError] = useState<string | null>(null)
   const entry = goal.log?.[day]
-  const editable = canEdit(goal) && day <= today()
+  const editable = canLogGoal(goal, uid, member.role) && day <= today()
   const save = (e: GoalEntry) => logGoal(goal.id, day, e, uid).catch((err) => setError(err instanceof Error ? err.message : String(err)))
   const done = met(goal, entry, day)
   const hint = goalHint(goal, day)
@@ -49,7 +51,45 @@ export function GoalControl({ goal, day, showName = true }: { goal: Goal; day: s
           onSave={(value) => save({ value })}
         />
       )}
+      {goal.kind === 'total' && editable && (
+        <AddAmount
+          added={entry?.value}
+          unit={goal.unit}
+          onAdd={(n) => addToTotal(goal.id, day, n, uid).catch((err) => setError(err instanceof Error ? err.message : String(err)))}
+        />
+      )}
       {error && <p className="error small">{error}</p>}
+    </div>
+  )
+}
+
+/** Running total: type an amount and Add (a minus amount takes some back). Several people can add on one day. */
+function AddAmount({ added, unit, onAdd }: { added?: number; unit?: string; onAdd: (n: number) => void }) {
+  const [text, setText] = useState('')
+  const n = Number(text)
+  const add = () => {
+    if (text.trim() && Number.isFinite(n) && n !== 0) {
+      onAdd(n)
+      setText('')
+    }
+  }
+  return (
+    <div className="row goal-amount">
+      <input
+        type="number"
+        inputMode="decimal"
+        step="any"
+        value={text}
+        placeholder="Amount"
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && add()}
+        aria-label="Amount to add"
+      />
+      {unit && <span className="muted small">{unit}</span>}
+      <button type="button" className="small" onClick={add} disabled={!text.trim() || !Number.isFinite(n) || n === 0}>
+        Add
+      </button>
+      {!!added && <span className="muted small">+{amount(added, unit)} this day</span>}
     </div>
   )
 }

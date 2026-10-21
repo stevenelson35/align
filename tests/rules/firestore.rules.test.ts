@@ -115,6 +115,25 @@ describe('goals', () => {
     await assertSucceeds(getDocs(query(collection(db('wife'), 'goals'), where('sharedWith', 'array-contains', 'wife'))))
   })
 
+  it('separates who can view a goal from who can log it', async () => {
+    // Steve's weight: everyone may view, only Steve logs.
+    await assertSucceeds(setDoc(doc(db('steve'), 'goals/weight'), goal({ name: 'Weight', kind: 'progressive', visibility: 'family', viewerVisible: true, editAudience: 'private' })))
+    await assertSucceeds(getDoc(doc(db('wife'), 'goals/weight')))
+    await assertSucceeds(getDoc(doc(db('grandma'), 'goals/weight')))
+    await assertFails(updateDoc(doc(db('wife'), 'goals/weight'), { 'log.2026-10-21.value': 150 }))
+    await assertSucceeds(updateDoc(doc(db('steve'), 'goals/weight'), { 'log.2026-10-21.value': 199 }))
+    // Vacation savings: chosen people log; only the owner changes the goal.
+    await assertSucceeds(setDoc(doc(db('steve'), 'goals/vacation'), goal({ name: 'Vacation', kind: 'total', visibility: 'family', editAudience: 'shared', editors: ['steve', 'wife'] })))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'goals/vacation'), { 'log.2026-10-21.value': 50 }))
+    await assertFails(updateDoc(doc(db('wife'), 'goals/vacation'), { name: 'My vacation' }))
+    await assertFails(updateDoc(doc(db('daughter'), 'goals/vacation'), { 'log.2026-10-21.value': 5 }))
+    await assertFails(deleteDoc(doc(db('wife'), 'goals/vacation')))
+    // Family can log: any member, log only.
+    await assertSucceeds(setDoc(doc(db('steve'), 'goals/dishes'), goal({ name: 'Dishes', kind: 'check', visibility: 'family', editAudience: 'family' })))
+    await assertSucceeds(updateDoc(doc(db('daughter'), 'goals/dishes'), { 'log.2026-10-21.done': true }))
+    await assertFails(updateDoc(doc(db('grandma'), 'goals/dishes'), { 'log.2026-10-21.done': true }))
+  })
+
   it('rejects malformed goals and viewer writes', async () => {
     await assertFails(setDoc(doc(db('steve'), 'goals/bad'), goal({ kind: 'diet' })))
     await assertFails(setDoc(doc(db('steve'), 'goals/bad2'), goal({ name: '' })))
@@ -179,10 +198,12 @@ describe('household', () => {
     await assertSucceeds(updateDoc(doc(db('daughter'), 'household/main'), { weeklyTokens: 12 }))
   })
 
-  it('lets a member set only their own default privacy, to private or family', async () => {
+  it('lets a member set only their own default visibility, to one of the choices', async () => {
     await assertSucceeds(updateDoc(doc(db('daughter'), 'household/main'), { 'members.daughter.defaultVisibility': 'family' }))
     await assertSucceeds(updateDoc(doc(db('daughter'), 'household/main'), { 'members.daughter.defaultVisibility': 'private' }))
-    await assertFails(updateDoc(doc(db('daughter'), 'household/main'), { 'members.daughter.defaultVisibility': 'everyone' }))
+    await assertSucceeds(updateDoc(doc(db('daughter'), 'household/main'), { 'members.daughter.defaultVisibility': 'everyone' }))
+    await assertSucceeds(updateDoc(doc(db('daughter'), 'household/main'), { 'members.daughter.defaultVisibility': 'parents' }))
+    await assertFails(updateDoc(doc(db('daughter'), 'household/main'), { 'members.daughter.defaultVisibility': 'the world' }))
     await assertFails(updateDoc(doc(db('daughter'), 'household/main'), { 'members.steve.defaultVisibility': 'family' }))
   })
 

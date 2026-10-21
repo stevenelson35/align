@@ -110,6 +110,7 @@ A single document.
   kind: "list" | "project" | "checklist" | "notes" | "links",
   visibility: "private" | "family" | "shared",
   sharedWith?: uid[],           // only when shared: 1–20 people, always including ownerId
+  audience?: "parents",         // shared with the Parents group (shown as "Parents" rather than "Chosen people")
   ownerId: uid,
   viewerVisible: boolean,       // family lists only (false otherwise)
   defaultContext: "family" | "work",
@@ -119,6 +120,7 @@ A single document.
 
 - **Kinds:** `list` and `project` hold **tasks** (projects add dependencies, the timeline and recalculate). `checklist` holds things to tick off that aren't tasks (shopping, gifts, people to call). `notes` holds reference info (title + text). `links` holds bookmarks (name, address, optional note, and a `Home/Utilities`-style category that nests into a collapsible tree). Checklist items and notes are stored in `tasks` (same rules and copied fields) but are kept out of every task view, chat command and the scheduling engine (`DataState.listItems` vs `tasks`).
 - **Privacy:** `private` = the owner only; `family` = every member (and viewers if `viewerVisible`); `shared` = exactly the people in `sharedWith` (members can edit; viewers in it can read).
+- **The five choices** (`utils/audience.ts`, `AudiencePicker`), the same everywhere (lists, goals' view and log, the Settings default): **Only me** = private; **Parents** = shared + `sharedWith` = owner ∪ Parents group + `audience: "parents"`; **Family** = family, `viewerVisible: false`; **Chosen people** = shared; **Everyone** = family, `viewerVisible: true`. The default everywhere is **Everyone** (`members[uid].defaultVisibility` may be private / parents / family / everyone). The UI never names grandparents: view-only accounts are "anyone with view-only access". Voting boards are household-wide, so they offer Family / Everyone only.
 
 ### 5.3 `tasks/{taskId}`
 
@@ -189,20 +191,27 @@ Daily goals (not tasks): shown on each day they apply, logged per day, charted o
 ```ts
 {
   name: string,
-  kind: "check" | "tally" | "progressive" | "measure",
-  unit?: string,
+  kind: "check" | "tally" | "progressive" | "measure" | "total",
+  unit?: string,                                 // "$" / "€" / "£" / "¥" are written in front ("$350")
   perDay?: number,                               // tally: taps per day (e.g. 8 glasses)
-  progression?: { start, step, every, per: "day" | "week", min?, max?, from: "YYYY-MM-DD" },  // progressive
-  target?: number, direction?: "down" | "up",    // measure (weight: 180, lower is better)
+  progression?: { start, step, every, per: "day" | "week", min?, max?, from: "YYYY-MM-DD" },  // progressive; step < 0 goes down
+  target?: number,                               // measure: fixed target; progressive: the goal it stops at; total: the amount to reach
+  direction?: "down" | "up",                     // measure (lower / higher is better)
   weekdays?: number[],                           // 0 = Sunday; absent = every day
-  visibility, sharedWith?, ownerId, viewerVisible, // same privacy as lists
-  log?: { [day]: { done?, count?, value?, by? } },  // one entry per day, on the goal doc (~20 KB/year)
+  visibility, sharedWith?, audience?, ownerId, viewerVisible, // WHO CAN VIEW: same five choices as lists
+  editAudience?: "private" | "parents" | "family" | "shared" | "everyone",  // WHO CAN LOG (default private)
+  editors?: uid[],                               // for Parents / Chosen people logging: owner + those people
+  log?: { [day]: { done?, count?, value?, by?, note?, url?, imageUrl? } },  // one entry per day (~20 KB/year)
   archived?: boolean, createdBy, createdAt, updatedAt
 }
 ```
 
-- **Suggested amount** (progressive) on a day = `start + step × floor(days since from ÷ (every × 1|7))`, kept within min..max (`utils/goals.ts`).
-- **Met:** check = done; tally = count ≥ perDay; progressive = value ≥ suggestion; measure = at/below (or above) target.
+- **Suggested amount** (progressive) on a day = `start + step × floor(days since from ÷ (every × 1|7))`, stopping at `target` (and older goals' min..max) (`utils/goals.ts`). Example: weight, start 200, step −1 every 2 days, goal 169.
+- **Met:** check = done; tally = count ≥ perDay; progressive = value ≥ suggestion (≤ when it goes down); measure = at/below (or above) target; total = running total ≥ target.
+- **Running total** (vacation savings): each day's `value` is what was added; `addToTotal` uses `increment()`, so several people adding on one day all count. The chart steps up toward the target.
+- **View vs log:** viewers see the goal, chart, table and notes, read-only. The rules let the owner change anything; others who can log (`canLogGoal`: Family / Everyone = all members, Parents / Chosen people = `editors`) may change only `log` and `updatedAt`. The editor widens "who can view" to cover everyone who can log (`viewCoveringEditors`), so the normal visibility queries find the goal for them. Goals made before `editAudience` keep the old rule (anyone who could edit them).
+- **Grouping** (`goalGroups`, menu ▸ Goals and the Goals page): My goals (only you log), Shared goals (others can log too), then "<Name>'s goals" (view only). The day strip shows only goals you can log.
+- **Details:** any day's entry can carry a note, link and picture (`components/UI/Details.tsx`, shared with voting items; pictures via the blog's Cloudinary widget or a pasted address).
 - `logGoal` writes only that day's fields (`log.<day>.…`), so two people logging a family goal don't overwrite each other.
 
 ## 6. Scheduling Engine
@@ -379,14 +388,24 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-21: built, tested, not yet committed or deployed
+### 2026-10-21 (later): built, tested, NOT yet committed or deployed
+- **Five privacy choices everywhere** (§5.2): Only me · Parents · Family · Chosen people · Everyone, through one `AudiencePicker`; default Everyone (lists, goals, Settings "Who can see new things", inbox / reading list, new voting boards). No "grandparents" wording anywhere; boards offer Family / Everyone.
+- **Goals: who can view vs who can log** (§5.6): two pickers (view default Everyone, log default Only me); others see progress read-only; menu ▸ Goals groups goals (My / Shared / <Name>'s). Only the owner changes a goal's settings.
+- **Progressive toward a goal** (down or up, stops at the goal; the axis doesn't start at 0 for decreasing goals; no suggestion before the start date) and a **Running total** kind (Add amount, several people, stepped chart vs target).
+- **Note, link or picture on any goal day** (shared `Details` component, also used by voting items); table column with indicators; view-only people get a "Notes and pictures" list.
+- **Icons default to Outline** (Emoji is still a choice). New drawings: parents, everyone (globe), photo.
+- **📷 Photos** in the menu opens the blog's photo browser (psort's published favorites, https://blog.itsallonesong.com/browse.html).
+- Rules: `total` kind, `editAudience`, `editors`, `canLogGoal`; non-owners may change only `log`; defaultVisibility parents/everyone. **Deploy the rules before the web app.**
+- Tests: 92 unit, 37 rules. Playwright at 390px with three accounts (owner, a co-logger, a view-only account).
+
+### 2026-10-21: built and deployed (`201927e`)
 - **Faster start:** `index.html` holds a static outline (top bar + placeholder blocks, theme-aware, inline CSS) that shows before any code downloads; `AppSkeleton` reuses it while the session and first data load. Firestore uses a **persistent device cache** (`persistentLocalCache`, multi-tab), so later opens show the last data at once; **Sign out** terminates Firestore and clears the cache, then reloads.
 - **Menu sections collapse** (`Sidebar` `Section`): one open at a time, remembered (`align-menu-open`); a collapsed heading shows its count and is highlighted when the current page is inside it.
 - **Quick adds clear at once** (`addTaskNow` returns the id immediately; `createTask` still awaits): repeated taps on a slow connection had added one link 6 times. Links also refuse an address already in the list.
 - **New pages start at the top** (AppShell scrolls window and main panel on route change).
 - **Reading list:** adding a link can also make a "Read: <name>" task (`linkId`, `url`) in the "Reading list" task list (created on first use, default privacy) or any task list; links show 📖 to read / ✓ read; tasks with a `url` show ↗ and "Open the link". Rules + test for `linkId`.
 - **Voting items:** editable title plus optional note, link and picture (`note`/`url`/`imageUrl`; pictures via the blog's Cloudinary widget or a pasted address); tap an item for details and **comments**; each board has a **Discussion**. Comments live in `boards/{b}/comments` and `boards/{b}/items/{i}/comments` (members write their own, edit/delete only their own; anyone who can see the board reads). Rules + tests. Phone layout of vote rows fixed (title keeps room; buttons wrap below).
-- Tests: 85 unit, 36 rules. Playwright at 390px, plus the startup outline checked on the production build with the JS held back.
+- Tests then: 85 unit, 36 rules. Playwright at 390px, plus the startup outline checked on the production build with the JS held back.
 - **Icon styles** (⚙ Settings → Icons, per device, `align-icons`): Emoji, Emoji gray, Outline, Solid, Duotone. `components/UI/Icon.tsx` draws each icon once on a 24×24 grid in three layers (`fill`, `line`, `detail`), so the three flat styles come from one drawing (Solid knocks the detail out in the background color). The top bar, menu, row actions, badges, privacy markers and main buttons use it; option text, chat replies and ✓/✕ glyphs stay text. Isometric was considered and left out (it's an illustration style that doesn't read at 16–20px).
 - **Blog nav:** ✍ Post removed (blog repo `1a0b16e`); posting starts in Align.
 
@@ -426,6 +445,7 @@ firestore.rules, firestore.indexes.json
 
 ### Next ideas (not started; ask before building)
 - Goals: reminders, and a weekly goals summary; recurring *tasks* are still separate from goals.
+- psort / blog integration ideas (proposed 2026-10-21, not started): pick blog-post images from psort favorites (needs the browse manifest's CORS to allow align.itsallonesong.com); "On this day" photos in the day view; pictures for goals / voting items from favorites; text a photo link.
 - Recurring tasks (watering, monthly flea meds) (§3.2).
 - Reminders / phone alerts: web push needs a sender; the Apps Script could send via Firebase Cloud Messaging for free, but setup is heavier and iPhones need Align added to the home screen.
 - "I'll do it" / claim buttons on family tasks and calendar events (answers "who's picking up Camilla?" in the app).

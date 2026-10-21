@@ -1,6 +1,7 @@
 // Daily goals (DESIGN.md §5.6): which days they apply, the suggested amount for progressive goals, and progress.
 import { diffDays } from '../engine/dates'
-import type { Goal, GoalEntry } from '../types'
+import type { Goal, GoalEntry, Household, Role } from '../types'
+import { canLogGoal } from './tasks'
 
 /** 0 = Sunday, like Date.getDay(), for a 'YYYY-MM-DD' day (no time zone surprises). */
 export function weekday(day: string): number {
@@ -13,46 +14,78 @@ export function appliesOn(goal: Pick<Goal, 'weekdays' | 'archived'>, day: string
   return !goal.weekdays?.length || goal.weekdays.includes(weekday(day))
 }
 
-/** Progressive: start, plus `step` for every full `every` days/weeks since `from`, kept within min..max. */
-export function suggested(goal: Pick<Goal, 'progression'>, day: string): number | undefined {
+/** A decreasing progressive goal (weight: start 200, −1 every 2 days, goal 169): lower is better. */
+export function decreasing(goal: Pick<Goal, 'progression' | 'target'>): boolean {
+  const p = goal.progression
+  if (!p) return false
+  return p.step < 0 || (p.step === 0 && goal.target !== undefined && goal.target < p.start)
+}
+
+/**
+ * Progressive: start, plus `step` (negative to go down) for every full `every` days/weeks since `from`. It moves
+ * toward the goal (`target`) and stops there; older goals' min/max are still honored.
+ */
+export function suggested(goal: Pick<Goal, 'progression' | 'target'>, day: string): number | undefined {
   const p = goal.progression
   if (!p) return undefined
   const period = Math.max(1, p.every) * (p.per === 'week' ? 7 : 1)
   const steps = Math.max(0, Math.floor(diffDays(p.from, day) / period))
   let v = p.start + steps * p.step
+  if (goal.target !== undefined) v = p.step < 0 ? Math.max(v, goal.target) : p.step > 0 ? Math.min(v, goal.target) : v
   if (p.max !== undefined) v = Math.min(v, p.max)
   if (p.min !== undefined) v = Math.max(v, p.min)
   return Math.round(v * 100) / 100
 }
 
-/** Is the day's goal met? check: done; tally: perDay taps; progressive: did at least the suggestion; measure: at or past target. */
+/** Running total: everything added up to and including `day`. */
+export function totalTo(goal: Pick<Goal, 'log'>, day: string): number {
+  return Math.round(Object.entries(goal.log ?? {}).reduce((sum, [d, e]) => (d <= day ? sum + (e.value ?? 0) : sum), 0) * 100) / 100
+}
+
+/**
+ * Is the day's goal met? check: done; tally: perDay taps; progressive: at least the suggestion (at most, when it
+ * decreases); measure: at or past target; total: the running total has reached the target (any day).
+ */
 export function met(goal: Goal, entry: GoalEntry | undefined, day: string): boolean {
+  if (goal.kind === 'total') return goal.target !== undefined && totalTo(goal, day) >= goal.target
   if (!entry) return false
   switch (goal.kind) {
     case 'check':
       return !!entry.done
     case 'tally':
       return (entry.count ?? 0) >= (goal.perDay ?? 1)
-    case 'progressive':
-      return entry.value !== undefined && entry.value >= (suggested(goal, day) ?? 0)
+    case 'progressive': {
+      if (entry.value === undefined) return false
+      const s = suggested(goal, day) ?? 0
+      return decreasing(goal) ? entry.value <= s : entry.value >= s
+    }
     case 'measure':
       if (entry.value === undefined || goal.target === undefined) return false
       return goal.direction === 'up' ? entry.value >= goal.target : entry.value <= goal.target
   }
 }
 
+/** An amount with its unit: "$350", "12 lb", "8 glasses" (currency signs go in front). */
+export function amount(n: number | undefined, unit?: string): string {
+  if (n === undefined) return ''
+  if (!unit) return String(n)
+  return /^[$€£¥]$/.test(unit) ? `${unit}${n}` : `${n} ${unit}`
+}
+
 /** A short "what to do" line: "8 a day", "suggested 12 reps", "target 180 lb". */
 export function goalHint(goal: Goal, day: string): string {
-  const unit = goal.unit ? ` ${goal.unit}` : ''
+  const u = (n: number | undefined) => amount(n, goal.unit)
   switch (goal.kind) {
     case 'check':
       return ''
     case 'tally':
       return `${goal.perDay ?? 1} a day`
     case 'progressive':
-      return `suggested ${suggested(goal, day)}${unit}`
+      return `suggested ${u(suggested(goal, day))}`
     case 'measure':
-      return goal.target !== undefined ? `target ${goal.target}${unit}` : ''
+      return goal.target !== undefined ? `target ${u(goal.target)}` : ''
+    case 'total':
+      return goal.target !== undefined ? `${u(totalTo(goal, day))} of ${u(goal.target)}` : `${u(totalTo(goal, day))} so far`
   }
 }
 
@@ -63,8 +96,32 @@ export function history(goal: Goal, from: string, to: string): { day: string; en
     const [y, m, d] = from.split('-').map(Number)
     const day = new Date(Date.UTC(y, m - 1, d + i)).toISOString().slice(0, 10)
     if (!goal.weekdays?.length || goal.weekdays.includes(weekday(day))) {
-      out.push({ day, entry: goal.log?.[day], suggested: goal.kind === 'progressive' ? suggested(goal, day) : goal.kind === 'measure' ? goal.target : undefined })
+      // A progressive goal has no suggestion before it starts.
+      const s = goal.kind === 'progressive' ? (goal.progression && day >= goal.progression.from ? suggested(goal, day) : undefined) : goal.kind === 'measure' || goal.kind === 'total' ? goal.target : undefined
+      out.push({ day, entry: goal.log?.[day], suggested: s })
     }
   }
   return out
+}
+
+/**
+ * Goals grouped by who can log them (the menu and Goals page): yours that only you log; shared ones that others
+ * can log too (and you can); then, per person, goals you can only view. Archived goals are left out.
+ */
+export function goalGroups(goals: Goal[], uid: string, role: Role, household: Household): { key: string; title: string; goals: Goal[] }[] {
+  const active = goals.filter((g) => !g.archived)
+  const mine: Goal[] = []
+  const shared: Goal[] = []
+  const viewOnly = new Map<string, Goal[]>()
+  for (const g of active) {
+    if (!canLogGoal(g, uid, role)) viewOnly.set(g.ownerId, [...(viewOnly.get(g.ownerId) ?? []), g])
+    else if (g.ownerId === uid && (g.editAudience ?? (g.visibility === 'private' ? 'private' : 'family')) === 'private') mine.push(g)
+    else shared.push(g)
+  }
+  const groups = [
+    { key: 'mine', title: 'My goals', goals: mine },
+    { key: 'shared', title: 'Shared goals', goals: shared },
+    ...[...viewOnly].map(([owner, gs]) => ({ key: `of:${owner}`, title: `${household.members[owner]?.displayName ?? 'Someone'}'s goals`, goals: gs })),
+  ]
+  return groups.filter((g) => g.goals.length)
 }

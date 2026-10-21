@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { addDays, formatDay, today } from '../../engine/dates'
 import type { Goal } from '../../types'
-import { history, met } from '../../utils/goals'
+import { amount, decreasing, history, met, totalTo } from '../../utils/goals'
 
 /** Measured width, so text and marks stay at real pixel sizes on a phone (no scaled-down viewBox text). */
 function useWidth<T extends HTMLElement>() {
@@ -31,7 +31,8 @@ type Tip = { x: number; y: number; lines: string[] } | null
 
 /**
  * A goal's history (DESIGN.md §5.6). check: a strip of day squares. tally: a column per day with the daily goal as a
- * line. progressive / measure: what you did vs the suggestion or target, two lines. Hover or tap for values; the
+ * line. progressive / measure: what you did vs the suggestion or target, two lines. total: the running total vs
+ * the target. Hover or tap for values; the
  * table view below lists them all.
  */
 export function GoalChart({ goal, days }: { goal: Goal; days: number }) {
@@ -39,7 +40,7 @@ export function GoalChart({ goal, days }: { goal: Goal; days: number }) {
   const data = history(goal, addDays(to, -(days - 1)), to)
   const [ref, width] = useWidth<HTMLDivElement>()
   const [tip, setTip] = useState<Tip>(null)
-  const unit = goal.unit ? ` ${goal.unit}` : ''
+  const u = (n: number | undefined) => amount(n, goal.unit)
 
   if (!data.length) return <p className="muted small">No days in this range.</p>
 
@@ -105,7 +106,7 @@ export function GoalChart({ goal, days }: { goal: Goal; days: number }) {
             const y = yAt(c)
             const h = pad.t + plotH - y
             const r = Math.min(4, h, barW / 2)
-            const show = () => setTip({ x: x + barW / 2, y, lines: [formatDay(data[i].day), `${c} of ${perDay}${unit}`] })
+            const show = () => setTip({ x: x + barW / 2, y, lines: [formatDay(data[i].day), `${c} of ${u(perDay)}`] })
             return (
               <g key={data[i].day}>
                 {c > 0 && <path className="bar" d={`M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + barW - r} Q${x + barW},${y} ${x + barW},${y + r} V${y + h} Z`} />}
@@ -124,17 +125,23 @@ export function GoalChart({ goal, days }: { goal: Goal; days: number }) {
     )
   }
 
-  // progressive / measure: actual vs suggestion (or target)
-  const actual = data.map((d, i) => ({ i, v: d.entry?.value })).filter((p): p is { i: number; v: number } => p.v !== undefined)
+  // progressive / measure: actual vs suggestion (or target); total: the running total vs the target
+  const total = goal.kind === 'total'
+  const actual = data
+    .map((d, i) => ({ i, v: total ? (d.entry?.value !== undefined || i === data.length - 1 || i === 0 ? totalTo(goal, d.day) : undefined) : d.entry?.value }))
+    .filter((p): p is { i: number; v: number } => p.v !== undefined)
   const ref2 = data.map((d, i) => ({ i, v: d.suggested })).filter((p): p is { i: number; v: number } => p.v !== undefined)
   const values = [...actual.map((p) => p.v), ...ref2.map((p) => p.v)]
-  const ticks = niceTicks(Math.min(...values, goal.kind === 'progressive' ? 0 : Infinity), Math.max(...values))
+  // Counting up from nothing starts the axis at 0; a weight going down from 200 to 169 doesn't.
+  const ticks = niceTicks(Math.min(...values, total || (goal.kind === 'progressive' && !decreasing(goal)) ? 0 : Infinity), Math.max(...values))
   const lo = ticks[0]
   const hi = ticks.at(-1) ?? lo + 1
   const yAt = (v: number) => pad.t + plotH - ((v - lo) / (hi - lo || 1)) * plotH
-  const path = (pts: { i: number; v: number }[]) => pts.map((p, k) => `${k ? 'L' : 'M'}${xAt(p.i)},${yAt(p.v)}`).join(' ')
+  // A running total only changes on the days something is added, so it steps.
+  const path = (pts: { i: number; v: number }[], step = false) =>
+    pts.map((p, k) => (k === 0 ? `M${xAt(p.i)},${yAt(p.v)}` : step ? `H${xAt(p.i)} V${yAt(p.v)}` : `L${xAt(p.i)},${yAt(p.v)}`)).join(' ')
   const refName = goal.kind === 'progressive' ? 'Suggested' : 'Target'
-  const actName = goal.kind === 'progressive' ? 'Did' : 'Measured'
+  const actName = goal.kind === 'progressive' ? 'Did' : total ? 'Total' : 'Measured'
   const lastA = actual.at(-1)
   const lastR = ref2.at(-1)
   const labelsCollide = lastA && lastR && Math.abs(yAt(lastA.v) - yAt(lastR.v)) < 14 && lastA.i === lastR.i
@@ -146,7 +153,16 @@ export function GoalChart({ goal, days }: { goal: Goal; days: number }) {
     setTip({
       x: xAt(i),
       y: pad.t,
-      lines: [formatDay(d.day), d.entry?.value !== undefined ? `${d.entry.value}${unit} ${actName.toLowerCase()}` : 'not logged', ...(d.suggested !== undefined ? [`${d.suggested}${unit} ${refName.toLowerCase()}`] : [])],
+      lines: [
+        formatDay(d.day),
+        total
+          ? `${u(totalTo(goal, d.day))} total${d.entry?.value ? ` (+${u(d.entry.value)} that day)` : ''}`
+          : d.entry?.value !== undefined
+            ? `${u(d.entry.value)} ${actName.toLowerCase()}`
+            : 'not logged',
+        ...(d.suggested !== undefined ? [`${u(d.suggested)} ${refName.toLowerCase()}`] : []),
+        ...(d.entry?.note ? [d.entry.note.length > 60 ? `${d.entry.note.slice(0, 60)}…` : d.entry.note] : []),
+      ],
     })
   }
 
@@ -171,10 +187,12 @@ export function GoalChart({ goal, days }: { goal: Goal; days: number }) {
           </g>
         ))}
         {ref2.length > 0 && <path className="line s2" d={path(ref2)} />}
-        {actual.length > 0 && <path className="line s1" d={path(actual)} />}
-        {actual.map((p) => (
-          <circle key={p.i} className="dot s1" cx={xAt(p.i)} cy={yAt(p.v)} r={4} />
-        ))}
+        {actual.length > 0 && <path className="line s1" d={path(actual, total)} />}
+        {actual
+          .filter((p) => !total || data[p.i].entry?.value !== undefined)
+          .map((p) => (
+            <circle key={p.i} className="dot s1" cx={xAt(p.i)} cy={yAt(p.v)} r={4} />
+          ))}
         {lastA && (
           <text className="label" x={xAt(lastA.i) + 8} y={yAt(lastA.v) + 4}>
             {lastA.v}
