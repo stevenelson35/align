@@ -2,6 +2,7 @@
 // entries, tasks, checklist items, notes, links). Older docs kept one `url` / `imageUrl`; they read as the first
 // link / picture. Tasks keep `url` as their own address (a links-list item, a "Read:" task); `links` are extras.
 import { safeUrl } from './links'
+import { isStoredImage } from './pictures'
 
 export const MAX_LINKS = 10
 export const MAX_IMAGES = 10
@@ -33,12 +34,12 @@ export const hasDetails = (d: Stored | undefined, withUrl = true) => {
   return !!(x.note || x.links.length || x.images.length)
 }
 
-/** Checked addresses, blanks dropped, no repeats; or an error message. */
+/** Checked addresses, blanks dropped, no repeats; or an error message. Pictures may also be stored ones. */
 export function cleanUrls(urls: string[], max: number, what: string): string[] | string {
   const out: string[] = []
   for (const u of urls) {
     if (!u.trim()) continue
-    const ok = safeUrl(u)
+    const ok = what === 'pictures' && isStoredImage(u) ? u : safeUrl(u)
     if (!ok) return `“${u.trim()}” doesn’t look like a web address.`
     if (!out.includes(ok)) out.push(ok)
   }

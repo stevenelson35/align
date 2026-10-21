@@ -25,3 +25,20 @@ describe('favorites', () => {
     expect(photos.filter((p) => matchesSearch(p, 'oct 22')).map((p) => p.id)).toEqual(['20121022_120000'])
   })
 })
+
+describe('photosForDay', () => {
+  it('uses this date, else the nearest date within a week, else a stable random pick', async () => {
+    const { photosForDay } = await import('./favorites')
+    expect(photosForDay(photos, '2026-10-21').kind).toBe('same')
+    const near = photosForDay(photos, '2026-10-25')
+    expect(near.kind).toBe('near')
+    expect(near.photos.map((p) => p.id)).toEqual(['20121022_120000'])
+    const archive = photosForDay(photos, '2026-06-01')
+    expect(archive.kind).toBe('archive')
+    expect(archive.photos.length).toBe(3)
+    expect(photosForDay(photos, '2026-06-01')).toEqual(archive) // same pick all day
+    // Wraps at New Year: Jan 2 is near Dec 30.
+    const ny = [{ id: 'nye', taken_at: '2019-12-30T20:00:00', people: [], event: null }]
+    expect(photosForDay(ny, '2026-01-02').kind).toBe('near')
+  })
+})

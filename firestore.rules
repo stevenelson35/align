@@ -263,6 +263,24 @@ service cloud.firestore {
       }
     }
 
+    // Pictures stored in Align (resized JPEG data, under 1 MB): entries keep "align-image:<id>" in `images`.
+    // Anyone in the household can open one by its id (ids are random and only appear on entries they can see),
+    // but no one can list the collection, so a picture is only reachable through an entry. Never edited; the
+    // person who added it can delete it.
+    match /images/{imageId} {
+      allow get: if isMember() || isViewer();
+      allow list: if false;
+      allow create: if isMember()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.keys().hasOnly(['data', 'width', 'height', 'createdBy', 'createdAt'])
+        && request.resource.data.data is string
+        && request.resource.data.data.size() <= 1000000
+        && request.resource.data.data.matches('^data:image/(jpeg|png|webp);base64,.*')
+        && request.resource.data.width is int && request.resource.data.height is int;
+      allow update: if false;
+      allow delete: if isMember() && resource.data.createdBy == request.auth.uid;
+    }
+
     // Members compute their token balance with a collection-group query over their own votes.
     match /{path=**}/votes/{voterId} {
       allow read: if isMember();

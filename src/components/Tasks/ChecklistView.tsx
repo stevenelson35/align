@@ -41,7 +41,7 @@ export function ChecklistView({ list }: { list: List }) {
   async function clearChecked() {
     if (!window.confirm(`Delete the ${checked.length} checked item(s) from ${list.name}?`)) return
     try {
-      for (const t of checked) await deleteTask(t.id)
+      for (const t of checked) await deleteTask(t)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }

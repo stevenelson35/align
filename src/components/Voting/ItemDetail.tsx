@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { updateItem } from '../../firebase/db'
+import { deleteRemovedImages, updateItem } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
 import type { BoardItem } from '../../types'
 import { Comments } from './Comments'
@@ -28,7 +28,10 @@ export function ItemDetail({ item }: { item: BoardItem }) {
     }
     setError(null)
     updateItem(item, { title: form.title.trim() || item.title, note: details.note, ...storedDetails(details) })
-      .then(() => setEditing(false))
+      .then(() => {
+        setEditing(false)
+        return deleteRemovedImages(detailsOf(item).images, details.images)
+      })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
   }
 

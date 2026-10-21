@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { addDays, formatDay, today } from '../../engine/dates'
-import { logGoal, updateGoal } from '../../firebase/db'
+import { deleteRemovedImages, logGoal, updateGoal } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
 import type { Goal } from '../../types'
 import { appliesOn, goalHint, history, totalTo } from '../../utils/goals'
@@ -157,7 +157,10 @@ function EntryDetails({ goal, day }: { goal: Goal; day: string }) {
     if (typeof d === 'string') return setError(d)
     setError(null)
     logGoal(goal.id, day, { note: d.note || undefined, ...storedDetails(d) }, uid)
-      .then(() => setEditing(false))
+      .then(() => {
+        setEditing(false)
+        return deleteRemovedImages(detailsOf(entry ?? {}).images, d.images)
+      })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
   }
 

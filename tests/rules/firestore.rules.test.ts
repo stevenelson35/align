@@ -364,6 +364,32 @@ describe('tasks', () => {
   })
 })
 
+describe('stored pictures', () => {
+  const pic = (createdBy: string, extra: Record<string, unknown> = {}) => ({
+    data: 'data:image/jpeg;base64,/9j/4AAQ',
+    width: 10,
+    height: 8,
+    createdBy,
+    createdAt: new Date(),
+    ...extra,
+  })
+
+  it('lets members add pictures, the household open them by id, and only the adder delete them', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'images/p1'), pic('steve')))
+    await assertFails(setDoc(doc(db('steve'), 'images/p2'), pic('wife'))) // posing as someone else
+    await assertFails(setDoc(doc(db('grandma'), 'images/p3'), pic('grandma'))) // viewers don't add
+    await assertFails(setDoc(doc(db('steve'), 'images/p4'), pic('steve', { data: 'https://example.com/x.jpg' })))
+    await assertFails(setDoc(doc(db('steve'), 'images/p5'), pic('steve', { data: 'data:image/jpeg;base64,' + 'A'.repeat(1000001) })))
+    await assertFails(setDoc(doc(db('steve'), 'images/p6'), pic('steve', { listId: 'x' })))
+    for (const uid of ['steve', 'wife', 'grandma']) await assertSucceeds(getDoc(doc(db(uid), 'images/p1')))
+    await assertFails(getDoc(doc(db(), 'images/p1'))) // signed out
+    await assertFails(getDocs(collection(db('steve'), 'images'))) // no listing
+    await assertFails(updateDoc(doc(db('steve'), 'images/p1'), { width: 11 }))
+    await assertFails(deleteDoc(doc(db('wife'), 'images/p1')))
+    await assertSucceeds(deleteDoc(doc(db('steve'), 'images/p1')))
+  })
+})
+
 describe('voting', () => {
   it('shows boards to members, and viewer-visible boards to viewers', async () => {
     await assertSucceeds(getDocs(collection(db('daughter'), 'boards')))

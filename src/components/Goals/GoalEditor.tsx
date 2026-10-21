@@ -86,7 +86,7 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
   async function remove() {
     if (!goal || !window.confirm(`Delete "${goal.name}" and all its history? (Archive keeps the history.)`)) return
     try {
-      await deleteGoal(goal.id)
+      await deleteGoal(goal)
       app.navigate({ view: 'goals' })
       onClose()
     } catch (err) {

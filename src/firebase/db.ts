@@ -22,6 +22,7 @@ import type { Move } from '../engine/scheduling'
 import type { Board, BoardItem, Comment, Goal, GoalEntry, Household, ItemStatus, List, Role, Task, Vote } from '../types'
 import { db } from './config'
 import { audienceOf, privacyFields, type Audience } from '../utils/audience'
+import { isStoredImage, storedImageId } from '../utils/pictures'
 import { today } from '../engine/dates'
 import type { DependencyChange } from '../utils/project'
 
@@ -145,8 +146,10 @@ export function updateGoal(goal: Goal, patch: Partial<GoalInput>) {
   return updateDoc(doc(db, 'goals', goal.id), { ...data, ...goalPrivacy(next) })
 }
 
-export function deleteGoal(id: string) {
-  return deleteDoc(doc(db, 'goals', id))
+/** Deletes a goal and the pictures stored on its log entries (the ones you added). */
+export async function deleteGoal(goal: Pick<Goal, 'id' | 'log'>) {
+  await deleteDoc(doc(db, 'goals', goal.id))
+  await deleteRemovedImages(Object.values(goal.log ?? {}).flatMap((e) => e.images ?? []), [])
 }
 
 /** Running total: add an amount to the day's entry (several people adding on one day all count). */
@@ -255,11 +258,13 @@ export function updateList(list: List, patch: Partial<ListInput>, tasks: Task[])
   return batch.commit()
 }
 
-export function deleteList(listId: string, tasks: Task[]) {
+export async function deleteList(listId: string, tasks: Task[]) {
   const batch = writeBatch(db)
-  for (const t of tasks.filter((t) => t.listId === listId)) batch.delete(doc(db, 'tasks', t.id))
+  const inList = tasks.filter((t) => t.listId === listId)
+  for (const t of inList) batch.delete(doc(db, 'tasks', t.id))
   batch.delete(doc(db, 'lists', listId))
-  return batch.commit()
+  await batch.commit()
+  await deleteRemovedImages(inList.flatMap((t) => t.images ?? []), [])
 }
 
 // ---- Tasks ----
@@ -357,8 +362,10 @@ export async function updateTask(id: string, patch: Partial<TaskInput>, moveTo?:
   return updateDoc(doc(db, 'tasks', id), data)
 }
 
-export function deleteTask(id: string) {
-  return deleteDoc(doc(db, 'tasks', id))
+/** Deletes a task (or item, note, link) and the pictures stored on it that you added. */
+export async function deleteTask(task: Pick<Task, 'id' | 'images'>) {
+  await deleteDoc(doc(db, 'tasks', task.id))
+  await deleteRemovedImages(task.images ?? [], [])
 }
 
 /** Apply a shift preview plus refreshed conflict flags as one batch (DESIGN.md §6.3). */
@@ -383,6 +390,45 @@ export function applySchedule(
     batch.update(doc(db, 'tasks', id), data)
   }
   return batch.commit()
+}
+
+// ---- Stored pictures (images/{id}, DESIGN.md §5.7) ----
+
+/**
+ * Saves a picture (a JPEG data URL from the picture editor) and returns its id straight away, like addTaskNow:
+ * the local write shows at once (also offline), and `written` settles when the server has it.
+ */
+export function addImage(data: string, width: number, height: number, uid: string): { id: string; written: Promise<void> } {
+  const ref = doc(collection(db, 'images'))
+  const written = setDoc(ref, { data, width, height, createdBy: uid, createdAt: serverTimestamp() })
+  return { id: ref.id, written }
+}
+
+const imageCache = new Map<string, Promise<string>>()
+
+/** A stored picture's data URL (fetched once per session; the device cache keeps it between visits). */
+export function imageData(id: string): Promise<string> {
+  let p = imageCache.get(id)
+  if (!p) {
+    p = getDoc(doc(db, 'images', id)).then((snap) => {
+      const data = snap.data()?.data
+      if (typeof data !== 'string') throw new Error('That picture was deleted.')
+      return data
+    })
+    p.catch(() => imageCache.delete(id))
+    imageCache.set(id, p)
+  }
+  return p
+}
+
+/**
+ * After an entry is saved without some of its stored pictures, delete the ones you added (the rules refuse
+ * anyone else's, which is fine: they stay until their owner removes them).
+ */
+export async function deleteRemovedImages(before: string[], after: string[]) {
+  const kept = new Set(after)
+  const gone = before.filter((src) => isStoredImage(src) && !kept.has(src)).map(storedImageId)
+  await Promise.all(gone.map((id) => deleteDoc(doc(db, 'images', id)).then(() => imageCache.delete(id)).catch(() => undefined)))
 }
 
 // ---- Voting ----

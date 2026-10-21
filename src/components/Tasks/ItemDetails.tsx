@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { addReadingTask, deleteTask, readingListFor, updateTask } from '../../firebase/db'
+import { addReadingTask, deleteRemovedImages, deleteTask, readingListFor, updateTask } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
 import { cleanCategory, safeUrl } from '../../utils/links'
@@ -56,6 +56,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
         },
         moveTo,
       )
+      void deleteRemovedImages(detailsOf(item, false).images, images)
       app.selectTask(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -66,7 +67,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
   async function remove() {
     if (!window.confirm(`Delete "${item.title}"?`)) return
     try {
-      await deleteTask(item.id)
+      await deleteTask(item)
       app.selectTask(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

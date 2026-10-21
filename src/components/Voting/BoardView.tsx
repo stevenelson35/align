@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { detailsOf } from '../../utils/details'
+import { Picture } from '../UI/Picture'
 import { createItem, setItemStatus, setVote, updateBoard } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import { useBoardVotes, useTokenBalance } from '../../hooks/useVoting'
 import type { Board, BoardItem, ItemStatus } from '../../types'
-import { safeUrl } from '../../utils/links'
 import { Comments } from './Comments'
 import { ItemDetail } from './ItemDetail'
 import { Icon } from '../UI/Icon'
@@ -24,7 +24,7 @@ export function BoardView({ board, openItemId }: { board: Board; openItemId?: st
   /** The title as a button that opens the item, with small marks for what it holds. */
   const itemTitle = (item: BoardItem) => (
     <button type="button" className="item-title" onClick={() => toggleItem(item.id)} aria-expanded={openItem === item.id} title="Details and comments">
-      {safeUrl(detailsOf(item).images[0]) && <img src={safeUrl(detailsOf(item).images[0])!} alt="" className="item-thumb" loading="lazy" />}
+      {detailsOf(item).images[0] && <Picture src={detailsOf(item).images[0]} alt="" className="item-thumb" />}
       <strong>{item.title}</strong>
       {item.note && <span title="Has a note"> <Icon name="note" /></span>}
       {detailsOf(item).links.length > 0 && <span title="Has links"> <Icon name="link" /></span>}

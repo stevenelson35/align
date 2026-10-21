@@ -4,6 +4,7 @@ import type { List } from '../../types'
 import type { Route } from '../../utils/routes'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 import { goalGroups } from '../../utils/goals'
+import { BLOG_URL } from '../../blog/post'
 import { isFinished, isItemList } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
 
@@ -74,6 +75,12 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
       <NavLink route={{ view: 'work' }} label="Work" />
       {isMember && <NavLink route={{ view: 'blog' }} label={<><Icon name="compose" /> New blog post</>} />}
       <NavLink route={{ view: 'photos' }} label={<><Icon name="photo" /> Photos</>} />
+      <a className="nav-link" href={BLOG_URL} target="_blank" rel="noopener noreferrer">
+        <span className="grow">
+          <Icon name="blog" /> Travelin' On blog
+        </span>
+        <Icon name="external" label="opens blog.itsallonesong.com" />
+      </a>
 
       <Section
         title="Goals"

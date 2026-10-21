@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { finish, meetDate, shiftForward } from '../../engine/scheduling'
 import { wouldCreateCycle } from '../../engine/graph'
-import { createTask, deleteTask, updateTask, type TaskInput, withStatus } from '../../firebase/db'
+import { createTask, deleteRemovedImages, deleteTask, type TaskInput, updateTask, withStatus } from '../../firebase/db'
 import { today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Dependency, Priority, Status, Task } from '../../types'
@@ -90,6 +90,7 @@ export function TaskDetails({ task }: { task: Task }) {
     const moveTo = form.listId !== task.listId ? lists.find((l) => l.id === form.listId) : undefined
     try {
       await updateTask(task.id, patch, moveTo)
+      void deleteRemovedImages(detailsOf(task, false).images, images)
       if (preview) app.proposeShift({ title: `Move ${task.title}`, preview })
       // Close, so the change shows on the task's card (on a phone this panel covers the whole page).
       app.selectTask(null)
@@ -145,7 +146,7 @@ export function TaskDetails({ task }: { task: Task }) {
       for (const d of dependents.filter((t) => app.canEdit(t))) {
         await updateTask(d.id, { dependsOn: d.dependsOn.filter((x) => x.taskId !== task.id) })
       }
-      await deleteTask(task.id)
+      await deleteTask(task)
       app.selectTask(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

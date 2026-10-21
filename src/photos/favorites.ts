@@ -83,3 +83,48 @@ export function matchesSearch(p: Favorite, query: string): boolean {
   const hay = [...p.people, p.event?.replace(/-/g, ' ') ?? '', photoDate(p), p.taken_at?.slice(0, 10) ?? ''].join(' ').toLowerCase()
   return words.every((w) => hay.includes(w))
 }
+
+/** Days apart on the calendar, ignoring the year and wrapping at New Year (Dec 30 ↔ Jan 2 is 3). */
+function calendarGap(a: string, b: string): number {
+  const doy = (md: string) => {
+    const [m, d] = md.split('-').map(Number)
+    return (Date.UTC(2001, m - 1, d) - Date.UTC(2001, 0, 1)) / 864e5 // a non-leap year; Feb 29 counts as Mar 1
+  }
+  const diff = Math.abs(doy(a) - doy(b))
+  return Math.min(diff, 365 - diff)
+}
+
+/** A small stable number for a day, so the "from the archive" pick stays the same all day. */
+function seed(day: string): number {
+  let h = 2166136261
+  for (const c of day) h = Math.imul(h ^ c.charCodeAt(0), 16777619)
+  return h >>> 0
+}
+
+export type DayPhotos = { kind: 'same' | 'near' | 'archive'; photos: Favorite[] }
+
+/**
+ * Photos for a day view: favorites from this date in earlier years; if none, the nearest date within `nearDays`
+ * (either side, earlier years); if still none, a few picked at random from the archive (the same pick all day).
+ */
+export function photosForDay(photos: Favorite[], day: string, nearDays = 7, archiveCount = 3): DayPhotos {
+  const same = onThisDay(photos, day)
+  if (same.length) return { kind: 'same', photos: same }
+  const year = day.slice(0, 4)
+  const md = day.slice(5, 10)
+  const earlier = photos.filter((p) => p.taken_at && p.taken_at.slice(0, 4) < year)
+  if (!earlier.length) return { kind: 'archive', photos: [] }
+  const gaps = earlier.map((p) => calendarGap(p.taken_at!.slice(5, 10), md))
+  const nearest = Math.min(...gaps)
+  if (nearest <= nearDays) {
+    return { kind: 'near', photos: earlier.filter((_, i) => gaps[i] === nearest).sort((a, b) => b.taken_at!.localeCompare(a.taken_at!)) }
+  }
+  const pool = [...earlier]
+  const picked: Favorite[] = []
+  let s = seed(day)
+  while (picked.length < archiveCount && pool.length) {
+    s = Math.imul(s ^ (s >>> 15), 2246822507) >>> 0
+    picked.push(pool.splice(s % pool.length, 1)[0])
+  }
+  return { kind: 'archive', photos: picked }
+}

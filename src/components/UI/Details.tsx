@@ -1,14 +1,19 @@
-import { useState } from 'react'
-import { chooseImage } from '../../blog/cloudinary'
+import { useRef, useState } from 'react'
+import { addImage as saveImage } from '../../firebase/db'
+import { useApp } from '../../hooks/useApp'
 import { photoUrl } from '../../photos/favorites'
+import { isStoredImage, storedImageRef } from '../../utils/pictures'
 import { MAX_IMAGES, MAX_LINKS, type Details } from '../../utils/details'
 import { linkLabel, safeUrl } from '../../utils/links'
 import { PhotoPicker } from '../Photos/PhotoPicker'
 import { Icon } from './Icon'
+import { Picture, PictureLightbox } from './Picture'
+import { PictureEditor } from './PictureEditor'
 
 /**
- * Links and pictures, editable: a box per link with ✕ and "+ Add link"; picture thumbnails with ✕, plus Upload
- * (the Cloudinary widget), From favorites (psort's published photos) and Paste an address.
+ * Links and pictures, editable: a box per link with ✕ and "+ Add link"; picture thumbnails with ✕, plus Add a
+ * picture (the phone's own picker, then crop / rotate, stored in Align: images/{id}), From favorites (psort's
+ * published photos) and Paste an address.
  */
 export function LinksAndPictures({
   value,
@@ -21,8 +26,11 @@ export function LinksAndPictures({
   onError: (message: string) => void
   linkHint?: string
 }) {
+  const { uid } = useApp()
   const [picking, setPicking] = useState(false)
   const [pasted, setPasted] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
   const links = value.links.length ? value.links : []
   const setLinks = (next: string[]) => onChange({ ...value, links: next })
   const addImage = (url: string) => onChange({ ...value, images: [...value.images.filter((u) => u !== url), url] })
@@ -63,7 +71,7 @@ export function LinksAndPictures({
           <div className="picture-thumbs">
             {value.images.map((u, i) => (
               <span key={u} className="picture-thumb">
-                <img src={u} alt={`Picture ${i + 1}`} loading="lazy" />
+                <Picture src={u} alt={`Picture ${i + 1}`} />
                 <button type="button" className="thumb-remove" onClick={() => onChange({ ...value, images: value.images.filter((x) => x !== u) })} aria-label={`Remove picture ${i + 1}`}>
                   <Icon name="close" />
                 </button>
@@ -74,9 +82,19 @@ export function LinksAndPictures({
         {!fullOfImages && (
           <>
             <div className="row wrap">
-              <button type="button" className="secondary small" onClick={() => chooseImage(({ url }) => addImage(url)).catch((err) => onError(String(err.message ?? err)))}>
-                <Icon name="camera" /> + Upload
+              <button type="button" className="secondary small" onClick={() => fileInput.current?.click()}>
+                <Icon name="camera" /> + Add a picture
               </button>
+              <input
+                ref={fileInput}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  setFile(e.target.files?.[0] ?? null)
+                  e.target.value = '' // the same file can be chosen again
+                }}
+              />
               <button type="button" className="secondary small" onClick={() => setPicking(true)}>
                 <Icon name="photo" /> + From favorites
               </button>
@@ -109,6 +127,18 @@ export function LinksAndPictures({
           </>
         )}
         {picking && <PhotoPicker onPick={(p) => addImage(photoUrl(p.id, 1024))} onClose={() => setPicking(false)} />}
+        {file && (
+          <PictureEditor
+            file={file}
+            onCancel={() => setFile(null)}
+            onDone={(p) => {
+              setFile(null)
+              const { id, written } = saveImage(p.data, p.width, p.height, uid)
+              written.catch((err) => onError(`The picture wasn’t saved: ${err instanceof Error ? err.message : String(err)}`))
+              addImage(storedImageRef(id))
+            }}
+          />
+        )}
       </div>
     </div>
   )
@@ -137,10 +167,12 @@ export function DetailsFields({
   )
 }
 
-/** Shows whichever details there are: the note, each link, and the pictures (tap for full size). */
+/** Shows whichever details there are: the note, each link, and the pictures (tap one to see it full screen). */
 export function DetailsView({ note, links, images, alt }: Partial<Details> & { alt: string }) {
+  const [open, setOpen] = useState<string | null>(null)
   const safeLinks = (links ?? []).map((u) => [u, safeUrl(u)] as const).filter(([, s]) => s)
-  const safeImages = (images ?? []).map((u) => safeUrl(u)).filter((u): u is string => !!u)
+  const pictures = (images ?? []).filter((u) => isStoredImage(u) || safeUrl(u))
+  const altFor = (i: number) => (pictures.length > 1 ? `${alt} (${i + 1})` : alt)
   return (
     <>
       {note && <p className="item-note">{note}</p>}
@@ -155,15 +187,16 @@ export function DetailsView({ note, links, images, alt }: Partial<Details> & { a
           ))}
         </ul>
       )}
-      {safeImages.length > 0 && (
-        <div className={`detail-pictures${safeImages.length === 1 ? ' single' : ''}`}>
-          {safeImages.map((u, i) => (
-            <a key={u} href={u} target="_blank" rel="noopener noreferrer">
-              <img src={u} alt={safeImages.length > 1 ? `${alt} (${i + 1})` : alt} className="item-picture" loading="lazy" />
-            </a>
+      {pictures.length > 0 && (
+        <div className={`detail-pictures${pictures.length === 1 ? ' single' : ''}`}>
+          {pictures.map((u, i) => (
+            <button key={u} type="button" className="picture-button" onClick={() => setOpen(u)} aria-label={`Show ${altFor(i)} full screen`}>
+              <Picture src={u} alt={altFor(i)} className="item-picture" />
+            </button>
           ))}
         </div>
       )}
+      {open && <PictureLightbox src={open} alt={alt} onClose={() => setOpen(null)} />}
     </>
   )
 }

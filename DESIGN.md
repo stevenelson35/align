@@ -184,6 +184,17 @@ The family Google Calendar is copied one way into a family list named **Family C
 - **Time zone:** times and dates use the `TIME_ZONE` script property, or else the script's zone from `appsscript.json`. They never use the calendar's own zone setting: the family calendar turned out to be set to UTC, which showed 4 PM events as 8 PM.
 - **Removals:** an imported task whose event is gone is deleted only if its date falls inside the sync window (7 days back to 8 weeks ahead). Tasks family members add to the list by hand are never touched.
 
+### 5.7 `images/{imageId}` (pictures stored in Align)
+
+```ts
+{ data: "data:image/jpeg;base64,…",  // ≤ 1,000,000 characters (longest side ≤ 1600 px, JPEG quality stepped down to fit)
+  width: number, height: number, createdBy: uid, createdAt }
+```
+
+- Added from any details section (**+ Add a picture**): the phone's own picker (photo library, camera or files) → `PictureEditor` (Original / Square / 4:3 / 3:4 / 16:9, drag to position, zoom, rotate) → `addImage` (returns the id at once, like `addTaskNow`). Entries keep `"align-image:<id>"` in `images` beside ordinary addresses (`utils/pictures.ts`); `<Picture>` shows either, and `PictureLightbox` shows one full screen.
+- **Access:** any household account can `get` one by id, nobody can `list` the collection, so a picture is reachable only through an entry you can see. Never updated; the person who added it can delete it. Removing a picture and saving, or deleting a task / list / goal, deletes the stored pictures you added (`deleteRemovedImages`).
+- **Free tier:** about 150–300 KB a picture against Firestore's 1 GiB, so a few thousand pictures. Cloudinary is now used only as the blog's temporary upload step; pictures uploaded to Cloudinary from Align before this keep working as addresses.
+
 ### 5.6 `goals/{goalId}`
 
 Daily goals (not tasks): shown on each day they apply, logged per day, charted over time.
@@ -329,7 +340,7 @@ The chat panel runs a local, rule-based parser (`src/chat/parser.ts`, dates by `
 ### 10.3 Favorite photos (psort)
 psort's `publish-browse` puts the family's starred, non-private photos on Turbify for the blog's photo browser: web sizes at `https://www.itsallonesong.com/pics/browse/<size>/<id>-<size>.jpg` and `browse-manifest.json` (id, taken_at, people's names, event, top). psort's `.htaccess` lets the blog read the manifest, and lets Align read it too, but only for requests from Align. Align only reads it (`src/photos/favorites.ts`, loaded once per session):
 - **📷 Photos** (`#/photos`): a searchable grid (names, years, months, events; Top picks), a larger view, **Full size**, and **Text this photo** (sends the 2048px image link). It also links to the blog's photo browser.
-- **On this day** on the day view: favorites from the same date in earlier years ("6 years ago"), with Hide (`align-on-this-day-hidden`). It doesn't show when there are none or the list can't be reached.
+- **On this day** on the day view (`photosForDay`): favorites from the same date in earlier years ("6 years ago"); if none, **Near this day** (the nearest date within a week, wrapping at New Year); if still none, **From the archive** (3 picked at random, the same pick all day). Hide is remembered (`align-on-this-day-hidden`). It doesn't show if the list can't be reached.
 - **From favorites** next to Upload in the blog composer (the 2048px copy; the blog's Action downloads it like a Cloudinary upload; alt text starts as the caption) and in every note/link/picture box (goal entries, voting items; the 1024px copy).
 - Dev servers (localhost) aren't allowed to read the manifest, so browser tests serve a copy with `page.route`.
 
@@ -395,7 +406,16 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-21 (details): built, tested, NOT yet committed or deployed
+### 2026-10-21 (stored pictures): built, tested, NOT yet committed or deployed
+- **Pictures are stored in Align (Firestore), not Cloudinary** (§5.7): the phone's own picker, a built-in crop / rotate editor, full-screen view, and cleanup when removed or deleted. Blog posts still upload through Cloudinary (its Action copies them to Turbify).
+- Menu: **Travelin' On blog** link (opens blog.itsallonesong.com in a new tab) under New blog post and Photos.
+- Rules: `images/{id}` (get by id for the household, no list, create own ≤ 1 MB data URL, delete own), plus a test. **Deploy the rules before the web app.**
+- Tests: 101 unit, 39 rules. Playwright at 390px: upload + crop + rotate (186 KB stored), another family member sees it, remove deletes it, voting item full-screen view.
+
+### 2026-10-21 (on this day fallback): built, tested, NOT yet committed
+- On this day falls back to Near this day, then From the archive (§10.3). No rules change. Tests: 98 unit.
+
+### 2026-10-21 (details): built and deployed (`a556ee7`, rules deployed)
 - **The same details on every entry** (`utils/details.ts`, `components/UI/Details.tsx`): a note, up to 10 links ("+ Add link", ✕ each) and up to 10 pictures (Upload / From favorites / paste an address; ✕ each). Used by voting items, goal entries, tasks, checklist items, notes and links. Stored as `links` / `images` arrays; the older single `url` / `imageUrl` on items and goal entries read as the first of each and are cleared on the next save. A task's `url` stays its own address (links-list item, "Read:" task), so its `links` are extras. Rows show link / picture marks (`DetailsMarks`).
 - **Text about this everywhere:** voting items (link `#/board/<board>/<item>` opens and scrolls to the item, closed ones too) and goals (`#/goal/<id>`), as tasks, items and photos already had.
 - Rules: `links` / `images` lists (≤10) on tasks and voting items, plus a test. **Deploy the rules before the web app.**
