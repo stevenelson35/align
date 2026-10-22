@@ -21,7 +21,7 @@ export function GoalsStrip({ day }: { day: string }) {
   const metCount = forDay.filter((g) => met(g, g.log?.[day], day)).length
   return (
     <div className="day-section goals-strip">
-      <SectionHeader icon="goal" title="Goals" count={`${metCount}/${forDay.length}`} onTitleClick={() => setHidden(!hidden)} expanded={!hidden}>
+      <SectionHeader icon="goal" title="Goals" count={`${metCount}/${forDay.length}`} onTitleClick={() => setHidden(!hidden)} expanded={!hidden} help="goals">
         <button type="button" className="link small" onClick={() => navigate({ view: 'goals' })}>
           Manage
         </button>

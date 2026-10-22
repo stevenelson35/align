@@ -345,6 +345,11 @@ psort's `publish-browse` puts the family's starred, non-private photos on Turbif
 - **From favorites** next to Upload in the blog composer (the 2048px copy; the blog's Action downloads it like a Cloudinary upload; alt text starts as the caption) and in every note/link/picture box (goal entries, voting items; the 1024px copy).
 - Dev servers (localhost) aren't allowed to read the manifest, so browser tests serve a copy with `page.route`.
 
+### 10.4 Help
+- **One source:** `src/help/topics.ts` has a topic per part of Align (Getting started, Today, Lists and tasks, Who can see it, Notes/links/pictures/comments, Texting, Goals, Photos, Voting, Blog, Google Calendar, Chat, Settings, About), each with a short `tip` and a longer `body`. **Update the topic when the feature changes.**
+- **ⓘ tips** (`UI/HelpTip`): beside section and page headings, the privacy pickers, Settings, the comments heading, chat and the calendar buttons. Tap for the tip; "More in Help →" opens the topic. Stays on screen (fixed position); closes on tap elsewhere, scroll, or Esc.
+- **Help page** `#/help` / `#/help/<topic>` (menu → Help & about): contents chips, every topic, the chat's own command examples, and About with the build's commit and time (`__BUILD_COMMIT__`, `__BUILD_TIME__` from vite.config.ts).
+
 ### 10.1 Folder structure
 
 ```
@@ -407,7 +412,15 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-22 (consistency): built, tested, NOT yet committed
+### 2026-10-22 (help): built, tested, NOT yet committed
+- Help & about page plus ⓘ tips throughout (§10.4). Settings closes when you go to another page (e.g. "More in Help"). No rules change. Tests: 105 unit.
+
+### 2026-10-22 (passwords): built, tested, NOT yet committed
+- **Forgot password?** on the sign-in screen sends Firebase's reset email (free; wording in Firebase console → Authentication → Templates). Same message whether or not the address has an account.
+- **Settings → Password → Change password:** current password (checked first, which Firebase needs anyway), new one twice, at least 8 characters.
+- No rules change. Tested on the emulators (reset email recorded; wrong current password refused; new password works, old doesn't).
+
+### 2026-10-22 (consistency): built and pushed (`ac61878`)
 - Section titles with Show / Hide (Goals, On this day / From the archive) toggle when tapped (`SectionHeader onTitleClick`).
 - To do's color key starts shown and remembers being hidden (`align-color-key-shown`).
 - No big purple buttons: inline add / send buttons are outline icon buttons (`.icon-button`: chat Send, Add board, Suggest, checklist / notes / links / list quick adds, comment Post); dialog and form actions use the compact size (Save, Create, Publish, Apply, Use picture). The sign-in and first-time setup screens keep their full-size button.
@@ -503,6 +516,7 @@ The user's own task list "Align Updates" (in Align) held 8 requests; all were do
 - **Settings:** default privacy, mobile number, Parents, theme. **Dark mode** (per device, no flash).
 
 ### Waiting on the user (can't be done by an agent)
+0. **Adding Linda and Camilla:** Firebase console → Authentication → Add user (email + a starting password you choose), then `household/main.members.<uid>` = `{ role: "member", displayName, color }`. They can change the password in ⚙ Settings, or use Forgot password?.
 1. **Set the Parents group now** (⚙ Settings → Parents → tick You). Whoever sets it first controls it; do it before other accounts exist.
 2. **Create Linda's and Camilla's accounts:** Firebase console → Authentication → Users → Add user (email/password). Then add each to `household/main.members` in the Firestore console: `{ role: "member", displayName: "Linda", color: "#bf3989" }` (Camilla likewise). Roles can only be set in the console.
 3. **Each person adds their mobile number** in ⚙ Settings so "text <name>" works; Linda ticks herself under Parents (Steve can also tick her).

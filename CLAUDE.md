@@ -9,7 +9,7 @@ npm install
 npm run emulators      # terminal 1 (Auth + Firestore emulators, project demo-align)
 npm run seed           # terminal 2: test accounts + household (password "align-dev")
 npm run dev            # http://localhost:5173
-npm test               # 103 unit tests (vitest: engine, tokens, parser, utils, DB writes, Apps Script helpers)
+npm test               # 105 unit tests (vitest: engine, tokens, parser, utils, DB writes, Apps Script helpers)
 npm run test:rules     # 40 security-rule tests; starts its own emulators (stop `npm run emulators` first); must stay green
 npm run test:calendar  # Apps Script calendar sync + web app against the running emulators (after seed)
 npx tsc -b && npm run lint && npm run build
@@ -30,6 +30,7 @@ ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web   # the USER runs this
 - **Firestore has a persistent device cache**; sign-out clears it (`auth.ts`).
 - **Pictures added in Align are stored in Firestore** (`images/{id}`, referenced as `align-image:<id>`; `utils/pictures.ts`, `UI/Picture.tsx`, `UI/PictureEditor.tsx`). Cloudinary is only the blog's temporary upload step; don't add new Cloudinary uses.
 - **Every entry looks and works the same:** it opens as a view (`EntryPanel` facts + the `EntryExtras` block: note, named links `{url,label}`, pictures, comments via `commentThread`, Text about this), and Edit opens its form (`LinksAndPictures` / `DetailsFields` for the details). Reuse these for any new kind of entry; section headings use `SectionHeader`.
+- **Help text lives in `src/help/topics.ts`** (ⓘ tips + the Help page). When you change how something works, update its topic.
 - **Icons go through `<Icon name=… />`** (`components/UI/Icon.tsx`) so the Settings icon style applies; add new drawings there (fill / line / detail layers).
 - **Checklist items, notes and links are task docs** kept in `DataState.listItems`, not `tasks`. They stay out of task views, chat task commands and scheduling.
 - Hash routing (static hosting on Turbify, no rewrites), including `#/task/<id>` links. No spaces in generated names.

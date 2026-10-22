@@ -13,6 +13,7 @@ import { goalLink } from '../../utils/text'
 import { GoalChart } from './GoalChart'
 import { GoalControl } from './GoalControl'
 import { GoalEditor } from './GoalEditor'
+import { HelpTip } from '../UI/HelpTip'
 
 const RANGES = [14, 30, 90, 365]
 
@@ -49,6 +50,7 @@ export function GoalDetail({ goal }: { goal: Goal }) {
           ← Goals
         </button>
         <h2>{goal.name}</h2>
+        <HelpTip topic="goals" />
         {goal.archived && <span className="badge">Archived</span>}
         <span className="grow" />
         {editable && (

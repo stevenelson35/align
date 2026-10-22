@@ -9,6 +9,7 @@ import { Comments } from '../UI/Comments'
 import { SectionHeader } from '../UI/SectionHeader'
 import { ItemDetail } from './ItemDetail'
 import { Icon } from '../UI/Icon'
+import { HelpTip } from '../UI/HelpTip'
 
 export function BoardView({ board, openItemId }: { board: Board; openItemId?: string }) {
   const app = useApp()
@@ -86,6 +87,7 @@ export function BoardView({ board, openItemId }: { board: Board; openItemId?: st
     <section>
       <header className="view-header">
         <h2>{board.name}</h2>
+        <HelpTip topic="voting" />
         <span className="grow" />
         {app.isMember && <span className="badge tokens"><Icon name="coin" /> {balance} left</span>}
       </header>

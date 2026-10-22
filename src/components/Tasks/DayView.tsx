@@ -14,6 +14,7 @@ import { Icon } from '../UI/Icon'
 import { parentsOf } from '../../utils/audience'
 import { SectionHeader } from '../UI/SectionHeader'
 import { ColorKey } from '../UI/ColorKey'
+import { HelpTip } from '../UI/HelpTip'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 
 /**
@@ -106,6 +107,7 @@ export function DayView({ day }: { day: string }) {
           {label || formatDay(day)}
           {label && <span className="muted small day-date"> {formatDay(day)}</span>}
         </h2>
+        <HelpTip topic="start" label="Align" />
         <button type="button" className="secondary small" onClick={() => go(addDays(day, 1))} aria-label="Next day" title="Next day">
           ›
         </button>
@@ -126,6 +128,7 @@ export function DayView({ day }: { day: string }) {
           icon="todo"
           title={day < now ? 'Not done' : 'To do'}
           count={b.todo.length}
+          help="today"
           beside={
             <button
               type="button"

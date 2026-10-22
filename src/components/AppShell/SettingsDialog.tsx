@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { setDefaultVisibility, setParents, setPhone } from '../../firebase/db'
+import { changePassword } from '../../firebase/auth'
 import { people } from '../../utils/tasks'
 import { githubToken, setGithubToken, testToken } from '../../blog/github'
 import { useApp } from '../../hooks/useApp'
@@ -8,6 +9,7 @@ import { AUDIENCE_ICON, AUDIENCES } from '../../utils/audience'
 import { loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
 import { ICON_STYLES, saveIconStyle, useIconStyle } from '../../utils/iconStyle'
 import { Icon, type IconName } from '../UI/Icon'
+import { HelpTip } from '../UI/HelpTip'
 
 type DefaultAudience = NonNullable<HouseholdMember['defaultVisibility']>
 
@@ -85,14 +87,18 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="card form modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Settings">
         <header className="row">
-          <h2 className="grow">Settings</h2>
+          <h2>Settings</h2>
+          <HelpTip topic="settings" />
+          <span className="grow" />
           <button type="button" className="link" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </header>
         {isMember && (
           <fieldset className="setting">
-            <legend>Who can see new things</legend>
+            <legend>
+              Who can see new things <HelpTip topic="privacy" />
+            </legend>
             <p className="muted small">For lists you create and quick adds that don't name a list. You can still choose for each list.</p>
             {AUDIENCES.filter((a) => a.value !== 'shared').map((a) => (
               <label key={a.value} className="inline" title={a.hint}>
@@ -108,7 +114,9 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         )}
         {isMember && (
           <fieldset className="setting">
-            <legend>Your mobile number</legend>
+            <legend>
+              Your mobile number <HelpTip topic="texting" />
+            </legend>
             <p className="muted small">So others can use "text {member.displayName} …" in chat. Only household members see it.</p>
             <div className="row">
               <input
@@ -151,6 +159,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             </p>
           </fieldset>
         )}
+        <PasswordSetting />
         {isMember && (
           <fieldset className="setting">
             <legend>Blog posting (this device)</legend>
@@ -218,5 +227,71 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         {error && <p className="error">{error}</p>}
       </div>
     </div>
+  )
+}
+
+/** Change your password: the current one (checked first), then the new one twice. */
+function PasswordSetting() {
+  const [open, setOpen] = useState(false)
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [again, setAgain] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+
+  async function save(e: FormEvent) {
+    e.preventDefault()
+    setMessage(null)
+    if (next.length < 8) return setMessage({ ok: false, text: 'Use at least 8 characters.' })
+    if (next !== again) return setMessage({ ok: false, text: 'The new passwords don’t match.' })
+    if (next === current) return setMessage({ ok: false, text: 'That’s the same as your current password.' })
+    setBusy(true)
+    try {
+      await changePassword(current, next)
+      setCurrent('')
+      setNext('')
+      setAgain('')
+      setOpen(false)
+      setMessage({ ok: true, text: 'Password changed. Use the new one next time you sign in.' })
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : String(err) })
+    }
+    setBusy(false)
+  }
+
+  return (
+    <fieldset className="setting">
+      <legend>Password</legend>
+      {!open ? (
+        <button type="button" className="secondary small" onClick={() => setOpen(true)}>
+          Change password
+        </button>
+      ) : (
+        <form className="form password-form" onSubmit={save}>
+          <label>
+            Current password
+            <input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
+          </label>
+          <label>
+            New password
+            <input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} minLength={8} required />
+          </label>
+          <label>
+            New password again
+            <input type="password" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} minLength={8} required />
+          </label>
+          <div className="row">
+            <button type="submit" className="small" disabled={busy}>
+              {busy ? 'Saving…' : 'Change password'}
+            </button>
+            <button type="button" className="secondary small" onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+      {message && <p className={message.ok ? 'small' : 'error small'} role="status">{message.text}</p>}
+      <p className="muted small">Forgot it? Sign out and use “Forgot password?” on the sign-in screen.</p>
+    </fieldset>
   )
 }

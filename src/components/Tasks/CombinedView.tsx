@@ -4,6 +4,7 @@ import type { Context, Priority, Status, Task } from '../../types'
 import { filterTasks, people as humans, sortTasks, waitingOn, type SortKey, type TaskFilter } from '../../utils/tasks'
 import { TaskCard } from './TaskCard'
 import { ColorKey } from '../UI/ColorKey'
+import { HelpTip } from '../UI/HelpTip'
 
 interface Props {
   title: string
@@ -44,6 +45,7 @@ export function CombinedView({ title, tasks, defaultSort = 'date', actions }: Pr
     <section>
       <header className="view-header">
         <h2>{title}</h2>
+        <HelpTip topic="tasks" />
         <span className="muted">{shown.length} tasks</span>
         <span className="grow" />
         {actions}

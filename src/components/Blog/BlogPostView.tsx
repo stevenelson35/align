@@ -8,6 +8,7 @@ import { TextForm } from '../Tasks/TextAbout'
 import { Icon } from '../UI/Icon'
 import { PhotoPicker } from '../Photos/PhotoPicker'
 import { photoCaption, photoUrl } from '../../photos/favorites'
+import { HelpTip } from '../UI/HelpTip'
 
 const MAX_IMAGES = 6
 const emptyBlock = (): ImageBlock => ({ textBefore: '', imageUrl: '', alt: '', fileName: '' })
@@ -102,6 +103,7 @@ export function BlogPostView() {
     <section className="blog-post">
       <header className="view-header">
         <h2><Icon name="compose" /> New blog post</h2>
+        <HelpTip topic="blog" />
         <span className="grow" />
         <a className="button-link small" href="https://blog.itsallonesong.com" target="_blank" rel="noopener noreferrer">
           The blog ↗

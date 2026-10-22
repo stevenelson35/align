@@ -3,6 +3,7 @@ import { createBoard, STARTER_BOARDS } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import { useTokenBalance } from '../../hooks/useVoting'
 import { Icon } from '../UI/Icon'
+import { HelpTip } from '../UI/HelpTip'
 
 export function BoardsView() {
   const app = useApp()
@@ -35,6 +36,7 @@ export function BoardsView() {
     <section>
       <header className="view-header">
         <h2>Voting</h2>
+        <HelpTip topic="voting" />
         <span className="grow" />
         {app.isMember && <span className="badge tokens"><Icon name="coin" /> {balance} tokens</span>}
       </header>

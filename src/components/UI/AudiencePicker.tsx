@@ -3,6 +3,7 @@ import { AUDIENCE_ICON, AUDIENCES, parentsOf, type Audience } from '../../utils/
 import { sharedNames } from '../../utils/tasks'
 import { SharePicker } from '../Tasks/SharePicker'
 import { Icon } from './Icon'
+import { HelpTip } from './HelpTip'
 
 /**
  * The five-choice "who" picker used everywhere: Only me · Parents · Family · Chosen people · Everyone. Chosen
@@ -35,7 +36,9 @@ export function AudiencePicker({
   return (
     <div className="audience-picker">
       <label>
-        {label}
+        <span>
+          {label} <HelpTip topic="privacy" />
+        </span>
         <select value={value} onChange={(e) => onChange(e.target.value as Audience)}>
           {AUDIENCES.map((a) => (
             <option key={a.value} value={a.value}>

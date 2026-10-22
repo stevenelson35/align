@@ -3,6 +3,7 @@ import { execute, type Action, type Reply } from '../../chat/execute'
 import { useApp, useData } from '../../hooks/useApp'
 import { useTokenBalance } from '../../hooks/useVoting'
 import { Icon } from '../UI/Icon'
+import { HelpTip } from '../UI/HelpTip'
 
 type Message = { from: 'me'; text: string } | { from: 'align'; reply: Reply }
 
@@ -50,7 +51,9 @@ export function ChatPanel({ initialDraft, onClose }: { initialDraft: string; onC
   return (
     <aside className="chat-panel">
       <header className="row">
-        <strong className="grow">Chat</strong>
+        <strong>Chat</strong>
+        <HelpTip topic="chat" />
+        <span className="grow" />
         <button type="button" className="link" onClick={onClose} aria-label="Close chat">
           ✕
         </button>

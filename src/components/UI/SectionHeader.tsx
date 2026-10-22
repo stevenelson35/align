@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import type { HelpTopicId } from '../../help/topics'
+import { HelpTip } from './HelpTip'
 import { Icon, type IconName } from './Icon'
 
 /**
@@ -12,6 +14,7 @@ export function SectionHeader({
   beside,
   onTitleClick,
   expanded,
+  help,
   children,
 }: {
   icon: IconName
@@ -23,6 +26,8 @@ export function SectionHeader({
   onTitleClick?: () => void
   /** With onTitleClick: whether the section is open (for screen readers). */
   expanded?: boolean
+  /** A help topic: adds the small ⓘ after the title. */
+  help?: HelpTopicId
   children?: ReactNode
 }) {
   return (
@@ -43,6 +48,7 @@ export function SectionHeader({
         </>
       )}
       {count !== undefined && <span className="section-count">{count}</span>}
+      {help && <HelpTip topic={help} />}
       {beside}
       {children && <span className="section-actions">{children}</span>}
     </h3>

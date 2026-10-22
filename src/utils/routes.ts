@@ -1,3 +1,5 @@
+import { HELP_TOPICS, type HelpTopicId } from '../help/topics'
+
 // Hash routes (/#/...) so Turbify's static hosting needs no rewrite rules (DESIGN.md §4).
 
 export type Route =
@@ -17,6 +19,8 @@ export type Route =
   | { view: 'blog' }
   /** Favorite photos (psort). */
   | { view: 'photos' }
+  /** Help & about; `topic` scrolls to one section. */
+  | { view: 'help'; topic?: HelpTopicId }
   | { view: 'goal'; goalId: string }
   /** A link to one task / item / note (e.g. in a text): opens it in its list. */
   | { view: 'task'; taskId: string }
@@ -35,6 +39,8 @@ export function parseRoute(hash: string): Route {
     case 'blog':
     case 'photos':
       return { view: parts[0] }
+    case 'help':
+      return HELP_TOPICS.some((t) => t.id === parts[1]) ? { view: 'help', topic: parts[1] as HelpTopicId } : { view: 'help' }
     case 'list':
       if (parts[1]) return { view: 'list', listId: parts[1], timeline: parts[2] === 'timeline' }
       break
@@ -69,6 +75,8 @@ export function routeHash(route: Route): string {
       return `#/day/${route.day}`
     case 'goal':
       return `#/goal/${encodeURIComponent(route.goalId)}`
+    case 'help':
+      return route.topic ? `#/help/${route.topic}` : '#/help'
     default:
       return `#/${route.view}`
   }

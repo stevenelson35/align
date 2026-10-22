@@ -6,6 +6,7 @@ import { TextForm } from '../Tasks/TextAbout'
 import { Comments } from './Comments'
 import { DetailsView } from './Details'
 import { Icon, type IconName } from './Icon'
+import { HelpTip } from './HelpTip'
 
 /** What a text about an entry says: its title, when (if anything), and a link that opens it. */
 export interface TextSubject {
@@ -46,6 +47,7 @@ export function EntryExtras({
       <div className="entry-section">
         <h4>
           <Icon name="message" /> Comments
+          <HelpTip topic="details" label="comments, links and pictures" />
         </h4>
         <Comments thread={thread} onText={textComment} />
       </div>

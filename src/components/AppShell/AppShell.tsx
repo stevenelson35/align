@@ -16,6 +16,7 @@ import { SettingsDialog } from './SettingsDialog'
 import { MainView } from './MainView'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
+import { routeHash } from '../../utils/routes'
 
 interface Props {
   uid: string
@@ -31,13 +32,14 @@ export function AppShell({ uid, household, member }: Props) {
   const [listEditor, setListEditor] = useState<{ list: List | null } | null>(null)
   const [chat, setChat] = useState<{ open: boolean; draft: string; key: number }>({ open: false, draft: '', key: 0 })
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  // Settings belongs to the page it was opened on: going to another page (e.g. "More in Help" in a tip) closes it.
+  const [settingsOpen, setSettingsOpen] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [textingId, setTextingId] = useState<string | null>(null)
   const openSettings = useCallback(() => {
     setSidebarOpen(false)
-    setSettingsOpen(true)
-  }, [])
+    setSettingsOpen(routeHash(route))
+  }, [route])
 
   const canEdit = useCallback((t: Shareable) => canEditTask(t, uid, member.role), [uid, member.role])
   const openChat = useCallback((draft = '') => setChat((c) => ({ open: true, draft, key: c.key + 1 })), [])
@@ -173,7 +175,7 @@ export function AppShell({ uid, household, member }: Props) {
         {chat.open && <ChatPanel key={chat.key} initialDraft={chat.draft} onClose={() => setChat((c) => ({ ...c, open: false }))} />}
         {shift && <ShiftDialog shift={shift} onClose={() => proposeShift(null)} />}
         {listEditor && <ListEditor list={listEditor.list} onClose={() => setListEditor(null)} />}
-        {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+        {settingsOpen === routeHash(route) && <SettingsDialog onClose={() => setSettingsOpen(null)} />}
         {searchOpen && <SearchDialog onClose={() => setSearchOpen(false)} />}
       </div>
     </AppContext.Provider>

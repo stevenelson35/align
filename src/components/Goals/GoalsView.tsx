@@ -6,6 +6,7 @@ import { appliesOn, goalGroups, met, otherLoggers } from '../../utils/goals'
 import { Icon } from '../UI/Icon'
 import { GoalControl } from './GoalControl'
 import { GoalEditor } from './GoalEditor'
+import { HelpTip } from '../UI/HelpTip'
 
 /** Every goal: log today's from here, open one for its chart, or add a new one. */
 export function GoalsView() {
@@ -21,6 +22,7 @@ export function GoalsView() {
     <section>
       <header className="view-header">
         <h2>Goals</h2>
+        <HelpTip topic="goals" />
         <span className="muted">
           {active.filter((g) => appliesOn(g, day) && met(g, g.log?.[day], day)).length}/{active.filter((g) => appliesOn(g, day)).length} today
         </span>

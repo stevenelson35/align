@@ -4,6 +4,7 @@ import { calendarSyncUrl, refreshCalendar } from '../../firebase/calendarSync'
 import { useApp } from '../../hooks/useApp'
 import { googleCalendarDayUrl } from '../../utils/calendar'
 import { Icon } from '../UI/Icon'
+import { HelpTip } from '../UI/HelpTip'
 
 /**
  * "📅 Google Calendar ↗" (opens today in a new tab, to check or change the family calendar) and "↻ Refresh calendar"
@@ -70,6 +71,7 @@ export function CalendarActions() {
         </button>
       )}
       {note && <span className={`small${note.error ? ' error-text' : ' muted'}`}>{note.text}</span>}
+      <HelpTip topic="calendar" />
     </span>
   )
 }

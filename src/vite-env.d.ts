@@ -13,3 +13,7 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+/** The git commit and time the app was built (vite.config.ts), for Help → About. */
+declare const __BUILD_COMMIT__: string
+declare const __BUILD_TIME__: string

@@ -4,6 +4,7 @@ import type { List } from '../../types'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 import { sharedNames } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
+import { HelpTip } from '../UI/HelpTip'
 
 const KIND_LABEL: Record<List['kind'], string> = { list: '', project: ' project', checklist: ' checklist', notes: ' notes', links: ' links' }
 
@@ -13,6 +14,7 @@ export function ListHeader({ list, children }: { list: List; children?: ReactNod
   return (
     <header className="view-header">
       <h2>{list.name}</h2>
+      <HelpTip topic="tasks" label="lists" />
       <span className={`badge ${list.kind === 'project' ? 'color-project' : `color-${list.visibility}`}`}>
         <Icon name={AUDIENCE_ICON[audienceOf(list)]} /> {audienceLabel(audienceOf(list))}
         {KIND_LABEL[list.kind]}
