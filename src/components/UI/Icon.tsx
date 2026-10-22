@@ -59,6 +59,7 @@ const ICONS = {
   timer: { emoji: '⏱️', fill: 'M12 5a8 8 0 1 0 0 16a8 8 0 1 0 0-16z', line: 'M10 2h4M18.5 5.5l1.5-1.5', detail: 'M12 9v4.5' },
   play: { emoji: '▶️', fill: 'M7 4.5v15l12-7.5z' },
   pause: { emoji: '⏸️', fill: 'M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z' },
+  send: { emoji: '📨', fill: 'M3.5 11.5l17-8-6 17-3-7z', detail: 'M11.5 13.5l9-10' },
   book: { emoji: '📖', fill: 'M3 5h5.5A3.5 3.5 0 0 1 12 8.5V20a2.5 2.5 0 0 0-2.5-2.5H3zM21 5h-5.5A3.5 3.5 0 0 0 12 8.5V20a2.5 2.5 0 0 1 2.5-2.5H21z' },
   search: { emoji: '🔍', fill: 'M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13z', line: 'M15.5 15.5L20.5 20.5' },
   calendar: {

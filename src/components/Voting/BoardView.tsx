@@ -139,7 +139,9 @@ export function BoardView({ board, openItemId }: { board: Board; openItemId?: st
       {app.isMember && (
         <form className="row add-task" onSubmit={add}>
           <input placeholder="Suggest something…" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <button type="submit">Add</button>
+<button type="submit" className="icon-button" aria-label="Add" title="Add">
+            <Icon name="plus" />
+          </button>
         </form>
       )}
       {error && <p className="error">{error}</p>}

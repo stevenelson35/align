@@ -242,10 +242,10 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
 
         {error && <p className="error">{error}</p>}
         <div className="row">
-          <button type="submit" disabled={busy}>
+          <button type="submit" className="small" disabled={busy}>
             {goal ? 'Save' : 'Create'}
           </button>
-          <button type="button" className="secondary" onClick={onClose}>
+          <button type="button" className="secondary small" onClick={onClose}>
             Cancel
           </button>
           <span className="grow" />

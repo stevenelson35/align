@@ -532,7 +532,7 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
       {editable && (
         <>
           <div className="row">
-            <button type="submit" disabled={busy}>
+            <button type="submit" className="small" disabled={busy}>
               Save
             </button>
             <span className="grow" />

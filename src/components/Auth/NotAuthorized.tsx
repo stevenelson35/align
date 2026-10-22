@@ -8,7 +8,7 @@ export function NotAuthorized({ email }: { email: string | null }) {
         <p>
           {email ?? 'This account'} can sign in, but hasn't been added to the household yet. Ask Steve to add you.
         </p>
-        <button type="button" onClick={() => signOut()}>
+        <button type="button" className="small" onClick={() => signOut()}>
           Sign out
         </button>
       </div>

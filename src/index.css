@@ -2066,3 +2066,16 @@ a.nav-link {
 .section-actions .link {
   white-space: nowrap;
 }
+
+/* A section title that opens / closes its section (same as its Show / Hide) */
+.section-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}

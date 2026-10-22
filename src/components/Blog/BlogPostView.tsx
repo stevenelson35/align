@@ -87,10 +87,10 @@ export function BlogPostView() {
         {target && <p className="muted small">Added to an existing post: its address keeps that post's categories, so check the link once it's live.</p>}
         <TextForm subject={{ title: posted.title, when: '', link: posted.url }} startOpen label="Text the link" />
         <div className="row">
-          <button type="button" className="secondary" onClick={() => window.location.reload()}>
+          <button type="button" className="secondary small" onClick={() => window.location.reload()}>
             Write another
           </button>
-          <button type="button" className="secondary" onClick={() => app.navigate({ view: 'today' })}>
+          <button type="button" className="secondary small" onClick={() => app.navigate({ view: 'today' })}>
             Back to Today
           </button>
         </div>
@@ -233,7 +233,7 @@ export function BlogPostView() {
         </div>
         {error && <p className="error">{error}</p>}
         <div className="row">
-          <button type="submit" disabled={busy || loadError === 'none'}>
+          <button type="submit" className="small" disabled={busy || loadError === 'none'}>
             {busy ? 'Posting…' : target ? 'Add to post' : 'Publish to blog'}
           </button>
         </div>

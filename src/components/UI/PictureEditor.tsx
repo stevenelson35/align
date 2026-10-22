@@ -218,10 +218,10 @@ export function PictureEditor({ file, onDone, onCancel }: { file: File; onDone: 
           </>
         )}
         <div className="row">
-          <button type="button" onClick={done} disabled={!img || busy}>
+          <button type="button" className="small" onClick={done} disabled={!img || busy}>
             {busy ? 'Saving…' : 'Use picture'}
           </button>
-          <button type="button" className="secondary" onClick={onCancel}>
+          <button type="button" className="secondary small" onClick={onCancel}>
             Cancel
           </button>
         </div>

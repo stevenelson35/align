@@ -4,6 +4,7 @@ import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
 import { ListHeader } from './ListHeader'
 import { DetailsMarks } from '../UI/Details'
+import { Icon } from '../UI/Icon'
 
 /** Notes: reference info (Wi-Fi password, sizes, the plumber's number). Alphabetical; tap one to read or edit it. */
 export function NotesView({ list }: { list: List }) {
@@ -34,7 +35,9 @@ export function NotesView({ list }: { list: List }) {
       {editable && (
         <form className="row add-task" onSubmit={add}>
           <input placeholder="New note title…" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="New note title" />
-          <button type="submit">Add</button>
+<button type="submit" className="icon-button" aria-label="Add note" title="Add note">
+            <Icon name="plus" />
+          </button>
         </form>
       )}
       {error && <p className="error">{error}</p>}

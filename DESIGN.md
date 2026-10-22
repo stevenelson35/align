@@ -407,7 +407,13 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-22 ("Align Updates" list): built, tested, NOT yet committed
+### 2026-10-22 (consistency): built, tested, NOT yet committed
+- Section titles with Show / Hide (Goals, On this day / From the archive) toggle when tapped (`SectionHeader onTitleClick`).
+- To do's color key starts shown and remembers being hidden (`align-color-key-shown`).
+- No big purple buttons: inline add / send buttons are outline icon buttons (`.icon-button`: chat Send, Add board, Suggest, checklist / notes / links / list quick adds, comment Post); dialog and form actions use the compact size (Save, Create, Publish, Apply, Use picture). The sign-in and first-time setup screens keep their full-size button.
+- No rules change. Tests: 103 unit.
+
+### 2026-10-22 ("Align Updates" list): built and pushed (`21d78eb`)
 The user's own task list "Align Updates" (in Align) held 8 requests; all were done:
 - Top bar: the purple "+" became a plain chat-bubble-plus icon (Quick add in chat), like search and theme.
 - Day view To do: "+ Add" in the heading opens the add box (stays open for several adds; Esc closes); its submit is an outline ＋ icon button. A swatch next to the count shows the color key (`ColorKey`, shared with the task views). "Push the rest" is now "Push rest" (full wording on hover) so the heading fits a phone.

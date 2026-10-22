@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { execute, type Action, type Reply } from '../../chat/execute'
 import { useApp, useData } from '../../hooks/useApp'
 import { useTokenBalance } from '../../hooks/useVoting'
+import { Icon } from '../UI/Icon'
 
 type Message = { from: 'me'; text: string } | { from: 'align'; reply: Reply }
 
@@ -86,8 +87,8 @@ export function ChatPanel({ initialDraft, onClose }: { initialDraft: string; onC
       </div>
       <form className="row" onSubmit={send}>
         <input ref={inputRef} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder='e.g. "add task mow lawn on Saturday"' />
-        <button type="submit" disabled={busy}>
-          Send
+        <button type="submit" className="icon-button" disabled={busy} aria-label="Send" title="Send">
+          <Icon name="send" />
         </button>
       </form>
     </aside>

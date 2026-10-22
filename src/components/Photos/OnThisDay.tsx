@@ -24,7 +24,7 @@ export function OnThisDay({ day }: { day: string }) {
   }
   return (
     <div className="day-section on-this-day">
-      <SectionHeader icon="photo" title={title} count={photos.length}>
+      <SectionHeader icon="photo" title={title} count={photos.length} onTitleClick={() => setHidden(!hidden)} expanded={!hidden}>
         <button type="button" className="link small" onClick={() => setHidden(!hidden)} aria-expanded={!hidden}>
           {hidden ? 'Show' : 'Hide'}
         </button>

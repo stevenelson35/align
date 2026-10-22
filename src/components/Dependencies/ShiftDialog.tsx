@@ -85,10 +85,10 @@ export function ShiftDialog({ shift, onClose }: { shift: PendingShift; onClose: 
         )}
         {error && <p className="error">{error}</p>}
         <div className="row">
-          <button type="button" onClick={apply} disabled={busy || changedCount === 0}>
+          <button type="button" className="small" onClick={apply} disabled={busy || changedCount === 0}>
             Apply {changedCount} change{changedCount === 1 ? '' : 's'}
           </button>
-          <button type="button" className="secondary" onClick={onClose}>
+          <button type="button" className="secondary small" onClick={onClose}>
             Cancel
           </button>
         </div>

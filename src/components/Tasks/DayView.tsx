@@ -14,6 +14,7 @@ import { Icon } from '../UI/Icon'
 import { parentsOf } from '../../utils/audience'
 import { SectionHeader } from '../UI/SectionHeader'
 import { ColorKey } from '../UI/ColorKey'
+import { useStoredFlag } from '../../hooks/useStoredFlag'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -61,9 +62,10 @@ export function DayView({ day }: { day: string }) {
     )
   }
 
-  // The add box opens from "+ Add to do" (and stays open for several adds); the color key from the swatch.
+  // The add box opens from "+ Add" (and stays open for several adds).
   const [adding, setAdding] = useState(false)
-  const [showKey, setShowKey] = useState(false)
+  // The color key starts shown; hiding (or showing) it is remembered on this device.
+  const [showKey, setShowKey] = useStoredFlag('align-color-key-shown', true)
 
   async function add(e: FormEvent) {
     e.preventDefault()

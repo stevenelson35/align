@@ -53,7 +53,9 @@ export function ChecklistView({ list }: { list: List }) {
       {editable && (
         <form className="row add-task" onSubmit={add}>
           <input placeholder="Add an item…" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="New item" />
-          <button type="submit">Add</button>
+<button type="submit" className="icon-button" aria-label="Add" title="Add">
+            <Icon name="plus" />
+          </button>
         </form>
       )}
       {error && <p className="error">{error}</p>}

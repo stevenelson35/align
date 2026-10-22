@@ -10,6 +10,7 @@ import { linkProjectTasks, withDependencyChanges } from '../../utils/project'
 import { CalendarActions } from './CalendarActions'
 import { ListHeader } from './ListHeader'
 import { TaskCard } from './TaskCard'
+import { Icon } from '../UI/Icon'
 
 export function ListView({ list }: { list: List }) {
   const app = useApp()
@@ -121,7 +122,9 @@ export function ListView({ list }: { list: List }) {
       {editable && (
         <form className="row add-task" onSubmit={add}>
           <input placeholder="Add a task…" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <button type="submit" disabled={adding || !title.trim()}>Add</button>
+<button type="submit" className="icon-button" aria-label="Add" title="Add" disabled={adding || !title.trim()}>
+            <Icon name="plus" />
+          </button>
         </form>
       )}
       {editable && list.kind === 'project' && lastAdded && (
@@ -142,8 +145,8 @@ export function ListView({ list }: { list: List }) {
       {ordering && (
         <div className="row">
           <span className="small">{sequence.length} selected</span>
-          <button type="button" onClick={linkSequence} disabled={sequence.length < 2}>Preview prerequisite links</button>
-          <button type="button" className="secondary" onClick={() => { setSequence([]); setOrdering(false) }}>Cancel</button>
+          <button type="button" className="small" onClick={linkSequence} disabled={sequence.length < 2}>Preview prerequisite links</button>
+          <button type="button" className="secondary small" onClick={() => { setSequence([]); setOrdering(false) }}>Cancel</button>
         </div>
       )}
       {error && <p className="error">{error}</p>}

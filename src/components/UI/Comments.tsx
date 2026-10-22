@@ -91,8 +91,8 @@ export function Comments({ thread, placeholder = 'Add a comment…', onText }: {
       {isMember && (
         <form className="row" onSubmit={add}>
           <input value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} maxLength={2000} aria-label="New comment" />
-          <button type="submit" className="small">
-            Post
+          <button type="submit" className="icon-button" aria-label="Post comment" title="Post">
+            <Icon name="send" />
           </button>
         </form>
       )}

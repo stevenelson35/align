@@ -10,6 +10,8 @@ export function SectionHeader({
   title,
   count,
   beside,
+  onTitleClick,
+  expanded,
   children,
 }: {
   icon: IconName
@@ -17,14 +19,29 @@ export function SectionHeader({
   count?: ReactNode
   /** Something small right after the count (e.g. the color key toggle). */
   beside?: ReactNode
+  /** Makes the icon and title a button (e.g. the same as Show / Hide). */
+  onTitleClick?: () => void
+  /** With onTitleClick: whether the section is open (for screen readers). */
+  expanded?: boolean
   children?: ReactNode
 }) {
   return (
     <h3 className="section-header">
-      <span className="section-icon">
-        <Icon name={icon} />
-      </span>
-      <span className="section-title">{title}</span>
+      {onTitleClick ? (
+        <button type="button" className="section-toggle" onClick={onTitleClick} aria-expanded={expanded}>
+          <span className="section-icon">
+            <Icon name={icon} />
+          </span>
+          <span className="section-title">{title}</span>
+        </button>
+      ) : (
+        <>
+          <span className="section-icon">
+            <Icon name={icon} />
+          </span>
+          <span className="section-title">{title}</span>
+        </>
+      )}
       {count !== undefined && <span className="section-count">{count}</span>}
       {beside}
       {children && <span className="section-actions">{children}</span>}

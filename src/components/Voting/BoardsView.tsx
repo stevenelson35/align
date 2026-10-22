@@ -65,7 +65,9 @@ export function BoardsView() {
       {app.isMember && (
         <form className="row add-task" onSubmit={add}>
           <input placeholder="New board name…" value={name} onChange={(e) => setName(e.target.value)} />
-          <button type="submit">Add board</button>
+<button type="submit" className="icon-button" aria-label="Add board" title="Add board">
+            <Icon name="plus" />
+          </button>
         </form>
       )}
       {error && <p className="error">{error}</p>}

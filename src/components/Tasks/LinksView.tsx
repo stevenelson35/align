@@ -145,7 +145,9 @@ export function LinksView({ list }: { list: List }) {
                 <option key={c} value={c} />
               ))}
             </datalist>
-            <button type="submit">Add</button>
+<button type="submit" className="icon-button" aria-label="Add link" title="Add link">
+              <Icon name="plus" />
+            </button>
           </div>
           <div className="row reading-option">
             <label className="inline small">
