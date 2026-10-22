@@ -1,17 +1,19 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { today } from '../../engine/dates'
 import { addToTotal, logGoal } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
 import type { Goal, GoalEntry } from '../../types'
 import { amount, goalHint, met, suggested } from '../../utils/goals'
 import { canLogGoal } from '../../utils/tasks'
+import { GoalSparkline } from './GoalSparkline'
+import { GoalTimer } from './GoalTimer'
 
 /**
  * Log one goal for one day, in as few taps as possible: a checkbox (check), one tap per time (tally), one tap for
  * "did the suggestion" or type the amount (progressive), type the measurement (measure), or add an amount (total).
  * People who can only view see the same thing, read-only.
  */
-export function GoalControl({ goal, day, showName = true }: { goal: Goal; day: string; showName?: boolean }) {
+export function GoalControl({ goal, day, showName = true, who }: { goal: Goal; day: string; showName?: boolean; /** Who else logs it, e.g. "with Linda". */ who?: string }) {
   const { uid, member, navigate } = useApp()
   const [error, setError] = useState<string | null>(null)
   const entry = goal.log?.[day]
@@ -20,24 +22,39 @@ export function GoalControl({ goal, day, showName = true }: { goal: Goal; day: s
   const done = met(goal, entry, day)
   const hint = goalHint(goal, day)
 
+  // The trend at a glance (rows only; the goal's own page has the full chart). Tap for the chart.
+  const spark = showName && (
+    <button type="button" className="spark-button" onClick={() => navigate({ view: 'goal', goalId: goal.id })} aria-label={`${goal.name}: see the chart`}>
+      <GoalSparkline goal={goal} />
+    </button>
+  )
   const name = showName && (
     <button type="button" className="goal-name link" onClick={() => navigate({ view: 'goal', goalId: goal.id })} title="See this goal's history">
       {goal.name}
+      {who && <span className="muted small goal-who"> ({who})</span>}
     </button>
   )
 
   return (
     <div className={`goal-control kind-${goal.kind}${done ? ' met' : ''}`}>
       {goal.kind === 'check' ? (
-        <label className="inline goal-check">
-          <input type="checkbox" checked={!!entry?.done} disabled={!editable} onChange={(e) => save({ done: e.target.checked || undefined })} />
-          {name || <span>Done</span>}
-        </label>
+        <div className="goal-head">
+          <label className="inline goal-check">
+            <input type="checkbox" checked={!!entry?.done} disabled={!editable} onChange={(e) => save({ done: e.target.checked || undefined })} />
+            {name || <span>Done</span>}
+          </label>
+          {spark}
+        </div>
       ) : (
         <div className="goal-head">
           {name}
           {hint && <span className="muted small">{hint}</span>}
-          {done && <span className="goal-met" title="Goal met">✓</span>}
+          {done && (
+            <span className="goal-met" title="Goal met">
+              ✓
+            </span>
+          )}
+          {spark}
         </div>
       )}
       {goal.kind === 'tally' && <Tally goal={goal} count={entry?.count ?? 0} editable={editable} onSet={(count) => save({ count: count || undefined })} />}
@@ -49,12 +66,14 @@ export function GoalControl({ goal, day, showName = true }: { goal: Goal; day: s
           editable={editable}
           quick={goal.kind === 'progressive' ? suggested(goal, day) : undefined}
           onSave={(value) => save({ value })}
+          timerGoalId={goal.timer ? goal.id : undefined}
         />
       )}
       {goal.kind === 'total' && editable && (
         <AddAmount
           added={entry?.value}
           unit={goal.unit}
+          timerGoalId={goal.timer ? goal.id : undefined}
           onAdd={(n) => addToTotal(goal.id, day, n, uid).catch((err) => setError(err instanceof Error ? err.message : String(err)))}
         />
       )}
@@ -64,8 +83,9 @@ export function GoalControl({ goal, day, showName = true }: { goal: Goal; day: s
 }
 
 /** Running total: type an amount and Add (a minus amount takes some back). Several people can add on one day. */
-function AddAmount({ added, unit, onAdd }: { added?: number; unit?: string; onAdd: (n: number) => void }) {
+function AddAmount({ added, unit, onAdd, timerGoalId }: { added?: number; unit?: string; onAdd: (n: number) => void; timerGoalId?: string }) {
   const [text, setText] = useState('')
+  const box = useRef<HTMLInputElement>(null)
   const n = Number(text)
   const add = () => {
     if (text.trim() && Number.isFinite(n) && n !== 0) {
@@ -74,23 +94,36 @@ function AddAmount({ added, unit, onAdd }: { added?: number; unit?: string; onAd
     }
   }
   return (
-    <div className="row goal-amount">
-      <input
-        type="number"
-        inputMode="decimal"
-        step="any"
-        value={text}
-        placeholder="Amount"
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && add()}
-        aria-label="Amount to add"
-      />
-      {unit && <span className="muted small">{unit}</span>}
-      <button type="button" className="small" onClick={add} disabled={!text.trim() || !Number.isFinite(n) || n === 0}>
-        Add
-      </button>
-      {!!added && <span className="muted small">+{amount(added, unit)} this day</span>}
-    </div>
+    <>
+      <div className="row goal-amount">
+        <input
+          ref={box}
+          type="number"
+          inputMode="decimal"
+          step="any"
+          value={text}
+          placeholder="Amount"
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && add()}
+          aria-label="Amount to add"
+        />
+        {unit && <span className="muted small">{unit}</span>}
+        <button type="button" className="small" onClick={add} disabled={!text.trim() || !Number.isFinite(n) || n === 0}>
+          Add
+        </button>
+        {!!added && <span className="muted small">+{amount(added, unit)} this day</span>}
+      </div>
+      {timerGoalId && (
+        <GoalTimer
+          goalId={timerGoalId}
+          unit={unit}
+          onUse={(v) => {
+            setText(String(v))
+            box.current?.focus()
+          }}
+        />
+      )}
+    </>
   )
 }
 
@@ -135,8 +168,24 @@ function Tally({ goal, count, editable, onSet }: { goal: Goal; count: number; ed
 }
 
 /** Type an amount (saved on Enter or leaving the box); for progressive goals, one tap logs the suggestion. */
-function Amount({ value, unit, editable, quick, onSave }: { value?: number; unit?: string; editable: boolean; quick?: number; onSave: (v: number | undefined) => void }) {
+function Amount({
+  value,
+  unit,
+  editable,
+  quick,
+  onSave,
+  timerGoalId,
+}: {
+  value?: number
+  unit?: string
+  editable: boolean
+  quick?: number
+  onSave: (v: number | undefined) => void
+  /** Show the goal's timer; Use puts its time in the box (saved when you leave the box or press Enter). */
+  timerGoalId?: string
+}) {
   const [text, setText] = useState(value === undefined ? '' : String(value))
+  const box = useRef<HTMLInputElement>(null)
   const commit = () => {
     const t = text.trim()
     const n = Number(t)
@@ -145,25 +194,39 @@ function Amount({ value, unit, editable, quick, onSave }: { value?: number; unit
     } else if (Number.isFinite(n) && n !== value) onSave(n)
   }
   return (
-    <div className="row goal-amount">
-      <input
-        type="number"
-        inputMode="decimal"
-        step="any"
-        value={text}
-        disabled={!editable}
-        placeholder={quick !== undefined ? String(quick) : '—'}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
-        aria-label="Amount"
-      />
-      {unit && <span className="muted small">{unit}</span>}
-      {quick !== undefined && value === undefined && editable && (
-        <button type="button" className="secondary small" onClick={() => onSave(quick)} title="Log the suggested amount">
-          ✓ {quick}
-        </button>
+    <>
+      <div className="row goal-amount">
+        <input
+          ref={box}
+          type="number"
+          inputMode="decimal"
+          step="any"
+          value={text}
+          disabled={!editable}
+          placeholder={quick !== undefined ? String(quick) : '—'}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
+          aria-label="Amount"
+        />
+        {unit && <span className="muted small">{unit}</span>}
+        {quick !== undefined && value === undefined && editable && (
+          <button type="button" className="secondary small" onClick={() => onSave(quick)} title="Log the suggested amount">
+            ✓ {quick}
+          </button>
+        )}
+      </div>
+      {timerGoalId && (
+        <GoalTimer
+          goalId={timerGoalId}
+          unit={unit}
+          disabled={!editable}
+          onUse={(v) => {
+            setText(String(v))
+            box.current?.focus()
+          }}
+        />
       )}
-    </div>
+    </>
   )
 }

@@ -26,8 +26,8 @@ export function TopBar({ householdName, member, onMenu, onChat, onSettings, onSe
       </div>
       <div className="user">
         {isMember && (
-          <button type="button" className="small" onClick={() => openChat('add task ')} title="Quick add (n)" aria-label="Quick add">
-            +<span className="hide-mobile"> Quick add</span>
+          <button type="button" className="link search-button" onClick={() => openChat('add task ')} title="Quick add in chat (n)" aria-label="Quick add">
+            <Icon name="quickAdd" />
           </button>
         )}
         <button type="button" className="link hide-mobile" onClick={onChat}>

@@ -5,6 +5,7 @@ import { useApp } from '../../hooks/useApp'
 import type { Goal } from '../../types'
 import { audienceLabel, audienceOf, parentsOf, privacyFields, viewCoveringEditors, type Audience } from '../../utils/audience'
 import { AudiencePicker } from '../UI/AudiencePicker'
+import { NumberField } from '../Tasks/NumberField'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const KIND_HELP: Record<Goal['kind'], string> = {
@@ -50,6 +51,7 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
       progression: form.kind === 'progressive' ? prog : undefined,
       target: form.kind === 'measure' || form.kind === 'progressive' || form.kind === 'total' ? form.target : undefined,
       direction: form.kind === 'measure' ? (form.direction ?? 'down') : undefined,
+      timer: (form.kind === 'progressive' || form.kind === 'measure' || form.kind === 'total') && form.timer ? true : undefined,
       weekdays: form.weekdays?.length ? [...form.weekdays].sort() : undefined,
       sharedWith: undefined,
       audience: undefined,
@@ -118,14 +120,14 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
         {form.kind === 'tally' && (
           <label>
             Times a day
-            <input type="number" min={1} max={50} value={form.perDay ?? 1} onChange={(e) => set({ perDay: num(e.target.value) })} />
+            <NumberField min={1} max={50} value={form.perDay ?? 1} onChange={(n) => set({ perDay: n })} />
           </label>
         )}
         {form.kind === 'progressive' && (
           <div className="grid2">
             <label>
               Start at
-              <input type="number" step="any" value={prog.start} onChange={(e) => setProg({ start: num(e.target.value) ?? 0 })} />
+              <NumberField decimals value={prog.start} onChange={(n) => setProg({ start: n })} />
             </label>
             <label>
               Starting
@@ -133,12 +135,12 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
             </label>
             <label>
               Change by (− to go down)
-              <input type="number" step="any" value={prog.step} onChange={(e) => setProg({ step: num(e.target.value) ?? 0 })} />
+              <NumberField decimals value={prog.step} onChange={(n) => setProg({ step: n })} />
             </label>
             <label>
               Every
               <span className="row">
-                <input type="number" min={1} value={prog.every} onChange={(e) => setProg({ every: Math.max(1, num(e.target.value) ?? 1) })} />
+                <NumberField min={1} value={prog.every} onChange={(n) => setProg({ every: n })} aria-label="How many" />
                 <select value={prog.per} onChange={(e) => setProg({ per: e.target.value as 'day' | 'week' })} aria-label="Days or weeks">
                   <option value="day">days</option>
                   <option value="week">weeks</option>
@@ -180,6 +182,12 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
               </select>
             </label>
           </div>
+        )}
+        {(form.kind === 'progressive' || form.kind === 'measure' || form.kind === 'total') && (
+          <label className="inline">
+            <input type="checkbox" checked={!!form.timer} onChange={(e) => set({ timer: e.target.checked || undefined })} />
+            Show a timer (start / pause, then Use puts the time in the entry; minutes unless the unit is hours or seconds)
+          </label>
         )}
         {form.kind !== 'check' && (
           <label>

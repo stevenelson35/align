@@ -151,6 +151,8 @@ export interface Goal {
   editors?: string[]
   ownerId: string
   viewerVisible: boolean
+  /** Show a stopwatch on the goal (Use puts its time in the entry box). Number goals only. */
+  timer?: boolean
   log?: Record<string, GoalEntry>
   archived?: boolean
   createdBy: string

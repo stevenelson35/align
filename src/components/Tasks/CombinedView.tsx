@@ -3,7 +3,7 @@ import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Priority, Status, Task } from '../../types'
 import { filterTasks, people as humans, sortTasks, waitingOn, type SortKey, type TaskFilter } from '../../utils/tasks'
 import { TaskCard } from './TaskCard'
-import { Icon } from '../UI/Icon'
+import { ColorKey } from '../UI/ColorKey'
 
 interface Props {
   title: string
@@ -51,13 +51,7 @@ export function CombinedView({ title, tasks, defaultSort = 'date', actions }: Pr
           Filters
         </button>
       </header>
-      <p className="color-key small muted" aria-label="Color key">
-        <span className="key color-private">Only me <Icon name="lock" /></span>
-        <span className="key color-family">Family / Everyone</span>
-        <span className="key color-shared">Parents <Icon name="parents" /> · Chosen people <Icon name="shared" /></span>
-        <span className="key color-project">Project</span>
-        <span className="key color-done">Finished</span>
-      </p>
+      <ColorKey />
       <div className={`filters${filtersOpen ? ' open' : ''}`}>
         <select value={filter.listId ?? ''} onChange={(e) => set({ listId: e.target.value || undefined })}>
           <option value="">All lists</option>

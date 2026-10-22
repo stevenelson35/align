@@ -407,7 +407,16 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-21 (entry views): built, tested, NOT yet committed or deployed
+### 2026-10-22 ("Align Updates" list): built, tested, NOT yet committed
+The user's own task list "Align Updates" (in Align) held 8 requests; all were done:
+- Top bar: the purple "+" became a plain chat-bubble-plus icon (Quick add in chat), like search and theme.
+- Day view To do: "+ Add" in the heading opens the add box (stays open for several adds; Esc closes); its submit is an outline ＋ icon button. A swatch next to the count shows the color key (`ColorKey`, shared with the task views). "Push the rest" is now "Push rest" (full wording on hover) so the heading fits a phone.
+- Task editor: "+ New list…" in the List chooser and "+ New checklist…" for Add an item (`NewListInline`; your default who-can-see).
+- Goals: a sparkline per goal row (`GoalSparkline`: last 14 days, dashed target, dot on the last value; tap for the chart); number boxes in the goal editor can be cleared and retyped (`NumberField` now takes decimals / negatives); an optional **timer** per number goal (`timer: true`; `GoalTimer`: start / pause / reset, Use puts the time in the entry box, keeps running on the device); shared goals show who else logs them ("(with Linda)", `otherLoggers`) and Today lists your own goals first.
+- No rules change. Tests: 103 unit, 40 rules. Playwright at 390px.
+- Reading the list used the Firebase CLI's sign-in (the user allowed it); marking the tasks done was blocked by the permission check, so the user ticks them.
+
+### 2026-10-21 (entry views): built and deployed (`d8ac8a5`, rules deployed)
 - **Every entry opens as a view, with Edit** (tasks, checklist items, notes, links in the side panel via `EntryPanel`; voting items inline): title, facts (status, when, who, list and who can see it, what it waits on), then the **common block** `EntryExtras`: note (sized to its text), links, pictures, **comments**, **Text about this**. Save returns to the view; Cancel leaves the form. The goal page has the same block (goal comments).
 - **Comments on any entry** (`commentThread` in db.ts: boards, voting items, `tasks/{id}/comments`, `goals/{id}/comments`); each comment has a 💬 that opens Text about this with the comment as the message. Rules: whoever can see the task / goal reads; members who can see it write; edit / delete own. Plus a test.
 - **Links have a name and an address** (`{ url, label? }`; bare addresses saved earlier still read). Views show the name (opens in a new tab) with Show address(es).

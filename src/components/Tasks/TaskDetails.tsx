@@ -8,6 +8,7 @@ import type { Context, Dependency, Priority, Status, Task } from '../../types'
 import { googleCalendarDayUrl } from '../../utils/calendar'
 import { safeUrl } from '../../utils/links'
 import { NumberField } from './NumberField'
+import { NewListInline } from './NewListInline'
 import { isFinished, isItemList, people as humans, PRIORITY_LABEL, privacyText, STATUS_LABEL, targetName } from '../../utils/tasks'
 import { shareLink, whenText } from '../../utils/text'
 import { EntryExtras, EntryFact, EntryPanel } from '../UI/EntryExtras'
@@ -20,6 +21,9 @@ import { DetailsView, LinksAndPictures } from '../UI/Details'
 function statusIcon(t: Task) {
   return t.status === 'done' ? '✓' : t.status === 'canceled' ? '✕' : '⏳'
 }
+
+/** The list chooser's "+ New list…" value. */
+const NEW = '__new__'
 
 /** Right panel for a task (DESIGN.md §10): opens as a view; Edit switches to the full form. */
 export function TaskDetails({ task }: { task: Task }) {
@@ -123,6 +127,8 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
   const [itemMessage, setItemMessage] = useState('')
 
   const set = (patch: Partial<Task>) => setForm((f) => ({ ...f, ...patch }))
+  // "+ New list…" in the list chooser (or "+ New checklist…" for Add an item): which one is being named.
+  const [newList, setNewList] = useState<'list' | 'checklist' | null>(null)
   const byId = new Map(tasks.map((t) => [t.id, t]))
   const canEditId = (id: string) => {
     const t = byId.get(id)
@@ -293,8 +299,10 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
         )}
         <label>
           List
-          <select value={form.listId} onChange={(e) => {
+          <select value={newList === 'list' ? NEW : form.listId} onChange={(e) => {
             const listId = e.target.value
+            if (listId === NEW) return setNewList('list')
+            setNewList(null)
             set({ listId, startDate: form.startDate || (lists.find((l) => l.id === listId)?.kind === 'project' ? today() : undefined) })
             setNewDep({ taskId: '', offsetDays: 0 })
             setShowOtherTasks(false)
@@ -304,8 +312,20 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
                 {l.name} ({audienceLabel(audienceOf(l))})
               </option>
             ))}
+            {app.isMember && <option value={NEW}>+ New list…</option>}
           </select>
         </label>
+        {newList === 'list' && (
+          <NewListInline
+            kind="list"
+            onCreated={(listId) => {
+              setNewList(null)
+              set({ listId })
+              setNewDep({ taskId: '', offsetDays: 0 })
+            }}
+            onCancel={() => setNewList(null)}
+          />
+        )}
         {(() => {
           const target = lists.find((l) => l.id === form.listId)
           return target && <p className="privacy-note small"><Icon name={AUDIENCE_ICON[audienceOf(target)]} /> {privacyText(target, 'task', app.household, app.uid)}</p>
@@ -315,11 +335,26 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
             <summary>Add a shopping / checklist item</summary>
             <label>
               Checklist
-              <select value={itemListId} onChange={(e) => setItemListId(e.target.value)}>
+              <select value={newList === 'checklist' ? NEW : itemListId} onChange={(e) => {
+                if (e.target.value === NEW) return setNewList('checklist')
+                setNewList(null)
+                setItemListId(e.target.value)
+              }}>
                 <option value="">Choose a list…</option>
                 {itemLists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                <option value={NEW}>+ New checklist…</option>
               </select>
             </label>
+            {newList === 'checklist' && (
+              <NewListInline
+                kind="checklist"
+                onCreated={(id) => {
+                  setNewList(null)
+                  setItemListId(id)
+                }}
+                onCancel={() => setNewList(null)}
+              />
+            )}
             <label>
               Item
               <input value={itemTitle} onChange={(e) => setItemTitle(e.target.value)} onKeyDown={(e) => {

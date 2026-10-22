@@ -125,3 +125,23 @@ export function goalGroups(goals: Goal[], uid: string, role: Role, household: Ho
   ]
   return groups.filter((g) => g.goals.length)
 }
+
+/** The time in the goal's unit: hours or seconds if the unit says so, otherwise minutes (one decimal). */
+export function timerValue(ms: number, unit?: string): number {
+  const u = (unit ?? '').trim().toLowerCase()
+  if (/^(h|hr|hrs|hour|hours)$/.test(u)) return Math.round((ms / 3_600_000) * 100) / 100
+  if (/^(s|sec|secs|second|seconds)$/.test(u)) return Math.round(ms / 1000)
+  return Math.round((ms / 60_000) * 10) / 10
+}
+
+/**
+ * Who else logs a goal, for a short note beside its name: "Family" (everyone in the household can), "with Linda"
+ * (named people besides you), or "" when only you (or only its owner) log it.
+ */
+export function otherLoggers(goal: Pick<Goal, 'ownerId' | 'editAudience' | 'editors' | 'visibility'>, household: Household, uid: string): string {
+  const a = goal.editAudience ?? (goal.visibility === 'private' ? 'private' : 'family')
+  if (a === 'private') return ''
+  if (a === 'family' || a === 'everyone') return 'Family'
+  const names = (goal.editors ?? []).filter((id) => id !== uid).map((id) => household.members[id]?.displayName ?? 'someone')
+  return names.length ? `with ${names.join(', ')}` : ''
+}

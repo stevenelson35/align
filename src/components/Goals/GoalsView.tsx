@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
-import { appliesOn, goalGroups, met } from '../../utils/goals'
+import { appliesOn, goalGroups, met, otherLoggers } from '../../utils/goals'
 import { Icon } from '../UI/Icon'
 import { GoalControl } from './GoalControl'
 import { GoalEditor } from './GoalEditor'
@@ -39,7 +39,7 @@ export function GoalsView() {
             {group.goals.map((g) => (
               <div key={g.id} className="goal-row">
                 {appliesOn(g, day) ? (
-                  <GoalControl goal={g} day={day} />
+                  <GoalControl goal={g} day={day} who={group.key === 'shared' ? otherLoggers(g, household, uid) : undefined} />
                 ) : (
                   <div className="goal-control">
                     <button type="button" className="goal-name link" onClick={() => navigate({ view: 'goal', goalId: g.id })}>

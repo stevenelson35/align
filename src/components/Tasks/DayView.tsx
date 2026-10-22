@@ -13,6 +13,7 @@ import { TaskCard } from './TaskCard'
 import { Icon } from '../UI/Icon'
 import { parentsOf } from '../../utils/audience'
 import { SectionHeader } from '../UI/SectionHeader'
+import { ColorKey } from '../UI/ColorKey'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -59,6 +60,10 @@ export function DayView({ day }: { day: string }) {
         : `Pushed ${movable.length} to ${formatDay(addDays(day, 1))}.`,
     )
   }
+
+  // The add box opens from "+ Add to do" (and stays open for several adds); the color key from the swatch.
+  const [adding, setAdding] = useState(false)
+  const [showKey, setShowKey] = useState(false)
 
   async function add(e: FormEvent) {
     e.preventDefault()
@@ -114,28 +119,53 @@ export function DayView({ day }: { day: string }) {
       <GoalsStrip day={day} />
       <OnThisDay day={day} />
 
-      {app.isMember && (
-        <form className="row add-task" onSubmit={add}>
-          <input
-            placeholder={day === now ? 'Add a task for today…' : `Add a task for ${formatDay(day)}…`}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            aria-label="New task for this day"
-          />
-          <button type="submit">Add</button>
-        </form>
-      )}
-      {error && <p className="error">{error}</p>}
-      {note && <p className="muted small">{note}</p>}
-
       <div className="day-section">
-        <SectionHeader icon="todo" title={day < now ? 'Not done' : 'To do'} count={b.todo.length}>
+        <SectionHeader
+          icon="todo"
+          title={day < now ? 'Not done' : 'To do'}
+          count={b.todo.length}
+          beside={
+            <button
+              type="button"
+              className={`link small key-toggle${showKey ? ' on' : ''}`}
+              onClick={() => setShowKey(!showKey)}
+              aria-expanded={showKey}
+              aria-label="What the colors mean"
+              title="What the colors mean"
+            >
+              <Icon name="swatch" />
+            </button>
+          }
+        >
+          {app.isMember && (
+            <button type="button" className="link small" onClick={() => setAdding(!adding)} aria-expanded={adding} title="Add a to do" aria-label="Add a to do">
+              <Icon name="plus" /> Add
+            </button>
+          )}
           {b.todo.length > 0 && day <= now && app.isMember && (
             <button type="button" className="link small" onClick={pushRest} title={`End of day: move what's left to ${day === now ? 'tomorrow' : 'the next day'}`}>
-              <Icon name="skip" /> Push the rest
+              <Icon name="skip" /> Push rest
             </button>
           )}
         </SectionHeader>
+        {showKey && <ColorKey />}
+        {app.isMember && adding && (
+          <form className="row add-task" onSubmit={add}>
+            <input
+              autoFocus
+              placeholder={day === now ? 'Add a task for today…' : `Add a task for ${formatDay(day)}…`}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && setAdding(false)}
+              aria-label="New task for this day"
+            />
+            <button type="submit" className="icon-button" aria-label="Add" title="Add" disabled={!title.trim()}>
+              <Icon name="plus" />
+            </button>
+          </form>
+        )}
+        {error && <p className="error">{error}</p>}
+        {note && <p className="muted small">{note}</p>}
         <div className="task-list">{byDate(b.todo).map((t) => card(t))}</div>
         {b.todo.length === 0 && <p className="muted small">{day < now ? 'Nothing was left undone.' : 'Nothing left to do.'}</p>}
       </div>

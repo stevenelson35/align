@@ -92,3 +92,23 @@ describe('goalGroups', () => {
     expect(goalGroups(goals, 'wife', 'viewer', household).map((g) => g.title)).toEqual(["Steve's goals", "Linda's goals"])
   })
 })
+
+describe('timerValue', () => {
+  it('turns timer time into the goal unit: minutes unless it says hours or seconds', async () => {
+    const { timerValue } = await import('./goals')
+    expect(timerValue(12 * 60_000 + 30_000, 'min')).toBe(12.5)
+    expect(timerValue(12 * 60_000 + 30_000)).toBe(12.5)
+    expect(timerValue(90 * 60_000, 'hours')).toBe(1.5)
+    expect(timerValue(95_400, 'sec')).toBe(95)
+  })
+})
+
+describe('otherLoggers', () => {
+  it('names who else logs a goal', async () => {
+    const { otherLoggers } = await import('./goals')
+    const household = { members: { me: { displayName: 'Steve' }, wife: { displayName: 'Linda' } } } as never
+    expect(otherLoggers({ ownerId: 'me', editAudience: 'private', visibility: 'family' }, household, 'me')).toBe('')
+    expect(otherLoggers({ ownerId: 'me', editAudience: 'shared', editors: ['me', 'wife'], visibility: 'family' }, household, 'me')).toBe('with Linda')
+    expect(otherLoggers({ ownerId: 'me', editAudience: 'everyone', visibility: 'family' }, household, 'wife')).toBe('Family')
+  })
+})
