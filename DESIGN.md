@@ -407,7 +407,14 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-21 (HEIC): built, tested, NOT yet committed
+### 2026-10-21 (entry views): built, tested, NOT yet committed or deployed
+- **Every entry opens as a view, with Edit** (tasks, checklist items, notes, links in the side panel via `EntryPanel`; voting items inline): title, facts (status, when, who, list and who can see it, what it waits on), then the **common block** `EntryExtras`: note (sized to its text), links, pictures, **comments**, **Text about this**. Save returns to the view; Cancel leaves the form. The goal page has the same block (goal comments).
+- **Comments on any entry** (`commentThread` in db.ts: boards, voting items, `tasks/{id}/comments`, `goals/{id}/comments`); each comment has a 💬 that opens Text about this with the comment as the message. Rules: whoever can see the task / goal reads; members who can see it write; edit / delete own. Plus a test.
+- **Links have a name and an address** (`{ url, label? }`; bare addresses saved earlier still read). Views show the name (opens in a new tab) with Show address(es).
+- **Section headings** (`SectionHeader`): icon tile, title, count pill, actions on the right — Goals, On this day / Near this day / From the archive, To do / Not done, Done, Won't do, Pushed, and the voting board's Discussion.
+- **Deploy the rules before the web app.** Tests: 101 unit, 40 rules. Playwright at 390px.
+
+### 2026-10-21 (HEIC): built and pushed (`cdb8bf2`)
 - Day view: **Goals** has Show / Hide and starts hidden each morning; **On this day** starts shown each morning. A change lasts for the rest of that day on that device (`useDailyFlag`, keys `align-goals-hidden`, `align-on-this-day-hidden`).
 - The picture editor converts HEIC photos (the user hit "That file isn't a picture this browser can open" on the live site). No rules change.
 

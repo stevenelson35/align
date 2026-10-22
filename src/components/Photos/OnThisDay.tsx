@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useFavorites } from '../../hooks/useFavorites'
 import { useDailyFlag } from '../../hooks/useDailyFlag'
 import { photoCaption, photoDate, photosForDay, photoUrl, yearsAgo, type Favorite } from '../../photos/favorites'
-import { Icon } from '../UI/Icon'
 import { PhotoViewer } from './PhotoViewer'
+import { SectionHeader } from '../UI/SectionHeader'
 
 /**
  * "On this day": favorites taken on this date in earlier years, on the day view. With none, the nearest date within
@@ -23,13 +23,12 @@ export function OnThisDay({ day }: { day: string }) {
     return found!.kind === 'same' ? ago : found!.kind === 'near' ? photoDate(p).replace(/, \d{4}$/, '') + ` · ${ago}` : photoDate(p)
   }
   return (
-    <div className="on-this-day">
-      <h3>
-        <Icon name="photo" /> {title} <span className="muted">{photos.length}</span>
-        <button type="button" className="link small" onClick={() => setHidden(!hidden)}>
+    <div className="day-section on-this-day">
+      <SectionHeader icon="photo" title={title} count={photos.length}>
+        <button type="button" className="link small" onClick={() => setHidden(!hidden)} aria-expanded={!hidden}>
           {hidden ? 'Show' : 'Hide'}
         </button>
-      </h3>
+      </SectionHeader>
       {!hidden && (
         <div className="photo-strip">
           {photos.map((p) => (

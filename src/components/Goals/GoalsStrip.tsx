@@ -4,6 +4,7 @@ import { useDailyFlag } from '../../hooks/useDailyFlag'
 import { appliesOn, met } from '../../utils/goals'
 import { canLogGoal } from '../../utils/tasks'
 import { GoalControl } from './GoalControl'
+import { SectionHeader } from '../UI/SectionHeader'
 
 /** The day's goals you can log, at the top of a day view: log them right there. Hidden each morning (Show opens them for the day). */
 export function GoalsStrip({ day }: { day: string }) {
@@ -15,16 +16,15 @@ export function GoalsStrip({ day }: { day: string }) {
   if (!forDay.length) return null
   const metCount = forDay.filter((g) => met(g, g.log?.[day], day)).length
   return (
-    <div className="goals-strip">
-      <h3>
-        Goals <span className="muted">{metCount}/{forDay.length}</span>
+    <div className="day-section goals-strip">
+      <SectionHeader icon="goal" title="Goals" count={`${metCount}/${forDay.length}`}>
         <button type="button" className="link small" onClick={() => navigate({ view: 'goals' })}>
           Manage
         </button>
         <button type="button" className="link small" onClick={() => setHidden(!hidden)} aria-expanded={!hidden}>
           {hidden ? 'Show' : 'Hide'}
         </button>
-      </h3>
+      </SectionHeader>
       {!hidden && (
         <>
           {day > today() && <p className="muted small">Log goals on the day.</p>}

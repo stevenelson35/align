@@ -2,6 +2,9 @@ import type { Timestamp } from 'firebase/firestore'
 
 export type Role = 'member' | 'viewer'
 
+/** A link on an entry's details: `{ url, label? }`, or a bare address (saved before links had names). */
+export type StoredLink = string | { url: string; label?: string }
+
 export interface HouseholdMember {
   role: Role
   displayName: string
@@ -91,7 +94,7 @@ export interface Task {
   url?: string
   category?: string
   /** Extra details, as on every entry: more links and pictures (utils/details.ts). `notes` is the note. */
-  links?: string[]
+  links?: StoredLink[]
   images?: string[]
   /** A reading-list task: the link it's about ("Read: …"); the link shows 📖 until this task is done. */
   linkId?: string
@@ -113,7 +116,7 @@ export interface GoalEntry {
   by?: string // who logged it last (shared goals)
   /** Optional details for the day: a note, links, pictures (utils/details.ts; url / imageUrl are the older single ones). */
   note?: string
-  links?: string[]
+  links?: StoredLink[]
   images?: string[]
   url?: string
   imageUrl?: string
@@ -169,7 +172,7 @@ export interface BoardItem {
   status: ItemStatus
   /** Optional details: a note, links and pictures (utils/details.ts; url / imageUrl are the older single ones). */
   note?: string
-  links?: string[]
+  links?: StoredLink[]
   images?: string[]
   url?: string
   imageUrl?: string

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { addDays, formatDay, today } from '../../engine/dates'
-import { deleteRemovedImages, logGoal, updateGoal } from '../../firebase/db'
+import { commentThread, deleteRemovedImages, logGoal, updateGoal } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
 import type { Goal } from '../../types'
 import { appliesOn, goalHint, history, totalTo } from '../../utils/goals'
@@ -8,7 +8,7 @@ import { canLogGoal, privacyText, sharedNames } from '../../utils/tasks'
 import { cleanDetails, detailsOf, hasDetails, storedDetails } from '../../utils/details'
 import { DetailsFields, DetailsView } from '../UI/Details'
 import { Icon } from '../UI/Icon'
-import { TextForm } from '../Tasks/TextAbout'
+import { EntryExtras } from '../UI/EntryExtras'
 import { goalLink } from '../../utils/text'
 import { GoalChart } from './GoalChart'
 import { GoalControl } from './GoalControl'
@@ -138,7 +138,7 @@ export function GoalDetail({ goal }: { goal: Goal }) {
             ))}
         </div>
       )}
-      {app.isMember && <TextForm subject={{ title: goal.name, when: goalHint(goal, today()), link: goalLink(goal.id) }} startOpen={false} label="Text about this" />}
+      <EntryExtras details={{}} alt={goal.name} thread={commentThread.goal(goal.id)} text={{ title: goal.name, when: goalHint(goal, today()), link: goalLink(goal.id) }} />
       {editing && <GoalEditor goal={goal} onClose={() => setEditing(false)} />}
     </section>
   )

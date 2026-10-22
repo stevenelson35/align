@@ -1,24 +1,103 @@
 import { useState, type FormEvent } from 'react'
-import { addReadingTask, deleteRemovedImages, deleteTask, readingListFor, updateTask } from '../../firebase/db'
+import { addReadingTask, commentThread, deleteRemovedImages, deleteTask, readingListFor, updateTask } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
-import { cleanCategory, safeUrl } from '../../utils/links'
+import { cleanCategory, defaultName, safeUrl } from '../../utils/links'
 import { privacyText } from '../../utils/tasks'
-import { TextAbout } from './TextAbout'
 import { Icon } from '../UI/Icon'
 import { parentsOf } from '../../utils/audience'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
-import { cleanUrls, detailsOf, MAX_IMAGES, MAX_LINKS, taskDetails } from '../../utils/details'
+import { cleanLinks, cleanUrls, detailsOf, MAX_IMAGES, taskDetails } from '../../utils/details'
 import { DetailsView, LinksAndPictures } from '../UI/Details'
+import { EntryExtras, EntryFact, EntryPanel } from '../UI/EntryExtras'
+import { shareLink } from '../../utils/text'
 
 /**
- * Side panel for a checklist item, a note or a link: title, text, more links and pictures (the shared details),
- * move, delete, Text about this. Save and ✕ are at the top.
+ * Side panel for a checklist item, a note or a link. It opens as a view (the item, its note, links, pictures,
+ * comments and Text about this: the common EntryExtras block); Edit switches to the form.
  */
 export function ItemDetails({ item, list }: { item: Task; list: List }) {
   const app = useApp()
+  const { lists } = useData()
+  const [editing, setEditing] = useState(false)
+  if (editing) return <ItemEditForm item={item} list={list} onDone={() => setEditing(false)} />
+  const isNote = list.kind === 'notes'
+  const isLink = list.kind === 'links'
+  const noun = isNote ? 'note' : isLink ? 'link' : 'item'
+  const home = lists.find((l) => l.id === item.listId) ?? list
+  const href = isLink ? safeUrl(item.url) : null
+  return (
+    <EntryPanel
+      kind={isNote ? 'Note' : isLink ? 'Link' : 'Checklist item'}
+      title={item.title}
+      onEdit={app.canEdit(item) ? () => setEditing(true) : undefined}
+      onClose={() => app.selectTask(null)}
+      facts={
+        <>
+          {href && (
+            <EntryFact icon="external">
+              <a href={href} target="_blank" rel="noopener noreferrer">
+                Open {defaultName(href)}
+              </a>
+              {item.category && <span className="muted"> · {item.category}</span>}
+            </EntryFact>
+          )}
+          {list.kind === 'checklist' && <EntryFact icon={item.status === 'done' ? 'check' : 'todo'}>{item.status === 'done' ? 'Checked off' : 'Not checked off yet'}</EntryFact>}
+          <EntryFact icon={AUDIENCE_ICON[audienceOf(home)]}>
+            {home.name} · {privacyText(home, noun, app.household, app.uid)}
+          </EntryFact>
+        </>
+      }
+    >
+      {isLink && <ReadingListButton item={item} />}
+      <EntryExtras
+        details={{ ...detailsOf(item, false), note: item.notes }}
+        alt={item.title}
+        thread={commentThread.task(item.id)}
+        text={{ title: item.title, when: '', link: shareLink(item) }}
+        startTextOpen={app.textingId === item.id}
+      />
+    </EntryPanel>
+  )
+}
+
+/** A link's place on the reading list: open its "Read:" task, or add one. */
+function ReadingListButton({ item }: { item: Task }) {
+  const app = useApp()
   const { lists, tasks } = useData()
+  const [error, setError] = useState<string | null>(null)
   const reading = tasks.find((t) => t.linkId === item.id)
+  if (!item.url) return null
+  return (
+    <div className="row">
+      {reading ? (
+        <button type="button" className="link small" onClick={() => app.navigate({ view: 'task', taskId: reading.id })}>
+          {reading.status === 'done' ? '✓ Read (open its task)' : <><Icon name="book" /> On the reading list (open its task)</>}
+        </button>
+      ) : (
+        app.canEdit(item) && (
+          <button
+            type="button"
+            className="secondary small"
+            onClick={() =>
+              readingListFor(app.uid, app.member.defaultVisibility, lists.filter((l) => app.canEdit(l)), parentsOf(app.household))
+                .then((target) => addReadingTask(target, { id: item.id, title: item.title, url: item.url }, app.uid).written)
+                .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+            }
+          >
+            <Icon name="book" /> Add to reading list
+          </button>
+        )
+      )}
+      {error && <p className="error small">{error}</p>}
+    </div>
+  )
+}
+
+/** The edit form: title, address and category (links), note, links and pictures, move, delete. */
+function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: () => void }) {
+  const app = useApp()
+  const { lists } = useData()
   const editable = app.canEdit(item)
   const isNote = list.kind === 'notes'
   const isLink = list.kind === 'links'
@@ -42,7 +121,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
       const moveTo = listId !== item.listId ? lists.find((l) => l.id === listId) : undefined
       const link = isLink ? safeUrl(url) : null
       if (isLink && !link) throw new Error('That doesn’t look like a web address (http, https, mailto or tel).')
-      const links = cleanUrls(extras.links, MAX_LINKS, 'links')
+      const links = cleanLinks(extras.links)
       const images = cleanUrls(extras.images, MAX_IMAGES, 'pictures')
       if (typeof links === 'string') throw new Error(links)
       if (typeof images === 'string') throw new Error(images)
@@ -57,7 +136,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
         moveTo,
       )
       void deleteRemovedImages(detailsOf(item, false).images, images)
-      app.selectTask(null)
+      onDone()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setBusy(false)
@@ -77,12 +156,15 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
   return (
     <form className="task-details form" onSubmit={save}>
       <header className="row panel-header">
-        <h3 className="grow">{isNote ? 'Note' : isLink ? 'Link' : 'Item'}</h3>
+        <h3 className="grow">Edit {isNote ? 'note' : isLink ? 'link' : 'item'}</h3>
         {editable && (
           <button type="submit" className="small" disabled={busy}>
             Save
           </button>
         )}
+        <button type="button" className="secondary small" onClick={onDone}>
+          Cancel
+        </button>
         <button type="button" className="link" onClick={() => app.selectTask(null)} aria-label="Close">
           ✕
         </button>
@@ -135,30 +217,6 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
         const target = lists.find((l) => l.id === listId) ?? list
         return <p className="privacy-note small"><Icon name={AUDIENCE_ICON[audienceOf(target)]} /> {privacyText(target, noun, app.household, app.uid)}</p>
       })()}
-      {isLink && item.url && (
-        <div className="row">
-          {reading ? (
-            <button type="button" className="link small" onClick={() => app.navigate({ view: 'task', taskId: reading.id })}>
-              {reading.status === 'done' ? '✓ Read (open its task)' : <><Icon name="book" /> On the reading list (open its task)</>}
-            </button>
-          ) : (
-            editable && (
-              <button
-                type="button"
-                className="secondary small"
-                onClick={() =>
-                  readingListFor(app.uid, app.member.defaultVisibility, lists.filter((l) => app.canEdit(l)), parentsOf(app.household))
-                    .then((target) => addReadingTask(target, { id: item.id, title: item.title, url: item.url }, app.uid).written)
-                    .catch((err) => setError(err instanceof Error ? err.message : String(err)))
-                }
-              >
-                <Icon name="book" /> Add to reading list
-              </button>
-            )
-          )}
-        </div>
-      )}
-      <TextAbout task={item} />
       {error && <p className="error">{error}</p>}
       {editable && (
         <div className="row">

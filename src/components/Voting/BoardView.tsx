@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { detailsOf } from '../../utils/details'
 import { Picture } from '../UI/Picture'
-import { createItem, setItemStatus, setVote, updateBoard } from '../../firebase/db'
+import { commentThread, createItem, setItemStatus, setVote, updateBoard } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import { useBoardVotes, useTokenBalance } from '../../hooks/useVoting'
 import type { Board, BoardItem, ItemStatus } from '../../types'
-import { Comments } from './Comments'
+import { Comments } from '../UI/Comments'
+import { SectionHeader } from '../UI/SectionHeader'
 import { ItemDetail } from './ItemDetail'
 import { Icon } from '../UI/Icon'
 
@@ -169,8 +170,8 @@ export function BoardView({ board, openItemId }: { board: Board; openItemId?: st
           </div>
         ))}
       <div className="board-discussion">
-        <h3><Icon name="message" /> Discussion</h3>
-        <Comments boardId={board.id} placeholder="Say something about this board…" />
+        <SectionHeader icon="message" title="Discussion" />
+        <Comments thread={commentThread.board(board.id)} placeholder="Say something about this board…" />
       </div>
     </section>
   )

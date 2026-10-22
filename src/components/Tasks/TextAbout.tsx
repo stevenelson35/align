@@ -16,13 +16,24 @@ export function TextAbout({ task }: { task: Task }) {
 }
 
 /** The texting form for any subject (a task, a link, a new blog post): pick a person, add a note, open Messages. */
-export function TextForm({ subject, startOpen, label }: { subject: { title: string; when: string; link: string }; startOpen: boolean; label: string }) {
+export function TextForm({
+  subject,
+  startOpen,
+  label,
+  initialMessage = '',
+}: {
+  subject: { title: string; when: string; link: string }
+  startOpen: boolean
+  label: string
+  /** Starts the message (e.g. a comment being texted). */
+  initialMessage?: string
+}) {
   const { household, uid } = useApp()
   const [open, setOpen] = useState(startOpen)
   const others = people(household).filter(([id]) => id !== uid)
   const firstWithPhone = others.find(([, m]) => m.phone)?.[0] ?? others[0]?.[0] ?? ''
   const [to, setTo] = useState(firstWithPhone)
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState(initialMessage)
   const [copied, setCopied] = useState(false)
   const boxRef = useRef<HTMLTextAreaElement>(null)
   // Opened from a list row's 💬: the form sits at the bottom of a long panel, so bring it into view, ready to type.

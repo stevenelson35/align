@@ -436,6 +436,25 @@ describe('voting', () => {
     await assertFails(getDocs(collection(db('grandma'), 'boards/secret/comments')))
   })
 
+  it('lets people who can see a task or goal comment on it, and change only their own comments', async () => {
+    const c = (uid: string, text = 'On it') => ({ text, uid, createdAt: new Date() })
+    await assertSucceeds(setDoc(doc(db('steve'), 'tasks/fam1'), task('familyVisible')))
+    await assertSucceeds(setDoc(doc(db('steve'), 'tasks/priv1'), task('stevePrivate')))
+    await assertSucceeds(setDoc(doc(db('wife'), 'tasks/fam1/comments/c1'), c('wife')))
+    await assertSucceeds(setDoc(doc(db('steve'), 'tasks/fam1/comments/c2'), c('steve')))
+    await assertSucceeds(getDocs(collection(db('grandma'), 'tasks/fam1/comments'))) // the task is visible to viewers
+    await assertFails(setDoc(doc(db('grandma'), 'tasks/fam1/comments/c3'), c('grandma'))) // viewers don't write
+    await assertFails(setDoc(doc(db('wife'), 'tasks/priv1/comments/c4'), c('wife'))) // can't see the task
+    await assertFails(getDocs(collection(db('wife'), 'tasks/priv1/comments')))
+    await assertFails(updateDoc(doc(db('wife'), 'tasks/fam1/comments/c2'), { text: 'edited by someone else' }))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'tasks/fam1/comments/c1'), { text: 'Done, actually', uid: 'wife', edited: true }))
+    await assertFails(deleteDoc(doc(db('wife'), 'tasks/fam1/comments/c2')))
+    await assertSucceeds(deleteDoc(doc(db('wife'), 'tasks/fam1/comments/c1')))
+    await assertSucceeds(setDoc(doc(db('steve'), 'goals/g1'), { name: 'Walk', kind: 'check', visibility: 'private', ownerId: 'steve', viewerVisible: false, createdBy: 'steve' }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'goals/g1/comments/c5'), c('steve')))
+    await assertFails(setDoc(doc(db('wife'), 'goals/g1/comments/c6'), c('wife'))) // a private goal
+  })
+
   it('lets members cast only their own whole-number votes', async () => {
     await assertSucceeds(setDoc(doc(db('daughter'), 'boards/movies/items/m1/votes/daughter'), { uid: 'daughter', tokens: 5 }))
     await assertFails(setDoc(doc(db('daughter'), 'boards/movies/items/m1/votes/steve'), { uid: 'steve', tokens: 0 }))

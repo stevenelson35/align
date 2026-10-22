@@ -3,20 +3,24 @@ import { addComment, deleteComment, editComment, subscribeComments } from '../..
 import { useApp } from '../../hooks/useApp'
 import type { Comment } from '../../types'
 import { targetName } from '../../utils/tasks'
+import { Icon } from './Icon'
 
 function when(c: Comment): string {
   if (!c.createdAt) return 'just now'
-  return new Date(c.createdAt.seconds * 1000).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return new Date(c.createdAt.seconds * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-/** Comments on a board (no itemId) or on one item: everyone who can see the board reads; members write. */
-export function Comments({ boardId, itemId, placeholder = 'Add a comment…' }: { boardId: string; itemId?: string; placeholder?: string }) {
+/**
+ * Comments on any entry (`thread` from commentThread in db.ts): whoever can see the entry reads them; members
+ * write, and edit / delete only their own. `onText` adds "Text" to each comment (text someone about it).
+ */
+export function Comments({ thread, placeholder = 'Add a comment…', onText }: { thread: string; placeholder?: string; onText?: (c: Comment) => void }) {
   const { uid, isMember, household } = useApp()
   const [comments, setComments] = useState<Comment[] | null>(null)
   const [text, setText] = useState('')
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  useEffect(() => subscribeComments(boardId, itemId, setComments, (e) => setError(e.message)), [boardId, itemId])
+  useEffect(() => subscribeComments(thread, setComments, (e) => setError(e.message)), [thread])
   const fail = (err: unknown) => setError(err instanceof Error ? err.message : String(err))
 
   function add(e: FormEvent) {
@@ -24,7 +28,7 @@ export function Comments({ boardId, itemId, placeholder = 'Add a comment…' }: 
     const t = text.trim()
     if (!t) return
     setText('') // clear at once; the comment shows immediately
-    addComment(boardId, itemId, t, uid).catch((err) => {
+    addComment(thread, t, uid).catch((err) => {
       fail(err)
       setText(t)
     })
@@ -41,15 +45,24 @@ export function Comments({ boardId, itemId, placeholder = 'Add a comment…' }: 
               {when(c)}
               {c.edited && ' · edited'}
             </span>
-            {c.uid === uid && editing?.id !== c.id && (
-              <>
-                <button type="button" className="link small" onClick={() => setEditing({ id: c.id, text: c.text })}>
-                  Edit
-                </button>
-                <button type="button" className="link small" onClick={() => window.confirm('Delete this comment?') && deleteComment(boardId, itemId, c.id).catch(fail)}>
-                  Delete
-                </button>
-              </>
+            {editing?.id !== c.id && (
+              <span className="comment-actions">
+                {onText && isMember && (
+                  <button type="button" className="link small" onClick={() => onText(c)} title="Text someone about this comment" aria-label="Text someone about this comment">
+                    <Icon name="message" />
+                  </button>
+                )}
+                {c.uid === uid && (
+                  <>
+                    <button type="button" className="link small" onClick={() => setEditing({ id: c.id, text: c.text })} title="Edit" aria-label="Edit comment">
+                      <Icon name="edit" />
+                    </button>
+                    <button type="button" className="link small" onClick={() => window.confirm('Delete this comment?') && deleteComment(thread, c.id).catch(fail)} title="Delete" aria-label="Delete comment">
+                      <Icon name="close" />
+                    </button>
+                  </>
+                )}
+              </span>
             )}
           </div>
           {editing?.id === c.id ? (
@@ -57,7 +70,7 @@ export function Comments({ boardId, itemId, placeholder = 'Add a comment…' }: 
               className="row"
               onSubmit={(e) => {
                 e.preventDefault()
-                if (editing.text.trim()) editComment(boardId, itemId, c, editing.text).catch(fail)
+                if (editing.text.trim()) editComment(thread, c, editing.text).catch(fail)
                 setEditing(null)
               }}
             >

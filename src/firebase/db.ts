@@ -463,16 +463,20 @@ export function updateItem(item: BoardItem, patch: Partial<Pick<BoardItem, 'titl
   return updateDoc(doc(db, 'boards', item.boardId, 'items', item.id), data)
 }
 
-// ---- Comments on boards and items ----
+// ---- Comments (on any entry: boards, voting items, tasks / items / notes / links, goals) ----
 
-function commentsRef(boardId: string, itemId?: string) {
-  return itemId ? collection(db, 'boards', boardId, 'items', itemId, 'comments') : collection(db, 'boards', boardId, 'comments')
+/** Where an entry's comments live: the comments collection under it. */
+export const commentThread = {
+  board: (boardId: string) => `boards/${boardId}/comments`,
+  boardItem: (boardId: string, itemId: string) => `boards/${boardId}/items/${itemId}/comments`,
+  task: (taskId: string) => `tasks/${taskId}/comments`,
+  goal: (goalId: string) => `goals/${goalId}/comments`,
 }
 
-/** Live comments on a board (no itemId) or one item, oldest first. */
-export function subscribeComments(boardId: string, itemId: string | undefined, onData: (comments: Comment[]) => void, onError: OnError) {
+/** Live comments in a thread, oldest first. */
+export function subscribeComments(thread: string, onData: (comments: Comment[]) => void, onError: OnError) {
   return onSnapshot(
-    commentsRef(boardId, itemId),
+    collection(db, thread),
     (snap) => {
       const list = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Comment)
       const at = (c: Comment) => (c.createdAt ? c.createdAt.seconds + c.createdAt.nanoseconds / 1e9 : Infinity)
@@ -482,16 +486,16 @@ export function subscribeComments(boardId: string, itemId: string | undefined, o
   )
 }
 
-export function addComment(boardId: string, itemId: string | undefined, text: string, uid: string) {
-  return setDoc(doc(commentsRef(boardId, itemId)), { text: text.trim(), uid, createdAt: serverTimestamp() })
+export function addComment(thread: string, text: string, uid: string) {
+  return setDoc(doc(collection(db, thread)), { text: text.trim(), uid, createdAt: serverTimestamp() })
 }
 
-export function editComment(boardId: string, itemId: string | undefined, comment: Comment, text: string) {
-  return updateDoc(doc(commentsRef(boardId, itemId), comment.id), { text: text.trim(), uid: comment.uid, edited: true })
+export function editComment(thread: string, comment: Comment, text: string) {
+  return updateDoc(doc(db, thread, comment.id), { text: text.trim(), uid: comment.uid, edited: true })
 }
 
-export function deleteComment(boardId: string, itemId: string | undefined, commentId: string) {
-  return deleteDoc(doc(commentsRef(boardId, itemId), commentId))
+export function deleteComment(thread: string, commentId: string) {
+  return deleteDoc(doc(db, thread, commentId))
 }
 
 export function setVote(boardId: string, itemId: string, uid: string, tokens: number) {

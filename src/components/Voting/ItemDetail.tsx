@@ -1,17 +1,16 @@
 import { useState, type FormEvent } from 'react'
-import { deleteRemovedImages, updateItem } from '../../firebase/db'
+import { commentThread, deleteRemovedImages, updateItem } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
 import type { BoardItem } from '../../types'
-import { Comments } from './Comments'
 import { Icon } from '../UI/Icon'
 import { cleanDetails, detailsOf, hasDetails, storedDetails } from '../../utils/details'
 import { itemLink } from '../../utils/text'
-import { DetailsFields, DetailsView } from '../UI/Details'
-import { TextForm } from '../Tasks/TextAbout'
+import { DetailsFields } from '../UI/Details'
+import { EntryExtras } from '../UI/EntryExtras'
 
 /**
- * A voting item opened up: its note, links and pictures (the shared Details boxes), an Edit form, Text about this
- * (a link that opens this item), and comments.
+ * A voting item opened up: the common EntryExtras block (note, links, pictures, comments, Text about this with a
+ * link that opens this item) and Edit.
  */
 export function ItemDetail({ item }: { item: BoardItem }) {
   const { isMember } = useApp()
@@ -56,16 +55,17 @@ export function ItemDetail({ item }: { item: BoardItem }) {
         </form>
       ) : (
         <>
-          <DetailsView {...detailsOf(item)} alt={item.title} />
           {isMember && (
-            <button type="button" className="secondary small" onClick={() => setEditing(true)}>
-              <Icon name="edit" /> Edit {hasDetails(item) ? '' : '(add a note, links or pictures)'}
-            </button>
+            <div className="row entry-actions">
+              <span className="grow" />
+              <button type="button" className="secondary small" onClick={() => setEditing(true)}>
+                <Icon name="edit" /> Edit {hasDetails(item) ? '' : '(add a note, links or pictures)'}
+              </button>
+            </div>
           )}
+          <EntryExtras details={detailsOf(item)} alt={item.title} thread={commentThread.boardItem(item.boardId, item.id)} text={{ title: item.title, when: '', link: itemLink(item.boardId, item.id) }} />
         </>
       )}
-      {isMember && <TextForm subject={{ title: item.title, when: '', link: itemLink(item.boardId, item.id) }} startOpen={false} label="Text about this" />}
-      <Comments boardId={item.boardId} itemId={item.id} />
     </div>
   )
 }

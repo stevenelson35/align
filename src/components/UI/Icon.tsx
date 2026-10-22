@@ -40,6 +40,15 @@ const ICONS = {
     line: 'M18 9h2.5v9a2 2 0 0 1-2 2',
     detail: 'M7 8.5h8M7 12h3.5M7 15.5h3.5M12.5 12h2.5v3.5h-2.5z',
   },
+  todo: {
+    emoji: '☑️',
+    fill: 'M4 4h4v4H4zM4 10h4v4H4zM4 16h4v4H4z',
+    line: 'M11 6h9M11 12h9M11 18h9',
+  },
+  check: { emoji: '✅', fill: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z', detail: 'M7.5 12.5l3 3 6-6.5' },
+  person: { emoji: '👤', fill: 'M12 3.5a4 4 0 1 0 0 8a4 4 0 1 0 0-8zM4.5 20.5v-1a7.5 7.5 0 0 1 15 0v1z' },
+  clock: { emoji: '🕒', fill: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z', detail: 'M12 7v5l3.5 2' },
+  list: { emoji: '📋', fill: 'M7 4h10a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', line: 'M9.5 2.5h5v3h-5z', detail: 'M8.5 10h7M8.5 13.5h7M8.5 17h4' },
   book: { emoji: '📖', fill: 'M3 5h5.5A3.5 3.5 0 0 1 12 8.5V20a2.5 2.5 0 0 0-2.5-2.5H3zM21 5h-5.5A3.5 3.5 0 0 0 12 8.5V20a2.5 2.5 0 0 1 2.5-2.5H21z' },
   search: { emoji: '🔍', fill: 'M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13z', line: 'M15.5 15.5L20.5 20.5' },
   calendar: {

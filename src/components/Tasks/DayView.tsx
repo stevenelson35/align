@@ -12,6 +12,7 @@ import { CalendarActions } from './CalendarActions'
 import { TaskCard } from './TaskCard'
 import { Icon } from '../UI/Icon'
 import { parentsOf } from '../../utils/audience'
+import { SectionHeader } from '../UI/SectionHeader'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -128,38 +129,31 @@ export function DayView({ day }: { day: string }) {
       {note && <p className="muted small">{note}</p>}
 
       <div className="day-section">
-        <h3>
-          {day < now ? 'Not done' : 'To do'} <span className="muted">{b.todo.length}</span>
+        <SectionHeader icon="todo" title={day < now ? 'Not done' : 'To do'} count={b.todo.length}>
           {b.todo.length > 0 && day <= now && app.isMember && (
-            <button type="button" className="link small" onClick={pushRest} title="End of day: move what's left to the next day">
-              <Icon name="skip" /> Push the rest to {day === now ? 'tomorrow' : 'the next day'}
+            <button type="button" className="link small" onClick={pushRest} title={`End of day: move what's left to ${day === now ? 'tomorrow' : 'the next day'}`}>
+              <Icon name="skip" /> Push the rest
             </button>
           )}
-        </h3>
+        </SectionHeader>
         <div className="task-list">{byDate(b.todo).map((t) => card(t))}</div>
         {b.todo.length === 0 && <p className="muted small">{day < now ? 'Nothing was left undone.' : 'Nothing left to do.'}</p>}
       </div>
       {b.done.length > 0 && (
         <div className="day-section">
-          <h3>
-            Done <span className="muted">{b.done.length}</span>
-          </h3>
+          <SectionHeader icon="check" title="Done" count={b.done.length} />
           <div className="task-list">{byDate(b.done).map((t) => card(t))}</div>
         </div>
       )}
       {b.skipped.length > 0 && (
         <div className="day-section">
-          <h3>
-            Won't do <span className="muted">{b.skipped.length}</span>
-          </h3>
+          <SectionHeader icon="close" title="Won't do" count={b.skipped.length} />
           <div className="task-list">{byDate(b.skipped).map((t) => card(t))}</div>
         </div>
       )}
       {b.pushed.length > 0 && (
         <div className="day-section">
-          <h3>
-            Pushed to a later day <span className="muted">{b.pushed.length}</span>
-          </h3>
+          <SectionHeader icon="skip" title="Pushed to a later day" count={b.pushed.length} />
           <div className="task-list">{byDate(b.pushed).map((t) => card(t, { note: movedTo(t), dayActions: undefined }))}</div>
         </div>
       )}

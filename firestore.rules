@@ -263,6 +263,30 @@ service cloud.firestore {
       }
     }
 
+    // Comments on a task (checklist item, note, link) or a goal: whoever can see it reads them; members who can
+    // see it write their own, and edit / delete only their own (same as voting comments).
+    function taskVisible(taskId) {
+      return canRead(get(/databases/$(database)/documents/tasks/$(taskId)).data);
+    }
+    function goalVisible(goalId) {
+      let g = get(/databases/$(database)/documents/goals/$(goalId)).data;
+      return canRead(g) || (isMember() && request.auth.uid in g.get('editors', []));
+    }
+    match /tasks/{taskId}/comments/{commentId} {
+      allow read: if taskVisible(taskId);
+      allow create: if isMember() && taskVisible(taskId) && validComment(request.resource.data) && request.resource.data.uid == request.auth.uid;
+      allow update: if isMember() && taskVisible(taskId) && resource.data.uid == request.auth.uid
+        && validComment(request.resource.data) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isMember() && resource.data.uid == request.auth.uid;
+    }
+    match /goals/{goalId}/comments/{commentId} {
+      allow read: if goalVisible(goalId);
+      allow create: if isMember() && goalVisible(goalId) && validComment(request.resource.data) && request.resource.data.uid == request.auth.uid;
+      allow update: if isMember() && goalVisible(goalId) && resource.data.uid == request.auth.uid
+        && validComment(request.resource.data) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isMember() && resource.data.uid == request.auth.uid;
+    }
+
     // Pictures stored in Align (resized JPEG data, under 1 MB): entries keep "align-image:<id>" in `images`.
     // Anyone in the household can open one by its id (ids are random and only appear on entries they can see),
     // but no one can list the collection, so a picture is only reachable through an entry. Never edited; the

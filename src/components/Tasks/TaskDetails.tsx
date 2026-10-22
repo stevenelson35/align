@@ -1,18 +1,19 @@
 import { useState, type FormEvent } from 'react'
 import { finish, meetDate, shiftForward } from '../../engine/scheduling'
 import { wouldCreateCycle } from '../../engine/graph'
-import { createTask, deleteRemovedImages, deleteTask, type TaskInput, updateTask, withStatus } from '../../firebase/db'
-import { today } from '../../engine/dates'
+import { commentThread, createTask, deleteRemovedImages, deleteTask, type TaskInput, updateTask, withStatus } from '../../firebase/db'
+import { formatDay, today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Context, Dependency, Priority, Status, Task } from '../../types'
 import { googleCalendarDayUrl } from '../../utils/calendar'
 import { safeUrl } from '../../utils/links'
 import { NumberField } from './NumberField'
-import { TextAbout } from './TextAbout'
-import { isFinished, isItemList, people as humans, privacyText, STATUS_LABEL, targetName } from '../../utils/tasks'
+import { isFinished, isItemList, people as humans, PRIORITY_LABEL, privacyText, STATUS_LABEL, targetName } from '../../utils/tasks'
+import { shareLink, whenText } from '../../utils/text'
+import { EntryExtras, EntryFact, EntryPanel } from '../UI/EntryExtras'
 import { Icon } from '../UI/Icon'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
-import { cleanUrls, detailsOf, MAX_IMAGES, MAX_LINKS, taskDetails } from '../../utils/details'
+import { cleanLinks, cleanUrls, detailsOf, MAX_IMAGES, taskDetails } from '../../utils/details'
 import { DetailsView, LinksAndPictures } from '../UI/Details'
 
 /** ✓ done, ✕ canceled, ⏳ not finished yet. */
@@ -20,8 +21,92 @@ function statusIcon(t: Task) {
   return t.status === 'done' ? '✓' : t.status === 'canceled' ? '✕' : '⏳'
 }
 
-/** Right panel: task details, dependencies and schedule (DESIGN.md §10). */
+/** Right panel for a task (DESIGN.md §10): opens as a view; Edit switches to the full form. */
 export function TaskDetails({ task }: { task: Task }) {
+  const [editing, setEditing] = useState(false)
+  return editing ? <TaskEditForm task={task} onDone={() => setEditing(false)} /> : <TaskView task={task} onEdit={() => setEditing(true)} />
+}
+
+/**
+ * A task before Edit: its facts (status, when, who, list, what it waits on), then the common EntryExtras block
+ * (note, links, pictures, comments, Text about this).
+ */
+function TaskView({ task, onEdit }: { task: Task; onEdit: () => void }) {
+  const app = useApp()
+  const { tasks, lists, conflicts, dependents } = useData()
+  const list = lists.find((l) => l.id === task.listId)
+  const name = (id: string) => tasks.find((t) => t.id === id)?.title
+  const waits = task.dependsOn.map((d) => name(d.taskId)).filter(Boolean)
+  const unblocks = (dependents.get(task.id) ?? []).map((t) => t.title)
+  const end = finish(task)
+  const href = safeUrl(task.url)
+  const who = [task.assigneeId && `${targetName(task.assigneeId, app.household)} is doing it`, task.for?.length && `for ${task.for.map((id) => targetName(id, app.household)).join(', ')}`].filter(Boolean)
+  return (
+    <EntryPanel
+      kind="Task"
+      title={task.title}
+      onEdit={app.canEdit(task) ? onEdit : undefined}
+      onClose={() => app.selectTask(null)}
+      facts={
+        <>
+          {conflicts.get(task.id) && <EntryFact icon="warning">{conflicts.get(task.id)}</EntryFact>}
+          <EntryFact icon={isFinished(task) ? 'check' : 'todo'}>
+            {STATUS_LABEL[task.status]}
+            {task.finishedOn && isFinished(task) && ` ${formatDay(task.finishedOn)}`} · {PRIORITY_LABEL[task.priority]} priority
+            {task.context === 'work' && ' · Work'}
+          </EntryFact>
+          {(task.startDate || task.targetDate) && (
+            <EntryFact icon="clock">
+              {task.startDate && (task.durationDays > 1 && end ? `${formatDay(task.startDate)} to ${formatDay(end)}` : formatDay(task.startDate))}
+              {task.calendar?.time && ` · ${task.calendar.time}`}
+              {task.startDate && task.targetDate && ' · '}
+              {task.targetDate && `due ${formatDay(task.targetDate)}`}
+            </EntryFact>
+          )}
+          {task.calendar && (
+            <EntryFact icon="calendar">
+              From the family calendar{task.calendar.location && ` · ${task.calendar.location}`}
+              {(task.calendar.link || task.startDate) && (
+                <>
+                  {' · '}
+                  <a href={task.calendar.link ?? googleCalendarDayUrl(task.startDate!)} target="_blank" rel="noopener noreferrer">
+                    Open in Google Calendar
+                  </a>
+                </>
+              )}
+            </EntryFact>
+          )}
+          {who.length > 0 && <EntryFact icon="person">{who.join(', ')}</EntryFact>}
+          {href && (
+            <EntryFact icon="external">
+              <a href={href} target="_blank" rel="noopener noreferrer">
+                Open the link
+              </a>
+            </EntryFact>
+          )}
+          {waits.length > 0 && <EntryFact icon="waiting">Waiting on {waits.join(', ')}</EntryFact>}
+          {unblocks.length > 0 && <EntryFact icon="chain">Needed by {unblocks.join(', ')}</EntryFact>}
+          {list && (
+            <EntryFact icon={AUDIENCE_ICON[audienceOf(list)]}>
+              {list.name} · {privacyText(list, 'task', app.household, app.uid)}
+            </EntryFact>
+          )}
+        </>
+      }
+    >
+      <EntryExtras
+        details={{ ...detailsOf(task, false), note: task.notes }}
+        alt={task.title}
+        thread={commentThread.task(task.id)}
+        text={{ title: task.title, when: whenText(task), link: shareLink(task) }}
+        startTextOpen={app.textingId === task.id}
+      />
+    </EntryPanel>
+  )
+}
+
+/** The edit form: every field, dependencies and schedule (DESIGN.md §10). Save returns to the view. */
+function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
   const app = useApp()
   const { tasks, lists, conflicts, dependents } = useData()
   const editable = app.canEdit(task)
@@ -56,7 +141,7 @@ export function TaskDetails({ task }: { task: Task }) {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const links = cleanUrls(extras.links, MAX_LINKS, 'links')
+    const links = cleanLinks(extras.links)
     const images = cleanUrls(extras.images, MAX_IMAGES, 'pictures')
     if (typeof links === 'string' || typeof images === 'string') {
       setError(typeof links === 'string' ? links : (images as string))
@@ -92,8 +177,7 @@ export function TaskDetails({ task }: { task: Task }) {
       await updateTask(task.id, patch, moveTo)
       void deleteRemovedImages(detailsOf(task, false).images, images)
       if (preview) app.proposeShift({ title: `Move ${task.title}`, preview })
-      // Close, so the change shows on the task's card (on a phone this panel covers the whole page).
-      app.selectTask(null)
+      onDone() // back to the view, which shows the change
       return
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -160,13 +244,14 @@ export function TaskDetails({ task }: { task: Task }) {
     <form className="task-details form" onSubmit={save}>
       {/* Save at the top too (and the header stays in view), so a quick edit needs no scrolling. */}
       <header className="row panel-header">
-        <h3 className="grow">{editable ? 'Edit task' : 'Task'}</h3>
+        <h3 className="grow">Edit task</h3>
         {editable && (
           <>
             <button type="submit" className="small" disabled={busy}>Save</button>
             <button type="button" className="danger small" onClick={remove} disabled={busy}>Delete</button>
           </>
         )}
+        <button type="button" className="secondary small" onClick={onDone}>Cancel</button>
         <button type="button" className="link" onClick={() => app.selectTask(null)} aria-label="Close">
           ✕
         </button>
@@ -408,7 +493,6 @@ export function TaskDetails({ task }: { task: Task }) {
         </div>
       )}
 
-      <TextAbout task={task} />
       {error && <p className="error">{error}</p>}
       {editable && (
         <>
