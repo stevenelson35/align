@@ -8,16 +8,38 @@ const Alexa = require('ask-sdk-core')
 const WEB_APP_URL = 'PASTE_THE_APPS_SCRIPT_WEB_APP_URL_HERE'
 const VOICE_SECRET = 'PASTE_THE_VOICE_SECRET_HERE'
 
-async function align(action, text) {
-  // text/plain keeps it a "simple" request; Apps Script answers POSTs with a redirect that fetch follows.
-  const res = await fetch(WEB_APP_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ voice: true, secret: VOICE_SECRET, action, text }),
-    redirect: 'follow',
+// POSTs with Node's https module (works on every Alexa-hosted Node version, unlike fetch). Apps Script answers a POST
+// with a redirect to the result, which is then fetched with GET.
+function request(url, body, hops = 0) {
+  const https = require('https')
+  return new Promise((resolve, reject) => {
+    const req = https.request(url, body ? { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8', 'Content-Length': Buffer.byteLength(body) } } : { method: 'GET' }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && hops < 5) {
+        res.resume()
+        return resolve(request(new URL(res.headers.location, url).toString(), null, hops + 1))
+      }
+      let data = ''
+      res.setEncoding('utf8')
+      res.on('data', (c) => (data += c))
+      res.on('end', () => resolve({ status: res.statusCode, data }))
+    })
+    req.on('error', reject)
+    req.setTimeout(7000, () => req.destroy(new Error('timed out')))
+    if (body) req.write(body)
+    req.end()
   })
-  const reply = await res.json()
-  return reply.speech || (reply.ok ? 'Done.' : 'Align had a problem with that.')
+}
+
+async function align(action, text) {
+  if (WEB_APP_URL.startsWith('PASTE') || VOICE_SECRET.startsWith('PASTE')) throw new Error('WEB_APP_URL / VOICE_SECRET not filled in')
+  const { status, data } = await request(WEB_APP_URL.trim(), JSON.stringify({ voice: true, secret: VOICE_SECRET.trim(), action, text }))
+  let reply
+  try {
+    reply = JSON.parse(data)
+  } catch {
+    throw new Error(`HTTP ${status}, not JSON: ${data.slice(0, 200)}`)
+  }
+  return reply.speech || (reply.ok ? 'Done.' : `Align had a problem with that: ${reply.error || 'unknown error'}.`)
 }
 
 const say = (h, speech, reprompt) => {
@@ -37,7 +59,8 @@ const AddTask = {
     if (!task) return say(h, 'What should I add?', 'What should I add?')
     try {
       return say(h, await align('add', task))
-    } catch {
+    } catch (err) {
+      console.log('Align request failed:', err)
       return say(h, 'Sorry, I couldn’t reach Align just now.')
     }
   },
@@ -48,7 +71,8 @@ const Today = {
   async handle(h) {
     try {
       return say(h, await align('today'))
-    } catch {
+    } catch (err) {
+      console.log('Align request failed:', err)
       return say(h, 'Sorry, I couldn’t reach Align just now.')
     }
   },
