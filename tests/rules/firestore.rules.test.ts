@@ -424,6 +424,16 @@ describe('pinned links', () => {
   })
 })
 
+describe('household config', () => {
+  it('lets members set shared integration keys that only the household can read', async () => {
+    await assertSucceeds(setDoc(doc(db('wife'), 'config/integrations'), { rescueGroupsKey: 'abc123' }))
+    await assertSucceeds(getDoc(doc(db('grandma'), 'config/integrations')))
+    await assertFails(getDoc(doc(db(), 'config/integrations'))) // signed out
+    await assertFails(setDoc(doc(db('grandma'), 'config/integrations'), { rescueGroupsKey: 'x' })) // viewers
+    await assertFails(setDoc(doc(db('wife'), 'config/other'), { x: 1 }))
+  })
+})
+
 describe('stored pictures', () => {
   const pic = (createdBy: string, extra: Record<string, unknown> = {}) => ({
     data: 'data:image/jpeg;base64,/9j/4AAQ',

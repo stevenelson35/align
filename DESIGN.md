@@ -439,7 +439,13 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-23 (contacts, pet tips, help fixes): built, tested, NOT yet committed
+### 2026-10-23 (wall view, adoptable pets, Alexa voice): built, tested, NOT yet committed
+- **Wall display** `#/wall` (menu → Wall display): full-screen, read-only time / date, today's calendar (+ tomorrow), to-dos, goals with status and sparklines, and a family photo that changes each minute; live data, midnight rollover, Screen Wake Lock where supported. Meant for an Echo Show's Silk browser or a spare tablet.
+- **Adoptable pet** in The Daily from RescueGroups.org (free key; CORS allowed) within 25 miles of Winter Park 32789; the key lives in `config/integrations` (household-only; Settings → Adoptable pets). Without a key: a card with links to Pet Alliance of Greater Orlando, Orange County Animal Services, Petfinder and Adopt-a-Pet. (Petfinder reportedly stopped issuing API keys.) Rules: `config/{doc}` + test.
+- **Alexa voice** (`scripts/alexa/`): an Alexa-hosted skill ("Alexa, ask family align to add …" / "…what's on today") posts `{voice, secret, action, text}` to the Apps Script web app; `voice_` in calendar-sync.gs checks `VOICE_SECRET` and adds to the Family Inbox (due today) or reads today. Setup steps in `scripts/alexa/README.md`; the user pastes the new script and creates the skill.
+- **Deploy the rules before the web app.** Tests: 139 unit, 44 rules.
+
+### 2026-10-23 (contacts, pet tips, help fixes): built and deployed (`d333829`, rules deployed)
 - **Contacts** (§5.10). **Deploy the rules before the web app** (new kind and `contact` field).
 - The Daily: Pet Health tip (built in; vet guidance incl. Florida specifics) and a dog / cat fun fact (dogapi.dog / catfact.ninja).
 - Help: Today's heading shows the Today topic, To Do (and Also show) its own To Do topic, Archive Pics its own topic (others checked).

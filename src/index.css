@@ -2683,3 +2683,138 @@ a.nav-link {
   flex: none;
   width: 6rem;
 }
+
+/* Wall display (#/wall): big, read-only, fills the screen */
+.wall {
+  min-height: 100vh;
+  padding: clamp(1rem, 2.5vw, 2.5rem);
+  background: var(--bg);
+  color: var(--text);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: clamp(0.75rem, 2vw, 1.5rem);
+}
+.wall-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.wall-time {
+  font-size: clamp(2.5rem, 7vw, 6rem);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.wall-date {
+  font-size: clamp(1.1rem, 2.4vw, 2rem);
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+.wall-exit {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 1.5rem;
+  opacity: 0.5;
+  cursor: pointer;
+}
+.wall-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: clamp(0.75rem, 2vw, 1.5rem);
+  align-content: start;
+}
+.wall-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 2);
+  padding: clamp(0.9rem, 1.8vw, 1.5rem);
+  font-size: clamp(1rem, 1.7vw, 1.45rem);
+}
+.wall-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+  font-size: 1.25em;
+}
+.wall-card h3 {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.9em;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.wall-count {
+  font-size: 0.7em;
+  color: var(--muted);
+}
+.wall-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+.wall-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.wall-list.small {
+  font-size: 0.85em;
+}
+.wall-list li.past {
+  opacity: 0.45;
+}
+.wall-when {
+  flex: none;
+  min-width: 5.5em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-private);
+  font-weight: 600;
+}
+.wall-sub {
+  color: var(--muted);
+  font-size: 0.85em;
+}
+.wall-box {
+  flex: none;
+  width: 0.9em;
+  height: 0.9em;
+  border: 2px solid var(--muted);
+  border-radius: 4px;
+}
+.wall-empty {
+  color: var(--muted);
+  margin: 0;
+}
+.wall-photo {
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  min-height: 16rem;
+}
+.wall-photo img {
+  width: 100%;
+  height: 100%;
+  max-height: 60vh;
+  object-fit: cover;
+  display: block;
+}
+.wall-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.6rem 1rem;
+  color: #fff;
+  font-size: 0.85em;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+}
+.daily-links {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.25rem;
+}

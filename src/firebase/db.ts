@@ -409,6 +409,22 @@ export function applySchedule(
   return batch.commit()
 }
 
+// ---- Household config (shared integration keys, readable only by household accounts) ----
+
+export interface Integrations {
+  /** RescueGroups.org API key for The Daily's adoptable pet (free; public adoptable-pet data). */
+  rescueGroupsKey?: string
+}
+
+export async function getIntegrations(): Promise<Integrations> {
+  const snap = await getDoc(doc(db, 'config', 'integrations'))
+  return (snap.data() as Integrations | undefined) ?? {}
+}
+
+export function setIntegration(key: keyof Integrations, value: string) {
+  return setDoc(doc(db, 'config', 'integrations'), { [key]: value.trim() || deleteField() }, { merge: true })
+}
+
 // ---- Pick lists (DESIGN.md §5.8) ----
 
 /** Your stars for a pick-list item (1–5), or undefined to clear them. Only your own rating changes. */

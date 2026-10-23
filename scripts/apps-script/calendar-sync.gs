@@ -79,7 +79,7 @@ function doPost(e) {
   var result
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}')
-    result = manualSync_(body.idToken)
+    result = body.voice ? voice_(body) : manualSync_(body.idToken)
   } catch (err) {
     result = { ok: false, error: String((err && err.message) || err) }
   }
@@ -99,6 +99,121 @@ function manualSync_(idToken) {
   cache.put('manualSync', '1', MANUAL_COOLDOWN_SECONDS)
   var plan = syncCalendar()
   return { ok: true, created: plan.creates.length, updated: plan.updates.length, removed: plan.deletes.length }
+}
+
+// ---- Voice (the Align Alexa skill: scripts/alexa) ----
+
+/**
+ * "Alexa, ask family align to add buy milk" / "…what's on today". The skill posts {voice: true, secret, action:
+ * "add" | "today", text}. The secret (Script Property VOICE_SECRET, also in the skill's code) keeps strangers out.
+ * Tasks go to the "Family Inbox", due today; the script writes them as its calendar-helper member.
+ */
+function voice_(body) {
+  var props = PropertiesService.getScriptProperties()
+  var cfg = config_(props.getProperties())
+  var secret = props.getProperty('VOICE_SECRET')
+  if (!secret || body.secret !== secret) return { ok: false, speech: 'Align didn’t recognize this Alexa skill. Check the voice secret.' }
+  var tz = cfg.TIME_ZONE || Session.getScriptTimeZone()
+  var day = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd')
+  var api = firestoreApi_(cfg, signIn_(cfg))
+  if (body.action === 'add') {
+    var title = voiceTitle_(body.text)
+    if (!title) return { ok: false, speech: 'What should I add?' }
+    var inbox = voiceInbox_(api)
+    api.create('tasks', voiceTaskFields_(inbox, title, day, api.uid))
+    return { ok: true, speech: 'Added ' + title + ' to the Family Inbox, for today.' }
+  }
+  if (body.action === 'today') {
+    var seen = {}
+    var all = []
+    ;[['startDate', day], ['targetDate', day]].forEach(function (q) {
+      api.query('tasks', [['visibility', 'family'], q]).forEach(function (t) {
+        if (!seen[t.id]) {
+          seen[t.id] = true
+          all.push(t.fields)
+        }
+      })
+    })
+    return { ok: true, speech: voiceSummary_(all) }
+  }
+  return { ok: false, speech: 'You can say: add buy milk, or what’s on today.' }
+}
+
+/** "buy milk" → "Buy milk": trimmed, a little tidy, at most 200 characters. */
+function voiceTitle_(text) {
+  var t = String(text || '').replace(/\s+/g, ' ').trim().replace(/^(to|a|an)\s+/i, '')
+  if (!t) return ''
+  return (t.charAt(0).toUpperCase() + t.slice(1)).slice(0, 200)
+}
+
+/** The shared "Family Inbox" task list (found, or made for everyone to see). */
+function voiceInbox_(api) {
+  var match = api.query('lists', [['visibility', 'family']]).filter(function (l) {
+    return l.fields.name === 'Family Inbox' && (l.fields.kind || 'list') === 'list'
+  })[0]
+  if (!match) {
+    var id = api.create('lists', { name: 'Family Inbox', kind: 'list', visibility: 'family', ownerId: api.uid, viewerVisible: true, defaultContext: 'family' })
+    match = api.get('lists/' + id)
+  }
+  var f = match.fields
+  var list = { id: match.id, visibility: f.visibility, ownerId: f.ownerId, viewerVisible: f.viewerVisible, defaultContext: f.defaultContext || 'family' }
+  if (f.editAudience) list.editAudience = f.editAudience
+  if (f.editors) list.editors = f.editors
+  return list
+}
+
+/** A new task's fields: the list's privacy copied (the rules require it), due today, written by the script's member. */
+function voiceTaskFields_(list, title, day, uid) {
+  var t = {
+    listId: list.id,
+    title: title,
+    priority: 2,
+    status: 'todo',
+    context: list.defaultContext || 'family',
+    durationDays: 1,
+    dependsOn: [],
+    targetDate: day,
+    visibility: list.visibility,
+    ownerId: list.ownerId,
+    viewerVisible: list.viewerVisible,
+    createdBy: uid,
+  }
+  if (list.editAudience) t.editAudience = list.editAudience
+  if (list.editors) t.editors = list.editors
+  return t
+}
+
+/** What Alexa says for "what's on today": calendar events (with times) first, then up to 5 open to-dos. */
+function voiceSummary_(tasks) {
+  var open = tasks.filter(function (t) {
+    return t.status !== 'done' && t.status !== 'canceled'
+  })
+  var events = open.filter(function (t) {
+    return t.calendar
+  })
+  var todos = open.filter(function (t) {
+    return !t.calendar
+  })
+  var parts = []
+  if (events.length) {
+    parts.push(
+      'On the calendar: ' +
+        events
+          .map(function (e) {
+            var time = e.calendar && e.calendar.time ? String(e.calendar.time).split('–')[0].trim() : ''
+            return e.title + (time ? ' at ' + time : '')
+          })
+          .join(', ') +
+        '.',
+    )
+  }
+  if (todos.length) {
+    var some = todos.slice(0, 5).map(function (t) {
+      return t.title
+    })
+    parts.push('To do: ' + some.join(', ') + (todos.length > 5 ? ', and ' + (todos.length - 5) + ' more' : '') + '.')
+  }
+  return parts.length ? parts.join(' ') : 'Nothing on the calendar or the to-do list for today.'
 }
 
 /** The uid behind a Firebase ID token, or null if it isn't a valid token for this project. */

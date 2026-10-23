@@ -5,6 +5,8 @@ import { mathPuzzle } from '../../daily/math'
 import { CHESS_TIPS, fetchChessPuzzle, type ChessPuzzle } from '../../daily/chess'
 import { POKER_ODDS } from '../../daily/poker'
 import { fetchPetFact, PET_TIPS } from '../../daily/pets'
+import { fetchAdoptable, SHELTER_LINKS, type Adoptable } from '../../daily/adopt'
+import { getIntegrations } from '../../firebase/db'
 import { ChessBoard } from './ChessBoard'
 import miniPhilosophy from '../../daily/miniPhilosophy.json'
 import { daily, fetchAnimal, fetchCommonsPicture, fetchJoke, fetchNasa, type Animal, type DailyPicture, type Joke } from '../../daily/sources'
@@ -22,6 +24,11 @@ const ofDay = <T,>(list: T[], day: string, salt: number) => list[(dayIndex(day) 
 const loadSpace = (day: string) => fetchNasa(dayIndex(day))
 const loadAnimal = (day: string) => fetchAnimal(dayIndex(day))
 const loadPetFact = (day: string) => fetchPetFact(dayIndex(day))
+/** The adoptable pet needs the household's RescueGroups key (config/integrations); no key: the shelter links instead. */
+const loadAdoptable = async (day: string): Promise<Adoptable | null> => {
+  const { rescueGroupsKey } = await getIntegrations()
+  return rescueGroupsKey ? fetchAdoptable(rescueGroupsKey, dayIndex(day)) : null
+}
 
 /** One fetched item: loads once per day, shows nothing until it arrives, and hides itself if the site is down. */
 function useFetched<T>(day: string, key: string, on: boolean, load: (day: string) => Promise<T>): T | null {
@@ -52,6 +59,7 @@ export function TheDaily({ day }: { day: string }) {
   const picture = useFetched<DailyPicture>(day, 'picture', show('picture'), fetchCommonsPicture)
   const animal = useFetched<Animal>(day, 'animal', show('animal'), loadAnimal)
   const chess = useFetched<ChessPuzzle>(day, 'chess', show('chess'), fetchChessPuzzle)
+  const adopt = useFetched<Adoptable | null>(day, 'adopt', show('adopt'), loadAdoptable)
   const petFact = useFetched<{ animal: 'Dog' | 'Cat'; fact: string }>(day, 'petFact', show('petFact'), loadPetFact)
   const [big, setBig] = useState<{ src: string; alt: string } | null>(null)
 
@@ -182,6 +190,51 @@ export function TheDaily({ day }: { day: string }) {
     poker: <RevealCard label="Poker Odds" icon="coin" front={poker.question} back={poker.answer} revealLabel="Show answer" />,
     pet: <RevealCard label="Pet Health" icon="help" front={<strong>{petTip.tip}</strong>} back={<>{petTip.more} <span className="muted small">(General guidance; ask your vet about your pet.)</span></>} revealLabel="Tell me more" />,
     petFact: petFact && <RevealCard label={`${petFact.animal} Fun Fact`} icon="star" front={petFact.fact} back={<span className="muted small">From a public trivia site (dogapi.dog / catfact.ninja); fun, not vet-checked.</span>} revealLabel="Where’s this from?" />,
+    adopt:
+      adopt ? (
+        <RevealCard
+          label="Adopt Me (Winter Park / Orlando)"
+          icon="photo"
+          front={
+            <>
+              <a className="video-thumb" href={adopt.link} target="_blank" rel="noopener noreferrer" aria-label={`${adopt.name} on the shelter’s page`}>
+                <img src={adopt.photo} alt={adopt.name} loading="lazy" />
+              </a>
+              <strong>{adopt.name}</strong> <span className="muted small">{adopt.about}</span>
+            </>
+          }
+          back={
+            <>
+              {adopt.description && <p className="small">{adopt.description}</p>}
+              <p className="small">
+                {[adopt.org, adopt.place].filter(Boolean).join(', ')} ·{' '}
+                <a href={adopt.link} target="_blank" rel="noopener noreferrer">
+                  Meet {adopt.name} <Icon name="external" />
+                </a>
+              </p>
+            </>
+          }
+          revealLabel="Tell me more"
+        />
+      ) : (
+        <RevealCard
+          label="Adopt a Pet Nearby"
+          icon="photo"
+          front={<>Pets near Winter Park and Orlando are waiting for homes.</>}
+          back={
+            <ul className="daily-links">
+              {SHELTER_LINKS.map((s) => (
+                <li key={s.url}>
+                  <a href={s.url} target="_blank" rel="noopener noreferrer">
+                    {s.name} <Icon name="external" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          }
+          revealLabel="Where to look"
+        />
+      ),
     space: pic(space, 'Space (NASA)', 'star'),
     picture: pic(picture, 'Picture of the Day', 'photo'),
     animal: animal && (

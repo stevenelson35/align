@@ -1,0 +1,44 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "family align",
+      "intents": [
+        {
+          "name": "AddTaskIntent",
+          "slots": [{ "name": "task", "type": "AMAZON.SearchQuery" }],
+          "samples": [
+            "add {task}",
+            "add {task} to the list",
+            "add {task} to my list",
+            "add {task} to the to do list",
+            "put {task} on the list",
+            "remind us to {task}",
+            "remember to {task}",
+            "we need to {task}",
+            "new task {task}"
+          ]
+        },
+        {
+          "name": "TodayIntent",
+          "slots": [],
+          "samples": [
+            "what's on today",
+            "what is on today",
+            "what do we have today",
+            "what's on the list",
+            "what's on the calendar",
+            "what's happening today",
+            "read today",
+            "today"
+          ]
+        },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] }
+      ],
+      "types": []
+    }
+  }
+}

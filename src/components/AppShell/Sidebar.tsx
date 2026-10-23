@@ -166,6 +166,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
         <button type="button" className="nav-link" onClick={onSettings}>
           <Icon name="settings" /> Settings
         </button>
+        <NavLink route={{ view: 'wall' }} label={<><Icon name="calendar" /> Wall display</>} />
         <NavLink route={{ view: 'help' }} label={<><Icon name="help" /> Help & about</>} />
       </div>
     </nav>

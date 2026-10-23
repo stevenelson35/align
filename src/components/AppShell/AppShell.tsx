@@ -18,6 +18,7 @@ import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { routeHash } from '../../utils/routes'
 import { MENU_OPEN_KEY, MENU_SCROLL_KEY } from '../../utils/menu'
+import { WallView } from '../Wall/WallView'
 
 interface Props {
   uid: string
@@ -147,6 +148,11 @@ export function AppShell({ uid, household, member }: Props) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [sidebarOpen])
+
+  // The wall display fills the screen on its own: no top bar, menu or panels.
+  if (route.view === 'wall') {
+    return <AppContext.Provider value={app}>{data.loaded ? <WallView /> : <AppSkeleton note="Loading…" />}</AppContext.Provider>
+  }
 
   return (
     <AppContext.Provider value={app}>

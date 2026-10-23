@@ -330,6 +330,13 @@ service cloud.firestore {
       allow delete: if isMember() && resource.data.uid == request.auth.uid;
     }
 
+    // Household settings shared by everyone, e.g. config/integrations { rescueGroupsKey } for The Daily's adoptable
+    // pet. Only household accounts can read it (never in the app's code or a public page); members can change it.
+    match /config/{docId} {
+      allow read: if isMember() || isViewer();
+      allow write: if isMember() && docId in ['integrations'];
+    }
+
     // Pictures stored in Align (resized JPEG data, under 1 MB): entries keep "align-image:<id>" in `images`.
     // Anyone in the household can open one by its id (ids are random and only appear on entries they can see),
     // but no one can list the collection, so a picture is only reachable through an entry. Never edited; the

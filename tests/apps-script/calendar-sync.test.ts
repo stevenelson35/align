@@ -105,3 +105,25 @@ describe('config_', () => {
     expect(cfg).toMatchObject({ WEEKS_AHEAD: '8', LIST_NAME: 'Family Calendar', LIST_ID: '' })
   })
 })
+
+describe('voice helpers (Alexa)', () => {
+  it('tidies what was said into a task title', () => {
+    expect((gs.voiceTitle_ as (t: string) => string)('  buy   milk ')).toBe('Buy milk')
+    expect((gs.voiceTitle_ as (t: string) => string)('to call the vet')).toBe('Call the vet')
+    expect((gs.voiceTitle_ as (t: string) => string)('')).toBe('')
+  })
+  it('makes a task that copies the list’s privacy and is due today', () => {
+    const list = { id: 'inbox', visibility: 'family', ownerId: 'steve', viewerVisible: true, defaultContext: 'family', editAudience: 'family' }
+    expect((gs.voiceTaskFields_ as (...a: unknown[]) => object)(list, 'Buy milk', '2026-10-23', 'bot')).toEqual({
+      listId: 'inbox', title: 'Buy milk', priority: 2, status: 'todo', context: 'family', durationDays: 1, dependsOn: [], targetDate: '2026-10-23',
+      visibility: 'family', ownerId: 'steve', viewerVisible: true, createdBy: 'bot', editAudience: 'family',
+    })
+  })
+  it('says what’s on today', () => {
+    const say = gs.voiceSummary_ as (t: object[]) => string
+    expect(say([{ title: 'Dentist', calendar: { time: '3:00 PM–4:00 PM' }, status: 'todo' }, { title: 'Buy milk', status: 'todo' }, { title: 'Old', status: 'done' }])).toBe(
+      'On the calendar: Dentist at 3:00 PM. To do: Buy milk.',
+    )
+    expect(say([])).toBe('Nothing on the calendar or the to-do list for today.')
+  })
+})

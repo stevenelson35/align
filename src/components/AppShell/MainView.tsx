@@ -66,6 +66,8 @@ export function MainView() {
       return <BlogPostView />
     case 'photos':
       return <PhotosView />
+    case 'wall':
+      return null // drawn by AppShell on its own
     case 'help':
       return <HelpView topic={route.topic} />
     case 'goal': {

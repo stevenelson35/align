@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { setDefaultVisibility, setNewTaskDue, setParents, setPhone } from '../../firebase/db'
+import { getIntegrations, setDefaultVisibility, setIntegration, setNewTaskDue, setParents, setPhone } from '../../firebase/db'
 import { changePassword } from '../../firebase/auth'
 import { people } from '../../utils/tasks'
 import { githubToken, setGithubToken, testToken } from '../../blog/github'
@@ -226,6 +226,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           ))}
         </fieldset>
         <DailySetting />
+        {isMember && <AdoptSetting />}
         <fieldset className="setting">
           <legend>Goal mini charts (this device)</legend>
           {CHART_STYLES.map((st) => (
@@ -361,6 +362,58 @@ function DailySetting() {
           ))}
         </select>
       </label>
+    </fieldset>
+  )
+}
+
+/** The household's RescueGroups.org key for The Daily's adoptable pet (shared; only household accounts can read it). */
+function AdoptSetting() {
+  const [has, setHas] = useState<boolean | null>(null)
+  const [key, setKey] = useState('')
+  const [note, setNote] = useState<string | null>(null)
+  useEffect(() => {
+    getIntegrations()
+      .then((i) => setHas(!!i.rescueGroupsKey))
+      .catch(() => setHas(false))
+  }, [])
+  async function save(value: string) {
+    setNote(null)
+    try {
+      await setIntegration('rescueGroupsKey', value)
+      setHas(!!value.trim())
+      setKey('')
+      setNote(value.trim() ? 'Saved for the household. Tomorrow’s Daily (or after a reload today) shows a pet near Winter Park.' : 'Removed.')
+      for (const k of Object.keys(localStorage)) if (k.endsWith(':adopt')) localStorage.removeItem(k)
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : String(err))
+    }
+  }
+  return (
+    <fieldset className="setting">
+      <legend>Adoptable pets (household)</legend>
+      <p className="muted small">
+        The Daily can show a pet up for adoption near Winter Park and Orlando, using RescueGroups.org’s free API. Request a free key at{' '}
+        <a href="https://www.rescuegroups.org/?page_id=1004" target="_blank" rel="noopener noreferrer">
+          rescuegroups.org
+        </a>{' '}
+        and paste it here. It’s kept in Align’s data for the household only (never in the app’s code).
+      </p>
+      {has ? (
+        <div className="row">
+          <span className="grow">✓ A key is saved.</span>
+          <button type="button" className="secondary small" onClick={() => void save('')}>
+            Remove
+          </button>
+        </div>
+      ) : (
+        <div className="row">
+          <input type="password" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} placeholder="RescueGroups API key" aria-label="RescueGroups API key" />
+          <button type="button" className="small" onClick={() => void save(key)} disabled={!key.trim()}>
+            Save
+          </button>
+        </div>
+      )}
+      {note && <p className="muted small">{note}</p>}
     </fieldset>
   )
 }
