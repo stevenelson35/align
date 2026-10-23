@@ -17,6 +17,7 @@ import { MainView } from './MainView'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { routeHash } from '../../utils/routes'
+import { MENU_OPEN_KEY } from '../../utils/menu'
 
 interface Props {
   uid: string
@@ -36,6 +37,14 @@ export function AppShell({ uid, household, member }: Props) {
   const [settingsOpen, setSettingsOpen] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [textingId, setTextingId] = useState<string | null>(null)
+  // The breadcrumb's "Menu" / "Links": open the menu with that section expanded. The menu reads its open section
+  // when it mounts, so it's stored and the menu remounted.
+  const [menuKey, setMenuKey] = useState(0)
+  const openMenu = useCallback((section?: string) => {
+    if (section) localStorage.setItem(MENU_OPEN_KEY, section)
+    setMenuKey((k) => k + 1)
+    setSidebarOpen(true)
+  }, [])
   const openSettings = useCallback(() => {
     setSidebarOpen(false)
     setSettingsOpen(routeHash(route))
@@ -86,12 +95,13 @@ export function AppShell({ uid, household, member }: Props) {
       textAbout,
       textingId,
       openSettings,
+      openMenu,
       proposeShift,
       editList: (list) => setListEditor({ list }),
       canEdit,
       openChat,
     }),
-    [uid, household, member, route, go, shownTaskId, choose, textAbout, textingId, openSettings, canEdit, openChat],
+    [uid, household, member, route, go, shownTaskId, choose, textAbout, textingId, openSettings, openMenu, canEdit, openChat],
   )
 
   const selectedTask = data.tasks.find((t) => t.id === shownTaskId)
@@ -146,7 +156,7 @@ export function AppShell({ uid, household, member }: Props) {
           onSearch={() => setSearchOpen(true)}
         />
         <div className="app-body">
-          <Sidebar open={sidebarOpen} onSettings={openSettings} />
+          <Sidebar key={menuKey} open={sidebarOpen} onSettings={openSettings} />
           {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
           <main className="main-panel" ref={mainRef}>
             {data.error && (

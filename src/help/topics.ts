@@ -12,6 +12,8 @@ export type HelpTopicId =
   | 'notes'
   | 'links'
   | 'picks'
+  | 'cards'
+  | 'daily'
   | 'privacy'
   | 'details'
   | 'texting'
@@ -144,6 +146,28 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Tonight: tick who’s there. Align ranks what’s on the list by their ratings, favoring things nobody dislikes over a high average with one strong no. Unrated counts as a maybe.',
       '• Pick for us chooses one of the top few at random, leaning toward the best. “Watched” (or Played, Read…) records the day; it sits out for a month, then works its way back up.',
       '• Each title has the usual note, links (a trailer, where to stream it), pictures (a poster) and comments.',
+    ],
+  },
+  {
+    id: 'cards',
+    title: 'Flashcards',
+    tip: 'A set of cards to learn: think of the answer, Show answer, then “Got it” or “Not yet”. Study in order, shuffled, or only the ones you haven’t got yet.',
+    body: [
+      'Make a set with “+ New list” → Flashcards (spelling words, times tables, state capitals…).',
+      '• Add a card with its front (the question) and back (the answer), or “Import a set of cards…”: paste lines like “Paris | Capital of France” (or Q: / A: lines), or choose a YAML file with front: / back: for each card.',
+      '• Study: pick In order, Shuffled, or Only ones not known yet, then Start. Think, tap Show answer, and say Got it or Not yet; at the end you can go over the ones you missed.',
+      '• Results are kept for each person (the ✓ / ✗ beside each card is yours). Start over forgets yours; anyone who can see the set can study it.',
+    ],
+  },
+  {
+    id: 'daily',
+    title: 'The Daily',
+    tip: 'Something new each day: a word, a joke, a quote, something to think about, a science fact, a riddle, a math puzzle, and pictures. Tap to reveal answers.',
+    body: [
+      'The Daily on Today changes every day. Each item shows something first; “Show answer” (or “Tell me more”) reveals the rest, so you can guess or think first.',
+      '• Word of the day, a quote, a question to think about, a science fact and a riddle come with Align (the same for everyone that day).',
+      '• A math puzzle at the grade you choose, a joke, NASA’s astronomy picture, Wikipedia’s picture of the day and a wild animal photo (guess what it is) are fetched fresh from free public sites.',
+      '• Choose which items you see and the math grade in Settings → The Daily. Tap “The Daily” to fold it away; it remembers for the day.',
     ],
   },
   {

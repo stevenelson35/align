@@ -27,6 +27,8 @@ export interface AppState {
   /** Opens a task / item with its "💬 Text about this" form showing (the 💬 on list rows). */
   /** Opens ⚙ Settings (e.g. from the blog page when the token is missing). */
   openSettings: () => void
+  /** Opens the ☰ menu (on a phone), with one section expanded if named (the breadcrumb). */
+  openMenu: (section?: string) => void
   textAbout: (taskId: string) => void
   /** The task whose text form should start open, if any. */
   textingId: string | null

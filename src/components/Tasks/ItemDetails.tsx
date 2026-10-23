@@ -33,7 +33,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
   const href = isLink ? safeUrl(item.url) : null
   return (
     <EntryPanel
-      kind={isNote ? 'Note' : isLink ? 'Link' : isPick ? pickKind(list.pickKind).label : 'Checklist item'}
+      kind={isNote ? 'Note' : isLink ? 'Link' : isPick ? pickKind(list.pickKind).label : list.kind === 'cards' ? 'Flashcard' : 'Checklist item'}
       title={item.title}
       onEdit={app.canEdit(item) ? () => setEditing(true) : undefined}
       onClose={() => app.selectTask(null)}
@@ -208,7 +208,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
   return (
     <form className="task-details form" onSubmit={save}>
       <header className="row panel-header">
-        <h3 className="grow">Edit {isNote ? 'note' : isLink ? 'link' : 'item'}</h3>
+        <h3 className="grow">Edit {isNote ? 'note' : isLink ? 'link' : list.kind === 'cards' ? 'card' : 'item'}</h3>
         {editable && (
           <button type="submit" className="small" disabled={busy}>
             Save
@@ -223,7 +223,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
       </header>
       <fieldset disabled={!editable}>
         <label>
-          {isNote ? 'Title' : isLink ? 'Name' : 'Item'}
+          {isNote ? 'Title' : isLink ? 'Name' : list.kind === 'cards' ? 'Front (the question)' : 'Item'}
           <input value={title} onChange={(e) => setTitle(e.target.value)} required />
         </label>
         {isLink && (
@@ -245,7 +245,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
           </>
         )}
         <label>
-          {isNote || isLink ? 'Note' : 'Details'}
+          {isNote || isLink ? 'Note' : list.kind === 'cards' ? 'Back (the answer)' : 'Details'}
           <AutoTextarea
             rows={isNote ? 8 : 3}
             value={text}

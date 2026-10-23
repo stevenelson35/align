@@ -6,6 +6,7 @@ import type { Goal } from '../../types'
 import { audienceLabel, audienceOf, parentsOf, privacyFields, viewCoveringEditors, type Audience } from '../../utils/audience'
 import { AudiencePicker } from '../UI/AudiencePicker'
 import { NumberField } from '../Tasks/NumberField'
+import { defaultDirection } from '../../utils/goals'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const KIND_HELP: Record<Goal['kind'], string> = {
@@ -20,7 +21,7 @@ const KIND_HELP: Record<Goal['kind'], string> = {
 export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () => void }) {
   const app = useApp()
   const [form, setForm] = useState<GoalInput>(
-    goal ?? { name: '', kind: 'check', visibility: 'family', ownerId: app.uid, viewerVisible: true, perDay: 8, progression: { start: 10, step: 1, every: 2, per: 'day', from: today() }, direction: 'down' },
+    goal ?? { name: '', kind: 'check', visibility: 'family', ownerId: app.uid, viewerVisible: true, perDay: 8, progression: { start: 10, step: 1, every: 2, per: 'day', from: today() } },
   )
   const parents = parentsOf(app.household)
   const others = (ids: string[] | undefined) => (ids ?? []).filter((id) => id !== form.ownerId)
@@ -37,6 +38,8 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
   const set = (patch: Partial<GoalInput>) => setForm((f) => ({ ...f, ...patch }))
   const prog = form.progression ?? { start: 10, step: 1, every: 2, per: 'day' as const, from: today() }
   const setProg = (patch: Partial<typeof prog>) => set({ progression: { ...prog, ...patch } })
+  // Until chosen, a measure's "better is" follows its unit: lower for weight, money and calories; higher otherwise.
+  const direction = form.direction ?? defaultDirection(form.unit)
   const num = (v: string) => (v.trim() === '' ? undefined : Number(v))
 
   async function save(e: FormEvent) {
@@ -50,7 +53,7 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
       perDay: form.kind === 'tally' ? Math.max(1, Math.round(form.perDay ?? 1)) : undefined,
       progression: form.kind === 'progressive' ? prog : undefined,
       target: form.kind === 'measure' || form.kind === 'progressive' || form.kind === 'total' ? form.target : undefined,
-      direction: form.kind === 'measure' ? (form.direction ?? 'down') : undefined,
+      direction: form.kind === 'measure' ? direction : undefined,
       timer: (form.kind === 'progressive' || form.kind === 'measure' || form.kind === 'total') && form.timer ? true : undefined,
       weekdays: form.weekdays?.length ? [...form.weekdays].sort() : undefined,
       sharedWith: undefined,
@@ -176,7 +179,7 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
             </label>
             <label>
               Better is
-              <select value={form.direction ?? 'down'} onChange={(e) => set({ direction: e.target.value as 'down' | 'up' })}>
+              <select value={direction} onChange={(e) => set({ direction: e.target.value as 'down' | 'up' })}>
                 <option value="down">lower (at or below target)</option>
                 <option value="up">higher (at or above target)</option>
               </select>

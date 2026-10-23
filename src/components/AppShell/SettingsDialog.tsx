@@ -9,6 +9,7 @@ import { AUDIENCE_ICON, AUDIENCES } from '../../utils/audience'
 import { loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
 import { ICON_STYLES, saveIconStyle, useIconStyle } from '../../utils/iconStyle'
 import { CHART_STYLES, saveChartStyle, useChartStyle } from '../../utils/chartStyle'
+import { DAILY_ITEMS, setDailyGrade, setDailyItemShown, useDailySettings } from '../../daily/settings'
 import '@fontsource-variable/datatype/wght.css'
 import { Icon, type IconName } from '../UI/Icon'
 import { HelpTip } from '../UI/HelpTip'
@@ -224,6 +225,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             </label>
           ))}
         </fieldset>
+        <DailySetting />
         <fieldset className="setting">
           <legend>Goal mini charts (this device)</legend>
           {CHART_STYLES.map((st) => (
@@ -329,6 +331,36 @@ function PasswordSetting() {
       )}
       {message && <p className={message.ok ? 'small' : 'error small'} role="status">{message.text}</p>}
       <p className="muted small">Forgot it? Sign out and use “Forgot password?” on the sign-in screen.</p>
+    </fieldset>
+  )
+}
+
+/** The Daily (this device): which items show, and the math puzzle's grade. */
+function DailySetting() {
+  const { hidden, grade } = useDailySettings()
+  return (
+    <fieldset className="setting">
+      <legend>
+        The Daily (this device) <HelpTip topic="daily" />
+      </legend>
+      <div className="chips">
+        {DAILY_ITEMS.map((i) => (
+          <label key={i.value} className={`chip-toggle${hidden.has(i.value) ? '' : ' on'}`}>
+            <input type="checkbox" checked={!hidden.has(i.value)} onChange={(e) => setDailyItemShown(i.value, e.target.checked)} />
+            {i.label}
+          </label>
+        ))}
+      </div>
+      <label className="inline">
+        Math puzzle grade
+        <select value={grade} onChange={(e) => setDailyGrade(Number(e.target.value))}>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((g) => (
+            <option key={g} value={g}>
+              Grade {g}
+            </option>
+          ))}
+        </select>
+      </label>
     </fieldset>
   )
 }

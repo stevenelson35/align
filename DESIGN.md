@@ -191,6 +191,9 @@ What to watch / play / read: a list (kind `picks`, `pickKind`: shows, movies, th
 - **Tonight** (`utils/picks.ts` `rankPicks`): for the people ticked as here (remembered per list per device), score = 0.6 × average + 0.4 × lowest, unrated counting as 3 ("least misery"). Watched in the last 30 days: left out ("resting"); within 180 days: up to a star lower, fading back. Top 3 shown; **Pick for us** (`pickOne`) is a weighted random choice among the top 5 (score² + 0.25); "✓ Watched tonight" records the day.
 - The list itself sorts by Tonight, Rating, Newest or A–Z. Tapping a title opens the usual entry panel with your stars, everyone's ratings and the watched days.
 
+### 5.9 Flashcards (`lists` kind `cards`)
+Items are cards: title = front, notes = back, plus `results: { uid: { known, right, wrong, last } }` (each person's own; any member who can see the set may write only their own, like pick-list ratings). Study in order, shuffled (a short shuffle animation), or only ones not known yet; Show answer → Got it / Not yet; a summary offers the missed ones again; Start over clears your results. Import from pasted text or a file: `front | back`, tab-separated, `Q:`/`A:` lines, JSON, or YAML (`front`/`back`, `q`/`a`, `term`/`definition`, or `cards:`); the YAML reader (js-yaml) loads only when needed (`utils/flashcards.ts`, tested).
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts
@@ -357,6 +360,12 @@ psort's `publish-browse` puts the family's starred, non-private photos on Turbif
 - **ⓘ tips** (`UI/HelpTip`): beside section and page headings, the privacy pickers, Settings, the comments heading, chat and the calendar buttons. Tap for the tip; "More in Help →" opens the topic. Stays on screen (fixed position); closes on tap elsewhere, scroll, or Esc.
 - **Help page** `#/help` / `#/help/<topic>` (menu → Help & about): contents chips, every topic, the chat's own command examples, and About with the build's commit and time (`__BUILD_COMMIT__`, `__BUILD_TIME__` from vite.config.ts).
 
+### 10.5 The Daily
+On Today, between On this day and To do (folded each morning; `components/Daily/TheDaily.tsx`). Each item is a `RevealCard` (something first, the answer or more after a tap).
+- **Built in** (`src/daily/content.ts`, the same for everyone each day): word of the day, a quote (only well-sourced ones), something to think about, a science question, a riddle. **Math puzzle** made from the day and a grade 1–8 (`src/daily/math.ts`, tested).
+- **Fetched** (`src/daily/sources.ts`, free sites a browser may read, no keys; once a day per device in localStorage; hidden if a site is down): a joke (JokeAPI safe mode, else icanhazdadjoke), a space picture (NASA image library; NASA's APOD API only returned a placeholder logo in Oct 2026), Wikipedia's picture of the day, and an iNaturalist animal photo (guess, then reveal).
+- Settings → The Daily (this device): which items show, and the math grade. A daily script (e.g. the Apps Script writing a `daily/<date>` doc) is only worth adding for a source that needs a key or blocks browsers.
+
 ### 10.1 Folder structure
 
 ```
@@ -419,7 +428,13 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-23 ("Align Updates" round 2): built, tested, NOT yet committed
+### 2026-10-23 (The Daily, flashcards, breadcrumb): built, tested, NOT yet committed
+- **The Daily** (§10.5) and **Flashcards** (§5.9), sharing `RevealCard`.
+- **Breadcrumb** on list pages ("Menu › Links › Art"): Menu opens the ☰ menu, the section name opens it with that section expanded (`openMenu`, `utils/menu.ts` `menuSectionOf`, also used by the menu).
+- Measure goals' "better is" now defaults from the unit (lower for lb / kg / $ / calories, else higher); the user's Walking goal was set to "lower" by the old default.
+- Rules: kind `cards`, `results` map, and results in the rate / watched update path, plus a test. **Deploy the rules before the web app.** Tests: 121 unit, 43 rules.
+
+### 2026-10-23 ("Align Updates" round 2): built and pushed (`76c698f`)
 - No family name in what ships or is public: the manifest, About, setup default and test data say "our family"; the top bar no longer shows the household name; real names in source and tests replaced with Sam / Alex / Lee (the repo is public). Older docs and git history still mention them.
 - **New tasks without a date** (list quick add, chat): due the day added, so they show on Today, unless Settings says "no date" (`members[uid].newTaskDue`; rules + test).
 - **Goal status** (`goalStatus`): none / "4 to go" / Done / "+3 extra"; lower-is-better single measurements say "1.2 lb to go" / On target / "0.8 lb ahead"; totals "… to go" / Reached. Count-up goals (`accumulates`) get "+ more" and Reset.

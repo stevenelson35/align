@@ -416,6 +416,21 @@ export function ratePick(itemId: string, uid: string, stars: number | undefined)
   return updateDoc(doc(db, 'tasks', itemId), { [`ratings.${uid}`]: stars ?? deleteField(), updatedAt: serverTimestamp() })
 }
 
+/** Your flashcard result: "Got it" (known) or "Not yet", counted, with the day. Only your own entry changes. */
+export function recordCard(itemId: string, uid: string, prev: { right?: number; wrong?: number } | undefined, known: boolean) {
+  return updateDoc(doc(db, 'tasks', itemId), {
+    [`results.${uid}`]: { known, right: (prev?.right ?? 0) + (known ? 1 : 0), wrong: (prev?.wrong ?? 0) + (known ? 0 : 1), last: today() },
+    updatedAt: serverTimestamp(),
+  })
+}
+
+/** Forget your flashcard results for these cards (Start over). */
+export function resetCards(itemIds: string[], uid: string) {
+  const batch = writeBatch(db)
+  for (const id of itemIds) batch.update(doc(db, 'tasks', id), { [`results.${uid}`]: deleteField(), updatedAt: serverTimestamp() })
+  return batch.commit()
+}
+
 /** Mark a pick-list item watched / played on a day (or take that day back). */
 export function setWatched(itemId: string, day: string, watched: boolean) {
   return updateDoc(doc(db, 'tasks', itemId), { watched: watched ? arrayUnion(day) : arrayRemove(day), updatedAt: serverTimestamp() })

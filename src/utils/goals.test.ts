@@ -131,3 +131,13 @@ describe('goalStatus', () => {
     expect(goalStatus(water, { count: 5 }, '2026-10-23').text).toBe('3 to go')
   })
 })
+
+describe('defaultDirection', () => {
+  it('guesses better-is from the unit', async () => {
+    const { defaultDirection } = await import('./goals')
+    expect(defaultDirection('lb')).toBe('down')
+    expect(defaultDirection('$')).toBe('down')
+    expect(defaultDirection('Minutes')).toBe('up')
+    expect(defaultDirection(undefined)).toBe('up')
+  })
+})

@@ -402,6 +402,10 @@ describe('pick lists', () => {
     await assertFails(updateDoc(doc(db('wife'), 'tasks/p1'), { 'ratings.wife': 4, title: 'Paddington 2' })) // nothing else
     await assertFails(updateDoc(doc(db('grandma'), 'tasks/p1'), { 'ratings.grandma': 5 })) // view-only accounts don't rate
     await assertSucceeds(updateDoc(doc(db('steve'), 'tasks/p1'), { title: 'Paddington 2' }))
+    // Flashcards: anyone who can see a card records only their own result.
+    await assertSucceeds(updateDoc(doc(db('daughter'), 'tasks/p1'), { 'results.daughter': { known: true, right: 1, wrong: 0, last: '2026-10-23' } }))
+    await assertFails(updateDoc(doc(db('daughter'), 'tasks/p1'), { 'results.wife': { known: true } }))
+    await assertFails(updateDoc(doc(db('daughter'), 'tasks/p1'), { 'results.daughter': 'yes' }))
   })
 })
 

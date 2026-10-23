@@ -18,6 +18,7 @@ import { HelpTip } from '../UI/HelpTip'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { useStoredSet } from '../../hooks/useStoredSet'
 import { splitTitleNote } from '../../utils/quickAdd'
+import { TheDaily } from '../Daily/TheDaily'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -146,6 +147,7 @@ export function DayView({ day }: { day: string }) {
 
       <GoalsStrip day={day} />
       <OnThisDay day={day} />
+      <TheDaily day={day} />
 
       <div className="day-section">
         <SectionHeader

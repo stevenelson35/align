@@ -191,3 +191,8 @@ export function goalStatus(goal: Goal, entry: GoalEntry | undefined, day: string
     }
   }
 }
+
+/** Lower is better for weight, money and calories (lb, kg, $, cal…); higher for minutes, steps, miles and the rest. */
+export function defaultDirection(unit: string | undefined): 'down' | 'up' {
+  return /^(lbs?|pounds?|kgs?|kilos?|kilograms?|\$|€|£|cal|calories|kcal)$/i.test((unit ?? '').trim()) ? 'down' : 'up'
+}

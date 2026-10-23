@@ -112,6 +112,7 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
               <option value="notes">Notes (reference info)</option>
               <option value="links">Links (bookmarks by category)</option>
               <option value="picks">Pick list (rate and pick: shows, movies, music…)</option>
+              <option value="cards">Flashcards (study a set: question and answer)</option>
             </select>
           </label>
           {form.kind === 'picks' && (

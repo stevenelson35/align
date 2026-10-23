@@ -8,6 +8,7 @@ import { goalGroups } from '../../utils/goals'
 import { BLOG_URL } from '../../blog/post'
 import { isFinished, isItemList } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
+import { MENU_OPEN_KEY, menuSectionOf } from '../../utils/menu'
 
 function NavLink({ route, label, color, count }: { route: Route; label: ReactNode; color?: string; count?: number }) {
   const app = useApp()
@@ -21,7 +22,7 @@ function NavLink({ route, label, color, count }: { route: Route; label: ReactNod
   )
 }
 
-const OPEN_KEY = 'align-menu-open'
+const OPEN_KEY = MENU_OPEN_KEY
 
 /**
  * A collapsible menu section. One is open at a time (opening one closes the others), and the open one is
@@ -59,15 +60,17 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
     (isItemList(l) ? listItems : tasks).filter((t) => t.listId === l.id && (l.kind === 'notes' || l.kind === 'links' || !isFinished(t))).length
   const color = (l: List) => `var(--color-${l.visibility})`
 
+  const inSection = (title: string) => lists.filter((l) => menuSectionOf(l) === title && (l.visibility !== 'private' || l.ownerId === uid))
   const sections: { title: string; lists: List[]; color: string }[] = [
-    { title: 'My lists', lists: lists.filter((l) => l.visibility === 'private' && l.kind === 'list' && l.ownerId === uid), color: 'var(--color-private)' },
-    { title: 'Family lists', lists: lists.filter((l) => l.visibility === 'family' && l.kind === 'list'), color: 'var(--color-family)' },
-    { title: 'Shared lists', lists: lists.filter((l) => l.visibility === 'shared' && l.kind === 'list'), color: 'var(--color-shared)' },
-    { title: 'Projects', lists: lists.filter((l) => l.kind === 'project'), color: 'var(--color-project)' },
-    { title: 'Checklists', lists: lists.filter((l) => l.kind === 'checklist'), color: '' },
-    { title: 'Notes', lists: lists.filter((l) => l.kind === 'notes'), color: '' },
-    { title: 'Links', lists: lists.filter((l) => l.kind === 'links'), color: '' },
-    { title: 'Pick lists', lists: lists.filter((l) => l.kind === 'picks'), color: '' },
+    { title: 'My lists', lists: inSection('My lists'), color: 'var(--color-private)' },
+    { title: 'Family lists', lists: inSection('Family lists'), color: 'var(--color-family)' },
+    { title: 'Shared lists', lists: inSection('Shared lists'), color: 'var(--color-shared)' },
+    { title: 'Projects', lists: inSection('Projects'), color: 'var(--color-project)' },
+    { title: 'Checklists', lists: inSection('Checklists'), color: '' },
+    { title: 'Notes', lists: inSection('Notes'), color: '' },
+    { title: 'Links', lists: inSection('Links'), color: '' },
+    { title: 'Pick lists', lists: inSection('Pick lists'), color: '' },
+    { title: 'Flashcards', lists: inSection('Flashcards'), color: '' },
   ]
 
   return (
