@@ -194,6 +194,9 @@ What to watch / play / read: a list (kind `picks`, `pickKind`: shows, movies, th
 ### 5.9 Flashcards (`lists` kind `cards`)
 Items are cards: title = front, notes = back, plus `results: { uid: { known, right, wrong, last } }` (each person's own; any member who can see the set may write only their own, like pick-list ratings). Study in order, shuffled (a short shuffle animation), or only ones not known yet; Show answer → Got it / Not yet; a summary offers the missed ones again; Start over clears your results. Import from pasted text or a file: `front | back`, tab-separated, `Q:`/`A:` lines, JSON, or YAML (`front`/`back`, `q`/`a`, `term`/`definition`, or `cards:`); the YAML reader (js-yaml) loads only when needed (`utils/flashcards.ts`, tested).
 
+### 5.10 Contacts (`lists` kind `contacts`)
+Items are people: title = name, `contact: { phones[], emails[], addresses[] (each { label: mobile|home|work|other, value }), org, jobTitle, birthday }`, plus notes / links / pictures / comments. The list page searches name, company, numbers (digits too), emails and addresses, with one-tap call / text / email; the panel's view links phones (`tel:`, and `sms:` to text), emails (`mailto:`) and addresses (Google Maps). Import: vCard (.vcf: Google, Samsung, iPhone, Outlook) or Google / Outlook CSV; duplicates within the file and against the list are merged (same name, email, or last-10-digit phone), so importing each source consolidates them. Export: vCard 3.0 (`utils/contacts.ts`, tested). Rules: kind `contacts`, `contact` map.
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts
@@ -436,7 +439,14 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-23 (import / export): built, tested, NOT yet committed
+### 2026-10-23 (contacts, pet tips, help fixes): built, tested, NOT yet committed
+- **Contacts** (§5.10). **Deploy the rules before the web app** (new kind and `contact` field).
+- The Daily: Pet Health tip (built in; vet guidance incl. Florida specifics) and a dog / cat fun fact (dogapi.dog / catfact.ninja).
+- Help: Today's heading shows the Today topic, To Do (and Also show) its own To Do topic, Archive Pics its own topic (others checked).
+- The breadcrumb's section link scrolls that section to the top of the menu (as far as it can).
+- Tests: 136 unit, 43 rules.
+
+### 2026-10-23 (import / export): built and pushed (`1722edd`)
 - Import / Export on lists (§10.6). Showing To Do's color key also opens the To Do list (hiding the key leaves it). Pin wording says "only you see it" (pins were already personal). No rules change. Tests: 131 unit.
 
 ### 2026-10-23 (decks, Title Case, chess, poker, Mini Philosophy): built and pushed (`70adf8a`)

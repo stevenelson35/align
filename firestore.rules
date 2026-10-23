@@ -114,7 +114,7 @@ service cloud.firestore {
 
     function validList(d) {
       return d.name is string && d.name.size() > 0
-        && d.kind in ['list', 'project', 'checklist', 'notes', 'links', 'picks', 'cards']
+        && d.kind in ['list', 'project', 'checklist', 'notes', 'links', 'picks', 'cards', 'contacts']
         && (!('pickKind' in d) || d.pickKind in ['shows', 'movies', 'theater', 'music', 'books', 'games', 'other'])
         && d.visibility in ['private', 'family', 'shared']
         && sharedOk(d)
@@ -206,6 +206,8 @@ service cloud.firestore {
         // Pick-list items: each person's stars (uid -> 1..5) and the days it was watched.
         && (!('ratings' in d) || d.ratings is map)
         && (!('watched' in d) || (d.watched is list && d.watched.size() <= 200))
+        // Contacts: phones / emails / addresses / company / title / birthday.
+        && (!('contact' in d) || d.contact is map)
         // Flashcards: each person's results (uid -> { known, right, wrong, last }).
         && (!('results' in d) || d.results is map)
         // Details, as on every entry: extra links and pictures (addresses).

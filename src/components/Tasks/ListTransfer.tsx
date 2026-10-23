@@ -3,6 +3,8 @@ import { addTaskNow, updateTask, type TaskInput } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
 import { cleanCategory } from '../../utils/links'
+import { contactsToVcf, csvToContacts, dedupe, looksLikeVcard, mergeContact, samePerson, vcfToContacts, type ContactIn } from '../../utils/contacts'
+import { detailsOf } from '../../utils/details'
 import {
   bookmarksHtmlToLinks,
   fileNameFor,
@@ -30,9 +32,12 @@ function download(name: string, text: string, type: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+/** A contact item as importable data (for matching and merging). */
+const asContact = (t: Task): ContactIn => ({ name: t.title, ...(t.contact ?? {}), notes: t.notes, links: detailsOf(t, false).links.map((l) => l.url) })
+
 const added = (t: Task) => (t.createdAt ? t.createdAt.seconds + t.createdAt.nanoseconds / 1e9 : Infinity)
 
-type Parsed = { kind: 'notes'; items: NoteIn[] } | { kind: 'links'; items: LinkIn[]; skipped: number } | { kind: 'tasks'; items: TaskIn[] }
+type Parsed = { kind: 'contacts'; items: ContactIn[]; merges: number } | { kind: 'notes'; items: NoteIn[] } | { kind: 'links'; items: LinkIn[]; skipped: number } | { kind: 'tasks'; items: TaskIn[] }
 
 /**
  * Import / Export for a list (DESIGN.md §10.6): notes, links (Markdown or a browser bookmarks file), checklists, task
@@ -54,6 +59,10 @@ export function ListTransfer({ list }: { list: List }) {
       return format === 'html'
         ? download(fileNameFor(list.name, 'html'), linksToBookmarksHtml(list.name, links), 'text/html')
         : download(fileNameFor(list.name, 'md'), linksToMarkdown(list.name, links), 'text/markdown')
+    }
+    if (list.kind === 'contacts') {
+      const people: ContactIn[] = items.map((t) => ({ name: t.title, ...(t.contact ?? {}), notes: t.notes, links: detailsOf(t, false).links.map((l) => l.url) }))
+      return download(fileNameFor(list.name, 'vcf'), contactsToVcf(people), 'text/vcard')
     }
     if (list.kind === 'cards') {
       const yaml = [`# ${list.name} (${items.length} cards). Import in Align: a Flashcards list → "Import a set of cards…".`]
@@ -99,6 +108,7 @@ export function ListTransfer({ list }: { list: List }) {
 }
 
 const HELP: Record<string, string> = {
+  contacts: 'A .vcf file (Google Contacts, Samsung Contacts, iPhone and Outlook export these; it can hold everyone) or a Google / Outlook CSV export. People who match someone already here (same name, email or phone) are merged, so you can import from each source in turn.',
   notes: 'A Markdown file where each note starts with “## Title” and its text follows (a file with no headings becomes one note named after the file). YAML/JSON lists of title / note work too.',
   links: 'Markdown links “- [Name](address) — note” under headings for categories (“## Home”, “### Utilities” → Home/Utilities), indented bullets, plain addresses, or a bookmarks file exported from your browser (its folders become categories).',
   checklist: 'One item per line: “- [ ] Milk”, “- [x] Bread” (already checked), or just “Milk”. “Item: details” or indented lines add details.',
@@ -117,6 +127,10 @@ function ImportDialog({ list, items, onClose }: { list: List; items: Task[]; onC
   const parse = (): Parsed | null => {
     if (!text.trim()) return null
     if (list.kind === 'notes') return { kind: 'notes', items: markdownToNotes(text, fileName.replace(/\.[^.]+$/, '') || 'Imported note') }
+    if (list.kind === 'contacts') {
+      const incoming = dedupe(looksLikeVcard(text) ? vcfToContacts(text) : csvToContacts(text))
+      return { kind: 'contacts', items: incoming, merges: incoming.filter((c) => items.some((t) => samePerson(asContact(t), c))).length }
+    }
     if (list.kind === 'links') {
       const all = looksLikeBookmarks(text) ? bookmarksHtmlToLinks(text) : markdownToLinks(text)
       const have = new Set(items.map((l) => l.url))
@@ -134,7 +148,21 @@ function ImportDialog({ list, items, onClose }: { list: List; items: Task[]; onC
     setError(null)
     const base = { priority: 2 as const, context: list.defaultContext, durationDays: 1, dependsOn: [] }
     try {
-      if (parsed.kind === 'notes') {
+      if (parsed.kind === 'contacts') {
+        // The same person already in the list gets the new numbers / emails / addresses added; others are new.
+        for (const c of parsed.items) {
+          const existing = items.find((t) => samePerson(asContact(t), c))
+          const { name, notes, links, ...info } = existing ? mergeContact(asContact(existing), c) : c
+          const fields = {
+            title: name.slice(0, 500),
+            notes: notes || undefined,
+            contact: info,
+            links: links?.length ? links.map((url) => ({ url })) : undefined,
+          }
+          if (existing) await updateTask(existing.id, fields)
+          else await addTaskNow(list, { ...base, status: 'todo', ...fields }, app.uid).written
+        }
+      } else if (parsed.kind === 'notes') {
         for (const n of parsed.items) await addTaskNow(list, { ...base, status: 'todo', title: n.title.slice(0, 500), notes: n.notes }, app.uid).written
       } else if (parsed.kind === 'links') {
         for (const l of parsed.items) await addTaskNow(list, { ...base, status: 'todo', title: l.title.slice(0, 500), url: l.url, category: l.category, notes: l.notes }, app.uid).written
@@ -170,7 +198,7 @@ function ImportDialog({ list, items, onClose }: { list: List; items: Task[]; onC
     }
   }
 
-  const noun = list.kind === 'notes' ? 'note' : list.kind === 'links' ? 'link' : list.kind === 'checklist' ? 'item' : 'task'
+  const noun = list.kind === 'contacts' ? 'contact' : list.kind === 'notes' ? 'note' : list.kind === 'links' ? 'link' : list.kind === 'checklist' ? 'item' : 'task'
   const count = parsed?.items.length ?? 0
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -184,7 +212,7 @@ function ImportDialog({ list, items, onClose }: { list: List; items: Task[]; onC
         <p className="muted small">{HELP[list.kind] ?? HELP.list}</p>
         <input
           type="file"
-          accept={list.kind === 'links' ? '.md,.markdown,.txt,.html,.htm' : '.md,.markdown,.txt,.yaml,.yml,.json'}
+          accept={list.kind === 'links' ? '.md,.markdown,.txt,.html,.htm' : list.kind === 'contacts' ? '.vcf,.vcard,.csv,text/vcard' : '.md,.markdown,.txt,.yaml,.yml,.json'}
           onChange={(e) => {
             const f = e.target.files?.[0]
             if (f) {
@@ -204,8 +232,9 @@ function ImportDialog({ list, items, onClose }: { list: List; items: Task[]; onC
         )}
         {parsed && (
           <p className="small">
-            {count ? `${count} ${noun}${count > 1 ? 's' : ''} found, e.g. “${parsed.items[0].title}”.` : `No ${noun}s found in that text.`}
+            {count ? `${count} ${noun}${count > 1 ? 's' : ''} found, e.g. “${parsed.kind === 'contacts' ? parsed.items[0].name : parsed.items[0].title}”.` : `No ${noun}s found in that text.`}
             {parsed.kind === 'links' && parsed.skipped > 0 && ` ${parsed.skipped} already in this list (skipped).`}
+            {parsed.kind === 'contacts' && parsed.merges > 0 && ` ${parsed.merges} match someone already here and will be merged into them.`}
           </p>
         )}
         {error && <p className="error small">{error}</p>}

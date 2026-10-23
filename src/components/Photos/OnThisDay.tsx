@@ -27,7 +27,7 @@ export function OnThisDay({ day }: { day: string }) {
   }
   return (
     <div className="day-section on-this-day">
-      <SectionHeader icon="photo" title={title} count={photos.length} onTitleClick={() => setHidden(!hidden)} expanded={!hidden} help="photos">
+      <SectionHeader icon="photo" title={title} count={photos.length} onTitleClick={() => setHidden(!hidden)} expanded={!hidden} help="onThisDay">
         <button type="button" className="link small" onClick={() => navigate({ view: 'photos' })} title="All the favorite photos" aria-label="All photos">
           <Icon name="photo" /> All
         </button>

@@ -402,6 +402,11 @@ describe('pick lists', () => {
     await assertFails(updateDoc(doc(db('wife'), 'tasks/p1'), { 'ratings.wife': 4, title: 'Paddington 2' })) // nothing else
     await assertFails(updateDoc(doc(db('grandma'), 'tasks/p1'), { 'ratings.grandma': 5 })) // view-only accounts don't rate
     await assertSucceeds(updateDoc(doc(db('steve'), 'tasks/p1'), { title: 'Paddington 2' }))
+    // Contacts: the contact details are a map on the item (lists of kind 'contacts').
+    await assertSucceeds(setDoc(doc(db('steve'), 'lists/people'), { name: 'Contacts', kind: 'contacts', visibility: 'family', ownerId: 'steve', viewerVisible: false, defaultContext: 'family' }))
+    const person = { listId: 'people', title: 'Sam Lee', status: 'todo', priority: 2, context: 'family', durationDays: 1, dependsOn: [], visibility: 'family', ownerId: 'steve', viewerVisible: false, createdBy: 'steve' }
+    await assertSucceeds(setDoc(doc(db('steve'), 'tasks/c1'), { ...person, contact: { phones: [{ label: 'mobile', value: '407 555 0100' }] } }))
+    await assertFails(setDoc(doc(db('steve'), 'tasks/c2'), { ...person, contact: 'not a map' }))
     // Flashcards: anyone who can see a card records only their own result.
     await assertSucceeds(updateDoc(doc(db('daughter'), 'tasks/p1'), { 'results.daughter': { known: true, right: 1, wrong: 0, last: '2026-10-23' } }))
     await assertFails(updateDoc(doc(db('daughter'), 'tasks/p1'), { 'results.wife': { known: true } }))

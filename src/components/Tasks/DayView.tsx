@@ -132,7 +132,7 @@ export function DayView({ day }: { day: string }) {
           {label || formatDay(day)}
           {label && <span className="muted small day-date"> {formatDay(day)}</span>}
         </h2>
-        <HelpTip topic="start" label="Align" />
+        <HelpTip topic="today" label="Today" />
         <button type="button" className="secondary small" onClick={() => go(addDays(day, 1))} aria-label="Next day" title="Next day">
           ›
         </button>
@@ -154,7 +154,7 @@ export function DayView({ day }: { day: string }) {
           icon="todo"
           title={day < now ? 'Not Done' : 'To Do'}
           count={b.todo.length}
-          help="today"
+          help="todo"
           onTitleClick={() => setHide({ ...hide, todo: !hide.todo })}
           expanded={!hide.todo}
           beside={
@@ -199,7 +199,7 @@ export function DayView({ day }: { day: string }) {
               <input type="checkbox" checked={also.has('everyone')} onChange={() => toggleAlso('everyone')} />
               Everyone ({viewOnlyToday.length})
             </label>
-            <HelpTip topic="today" label="Also show" />
+            <HelpTip topic="todo" label="Also show" />
           </div>
         )}
         {app.isMember && adding && (

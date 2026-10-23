@@ -17,7 +17,7 @@ import { MainView } from './MainView'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { routeHash } from '../../utils/routes'
-import { MENU_OPEN_KEY } from '../../utils/menu'
+import { MENU_OPEN_KEY, MENU_SCROLL_KEY } from '../../utils/menu'
 
 interface Props {
   uid: string
@@ -41,7 +41,10 @@ export function AppShell({ uid, household, member }: Props) {
   // when it mounts, so it's stored and the menu remounted.
   const [menuKey, setMenuKey] = useState(0)
   const openMenu = useCallback((section?: string) => {
-    if (section) localStorage.setItem(MENU_OPEN_KEY, section)
+    if (section) {
+      localStorage.setItem(MENU_OPEN_KEY, section)
+      sessionStorage.setItem(MENU_SCROLL_KEY, section) // the menu scrolls it to the top when it opens
+    }
     setMenuKey((k) => k + 1)
     setSidebarOpen(true)
   }, [])

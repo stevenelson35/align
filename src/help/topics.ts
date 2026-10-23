@@ -5,6 +5,8 @@
 export type HelpTopicId =
   | 'start'
   | 'today'
+  | 'todo'
+  | 'onThisDay'
   | 'tasks'
   | 'taskViews'
   | 'projects'
@@ -13,6 +15,7 @@ export type HelpTopicId =
   | 'links'
   | 'picks'
   | 'cards'
+  | 'contacts'
   | 'daily'
   | 'privacy'
   | 'details'
@@ -52,16 +55,40 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'today',
     title: 'Today',
-    tip: 'Your day: goals to log, photos from this date, and what’s to do. ‹ › move between days. “+ Add” adds a to do for this day; “Push rest” moves what’s left to tomorrow.',
+    tip: 'One day at a time: your Goals, Archive Pics, The Daily, and To Do. ‹ › go to other days; tap a section’s title to fold it away or open it.',
     body: [
-      'Today shows one day at a time; ‹ and › go to other days (past days show what was done, skipped or pushed then).',
-      '• Goals: the goals you log, with a small trend chart. They start hidden each morning; tap “Goals” or Show.',
-      '• On This Day / Near This Day / Archive Pics: favorite photos taken on this date in earlier years (or near it, or a few from the archive). Tap one to see it larger or text it.',
-      '• To do: tasks for the day, overdue ones, and what’s in progress. The buttons on each card move it to the next day, mark it won’t do, or text someone about it.',
-      '• + Add: type a to do for this day (it goes to your Inbox list); “Title: note” puts what follows the colon in the note. Push rest (⏭): the end-of-day sweep to tomorrow.',
-      '• Tap a section’s title (To Do, Done, Won’t Do, Pushed, Goals, Archive Pics) to fold it away or open it again.',
-      '• The color swatch next to the count shows what the card colors mean (who can see each task).',
+      'Today shows one day; ‹ and › go to other days (past days show what was done, skipped or pushed then). From top to bottom:',
+      '• Goals: the goals you log, with where you stand (“4 to go”, Done) and a small trend chart. Folded each morning.',
+      '• On This Day / Archive Pics: favorite family photos from this date in earlier years (see Archive Pics).',
+      '• The Daily: a word, joke, puzzles, pictures and more, with answers to reveal. Folded each morning.',
+      '• To Do: the day’s tasks (see To Do), then Done, Won’t Do and Pushed to a Later Day.',
+      'Tap any section’s title to fold it away or open it again. Google Calendar and Refresh at the top keep the family calendar in step.',
+    ],
+  },
+  {
+    id: 'todo',
+    title: 'To Do',
+    tip: 'Tasks for this day, ones overdue, and ones in progress. “+ Add” adds one; ⏭ “Push rest” moves what’s left to tomorrow. The swatch explains the card colors.',
+    body: [
+      'To Do lists the day’s tasks: scheduled or due that day, overdue ones, and ones marked Doing. On a past day it’s called Not Done.',
+      '• + Add: type a task for this day (it goes to your Inbox list); “Title: note” puts what follows the colon in the note. The box stays open for several adds; Esc closes it.',
+      '• On each card: ⏭ moves it to the next day, ✕ marks it won’t do, the message icon texts someone about it. Tap the card to see it; Edit to change it.',
+      '• ⏭ Push rest: the end-of-day sweep of everything left to tomorrow.',
+      '• The swatch next to the count shows what the card colors mean (who can see each task); showing it also opens the list.',
       '• Also show: tasks you can see but not change (someone kept editing their list to themselves) are left off; tick a person, or Everyone, to include theirs.',
+      '• Done, Won’t Do and Pushed to a Later Day below show what happened to the rest; tap a title to fold any of them.',
+    ],
+  },
+  {
+    id: 'onThisDay',
+    title: 'Archive Pics (On This Day)',
+    tip: 'Favorite family photos taken on this date in earlier years; if none, a nearby date, or a few picked from the archive. Tap one to see it larger or text it.',
+    body: [
+      'The photos come from the family photo library’s favorites (see Photos). The heading tells you which you’re seeing:',
+      '• On This Day: photos taken on this date in earlier years (“6 years ago”).',
+      '• Near This Day: none on this date, so the closest date within a week.',
+      '• Archive Pics: nothing close, so three favorites picked from the archive (the same three all day).',
+      'Tap a photo to see it larger, open it full size, or text it to someone. “All” opens the Photos page. It starts shown each morning; Hide (or tap the title) folds it for the day.',
     ],
   },
   {
@@ -164,6 +191,18 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: 'contacts',
+    title: 'Contacts',
+    tip: 'People with their phones, emails and addresses (tap to call, text, email or map), plus notes, links, pictures and comments. Import and export vCard files to bring contacts together from your phone, Google and Outlook.',
+    body: [
+      'Make a contacts list with “+ New list” → Contacts (for example “Steve’s Contacts”); who can see or edit it works like any list, so Linda can keep her own.',
+      '• Each contact has a name, company and job title, birthday, and any number of phones, emails and addresses (labeled mobile, home, work or other), plus the usual note, links, pictures and comments.',
+      '• Tap a phone number to call it (or the message icon to text), an email to write, or an address to open it in Maps.',
+      '• Import: a .vcf file (Google Contacts, Samsung Contacts, iPhone and Outlook all export these) or the CSV file Google or Outlook exports. The same person from several files—or already in the list—is merged (same name, email or phone), so importing from each source brings them together.',
+      '• Export saves the list as a .vcf file you can import into your phone, Google Contacts or Outlook.',
+    ],
+  },
+  {
     id: 'daily',
     title: 'The Daily',
     tip: 'Something new each day: a word, a joke, a quote, things to think about, science, a riddle, math and chess puzzles, poker odds and pictures. Tap to reveal answers.',
@@ -172,6 +211,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Word of the day, a quote, a question to think about, a science fact and a riddle come with Align (the same for everyone that day).',
       '• A Mini Philosophy short video by Jonny Thomson (YouTube @philosophyminis), a different one each day; “Watch here” plays it, or open it on YouTube.',
       '• An easy chess puzzle (mate in one, from Lichess), a short chess lesson, and Texas Hold’em poker odds.',
+      '• A pet health tip (well-established guidance, Florida-aware: heartworm, toads, sago palms) and a dog or cat fun fact from public trivia sites.',
       '• A math puzzle at the grade you choose, a joke, NASA’s astronomy picture, Wikipedia’s picture of the day and a wild animal photo (guess what it is) are fetched fresh from free public sites.',
       '• Choose which items you see and the math grade in Settings → The Daily. Tap “The Daily” to fold it away; it remembers for the day.',
     ],

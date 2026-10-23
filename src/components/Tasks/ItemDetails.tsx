@@ -15,6 +15,7 @@ import { EntryExtras, EntryFact, EntryPanel } from '../UI/EntryExtras'
 import { shareLink } from '../../utils/text'
 import { StarRating } from '../Picks/StarRating'
 import { AutoTextarea } from '../UI/AutoTextarea'
+import { ContactDetails } from '../Contacts/ContactDetails'
 
 /**
  * Side panel for a checklist item, a note or a link. It opens as a view (the item, its note, links, pictures,
@@ -24,6 +25,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
   const app = useApp()
   const { lists } = useData()
   const [editing, setEditing] = useState(false)
+  if (list.kind === 'contacts') return <ContactDetails item={item} list={list} />
   if (editing) return <ItemEditForm item={item} list={list} onDone={() => setEditing(false)} />
   const isNote = list.kind === 'notes'
   const isLink = list.kind === 'links'

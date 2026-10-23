@@ -3,6 +3,8 @@
 import type { List } from '../types'
 
 export const MENU_OPEN_KEY = 'align-menu-open'
+/** Set by the breadcrumb: the section the menu scrolls to the top when it opens (once). */
+export const MENU_SCROLL_KEY = 'align-menu-scroll'
 
 export function menuSectionOf(list: Pick<List, 'kind' | 'visibility'>): string {
   switch (list.kind) {
@@ -18,6 +20,8 @@ export function menuSectionOf(list: Pick<List, 'kind' | 'visibility'>): string {
       return 'Pick lists'
     case 'cards':
       return 'Flashcards'
+    case 'contacts':
+      return 'Contacts'
     default:
       return list.visibility === 'private' ? 'My lists' : list.visibility === 'family' ? 'Family lists' : 'Shared lists'
   }

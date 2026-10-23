@@ -17,6 +17,7 @@ const HELP_FOR_KIND: Record<List['kind'], HelpTopicId> = {
   links: 'links',
   picks: 'picks',
   cards: 'cards',
+  contacts: 'contacts',
 }
 const KIND_NAME: Record<List['kind'], string> = {
   list: 'task lists',
@@ -26,6 +27,7 @@ const KIND_NAME: Record<List['kind'], string> = {
   links: 'links',
   picks: 'pick lists',
   cards: 'flashcards',
+  contacts: 'contacts',
 }
 const KIND_LABEL: Record<List['kind'], string> = {
   list: '',
@@ -35,6 +37,7 @@ const KIND_LABEL: Record<List['kind'], string> = {
   links: ' links',
   picks: ' pick list',
   cards: ' flashcards',
+  contacts: ' contacts',
 }
 
 /** Name, who can see it, and Edit list; `children` adds view-specific buttons. */

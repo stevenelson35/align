@@ -1,7 +1,7 @@
 // Which of The Daily's items show, and the math puzzle's grade: chosen per device in Settings.
 import { useSyncExternalStore } from 'react'
 
-export type DailyItem = 'word' | 'joke' | 'quote' | 'think' | 'philosophy' | 'fact' | 'riddle' | 'math' | 'chess' | 'chessTip' | 'poker' | 'space' | 'picture' | 'animal'
+export type DailyItem = 'word' | 'joke' | 'quote' | 'think' | 'philosophy' | 'fact' | 'riddle' | 'math' | 'chess' | 'chessTip' | 'poker' | 'pet' | 'petFact' | 'space' | 'picture' | 'animal'
 
 export const DAILY_ITEMS: { value: DailyItem; label: string }[] = [
   { value: 'word', label: 'Word of the day' },
@@ -15,6 +15,8 @@ export const DAILY_ITEMS: { value: DailyItem; label: string }[] = [
   { value: 'chess', label: 'Chess puzzle (mate in one)' },
   { value: 'chessTip', label: 'Chess lesson' },
   { value: 'poker', label: 'Poker odds (Texas Hold’em)' },
+  { value: 'pet', label: 'Pet health tip' },
+  { value: 'petFact', label: 'Dog or cat fun fact' },
   { value: 'space', label: 'Space picture (NASA)' },
   { value: 'picture', label: 'Picture of the day (Wikipedia)' },
   { value: 'animal', label: 'Wild animal (guess what it is)' },

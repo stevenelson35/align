@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
 import { safeUrl } from '../../utils/links'
@@ -8,7 +8,7 @@ import { goalGroups } from '../../utils/goals'
 import { BLOG_URL } from '../../blog/post'
 import { isFinished, isItemList } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
-import { MENU_OPEN_KEY, menuSectionOf } from '../../utils/menu'
+import { MENU_OPEN_KEY, MENU_SCROLL_KEY, menuSectionOf } from '../../utils/menu'
 
 function NavLink({ route, label, color, count }: { route: Route; label: ReactNode; color?: string; count?: number }) {
   const app = useApp()
@@ -30,7 +30,7 @@ const OPEN_KEY = MENU_OPEN_KEY
  */
 function Section({ title, count, active, isOpen, onToggle, children }: { title: string; count: number; active: boolean; isOpen: boolean; onToggle: () => void; children: ReactNode }) {
   return (
-    <div className={`nav-section${isOpen ? ' open' : ''}`}>
+    <div className={`nav-section${isOpen ? ' open' : ''}`} data-section={title}>
       <button type="button" className={`nav-heading${active && !isOpen ? ' has-active' : ''}`} onClick={onToggle} aria-expanded={isOpen}>
         <span className="caret">{isOpen ? '▾' : '▸'}</span>
         <span className="grow">{title}</span>
@@ -44,6 +44,13 @@ function Section({ title, count, active, isOpen, onToggle, children }: { title: 
 export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () => void }) {
   const { uid, member, household, isMember, editList, route } = useApp()
   const [openSection, setOpenSection] = useState<string | null>(() => localStorage.getItem(OPEN_KEY))
+  // Opened from the breadcrumb ("Menu › Links"): scroll that section to the top of the menu.
+  useEffect(() => {
+    const target = sessionStorage.getItem(MENU_SCROLL_KEY)
+    if (!target) return
+    sessionStorage.removeItem(MENU_SCROLL_KEY)
+    requestAnimationFrame(() => document.querySelector(`.sidebar [data-section="${CSS.escape(target)}"]`)?.scrollIntoView({ block: 'start' }))
+  }, [])
   const toggle = (title: string) => {
     const next = openSection === title ? null : title
     if (next) localStorage.setItem(OPEN_KEY, next)
@@ -71,6 +78,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
     { title: 'Links', lists: inSection('Links'), color: '' },
     { title: 'Pick lists', lists: inSection('Pick lists'), color: '' },
     { title: 'Flashcards', lists: inSection('Flashcards'), color: '' },
+    { title: 'Contacts', lists: inSection('Contacts'), color: '' },
   ]
 
   return (

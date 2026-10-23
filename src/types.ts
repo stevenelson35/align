@@ -52,7 +52,7 @@ export interface List {
    * tasks (shopping, gifts, people to call). notes: reference info. Checklist items and notes are stored like tasks
    * (same collection and rules) but stay out of the task views.
    */
-  kind: 'list' | 'project' | 'checklist' | 'notes' | 'links' | 'picks' | 'cards'
+  kind: 'list' | 'project' | 'checklist' | 'notes' | 'links' | 'picks' | 'cards' | 'contacts'
   /** Pick lists: what's on it (shows, movies, music…), for its icon and words ("Watched", "Played"). */
   pickKind?: 'shows' | 'movies' | 'theater' | 'music' | 'books' | 'games' | 'other'
   visibility: Visibility
@@ -111,6 +111,15 @@ export interface Task {
   /** Links lists: the address it opens, and its category ("Home/Utilities" nests). */
   url?: string
   category?: string
+  /** Contacts: phones, emails, addresses (labeled), company, job title, birthday (utils/contacts.ts). */
+  contact?: {
+    phones?: { label: 'mobile' | 'home' | 'work' | 'other'; value: string }[]
+    emails?: { label: 'mobile' | 'home' | 'work' | 'other'; value: string }[]
+    addresses?: { label: 'mobile' | 'home' | 'work' | 'other'; value: string }[]
+    org?: string
+    jobTitle?: string
+    birthday?: string
+  }
   /** Flashcards: each person's own results for this card (utils/flashcards.ts CardResult). */
   results?: Record<string, { known?: boolean; right?: number; wrong?: number; last?: string }>
   /** Pick-list items: each person's 1–5 stars (uid → stars), and the days it was watched / played / read. */

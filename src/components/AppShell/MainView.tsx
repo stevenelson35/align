@@ -10,6 +10,7 @@ import { GoalsView } from '../Goals/GoalsView'
 import { LinksView } from '../Tasks/LinksView'
 import { PicksView } from '../Picks/PicksView'
 import { CardsView } from '../Cards/CardsView'
+import { ContactsView } from '../Contacts/ContactsView'
 import { NotesView } from '../Tasks/NotesView'
 import { ListView } from '../Tasks/ListView'
 import { PhotosView } from '../Photos/PhotosView'
@@ -45,6 +46,7 @@ export function MainView() {
       if (list.kind === 'links') return <LinksView key={list.id} list={list} />
       if (list.kind === 'picks') return <PicksView key={list.id} list={list} />
       if (list.kind === 'cards') return <CardsView key={list.id} list={list} />
+      if (list.kind === 'contacts') return <ContactsView key={list.id} list={list} />
       return <ListView key={list.id} list={list} />
     }
     case 'list': {
@@ -55,6 +57,7 @@ export function MainView() {
       if (list.kind === 'links') return <LinksView key={list.id} list={list} />
       if (list.kind === 'picks') return <PicksView key={list.id} list={list} />
       if (list.kind === 'cards') return <CardsView key={list.id} list={list} />
+      if (list.kind === 'contacts') return <ContactsView key={list.id} list={list} />
       return route.timeline ? <TimelineView list={list} /> : <ListView key={list.id} list={list} />
     }
     case 'goals':
