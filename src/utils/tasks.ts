@@ -4,10 +4,15 @@ import { applyPreview, conflictsById, finish, type ShiftPreview } from '../engin
 import type { Context, Goal, Household, List, Priority, Role, Status, Task } from '../types'
 import { audienceOf } from './audience'
 
-export type Shareable = Pick<Task, 'visibility' | 'ownerId' | 'sharedWith'>
+export type Shareable = Pick<Task, 'visibility' | 'ownerId' | 'sharedWith'> & Partial<Pick<Task, 'editAudience' | 'editors'>>
 
+/** Mirrors the rules' canWrite: the owner; then "who can edit" if the list set one, else whoever can see it. */
 export function canEditTask(task: Shareable, uid: string, role: Role): boolean {
-  return role === 'member' && (task.visibility === 'family' || task.ownerId === uid || !!task.sharedWith?.includes(uid))
+  if (role !== 'member') return false
+  if (task.ownerId === uid) return true
+  if (task.editAudience === undefined) return task.visibility === 'family' || !!task.sharedWith?.includes(uid)
+  const sees = task.visibility === 'family' || !!task.sharedWith?.includes(uid)
+  return sees && (task.editAudience === 'family' || task.editAudience === 'everyone' || !!task.editors?.includes(uid))
 }
 
 export const PRIVACY_ICON: Record<List['visibility'], string> = { private: '🔒', family: '👪', shared: '👥' } // plain-text places (chat, search)
@@ -53,7 +58,7 @@ export function canLogGoal(g: Pick<Goal, 'ownerId' | 'editAudience' | 'editors'>
 
 /** Checklists and notes hold items, not tasks: they stay out of the task views, chat and scheduling. */
 export function isItemList(list: Pick<List, 'kind'>): boolean {
-  return list.kind === 'checklist' || list.kind === 'notes' || list.kind === 'links'
+  return list.kind === 'checklist' || list.kind === 'notes' || list.kind === 'links' || list.kind === 'picks'
 }
 
 /** Done or canceled: nothing more to do, and it no longer holds up the tasks that depend on it. */

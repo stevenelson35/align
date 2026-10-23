@@ -13,6 +13,8 @@ export interface HouseholdMember {
   defaultVisibility?: 'private' | 'parents' | 'family' | 'everyone'
   /** Their mobile number, for "text <name> …" (they enter it in Settings). */
   phone?: string
+  /** Links (links-list item ids) this person pinned to their own Align menu, in order. */
+  pinnedLinks?: string[]
   /** The calendar-sync account: a member for the rules, hidden from people pickers. Set in the console. */
   bot?: boolean
 }
@@ -45,7 +47,9 @@ export interface List {
    * tasks (shopping, gifts, people to call). notes: reference info. Checklist items and notes are stored like tasks
    * (same collection and rules) but stay out of the task views.
    */
-  kind: 'list' | 'project' | 'checklist' | 'notes' | 'links'
+  kind: 'list' | 'project' | 'checklist' | 'notes' | 'links' | 'picks'
+  /** Pick lists: what's on it (shows, movies, music…), for its icon and words ("Watched", "Played"). */
+  pickKind?: 'shows' | 'movies' | 'theater' | 'music' | 'books' | 'games' | 'other'
   visibility: Visibility
   /** Who can see and edit it when visibility is 'shared' (uids, always including the owner). Tasks copy their list's. */
   sharedWith?: string[]
@@ -54,6 +58,12 @@ export interface List {
   defaultContext: Context
   /** 'parents' when chosen as Parents (sharedWith holds them), so it shows as Parents rather than Chosen people. */
   audience?: 'parents'
+  /**
+   * Who can edit it (and its tasks), when narrower than who can see it: Only me / Parents / Chosen people (`editors`)
+   * / Family / Everyone. Absent = anyone who can see it may edit (lists made before this). Tasks copy both.
+   */
+  editAudience?: 'private' | 'parents' | 'family' | 'shared' | 'everyone'
+  editors?: string[]
 }
 
 export interface Dependency {
@@ -74,6 +84,9 @@ export interface Task {
   sharedWith?: string[]
   ownerId: string
   viewerVisible: boolean
+  /** Copied from the list: who can edit (absent = whoever can see it). */
+  editAudience?: List['editAudience']
+  editors?: string[]
 
   title: string
   notes?: string
@@ -93,6 +106,9 @@ export interface Task {
   /** Links lists: the address it opens, and its category ("Home/Utilities" nests). */
   url?: string
   category?: string
+  /** Pick-list items: each person's 1–5 stars (uid → stars), and the days it was watched / played / read. */
+  ratings?: Record<string, number>
+  watched?: string[]
   /** Extra details, as on every entry: more links and pictures (utils/details.ts). `notes` is the note. */
   links?: StoredLink[]
   images?: string[]

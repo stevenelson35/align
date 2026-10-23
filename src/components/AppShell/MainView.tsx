@@ -8,6 +8,7 @@ import { BlogPostView } from '../Blog/BlogPostView'
 import { GoalDetail } from '../Goals/GoalDetail'
 import { GoalsView } from '../Goals/GoalsView'
 import { LinksView } from '../Tasks/LinksView'
+import { PicksView } from '../Picks/PicksView'
 import { NotesView } from '../Tasks/NotesView'
 import { ListView } from '../Tasks/ListView'
 import { PhotosView } from '../Photos/PhotosView'
@@ -41,6 +42,7 @@ export function MainView() {
       if (list.kind === 'checklist') return <ChecklistView key={list.id} list={list} />
       if (list.kind === 'notes') return <NotesView key={list.id} list={list} />
       if (list.kind === 'links') return <LinksView key={list.id} list={list} />
+      if (list.kind === 'picks') return <PicksView key={list.id} list={list} />
       return <ListView key={list.id} list={list} />
     }
     case 'list': {
@@ -49,6 +51,7 @@ export function MainView() {
       if (list.kind === 'checklist') return <ChecklistView key={list.id} list={list} />
       if (list.kind === 'notes') return <NotesView key={list.id} list={list} />
       if (list.kind === 'links') return <LinksView key={list.id} list={list} />
+      if (list.kind === 'picks') return <PicksView key={list.id} list={list} />
       return route.timeline ? <TimelineView list={list} /> : <ListView key={list.id} list={list} />
     }
     case 'goals':

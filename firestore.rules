@@ -39,8 +39,20 @@ service cloud.firestore {
                                      && d.ownerId in d.sharedWith));
     }
 
+    // Who can change a list or task: its owner; or, by "who can edit" (editAudience, copied onto tasks): every
+    // member for Family / Everyone, the people in `editors` for Parents / Chosen people, only the owner for Only me.
+    // Without editAudience (lists made before it existed), anyone who can see it may change it, as before. Either
+    // way they must be able to see it.
     function canWrite(d) {
-      return isMember() && (d.visibility == 'family' || d.ownerId == request.auth.uid || request.auth.uid in d.get('sharedWith', []));
+      return isMember() && canRead(d) && (d.ownerId == request.auth.uid
+        || (!('editAudience' in d) && (d.visibility == 'family' || request.auth.uid in d.get('sharedWith', [])))
+        || d.get('editAudience', '') in ['family', 'everyone']
+        || request.auth.uid in d.get('editors', []));
+    }
+
+    function validEditFields(d) {
+      return (!('editAudience' in d) || d.editAudience in ['private', 'parents', 'family', 'shared', 'everyone'])
+        && (!('editors' in d) || (d.editors is list && d.editors.size() <= 20));
     }
 
     // ---- Household ----
@@ -51,10 +63,12 @@ service cloud.firestore {
       let uid = request.auth.uid;
       return after.diff(before).affectedKeys().hasOnly([uid])
         && after[uid].role == before[uid].role
-        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone'])
+        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks'])
         // Their own default for new lists and quick adds, and their mobile number for "text …" (Settings).
         && (!('defaultVisibility' in after[uid]) || after[uid].defaultVisibility in ['private', 'parents', 'family', 'everyone'])
-        && (!('phone' in after[uid]) || (after[uid].phone is string && after[uid].phone.size() <= 24));
+        && (!('phone' in after[uid]) || (after[uid].phone is string && after[uid].phone.size() <= 24))
+        // Links they pinned to their own Align menu (ids of links-list items).
+        && (!('pinnedLinks' in after[uid]) || (after[uid].pinnedLinks is list && after[uid].pinnedLinks.size() <= 30));
     }
 
     // Once someone is in the Parents group, only a parent can change who's in it (so a child can't opt in).
@@ -98,12 +112,14 @@ service cloud.firestore {
 
     function validList(d) {
       return d.name is string && d.name.size() > 0
-        && d.kind in ['list', 'project', 'checklist', 'notes', 'links']
+        && d.kind in ['list', 'project', 'checklist', 'notes', 'links', 'picks']
+        && (!('pickKind' in d) || d.pickKind in ['shows', 'movies', 'theater', 'music', 'books', 'games', 'other'])
         && d.visibility in ['private', 'family', 'shared']
         && sharedOk(d)
         && d.viewerVisible is bool
         && (d.visibility == 'family' || d.viewerVisible == false)
         && d.defaultContext in ['family', 'work']
+        && validEditFields(d)
         && d.ownerId is string;
     }
 
@@ -112,10 +128,13 @@ service cloud.firestore {
       allow create: if canWrite(request.resource.data)
         && request.resource.data.ownerId == request.auth.uid
         && validList(request.resource.data);
-      // Only the current owner may hand a list to someone else.
+      // Only the current owner may hand a list to someone else, or change who can edit it.
       allow update: if canWrite(resource.data)
-        && canWrite(request.resource.data)
+        && (canWrite(request.resource.data) || resource.data.ownerId == request.auth.uid)
         && (request.resource.data.ownerId == resource.data.ownerId || resource.data.ownerId == request.auth.uid)
+        && ((request.resource.data.get('editAudience', null) == resource.data.get('editAudience', null)
+             && request.resource.data.get('editors', null) == resource.data.get('editors', null))
+            || resource.data.ownerId == request.auth.uid)
         && validList(request.resource.data);
       allow delete: if canWrite(resource.data);
     }
@@ -182,13 +201,18 @@ service cloud.firestore {
         && (!('category' in d) || (d.category is string && d.category.size() <= 200))
         // A reading-list task: the link (in a links list) it's about.
         && (!('linkId' in d) || (d.linkId is string && d.linkId.size() <= 100))
+        // Pick-list items: each person's stars (uid -> 1..5) and the days it was watched.
+        && (!('ratings' in d) || d.ratings is map)
+        && (!('watched' in d) || (d.watched is list && d.watched.size() <= 200))
         // Details, as on every entry: extra links and pictures (addresses).
         && (!('links' in d) || (d.links is list && d.links.size() <= 10))
         && (!('images' in d) || (d.images is list && d.images.size() <= 10))
         && d.visibility == list.visibility
         && d.get('sharedWith', null) == list.get('sharedWith', null)
         && d.ownerId == list.ownerId
-        && d.viewerVisible == list.viewerVisible;
+        && d.viewerVisible == list.viewerVisible
+        && d.get('editAudience', null) == list.get('editAudience', null)
+        && d.get('editors', null) == list.get('editors', null);
     }
 
     match /tasks/{taskId} {
@@ -196,10 +220,20 @@ service cloud.firestore {
       allow create: if canWrite(request.resource.data)
         && request.resource.data.createdBy == request.auth.uid
         && validTask(request.resource.data);
+      // The list's owner may also update tasks while changing the list's who-can-edit (the same batch).
       allow update: if canWrite(resource.data)
-        && canWrite(request.resource.data)
+        && (canWrite(request.resource.data) || request.resource.data.ownerId == request.auth.uid)
         && request.resource.data.createdBy == resource.data.createdBy
         && validTask(request.resource.data);
+      // Pick lists: any member who can see an item may set their own stars and mark it watched, even when only
+      // the list's owner edits it. Nothing else changes this way, and only your own rating.
+      allow update: if isMember() && canRead(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ratings', 'watched', 'updatedAt'])
+        && request.resource.data.get('ratings', {}).diff(resource.data.get('ratings', {})).affectedKeys().hasOnly([request.auth.uid])
+        && (!(request.auth.uid in request.resource.data.get('ratings', {}))
+            || (request.resource.data.ratings[request.auth.uid] is int
+                && request.resource.data.ratings[request.auth.uid] >= 1 && request.resource.data.ratings[request.auth.uid] <= 5))
+        && (!('watched' in request.resource.data) || (request.resource.data.watched is list && request.resource.data.watched.size() <= 200));
       allow delete: if canWrite(resource.data);
     }
 

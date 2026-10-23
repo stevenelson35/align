@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { today } from '../../engine/dates'
 import { addToTotal, logGoal } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
@@ -85,7 +85,6 @@ export function GoalControl({ goal, day, showName = true, who }: { goal: Goal; d
 /** Running total: type an amount and Add (a minus amount takes some back). Several people can add on one day. */
 function AddAmount({ added, unit, onAdd, timerGoalId }: { added?: number; unit?: string; onAdd: (n: number) => void; timerGoalId?: string }) {
   const [text, setText] = useState('')
-  const box = useRef<HTMLInputElement>(null)
   const n = Number(text)
   const add = () => {
     if (text.trim() && Number.isFinite(n) && n !== 0) {
@@ -97,7 +96,6 @@ function AddAmount({ added, unit, onAdd, timerGoalId }: { added?: number; unit?:
     <>
       <div className="row goal-amount">
         <input
-          ref={box}
           type="number"
           inputMode="decimal"
           step="any"
@@ -114,14 +112,7 @@ function AddAmount({ added, unit, onAdd, timerGoalId }: { added?: number; unit?:
         {!!added && <span className="muted small">+{amount(added, unit)} this day</span>}
       </div>
       {timerGoalId && (
-        <GoalTimer
-          goalId={timerGoalId}
-          unit={unit}
-          onUse={(v) => {
-            setText(String(v))
-            box.current?.focus()
-          }}
-        />
+        <GoalTimer goalId={timerGoalId} unit={unit} onAdd={onAdd} />
       )}
     </>
   )
@@ -181,11 +172,10 @@ function Amount({
   editable: boolean
   quick?: number
   onSave: (v: number | undefined) => void
-  /** Show the goal's timer; Use puts its time in the box (saved when you leave the box or press Enter). */
+  /** Show the goal's timer; its Add adds the timed amount to the day's value (several walks add up). */
   timerGoalId?: string
 }) {
   const [text, setText] = useState(value === undefined ? '' : String(value))
-  const box = useRef<HTMLInputElement>(null)
   const commit = () => {
     const t = text.trim()
     const n = Number(t)
@@ -197,7 +187,6 @@ function Amount({
     <>
       <div className="row goal-amount">
         <input
-          ref={box}
           type="number"
           inputMode="decimal"
           step="any"
@@ -217,15 +206,7 @@ function Amount({
         )}
       </div>
       {timerGoalId && (
-        <GoalTimer
-          goalId={timerGoalId}
-          unit={unit}
-          disabled={!editable}
-          onUse={(v) => {
-            setText(String(v))
-            box.current?.focus()
-          }}
-        />
+        <GoalTimer goalId={timerGoalId} unit={unit} disabled={!editable} onAdd={(v) => onSave(Math.round(((value ?? 0) + v) * 100) / 100)} />
       )}
     </>
   )

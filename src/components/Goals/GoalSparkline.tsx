@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react'
+import '@fontsource-variable/datatype/wght.css' // the font file itself downloads only when a Datatype chart is shown
 import { addDays, today } from '../../engine/dates'
 import type { Goal } from '../../types'
+import { datatypeBars, datatypeLine, datatypePie, useChartStyle } from '../../utils/chartStyle'
 import { amount, history, totalTo } from '../../utils/goals'
 
 const W = 72
@@ -12,6 +15,70 @@ const PAD = 3
  * toward its target. The last value gets a dot. Nothing shows until there's something to draw.
  */
 export function GoalSparkline({ goal, days = 14 }: { goal: Goal; days?: number }) {
+  const style = useChartStyle()
+  return style === 'datatype' ? <GoalDatatype goal={goal} days={days} /> : <GoalLines goal={goal} days={days} />
+}
+
+let fontReady: Promise<unknown> | null = null
+/** True once the Datatype font has loaded (until then the chart text would show as "{l:…}", so nothing shows). */
+function useDatatypeFont(): boolean {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    let live = true
+    fontReady ??= document.fonts.load('400 22px "Datatype Variable"', '{l:1,2}')
+    fontReady.then(() => live && setReady(true)).catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [])
+  return ready
+}
+
+/**
+ * The same two weeks drawn by the Datatype font (Settings → Goal mini charts): check = bars for done days; tally =
+ * a bar per day; progressive / measure = a sparkline of what was logged; total = a pie of the target reached.
+ */
+function GoalDatatype({ goal, days }: { goal: Goal; days: number }) {
+  const ready = useDatatypeFont()
+  const to = today()
+  const data = history(goal, addDays(to, -(days - 1)), to)
+  const u = (n: number | undefined) => amount(n, goal.unit)
+  let text: string | null = null
+  let label = ''
+  if (goal.kind === 'check') {
+    const done = data.filter((d) => d.entry?.done).length
+    if (done) {
+      text = datatypeBars(data.map((d) => (d.entry?.done ? 100 : 4)), 100)
+      label = `Done ${done} of the last ${data.length} days`
+    }
+  } else if (goal.kind === 'tally') {
+    const counts = data.map((d) => d.entry?.count ?? 0)
+    if (counts.some(Boolean)) {
+      text = datatypeBars(counts, Math.max(goal.perDay ?? 1, ...counts))
+      label = `Times a day over the last ${data.length} days: ${counts.join(', ')}`
+    }
+  } else if (goal.kind === 'total') {
+    if (goal.target) {
+      const sofar = totalTo(goal, to)
+      text = datatypePie(sofar / goal.target)
+      label = `${u(sofar)} of ${u(goal.target)}`
+    }
+  } else {
+    const values = data.map((d) => d.entry?.value).filter((v): v is number => v !== undefined)
+    if (values.length >= 2) {
+      text = datatypeLine(values)
+      label = `${u(values[0])} → ${u(values.at(-1))}, last ${days} days`
+    }
+  }
+  if (!text || !ready) return null
+  return (
+    <span className="datatype-chart" role="img" aria-label={`${goal.name}: ${label}`} title={label}>
+      <span aria-hidden="true">{text}</span>
+    </span>
+  )
+}
+
+function GoalLines({ goal, days }: { goal: Goal; days: number }) {
   const to = today()
   const data = history(goal, addDays(to, -(days - 1)), to)
   const u = (n: number | undefined) => amount(n, goal.unit)

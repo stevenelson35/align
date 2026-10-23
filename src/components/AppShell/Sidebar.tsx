@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useApp, useData } from '../../hooks/useApp'
-import type { List } from '../../types'
+import type { List, Task } from '../../types'
+import { safeUrl } from '../../utils/links'
 import type { Route } from '../../utils/routes'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 import { goalGroups } from '../../utils/goals'
@@ -51,6 +52,8 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
   const activeListId = route.view === 'list' ? route.listId : null
   const { lists, boards, tasks, listItems, goals } = useData()
   const groups = goalGroups(goals, uid, member.role, household)
+  // Your pinned links (Pin to my menu), in the order you pinned them; ones you can no longer see drop out.
+  const pinned = (member.pinnedLinks ?? []).map((id) => listItems.find((t) => t.id === id)).filter((t): t is Task => !!t && !!safeUrl(t.url))
   // Unfinished tasks or unchecked items; for notes, how many there are.
   const openCount = (l: List) =>
     (isItemList(l) ? listItems : tasks).filter((t) => t.listId === l.id && (l.kind === 'notes' || l.kind === 'links' || !isFinished(t))).length
@@ -64,6 +67,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
     { title: 'Checklists', lists: lists.filter((l) => l.kind === 'checklist'), color: '' },
     { title: 'Notes', lists: lists.filter((l) => l.kind === 'notes'), color: '' },
     { title: 'Links', lists: lists.filter((l) => l.kind === 'links'), color: '' },
+    { title: 'Pick lists', lists: lists.filter((l) => l.kind === 'picks'), color: '' },
   ]
 
   return (
@@ -81,6 +85,14 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
         </span>
         <Icon name="external" label="opens blog.itsallonesong.com" />
       </a>
+      {pinned.map((t) => (
+        <a key={t.id} className="nav-link pinned-link" href={safeUrl(t.url)!} target="_blank" rel="noopener noreferrer" title={t.url}>
+          <span className="grow">
+            <Icon name="link" /> {t.title}
+          </span>
+          <Icon name="external" label="opens in a new tab" />
+        </a>
+      ))}
 
       <Section
         title="Goals"

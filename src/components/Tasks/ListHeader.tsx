@@ -5,8 +5,11 @@ import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 import { sharedNames } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
 import { HelpTip } from '../UI/HelpTip'
+import type { HelpTopicId } from '../../help/topics'
 
-const KIND_LABEL: Record<List['kind'], string> = { list: '', project: ' project', checklist: ' checklist', notes: ' notes', links: ' links' }
+const HELP_FOR_KIND: Record<List['kind'], HelpTopicId> = { list: 'tasks', project: 'projects', checklist: 'checklists', notes: 'notes', links: 'links', picks: 'picks' }
+const KIND_NAME: Record<List['kind'], string> = { list: 'task lists', project: 'projects', checklist: 'checklists', notes: 'notes', links: 'links', picks: 'pick lists' }
+const KIND_LABEL: Record<List['kind'], string> = { list: '', project: ' project', checklist: ' checklist', notes: ' notes', links: ' links', picks: ' pick list' }
 
 /** Name, who can see it, and Edit list; `children` adds view-specific buttons. */
 export function ListHeader({ list, children }: { list: List; children?: ReactNode }) {
@@ -14,7 +17,7 @@ export function ListHeader({ list, children }: { list: List; children?: ReactNod
   return (
     <header className="view-header">
       <h2>{list.name}</h2>
-      <HelpTip topic="tasks" label="lists" />
+      <HelpTip topic={HELP_FOR_KIND[list.kind]} label={KIND_NAME[list.kind]} />
       <span className={`badge ${list.kind === 'project' ? 'color-project' : `color-${list.visibility}`}`}>
         <Icon name={AUDIENCE_ICON[audienceOf(list)]} /> {audienceLabel(audienceOf(list))}
         {KIND_LABEL[list.kind]}

@@ -6,6 +6,12 @@ export type HelpTopicId =
   | 'start'
   | 'today'
   | 'tasks'
+  | 'taskViews'
+  | 'projects'
+  | 'checklists'
+  | 'notes'
+  | 'links'
+  | 'picks'
   | 'privacy'
   | 'details'
   | 'texting'
@@ -52,12 +58,13 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• To do: tasks for the day, overdue ones, and what’s in progress. The buttons on each card move it to the next day, mark it won’t do, or text someone about it.',
       '• + Add: type a to do for this day (it goes to your Inbox list). Push rest: the end-of-day sweep to tomorrow.',
       '• The color swatch next to the count shows what the card colors mean (who can see each task).',
+      '• Also show: tasks you can see but not change (someone kept editing their list to themselves) are left off; tick a person, or Everyone, to include theirs.',
     ],
   },
   {
     id: 'tasks',
     title: 'Lists and tasks',
-    tip: 'Lists hold tasks (with dates and priorities), checklist items, notes, or links. Tap an item to see it; Edit to change it.',
+    tip: 'A task list holds to dos with dates, priority, who it’s for and who’s doing it. Tap a task to see it; Edit to change it, or move it to another list.',
     body: [
       'Make a list with “+ New list” in the menu, or “+ New list…” when choosing a task’s list. Kinds:',
       '• Task list: to dos with dates, priority, who it’s for and who’s doing it.',
@@ -69,9 +76,78 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: 'taskViews',
+    title: 'My tasks, Family tasks, Work, Everything',
+    tip: 'Tasks from every list in one place. Filter by list, family or work, who it’s for, who’s doing it, priority and status; sort by date, priority or dependency order.',
+    body: [
+      'These pages gather tasks from all the lists you can see (checklist items, notes and links stay in their own lists):',
+      '• My tasks: your private tasks. Family tasks: tasks on Family and Everyone lists. Work: tasks with the Work context. Everything: all of them.',
+      '• Filters: one list, family or work, who it’s for, who’s doing it, priority, and To do / Doing / Done / Canceled (Not done hides finished ones).',
+      '• Sort by date, by priority, or in dependency order (what has to happen first). The color key shows who can see each task.',
+    ],
+  },
+  {
+    id: 'projects',
+    title: 'Projects',
+    tip: 'A project is a task list where tasks depend on each other. Set “Depends on” in a task, use Timeline to see the plan, and Recalculate to fix the dates.',
+    body: [
+      'Use a project for anything with steps in order (a room remodel, a trip).',
+      '• In a task’s Edit, “Depends on” says what must finish first (plus a gap in days if needed). The task shows “Waiting on …”; the other shows “Needed by …”.',
+      '• Select order: tap tasks in the order they happen, then “Preview prerequisite links” to link them in one go.',
+      '• Moving a task’s date offers to move the tasks after it; you see the changes before anything is saved. Recalculate redoes all the dates.',
+      '• Timeline shows the plan as bars across the days. “Ready to do” tasks have nothing left to wait on.',
+    ],
+  },
+  {
+    id: 'checklists',
+    title: 'Checklists',
+    tip: 'Things to tick off that aren’t tasks: shopping, packing, people to call. Checked items stay crossed off until you hide or delete them.',
+    body: [
+      'A checklist is for items, not tasks: they don’t have dates and don’t show on Today.',
+      '• Type in “Add an item…” and press Enter; tap the box to check it off.',
+      '• Checked items stay crossed off at the bottom; Hide tucks them away (remembered on this device), and you can delete all the checked ones at once.',
+      '• Tap an item for its details (size, brand, a link, a picture) and comments; the message icon texts someone about it.',
+    ],
+  },
+  {
+    id: 'notes',
+    title: 'Notes',
+    tip: 'Reference information worth keeping: sizes, account numbers, instructions, door codes. Each note has a title and text, plus links, pictures and comments.',
+    body: [
+      'A notes list keeps things you look up rather than do.',
+      '• Add a note by its title, then tap it and Edit to write the text (it keeps line breaks).',
+      '• Notes are listed by title; the start of each note shows under it.',
+      '• Like everything else, a notes list has a “who can see it”, so private notes can be Only me.',
+    ],
+  },
+  {
+    id: 'links',
+    title: 'Links',
+    tip: 'Bookmarks grouped by category (“Home/Utilities” nests). Tap a name to open it; a link can also go on your Reading list as a “Read:” task.',
+    body: [
+      'A links list keeps web addresses in folders.',
+      '• Paste an address; a name and a category are optional. A category like “Home/Utilities” makes a folder inside a folder.',
+      '• Tap a name to open it in a new tab. Switches show the addresses or the notes under each name.',
+      '• “Add to reading list” makes a “Read: …” task (in your Reading list or another list); the link shows when it’s been read.',
+      '• Pin to my menu (when adding a link, in its Edit, or from its page) puts a shortcut to the site in your own ☰ menu; it opens in a new tab. Pins are just yours and follow you to every device.',
+    ],
+  },
+  {
+    id: 'picks',
+    title: 'Pick lists (what to watch tonight)',
+    tip: 'A list of shows, movies, songs or anything to choose from. Everyone rates each one 1–5; Tonight ranks them for whoever is there, and Pick for us chooses.',
+    body: [
+      'Make one with “+ New list” → Pick list, and choose what’s on it (streaming shows, movies, theater, music, books, games or other). Make one list per kind.',
+      '• Add titles; tap the stars to give yours (tap the same star again to clear it). Everyone who can see the list can rate, even if only its owner edits it.',
+      '• Tonight: tick who’s there. Align ranks what’s on the list by their ratings, favoring things nobody dislikes over a high average with one strong no. Unrated counts as a maybe.',
+      '• Pick for us chooses one of the top few at random, leaning toward the best. “Watched” (or Played, Read…) records the day; it sits out for a month, then works its way back up.',
+      '• Each title has the usual note, links (a trailer, where to stream it), pictures (a poster) and comments.',
+    ],
+  },
+  {
     id: 'privacy',
     title: 'Who can see it',
-    tip: 'Only me · Parents · Family (household accounts) · Chosen people · Everyone (family plus view-only accounts). New things start at your default in Settings.',
+    tip: 'Only me · Parents · Family (household accounts) · Chosen people · Everyone (family plus view-only accounts). Lists and goals can also limit who edits. New things start at your default in Settings.',
     body: [
       'Every list and goal has one of five choices, and everything in a list follows its list:',
       '• Only me: just you.',
@@ -79,7 +155,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Family: everyone with a household account.',
       '• Chosen people: the names you pick.',
       '• Everyone: the family plus anyone with view-only access.',
-      'Family and chosen members can change what they can see; view-only accounts only look. Goals also have a separate “who can log it”. Your default for new lists and quick adds is in Settings.',
+      'Lists and goals also have “who can edit” (for goals, “who can log it”), using the same choices: for example, everyone can see your list but only you change it. Until a list’s owner picks one, anyone who can see it can edit it. View-only accounts never edit. Your default for new lists and quick adds is in Settings.',
     ],
   },
   {
@@ -115,7 +191,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Progressive: a suggestion that changes on a schedule toward a goal (weight from 200 down 1 every 2 days to 169).',
       '• Measure: a fixed target. Running total: amounts add up toward a target (vacation savings).',
       'Each goal has “who can view” and “who can log” (only you, by default). The Goals page groups them: yours, shared ones (with who else logs them), and other people’s.',
-      'Turn on “Show a timer” for number goals to time a walk and put the minutes in with “Use”. Each day can also have a note, links and pictures; the goal page has a chart, a table and comments.',
+      'Turn on “Show a timer” for number goals: time a walk, then “Add” puts the minutes on that day (time several walks and they add up). Each day can also have a note, links and pictures; the goal page has a chart, a table and comments.',
     ],
   },
   {

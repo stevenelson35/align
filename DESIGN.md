@@ -184,6 +184,13 @@ The family Google Calendar is copied one way into a family list named **Family C
 - **Time zone:** times and dates use the `TIME_ZONE` script property, or else the script's zone from `appsscript.json`. They never use the calendar's own zone setting: the family calendar turned out to be set to UTC, which showed 4 PM events as 8 PM.
 - **Removals:** an imported task whose event is gone is deleted only if its date falls inside the sync window (7 days back to 8 weeks ahead). Tasks family members add to the list by hand are never touched.
 
+### 5.8 Pick lists (`lists` kind `picks`)
+
+What to watch / play / read: a list (kind `picks`, `pickKind`: shows, movies, theater, music, books, games, other) whose items are task docs in `listItems` with `ratings: { uid: 1..5 }` and `watched: ['YYYY-MM-DD', …]`, plus the usual details and comments.
+- **Ratings:** any member who can see an item may set (or clear) only their own stars and add / remove watched days, even when only the owner edits the list (a separate task update rule). View-only accounts see ratings but don't rate.
+- **Tonight** (`utils/picks.ts` `rankPicks`): for the people ticked as here (remembered per list per device), score = 0.6 × average + 0.4 × lowest, unrated counting as 3 ("least misery"). Watched in the last 30 days: left out ("resting"); within 180 days: up to a star lower, fading back. Top 3 shown; **Pick for us** (`pickOne`) is a weighted random choice among the top 5 (score² + 0.25); "✓ Watched tonight" records the day.
+- The list itself sorts by Tonight, Rating, Newest or A–Z. Tapping a title opens the usual entry panel with your stars, everyone's ratings and the watched days.
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts
@@ -412,7 +419,21 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-22 (help): built, tested, NOT yet committed
+### 2026-10-22 (pinned links): built, tested, NOT yet committed
+- **Pin to my menu** for links (when adding, in Edit, or Pin / Unpin on the link's page): a shortcut in your own ☰ menu, under the blog link, that opens the site in a new tab. Stored per person as `household.members[uid].pinnedLinks` (≤ 30 link ids), so it follows you to every device; links you can no longer see drop out. Rules + test.
+
+### 2026-10-22 (pick lists): built, tested, NOT yet committed
+- **Pick lists** (§5.8): a new list kind for shows, movies, theater, music, books, games or other; 1–5 stars per person; Tonight with who's here, top 3, Pick for us, and watched days that rest a title for a month. Menu section "Pick lists"; help topic `picks`.
+- Rules: kind `picks`, `pickKind`, `ratings` map, `watched` list, and the rate / mark-watched update path, plus a test. **Deploy the rules before the web app.** Tests: 112 unit, 42 rules. Playwright with three accounts.
+
+### 2026-10-22 (help fixes, timer add, Datatype, who can edit): built, tested, NOT yet committed
+- Help page: topic chips scroll to their topic (route changes within Help no longer scroll to the top), the chip row stays pinned under the top bar, and the highlight follows the section in view. Topics added for task views, projects, checklists, notes and links; list pages show their own kind's tip.
+- Goal timer: "Add 12.5 min" adds the time to the day's entry and resets, so several walks add up (totals: adds to the running total).
+- Settings → Goal mini charts: Lines (default) or the Datatype font (`@fontsource-variable/datatype`, OFL; ~70 KB, downloaded only when used; nothing shows until the font has loaded). Check = bars, tally = bars, progressive / measure = sparkline, total = pie.
+- **Who can edit** on lists (`editAudience` / `editors`, copied onto tasks like the other privacy fields): absent = anyone who can see it edits (as before). Rules `canWrite` now checks it (and requires being able to see); only the owner changes it. Today shows what you can edit; "Also show" chips add others' view-only tasks (per person or Everyone, remembered). View-only accounts are unaffected.
+- **Deploy the rules before the web app.** Tests: 109 unit, 41 rules. Playwright at 390px with two accounts.
+
+### 2026-10-22 (help): built and pushed (`940d561`)
 - Help & about page plus ⓘ tips throughout (§10.4). Settings closes when you go to another page (e.g. "More in Help"). No rules change. Tests: 105 unit.
 
 ### 2026-10-22 (passwords): built, tested, NOT yet committed

@@ -9,8 +9,8 @@ npm install
 npm run emulators      # terminal 1 (Auth + Firestore emulators, project demo-align)
 npm run seed           # terminal 2: test accounts + household (password "align-dev")
 npm run dev            # http://localhost:5173
-npm test               # 105 unit tests (vitest: engine, tokens, parser, utils, DB writes, Apps Script helpers)
-npm run test:rules     # 40 security-rule tests; starts its own emulators (stop `npm run emulators` first); must stay green
+npm test               # 112 unit tests (vitest: engine, tokens, parser, utils, DB writes, Apps Script helpers)
+npm run test:rules     # 43 security-rule tests; starts its own emulators (stop `npm run emulators` first); must stay green
 npm run test:calendar  # Apps Script calendar sync + web app against the running emulators (after seed)
 npx tsc -b && npm run lint && npm run build
 npm run deploy:rules   # real project align-a32c1 (firebase login is done)

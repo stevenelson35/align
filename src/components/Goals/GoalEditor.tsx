@@ -186,7 +186,7 @@ export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () =
         {(form.kind === 'progressive' || form.kind === 'measure' || form.kind === 'total') && (
           <label className="inline">
             <input type="checkbox" checked={!!form.timer} onChange={(e) => set({ timer: e.target.checked || undefined })} />
-            Show a timer (start / pause, then Use puts the time in the entry; minutes unless the unit is hours or seconds)
+            Show a timer (start / pause, then Add puts the time on the day’s entry; several walks add up; minutes unless the unit is hours or seconds)
           </label>
         )}
         {form.kind !== 'check' && (

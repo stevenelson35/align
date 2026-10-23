@@ -1,22 +1,24 @@
 import {
+  arrayRemove,
+  arrayUnion,
   collection,
   collectionGroup,
   deleteDoc,
   deleteField,
   doc,
+  type DocumentData,
+  type FirestoreError,
   getDoc,
   increment,
   onSnapshot,
   query,
+  type Query,
   serverTimestamp,
   setDoc,
   Timestamp,
   updateDoc,
   where,
   writeBatch,
-  type DocumentData,
-  type FirestoreError,
-  type Query,
 } from 'firebase/firestore'
 import type { Move } from '../engine/scheduling'
 import type { Board, BoardItem, Comment, Goal, GoalEntry, Household, ItemStatus, List, Role, Task, Vote } from '../types'
@@ -205,18 +207,26 @@ export function setPhone(uid: string, phone: string) {
   return updateDoc(householdRef, { [`members.${uid}.phone`]: phone.trim() || deleteField() })
 }
 
+/** Pin a link to (or unpin it from) your own Align menu. */
+export function setPinnedLink(uid: string, current: string[] | undefined, linkId: string, pinned: boolean) {
+  const next = pinned ? [...new Set([...(current ?? []), linkId])] : (current ?? []).filter((id) => id !== linkId)
+  return updateDoc(householdRef, { [`members.${uid}.pinnedLinks`]: next.length ? next : deleteField() })
+}
+
 /** Who the "Parents" sharing shortcut picks. */
 export function setParents(uids: string[]) {
   return updateDoc(householdRef, { 'groups.parents': uids })
 }
 
 /** The fields a task copies from its list, so queries and rules need no lookups (sharedWith only when shared). */
-function copiedFields(list: Pick<List, 'visibility' | 'ownerId' | 'viewerVisible' | 'sharedWith'>) {
+function copiedFields(list: Pick<List, 'visibility' | 'ownerId' | 'viewerVisible' | 'sharedWith' | 'editAudience' | 'editors'>) {
   return {
     visibility: list.visibility,
     ownerId: list.ownerId,
     viewerVisible: list.visibility === 'family' ? list.viewerVisible : false,
     sharedWith: list.visibility === 'shared' ? (list.sharedWith ?? [list.ownerId]) : deleteField(),
+    editAudience: list.editAudience ?? deleteField(),
+    editors: (list.editAudience === 'parents' || list.editAudience === 'shared') && list.editors ? list.editors : deleteField(),
   }
 }
 
@@ -249,6 +259,8 @@ export function updateList(list: List, patch: Partial<ListInput>, tasks: Task[])
     next.visibility !== list.visibility ||
     next.ownerId !== list.ownerId ||
     copied.viewerVisible !== list.viewerVisible ||
+    next.editAudience !== list.editAudience ||
+    JSON.stringify(next.editors ?? null) !== JSON.stringify(list.editors ?? null) ||
     JSON.stringify(next.visibility === 'shared' ? next.sharedWith : null) !== JSON.stringify(list.visibility === 'shared' ? list.sharedWith : null)
   if (copiedChanged) {
     for (const t of tasks.filter((t) => t.listId === id)) {
@@ -336,7 +348,7 @@ export async function createTask(list: List, input: TaskInput, uid: string) {
  */
 export function addTaskNow(list: List, input: TaskInput, uid: string): { id: string; written: Promise<void> } {
   const ref = doc(collection(db, 'tasks'))
-  const { sharedWith, ...copied } = copiedFields(list)
+  const { sharedWith, ...copied } = withoutDeletes(copiedFields(list)) as Partial<ReturnType<typeof copiedFields>>
   const written = setDoc(ref, {
     ...input,
     ...(list.kind === 'project' && !input.startDate ? { startDate: today() } : {}),
@@ -390,6 +402,18 @@ export function applySchedule(
     batch.update(doc(db, 'tasks', id), data)
   }
   return batch.commit()
+}
+
+// ---- Pick lists (DESIGN.md §5.8) ----
+
+/** Your stars for a pick-list item (1–5), or undefined to clear them. Only your own rating changes. */
+export function ratePick(itemId: string, uid: string, stars: number | undefined) {
+  return updateDoc(doc(db, 'tasks', itemId), { [`ratings.${uid}`]: stars ?? deleteField(), updatedAt: serverTimestamp() })
+}
+
+/** Mark a pick-list item watched / played on a day (or take that day back). */
+export function setWatched(itemId: string, day: string, watched: boolean) {
+  return updateDoc(doc(db, 'tasks', itemId), { watched: watched ? arrayUnion(day) : arrayRemove(day), updatedAt: serverTimestamp() })
 }
 
 // ---- Stored pictures (images/{id}, DESIGN.md §5.7) ----

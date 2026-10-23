@@ -364,6 +364,55 @@ describe('tasks', () => {
   })
 })
 
+describe('who can edit a list', () => {
+  it('lets everyone see a list but only its owner (or its editors) change it and its tasks', async () => {
+    const seeAll = { name: 'Steve’s errands', kind: 'list', visibility: 'family', ownerId: 'steve', viewerVisible: true, defaultContext: 'family', editAudience: 'private' }
+    await assertSucceeds(setDoc(doc(db('steve'), 'lists/mine'), seeAll))
+    const t = { listId: 'mine', title: 'Dentist', status: 'todo', priority: 2, context: 'family', durationDays: 1, dependsOn: [], visibility: 'family', ownerId: 'steve', viewerVisible: true, editAudience: 'private', createdBy: 'steve' }
+    await assertSucceeds(setDoc(doc(db('steve'), 'tasks/m1'), t))
+    await assertSucceeds(getDoc(doc(db('wife'), 'tasks/m1'))) // everyone can see it
+    await assertSucceeds(getDoc(doc(db('grandma'), 'tasks/m1')))
+    await assertFails(updateDoc(doc(db('wife'), 'tasks/m1'), { status: 'done' })) // but only Steve edits
+    await assertFails(setDoc(doc(db('wife'), 'tasks/m2'), { ...t, createdBy: 'wife' }))
+    await assertFails(updateDoc(doc(db('wife'), 'lists/mine'), { name: 'Mine now', editAudience: 'family' }))
+    await assertFails(setDoc(doc(db('steve'), 'tasks/m3'), { ...t, editAudience: 'family' })) // tasks match their list
+    // Steve lets Linda edit too (Chosen people), and she can.
+    const steve = db('steve')
+    const batch = writeBatch(steve)
+    batch.update(doc(steve, 'lists/mine'), { editAudience: 'shared', editors: ['steve', 'wife'] })
+    batch.update(doc(steve, 'tasks/m1'), { editAudience: 'shared', editors: ['steve', 'wife'] })
+    await assertSucceeds(batch.commit())
+    await assertSucceeds(updateDoc(doc(db('wife'), 'tasks/m1'), { status: 'done' }))
+    await assertFails(updateDoc(doc(db('daughter'), 'tasks/m1'), { status: 'todo' }))
+    // Lists without editAudience keep the old rule: family members can edit.
+    await assertSucceeds(updateDoc(doc(db('wife'), 'lists/familyVisible'), { name: 'Chores!' }))
+  })
+})
+
+describe('pick lists', () => {
+  it('lets everyone who can see an item rate it (their own stars, 1–5) and mark it watched', async () => {
+    const list = { name: 'Movies', kind: 'picks', pickKind: 'movies', visibility: 'family', ownerId: 'steve', viewerVisible: true, defaultContext: 'family', editAudience: 'private' }
+    await assertSucceeds(setDoc(doc(db('steve'), 'lists/movies'), list))
+    const t = { listId: 'movies', title: 'Paddington', status: 'todo', priority: 2, context: 'family', durationDays: 1, dependsOn: [], visibility: 'family', ownerId: 'steve', viewerVisible: true, editAudience: 'private', createdBy: 'steve' }
+    await assertSucceeds(setDoc(doc(db('steve'), 'tasks/p1'), t))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'tasks/p1'), { 'ratings.wife': 5 })) // she can't edit the list, but can rate
+    await assertSucceeds(updateDoc(doc(db('daughter'), 'tasks/p1'), { 'ratings.daughter': 2, watched: ['2026-10-22'] }))
+    await assertFails(updateDoc(doc(db('wife'), 'tasks/p1'), { 'ratings.daughter': 5 })) // not someone else's
+    await assertFails(updateDoc(doc(db('wife'), 'tasks/p1'), { 'ratings.wife': 9 }))
+    await assertFails(updateDoc(doc(db('wife'), 'tasks/p1'), { 'ratings.wife': 4, title: 'Paddington 2' })) // nothing else
+    await assertFails(updateDoc(doc(db('grandma'), 'tasks/p1'), { 'ratings.grandma': 5 })) // view-only accounts don't rate
+    await assertSucceeds(updateDoc(doc(db('steve'), 'tasks/p1'), { title: 'Paddington 2' }))
+  })
+})
+
+describe('pinned links', () => {
+  it('lets a member pin links to their own menu only', async () => {
+    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.pinnedLinks': ['link1', 'link2'] }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.steve.pinnedLinks': ['link1'] }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.pinnedLinks': 'link1' }))
+  })
+})
+
 describe('stored pictures', () => {
   const pic = (createdBy: string, extra: Record<string, unknown> = {}) => ({
     data: 'data:image/jpeg;base64,/9j/4AAQ',

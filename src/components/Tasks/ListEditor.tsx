@@ -2,9 +2,10 @@ import { useState, type FormEvent } from 'react'
 import { createList, deleteList, updateList, type ListInput } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
-import { audienceOf, parentsOf, privacyFields, type Audience } from '../../utils/audience'
+import { audienceOf, parentsOf, privacyFields, viewCoveringEditors, type Audience } from '../../utils/audience'
 import { people } from '../../utils/tasks'
 import { AudiencePicker } from '../UI/AudiencePicker'
+import { PICK_KINDS } from '../../utils/picks'
 
 /** Create or edit a list/project. Visibility changes rewrite the copied fields on its tasks in the same batch. */
 export function ListEditor({ list, onClose }: { list: List | null; onClose: () => void }) {
@@ -25,6 +26,12 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
   const owner = form.ownerId || app.uid
   const chosen = new Set([owner, ...(form.sharedWith ?? [])])
   const parents = parentsOf(app.household)
+  // Who can edit it: "same" (anyone who can see it, as lists always were) until the owner picks something narrower.
+  const isOwner = !list || list.ownerId === app.uid
+  const [edit, setEdit] = useState<Audience | 'same'>(list?.editAudience ?? 'same')
+  const [editChosen, setEditChosen] = useState<string[]>((list?.editors ?? []).filter((id) => id !== (list?.ownerId ?? app.uid)))
+  const shownEdit: Audience = edit === 'same' ? (audience === 'everyone' ? 'family' : audience) : edit
+  const effective = edit === 'same' ? { view: audience, viewChosen: [...chosen], widened: false } : viewCoveringEditors(audience, [...chosen].filter((id) => id !== owner), edit, editChosen, owner, parents)
   // Only the owner may hand a list to someone else (rules), and only Family / Everyone lists can change hands.
   const canChangeOwner = list !== null && list.ownerId === app.uid && (audience === 'family' || audience === 'everyone')
 
@@ -37,12 +44,20 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
       ...form,
       name: form.name.trim(),
       ownerId,
+      pickKind: form.kind === 'picks' ? (form.pickKind ?? 'movies') : undefined,
       sharedWith: undefined,
       audience: undefined,
-      ...privacyFields(audience, ownerId, [...chosen], parents),
+      ...privacyFields(effective.view, ownerId, effective.viewChosen, parents),
+      // Only the owner changes who can edit; anyone else saves it exactly as it was (the rules check).
+      editAudience: !isOwner ? list?.editAudience : edit === 'same' ? undefined : edit,
+      editors: !isOwner ? list?.editors : edit === 'parents' || edit === 'shared' ? privacyFields(edit, ownerId, editChosen, parents).sharedWith : undefined,
     }
     const problem =
-      audience === 'shared' && chosen.size < 2
+      edit === 'shared' && !editChosen.length
+        ? 'Pick at least one other person who can edit, or choose another option.'
+        : edit === 'parents' && !parents.length
+          ? 'Nobody is set as a parent yet: tick the parents in ⚙ Settings → Parents first.'
+          : audience === 'shared' && chosen.size < 2
         ? 'Pick at least one other person to share with, or choose "Only me".'
         : audience === 'parents' && !parents.length
           ? 'Nobody is set as a parent yet: tick the parents in ⚙ Settings → Parents first.'
@@ -96,8 +111,21 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
               <option value="checklist">Checklist (shopping, gifts, people to call…)</option>
               <option value="notes">Notes (reference info)</option>
               <option value="links">Links (bookmarks by category)</option>
+              <option value="picks">Pick list (rate and pick: shows, movies, music…)</option>
             </select>
           </label>
+          {form.kind === 'picks' && (
+            <label>
+              What’s on it
+              <select value={form.pickKind ?? 'movies'} onChange={(e) => set({ pickKind: e.target.value as List['pickKind'] })}>
+                {PICK_KINDS.map((k) => (
+                  <option key={k.value} value={k.value}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label>
             Default context
             <select value={form.defaultContext} onChange={(e) => set({ defaultContext: e.target.value as List['defaultContext'] })}>
@@ -130,6 +158,30 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
           onChosen={(uids) => set({ sharedWith: uids })}
           noun="list and everything in it"
         />
+        {isOwner && (
+          <AudiencePicker
+            label="Who can edit it"
+            value={shownEdit}
+            onChange={setEdit}
+            ownerId={owner}
+            chosen={editChosen}
+            onChosen={(ids) => setEditChosen(ids.filter((id) => id !== owner))}
+            noun="list"
+            everyoneHint="Everyone with a household account (view-only accounts can't edit)."
+            forLogging
+          />
+        )}
+        {isOwner && edit !== 'same' && (
+          <p className="muted small">
+            {effective.widened ? 'Everyone who can edit it can also see it, so who can see it was widened to include them. ' : ''}
+            Others who can see it get a read-only view. Only you can change who edits.
+            <br />
+            <button type="button" className="link small" onClick={() => setEdit('same')}>
+              ↺ Let anyone who can see it edit
+            </button>
+          </p>
+        )}
+        {!isOwner && list?.editAudience && <p className="muted small">Only the list’s owner can change who can edit it.</p>}
         {list && list.visibility === 'family' && audience === 'private' && list.ownerId !== app.uid && (
           <p className="error small">Only the list's owner can make it private.</p>
         )}

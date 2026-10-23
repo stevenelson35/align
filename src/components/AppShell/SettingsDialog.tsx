@@ -8,6 +8,8 @@ import type { HouseholdMember } from '../../types'
 import { AUDIENCE_ICON, AUDIENCES } from '../../utils/audience'
 import { loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
 import { ICON_STYLES, saveIconStyle, useIconStyle } from '../../utils/iconStyle'
+import { CHART_STYLES, saveChartStyle, useChartStyle } from '../../utils/chartStyle'
+import '@fontsource-variable/datatype/wght.css'
 import { Icon, type IconName } from '../UI/Icon'
 import { HelpTip } from '../UI/HelpTip'
 
@@ -66,6 +68,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const [visibility, setVisibility] = useState<DefaultAudience>(member.defaultVisibility ?? 'everyone')
   const [theme, setTheme] = useState<ThemeChoice>(loadTheme)
   const iconStyle = useIconStyle()
+  const chartStyle = useChartStyle()
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   useEffect(() => onThemeChange(setTheme), [])
@@ -203,6 +206,26 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                 {PREVIEW.map((n) => (
                   <Icon key={n} name={n} style={st.value} />
                 ))}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="setting">
+          <legend>Goal mini charts (this device)</legend>
+          {CHART_STYLES.map((st) => (
+            <label key={st.value} className="inline icon-choice" title={st.hint}>
+              <input type="radio" name="charts" checked={chartStyle === st.value} onChange={() => saveChartStyle(st.value)} />
+              <span className="icon-choice-name">{st.label}</span>
+              <span className="chart-preview" aria-hidden="true">
+                {st.value === 'lines' ? (
+                  <svg className="sparkline" width={72} height={22}>
+                    <line className="spark-ref" x1={3} x2={69} y1={17} y2={17} />
+                    <path className="spark-line" d="M3,5 L14,8 L25,7 L36,11 L47,12 L58,14 L69,15" />
+                    <circle className="spark-dot" cx={69} cy={15} r={2.5} />
+                  </svg>
+                ) : (
+                  <span className="datatype-chart">{'{l:100,80,85,55,45,30,20}'}</span>
+                )}
               </span>
             </label>
           ))}

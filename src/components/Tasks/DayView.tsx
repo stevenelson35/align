@@ -5,7 +5,7 @@ import { addTaskNow, inboxFor, updateTask, withStatus } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Task } from '../../types'
 import { dayBuckets, pushToNextDay, relativeDay } from '../../utils/day'
-import { sortTasks } from '../../utils/tasks'
+import { sortTasks, targetName } from '../../utils/tasks'
 import { GoalsStrip } from '../Goals/GoalsStrip'
 import { OnThisDay } from '../Photos/OnThisDay'
 import { CalendarActions } from './CalendarActions'
@@ -16,6 +16,7 @@ import { SectionHeader } from '../UI/SectionHeader'
 import { ColorKey } from '../UI/ColorKey'
 import { HelpTip } from '../UI/HelpTip'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
+import { useStoredSet } from '../../hooks/useStoredSet'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -28,7 +29,16 @@ export function DayView({ day }: { day: string }) {
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
-  const b = dayBuckets(tasks, day, now)
+  // Today shows what you can change (yours and the family's). Tasks you can only view (a list whose owner kept
+  // editing to themselves) are added per person with the "Also show" chips, remembered on this device. View-only
+  // accounts see everything they can, as before.
+  const [also, toggleAlso] = useStoredSet('align-today-also')
+  const whose = (t: Task) => t.assigneeId ?? t.ownerId
+  const filtering = app.member.role === 'member'
+  const shown = (t: Task) => !filtering || app.canEdit(t) || also.has('everyone') || also.has(whose(t))
+  const b = dayBuckets(tasks.filter(shown), day, now)
+  const viewOnlyToday = filtering ? Object.values(dayBuckets(tasks.filter((t) => !app.canEdit(t)), day, now)).flat() : []
+  const viewOnlyPeople = [...new Set(viewOnlyToday.map(whose))].filter((id) => id !== app.uid)
   const byDate = (list: Task[]) => sortTasks(list, 'date')
   const canEditId = (id: string) => {
     const t = tasks.find((x) => x.id === id)
@@ -148,12 +158,27 @@ export function DayView({ day }: { day: string }) {
             </button>
           )}
           {b.todo.length > 0 && day <= now && app.isMember && (
-            <button type="button" className="link small" onClick={pushRest} title={`End of day: move what's left to ${day === now ? 'tomorrow' : 'the next day'}`}>
-              <Icon name="skip" /> Push rest
+            <button type="button" className="link small" onClick={pushRest} title={`End of day: move what's left to ${day === now ? 'tomorrow' : 'the next day'}`} aria-label="Push the rest">
+              <Icon name="skip" /> <span className="hide-mobile">Push rest</span>
             </button>
           )}
         </SectionHeader>
         {showKey && <ColorKey />}
+        {viewOnlyToday.length > 0 && (
+          <div className="also-show small" role="group" aria-label="Also show tasks you can only view">
+            <span className="muted">Also show:</span>
+            {viewOnlyPeople.map((id) => (
+              <label key={id} className={`chip-toggle${also.has(id) || also.has('everyone') ? ' on' : ''}`}>
+                <input type="checkbox" checked={also.has(id) || also.has('everyone')} disabled={also.has('everyone')} onChange={() => toggleAlso(id)} />
+                {targetName(id, app.household)} ({viewOnlyToday.filter((t) => whose(t) === id).length})
+              </label>
+            ))}
+            <label className={`chip-toggle${also.has('everyone') ? ' on' : ''}`}>
+              <input type="checkbox" checked={also.has('everyone')} onChange={() => toggleAlso('everyone')} />
+              Everyone
+            </label>
+          </div>
+        )}
         {app.isMember && adding && (
           <form className="row add-task" onSubmit={add}>
             <input

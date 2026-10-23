@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { addReadingTask, addTaskNow, READING_LIST, readingListFor } from '../../firebase/db'
+import { addReadingTask, addTaskNow, READING_LIST, readingListFor, setPinnedLink } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { List, Task } from '../../types'
@@ -22,6 +22,7 @@ export function LinksView({ list }: { list: List }) {
   const [url, setUrl] = useState('')
   const [name, setName] = useState('')
   const [category, setCategory] = useState('')
+  const [pin, setPin] = useState(false)
   // "📖 Add to a reading list": also make a "Read: …" task, in your Reading list or another task list.
   const [toRead, setToRead] = useState(false)
   const taskLists = lists.filter((l) => (l.kind === 'list' || l.kind === 'project') && app.canEdit(l))
@@ -66,6 +67,10 @@ export function LinksView({ list }: { list: List }) {
       setUrl(typed.url)
       setName(typed.name)
     })
+    if (pin) {
+      setPin(false)
+      setPinnedLink(app.uid, app.member.pinnedLinks, id, true).catch((err) => setError(`The link was added, but not pinned: ${err instanceof Error ? err.message : String(err)}`))
+    }
     if (toRead) {
       const chosen = taskLists.find((l) => l.id === readList)
       ;(chosen ? Promise.resolve(chosen) : readingListFor(app.uid, app.member.defaultVisibility, taskLists, parentsOf(app.household)))
@@ -150,6 +155,11 @@ export function LinksView({ list }: { list: List }) {
             </button>
           </div>
           <div className="row reading-option">
+            {app.isMember && (
+              <label className="inline small" title="A shortcut in your Align menu that opens this site in a new tab">
+                <input type="checkbox" checked={pin} onChange={(e) => setPin(e.target.checked)} /> <Icon name="pin" /> Pin to my menu
+              </label>
+            )}
             <label className="inline small">
               <input type="checkbox" checked={toRead} onChange={(e) => setToRead(e.target.checked)} /> <Icon name="book" /> Add to a reading list
             </label>

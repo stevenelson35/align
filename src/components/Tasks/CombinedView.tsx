@@ -45,7 +45,7 @@ export function CombinedView({ title, tasks, defaultSort = 'date', actions }: Pr
     <section>
       <header className="view-header">
         <h2>{title}</h2>
-        <HelpTip topic="tasks" />
+        <HelpTip topic="taskViews" label={title} />
         <span className="muted">{shown.length} tasks</span>
         <span className="grow" />
         {actions}

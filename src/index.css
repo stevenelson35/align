@@ -2126,10 +2126,23 @@ a.nav-link {
   max-width: 46rem;
 }
 .help-contents {
+  position: sticky;
+  z-index: 4;
   display: flex;
-  flex-wrap: wrap;
   gap: 0.35rem;
-  margin-bottom: 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.help-contents::-webkit-scrollbar {
+  display: none;
+}
+.help-contents .chip-link {
+  flex: none;
+  white-space: nowrap;
 }
 .chip-link {
   border: 1px solid var(--border);
@@ -2141,7 +2154,9 @@ a.nav-link {
 }
 .chip-link.on {
   border-color: var(--color-private);
+  background: var(--tint-blue-bg);
   color: var(--color-private);
+  font-weight: 600;
 }
 .help-topic {
   border-top: 1px solid var(--border);
@@ -2159,6 +2174,109 @@ a.nav-link {
 .help-topic ul {
   padding-left: 1.2rem;
 }
-.help-topic.current h3 {
-  color: var(--color-private);
+
+/* Goal mini charts drawn by the Datatype font (Settings → Goal mini charts) */
+.datatype-chart {
+  display: inline-block;
+  font-family: 'Datatype Variable', sans-serif;
+  font-size: 1.35rem;
+  line-height: 1;
+  font-weight: 450;
+  color: var(--series-1);
+  font-feature-settings: 'calt' 1, 'liga' 1;
+  white-space: nowrap;
+}
+.also-show {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.6rem;
+}
+
+/* Pick lists: stars, Tonight's top 3, the list */
+.stars {
+  display: inline-flex;
+  gap: 0.05rem;
+  font-size: 1.25rem;
+  flex: none;
+}
+.stars.readonly {
+  font-size: 0.95rem;
+}
+.star {
+  display: inline-flex;
+  padding: 0.15rem;
+  border: 0;
+  background: none;
+  line-height: 0;
+  cursor: pointer;
+}
+.stars.readonly .star {
+  cursor: default;
+  padding: 0;
+}
+.star-on {
+  fill: var(--series-2);
+  stroke: var(--series-2);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.star-off {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+.picks-top {
+  margin: 0 0 0.5rem;
+  padding-left: 1.4rem;
+  display: grid;
+  gap: 0.35rem;
+}
+.picks-top li.chosen .pick-title {
+  font-weight: 700;
+}
+.pick-title,
+.pick-title.link {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text);
+  padding: 0;
+}
+.picked-title {
+  align-self: center;
+}
+.picks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.pick-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.6rem;
+}
+.pick-row.selected {
+  border-color: var(--color-private);
+}
+.pick-row.resting {
+  opacity: 0.65;
+}
+.pick-ratings {
+  display: grid;
+  gap: 0.25rem;
+}
+.pick-ratings p {
+  margin: 0;
+}
+.section-actions select {
+  font-size: 0.85rem;
+  padding: 0.15rem 0.3rem;
 }

@@ -29,11 +29,11 @@ const clock = (ms: number) => {
 }
 
 /**
- * An optional stopwatch on a goal (Edit goal → Show a timer): Start / Pause, Reset, and Use, which puts the time
- * into the entry box (in the goal's unit; minutes unless it says hours or seconds). It keeps running on this device
- * if you leave the page or close the app.
+ * An optional stopwatch on a goal (Edit goal → Show a timer): Start / Pause, Reset, and "Add 12.5 min", which adds the
+ * time to that day's entry and starts the timer over, so several walks in a day add up (in the goal's unit; minutes
+ * unless it says hours or seconds). It keeps running on this device if you leave the page or close the app.
  */
-export function GoalTimer({ goalId, unit, onUse, disabled }: { goalId: string; unit?: string; onUse: (value: number) => void; disabled?: boolean }) {
+export function GoalTimer({ goalId, unit, onAdd, disabled }: { goalId: string; unit?: string; onAdd: (value: number) => void; disabled?: boolean }) {
   const [state, setState] = useState<TimerState>(() => load(goalId))
   const [now, setNow] = useState(() => Date.now())
   const running = state.startedAt !== null
@@ -68,8 +68,17 @@ export function GoalTimer({ goalId, unit, onUse, disabled }: { goalId: string; u
       </button>
       {total > 0 && (
         <>
-          <button type="button" className="link small" disabled={disabled || value <= 0} onClick={() => onUse(value)} title="Put the time in the entry box">
-            Use {value} {unitLabel}
+          <button
+            type="button"
+            className="link small"
+            disabled={disabled || value <= 0}
+            onClick={() => {
+              onAdd(value)
+              update({ startedAt: null, elapsed: 0 })
+            }}
+            title="Add this time to the day's entry and start over"
+          >
+            <Icon name="plus" /> Add {value} {unitLabel}
           </button>
           <button type="button" className="link small" onClick={() => update({ startedAt: null, elapsed: 0 })} aria-label="Reset the timer">
             Reset

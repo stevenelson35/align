@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { addReadingTask, commentThread, deleteRemovedImages, deleteTask, readingListFor, updateTask } from '../../firebase/db'
+import { addReadingTask, commentThread, deleteRemovedImages, deleteTask, ratePick, readingListFor, setPinnedLink, setWatched, updateTask } from '../../firebase/db'
+import { averageRating, pickKind } from '../../utils/picks'
+import { formatDay, today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
 import { cleanCategory, defaultName, safeUrl } from '../../utils/links'
-import { privacyText } from '../../utils/tasks'
+import { privacyText, targetName } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
 import { parentsOf } from '../../utils/audience'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
@@ -11,6 +13,7 @@ import { cleanLinks, cleanUrls, detailsOf, MAX_IMAGES, taskDetails } from '../..
 import { DetailsView, LinksAndPictures } from '../UI/Details'
 import { EntryExtras, EntryFact, EntryPanel } from '../UI/EntryExtras'
 import { shareLink } from '../../utils/text'
+import { StarRating } from '../Picks/StarRating'
 
 /**
  * Side panel for a checklist item, a note or a link. It opens as a view (the item, its note, links, pictures,
@@ -23,12 +26,13 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
   if (editing) return <ItemEditForm item={item} list={list} onDone={() => setEditing(false)} />
   const isNote = list.kind === 'notes'
   const isLink = list.kind === 'links'
-  const noun = isNote ? 'note' : isLink ? 'link' : 'item'
+  const isPick = list.kind === 'picks'
+  const noun = isNote ? 'note' : isLink ? 'link' : isPick ? 'title' : 'item'
   const home = lists.find((l) => l.id === item.listId) ?? list
   const href = isLink ? safeUrl(item.url) : null
   return (
     <EntryPanel
-      kind={isNote ? 'Note' : isLink ? 'Link' : 'Checklist item'}
+      kind={isNote ? 'Note' : isLink ? 'Link' : isPick ? pickKind(list.pickKind).label : 'Checklist item'}
       title={item.title}
       onEdit={app.canEdit(item) ? () => setEditing(true) : undefined}
       onClose={() => app.selectTask(null)}
@@ -42,6 +46,14 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
               {item.category && <span className="muted"> · {item.category}</span>}
             </EntryFact>
           )}
+          {isLink && href && app.isMember && (
+            <EntryFact icon="pin">
+              {app.member.pinnedLinks?.includes(item.id) ? 'Pinned to your menu · ' : ''}
+              <button type="button" className="link small inline-link" onClick={() => setPinnedLink(app.uid, app.member.pinnedLinks, item.id, !app.member.pinnedLinks?.includes(item.id))}>
+                {app.member.pinnedLinks?.includes(item.id) ? 'Unpin' : 'Pin to my menu'}
+              </button>
+            </EntryFact>
+          )}
           {list.kind === 'checklist' && <EntryFact icon={item.status === 'done' ? 'check' : 'todo'}>{item.status === 'done' ? 'Checked off' : 'Not checked off yet'}</EntryFact>}
           <EntryFact icon={AUDIENCE_ICON[audienceOf(home)]}>
             {home.name} · {privacyText(home, noun, app.household, app.uid)}
@@ -50,6 +62,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
       }
     >
       {isLink && <ReadingListButton item={item} />}
+      {isPick && <PickRatings item={item} list={list} />}
       <EntryExtras
         details={{ ...detailsOf(item, false), note: item.notes }}
         alt={item.title}
@@ -58,6 +71,41 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
         startTextOpen={app.textingId === item.id}
       />
     </EntryPanel>
+  )
+}
+
+/** A pick-list title: your stars, everyone's ratings, and the days it was watched (with "Watched today"). */
+function PickRatings({ item, list }: { item: Task; list: List }) {
+  const app = useApp()
+  const [error, setError] = useState<string | null>(null)
+  const kind = pickKind(list.pickKind)
+  const now = today()
+  const fail = (err: unknown) => setError(err instanceof Error ? err.message : String(err))
+  const ratings = Object.entries(item.ratings ?? {})
+  const days = [...(item.watched ?? [])].sort().reverse()
+  return (
+    <div className="pick-ratings">
+      {app.isMember && (
+        <div className="row">
+          <span className="muted small">Your rating</span>
+          <StarRating value={item.ratings?.[app.uid]} onChange={(stars) => ratePick(item.id, app.uid, stars).catch(fail)} label={`Your rating for ${item.title}`} />
+        </div>
+      )}
+      <p className="small muted">
+        {ratings.length
+          ? `★ ${averageRating(item)} from ${ratings.map(([uid, n]) => `${uid === app.uid ? 'you' : targetName(uid, app.household)} (${n})`).join(', ')}`
+          : 'Nobody has rated it yet.'}
+      </p>
+      <p className="small muted">
+        {days.length ? `${kind.did} ${days.slice(0, 5).map((d) => formatDay(d)).join(', ')}${days.length > 5 ? '…' : ''}` : `Not ${kind.did.toLowerCase()} yet.`}{' '}
+        {app.isMember && (
+          <button type="button" className="link small" onClick={() => setWatched(item.id, now, !days.includes(now)).catch(fail)}>
+            {days.includes(now) ? `Undo ${kind.did.toLowerCase()} today` : `✓ ${kind.did} today`}
+          </button>
+        )}
+      </p>
+      {error && <p className="error small">{error}</p>}
+    </div>
   )
 }
 
@@ -107,6 +155,8 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
   const [category, setCategory] = useState(item.category ?? '')
   const [text, setText] = useState(item.notes ?? '')
   const [extras, setExtras] = useState(() => detailsOf(item, false))
+  const wasPinned = !!app.member.pinnedLinks?.includes(item.id)
+  const [pinned, setPinned] = useState(wasPinned)
   const [listId, setListId] = useState(item.listId)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -136,6 +186,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
         moveTo,
       )
       void deleteRemovedImages(detailsOf(item, false).images, images)
+      if (isLink && pinned !== wasPinned) await setPinnedLink(app.uid, app.member.pinnedLinks, item.id, pinned)
       onDone()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -184,6 +235,12 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
               Category
               <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Home/Utilities" />
             </label>
+            {app.isMember && (
+              <label className="inline">
+                <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
+                <Icon name="pin" /> Pin to my Align menu (opens in a new tab; just for you)
+              </label>
+            )}
           </>
         )}
         <label>
@@ -192,7 +249,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
             rows={isNote ? 14 : 3}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={isNote ? 'Anything worth keeping: numbers, sizes, passwords, instructions…' : isLink ? 'Anything to remember about it (optional)' : 'Size, brand, where to get it…'}
+            placeholder={isNote ? 'Anything worth keeping: numbers, sizes, passwords, instructions…' : isLink ? 'Anything to remember about it (optional)' : list.kind === 'picks' ? 'Where to watch or hear it, who recommended it…' : 'Size, brand, where to get it…'}
           />
         </label>
         {editable ? (
