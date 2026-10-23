@@ -7,6 +7,7 @@ import { Icon } from '../UI/Icon'
 import { HelpTip } from '../UI/HelpTip'
 import type { HelpTopicId } from '../../help/topics'
 import { menuSectionOf } from '../../utils/menu'
+import { ListTransfer } from './ListTransfer'
 
 const HELP_FOR_KIND: Record<List['kind'], HelpTopicId> = {
   list: 'tasks',
@@ -63,6 +64,7 @@ export function ListHeader({ list, children }: { list: List; children?: ReactNod
         {list.defaultContext === 'work' && (list.kind === 'list' || list.kind === 'project') && <span className="badge work">Work</span>}
         <span className="grow" />
         {children}
+      <ListTransfer list={list} />
         {app.canEdit(list) && (
           <button type="button" className="secondary small" onClick={() => app.editList(list)}>
             Edit list

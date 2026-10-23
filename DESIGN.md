@@ -368,6 +368,12 @@ On Today, between On this day and To do (folded each morning; `components/Daily/
 - **Mini Philosophy:** one of Jonny Thomson's short videos (YouTube @philosophyminis) a day, from `src/daily/miniPhilosophy.json`; YouTube doesn't let a browser read the channel, so refresh the list with `node scripts/update-mini-philosophy.mjs` (keeps old videos, adds new).
 - Settings → The Daily (this device): which items show, and the math grade. A daily script (e.g. the Apps Script writing a `daily/<date>` doc) is only worth adding for a source that needs a key or blocks browsers.
 
+### 10.6 Import / Export (`utils/transfer.ts`, `Tasks/ListTransfer.tsx`, on every list's header)
+One file is one whole list.
+- **Notes:** Markdown, each note a `## Title` section (import also reads `# Title` sections, `title:` / `note:` blocks, JSON, or a plain file = one note named after the file).
+- **Links:** Markdown with categories as nested headings (`## Home` → `### Utilities` = Home/Utilities), `- [Name](url) — note` items; import also reads indented bullets and bare addresses. Or the browser bookmarks file (Netscape format) both ways; the browser's own top folder ("Bookmarks bar"…) is dropped, addresses already in the list are skipped, and an optional "put them under a category" prefixes everything.
+- **Checklists, task lists, projects:** Markdown checklists (`- [ ]` / `- [x]`, notes indented); projects add `{start YYYY-MM-DD, N days, due YYYY-MM-DD, after: A; B}`, so a project round-trips with its schedule and dependencies (matched by title). **Flashcards** export as YAML (import is in the set itself). Pick lists aren't exported.
+
 ### 10.1 Folder structure
 
 ```
@@ -430,7 +436,10 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-23 (decks, Title Case, chess, poker, Mini Philosophy): built, tested, NOT yet committed
+### 2026-10-23 (import / export): built, tested, NOT yet committed
+- Import / Export on lists (§10.6). Showing To Do's color key also opens the To Do list (hiding the key leaves it). Pin wording says "only you see it" (pins were already personal). No rules change. Tests: 131 unit.
+
+### 2026-10-23 (decks, Title Case, chess, poker, Mini Philosophy): built and pushed (`70adf8a`)
 - `samples/flashcards/`: seven decks (state ↔ capital, country → capital, country → continent, U.S. city → state, world city → country, Texas Hold'em odds) built by `make_decks.py`; `tests/samples/sampleDecks.test.ts` (part of `npm test`) checks they all import.
 - Today's headings in Title Case ("Archive Pics" for the archive photos, "To Do", "Won't Do", "Pushed to a Later Day", Daily labels).
 - The Daily: chess puzzle and lesson, poker odds, Mini Philosophy video (§10.5). No rules change. Tests: 123 unit.

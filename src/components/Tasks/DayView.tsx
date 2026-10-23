@@ -161,7 +161,11 @@ export function DayView({ day }: { day: string }) {
             <button
               type="button"
               className={`link small key-toggle${showKey ? ' on' : ''}`}
-              onClick={() => setShowKey(!showKey)}
+              onClick={() => {
+                // Showing the key also opens the To Do list (so the colors have cards to explain); hiding it leaves the list alone.
+                if (!showKey && hide.todo) setHide({ ...hide, todo: false })
+                setShowKey(!showKey)
+              }}
               aria-expanded={showKey}
               aria-label="What the colors mean"
               title="What the colors mean"

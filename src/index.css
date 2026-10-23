@@ -2591,3 +2591,18 @@ a.nav-link {
   bottom: 0;
   right: 2px;
 }
+
+/* List Import / Export */
+.list-transfer {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.transfer-choices {
+  display: inline-flex;
+  gap: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}

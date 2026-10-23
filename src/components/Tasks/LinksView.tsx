@@ -157,7 +157,7 @@ export function LinksView({ list }: { list: List }) {
           <div className="row reading-option">
             {app.isMember && (
               <label className="inline small" title="A shortcut in your Align menu that opens this site in a new tab">
-                <input type="checkbox" checked={pin} onChange={(e) => setPin(e.target.checked)} /> <Icon name="pin" /> Pin to my menu
+                <input type="checkbox" checked={pin} onChange={(e) => setPin(e.target.checked)} /> <Icon name="pin" /> Pin to my menu (only you see it)
               </label>
             )}
             <label className="inline small">

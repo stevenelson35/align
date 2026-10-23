@@ -76,6 +76,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Notes: reference info (sizes, numbers, instructions).',
       '• Links: bookmarks grouped by category; a link can also go on your Reading list as a task.',
       'Quick adds take “Title: note” (the note is everything after the colon). New tasks are due the day you add them unless you chose “no date” in Settings.',
+      'Import / Export (beside Edit list) saves any list as a Markdown file or adds items from one: links can also use your browser’s bookmarks file, and projects keep their dates and dependencies.',
       'A task can be To do, Doing, Done or Canceled. Calendar events show up as tasks too (see Google Calendar).',
     ],
   },
@@ -100,6 +101,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Select order: tap tasks in the order they happen, then “Preview prerequisite links” to link them in one go.',
       '• Moving a task’s date offers to move the tasks after it; you see the changes before anything is saved. Recalculate redoes all the dates.',
       '• Timeline shows the plan as bars across the days. “Ready to do” tasks have nothing left to wait on.',
+      '• Export saves the project as a Markdown checklist with each task’s dates and what it waits on ({start …, 2 days, after: …}); Import brings one back, so a project can be copied or shared as a template.',
     ],
   },
   {
@@ -122,6 +124,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Add a note by its title, then tap it and Edit to write the text (it keeps line breaks).',
       '• Notes are listed by title; the start of each note shows under it.',
       '• Like everything else, a notes list has a “who can see it”, so private notes can be Only me.',
+      '• Export saves the whole list as one Markdown file (each note a “## Title” section); Import reads the same, title: / note: blocks, or a plain file (one note).',
     ],
   },
   {
@@ -133,6 +136,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Paste an address; a name and a category are optional. A category like “Home/Utilities” makes a folder inside a folder.',
       '• Tap a name to open it in a new tab. Switches show the addresses or the notes under each name.',
       '• “Add to reading list” makes a “Read: …” task (in your Reading list or another list); the link shows when it’s been read.',
+      '• Export saves the list as Markdown (categories as headings) or as a bookmarks file your browser can import; Import reads either, or a bookmarks file exported from Chrome, Edge, Firefox or Safari (folders become categories). Addresses already in the list are skipped.',
       '• Pin to my menu (when adding a link, in its Edit, or from its page) puts a shortcut to the site in your own ☰ menu; it opens in a new tab. Pins are just yours and follow you to every device.',
     ],
   },

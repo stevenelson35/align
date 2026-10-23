@@ -49,7 +49,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
           )}
           {isLink && href && app.isMember && (
             <EntryFact icon="pin">
-              {app.member.pinnedLinks?.includes(item.id) ? 'Pinned to your menu · ' : ''}
+              {app.member.pinnedLinks?.includes(item.id) ? 'Pinned to your menu (only you see it) · ' : ''}
               <button type="button" className="link small inline-link" onClick={() => setPinnedLink(app.uid, app.member.pinnedLinks, item.id, !app.member.pinnedLinks?.includes(item.id))}>
                 {app.member.pinnedLinks?.includes(item.id) ? 'Unpin' : 'Pin to my menu'}
               </button>
