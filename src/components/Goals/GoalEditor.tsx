@@ -11,7 +11,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const KIND_HELP: Record<Goal['kind'], string> = {
   check: 'Done or not, each day (walk the dogs).',
   tally: 'Tap once each time, up to a number a day (12 oz water × 8).',
-  progressive: 'A suggested amount that changes on a schedule toward a goal; enter what you did (push-ups up from 10; weight down 1 lb every 2 days to 169).',
+  progressive: 'A suggested amount that changes on a schedule toward a goal; enter what you did (push-ups up from 10; weight down 1 lb every 2 days to 165).',
   measure: 'A fixed target and what you measured.',
   total: 'Amounts add up toward a target (vacation savings: everyone who can log adds what they put in).',
 }

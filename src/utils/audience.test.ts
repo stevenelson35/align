@@ -3,21 +3,21 @@ import { audienceOf, peopleIn, privacyFields, viewCoveringEditors } from './audi
 
 describe('audience', () => {
   it('maps the five choices onto stored privacy fields and back', () => {
-    const parents = ['steve', 'linda']
+    const parents = ['steve', 'sam']
     for (const a of ['private', 'parents', 'family', 'shared', 'everyone'] as const) {
-      expect(audienceOf(privacyFields(a, 'steve', ['camilla'], parents))).toBe(a)
+      expect(audienceOf(privacyFields(a, 'steve', ['alex'], parents))).toBe(a)
     }
     expect(privacyFields('everyone', 'steve', [], parents)).toEqual({ visibility: 'family', viewerVisible: true })
-    expect(privacyFields('parents', 'steve', [], parents)).toEqual({ visibility: 'shared', viewerVisible: false, sharedWith: ['steve', 'linda'], audience: 'parents' })
-    expect(privacyFields('shared', 'steve', ['camilla'], parents).sharedWith).toEqual(['steve', 'camilla'])
+    expect(privacyFields('parents', 'steve', [], parents)).toEqual({ visibility: 'shared', viewerVisible: false, sharedWith: ['steve', 'sam'], audience: 'parents' })
+    expect(privacyFields('shared', 'steve', ['alex'], parents).sharedWith).toEqual(['steve', 'alex'])
   })
   it('reads older docs without the audience marker', () => {
     expect(audienceOf({ visibility: 'shared', viewerVisible: false })).toBe('shared')
     expect(audienceOf({ visibility: 'family', viewerVisible: false })).toBe('family')
   })
   it('lists the people a choice covers', () => {
-    expect(peopleIn('private', 'steve', [], ['linda'])).toEqual(['steve'])
-    expect(peopleIn('parents', 'steve', [], ['linda'])).toEqual(['steve', 'linda'])
+    expect(peopleIn('private', 'steve', [], ['sam'])).toEqual(['steve'])
+    expect(peopleIn('parents', 'steve', [], ['sam'])).toEqual(['steve', 'sam'])
     expect(peopleIn('everyone', 'steve', [], [])).toBeNull()
   })
 })

@@ -14,6 +14,7 @@ import { DetailsView, LinksAndPictures } from '../UI/Details'
 import { EntryExtras, EntryFact, EntryPanel } from '../UI/EntryExtras'
 import { shareLink } from '../../utils/text'
 import { StarRating } from '../Picks/StarRating'
+import { AutoTextarea } from '../UI/AutoTextarea'
 
 /**
  * Side panel for a checklist item, a note or a link. It opens as a view (the item, its note, links, pictures,
@@ -245,8 +246,8 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
         )}
         <label>
           {isNote || isLink ? 'Note' : 'Details'}
-          <textarea
-            rows={isNote ? 14 : 3}
+          <AutoTextarea
+            rows={isNote ? 8 : 3}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={isNote ? 'Anything worth keeping: numbers, sizes, passwords, instructions…' : isLink ? 'Anything to remember about it (optional)' : list.kind === 'picks' ? 'Where to watch or hear it, who recommended it…' : 'Size, brand, where to get it…'}

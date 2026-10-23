@@ -207,6 +207,11 @@ export function setPhone(uid: string, phone: string) {
   return updateDoc(householdRef, { [`members.${uid}.phone`]: phone.trim() || deleteField() })
 }
 
+/** Whether your tasks added without a date are due that day (Settings). */
+export function setNewTaskDue(uid: string, due: 'today' | 'none') {
+  return updateDoc(householdRef, { [`members.${uid}.newTaskDue`]: due === 'today' ? deleteField() : due })
+}
+
 /** Pin a link to (or unpin it from) your own Align menu. */
 export function setPinnedLink(uid: string, current: string[] | undefined, linkId: string, pinned: boolean) {
   const next = pinned ? [...new Set([...(current ?? []), linkId])] : (current ?? []).filter((id) => id !== linkId)

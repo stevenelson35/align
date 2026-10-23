@@ -18,7 +18,7 @@ interface PersonRow {
  * Other people's uids come from Firebase console → Authentication → Users. Later role changes happen in the console.
  */
 export function Setup({ user }: { user: User }) {
-  const [name, setName] = useState('Nelson Household')
+  const [name, setName] = useState('Our Family')
   const [myName, setMyName] = useState(user.displayName ?? 'Steve')
   const [people, setPeople] = useState<PersonRow[]>([])
   const [pets, setPets] = useState<Pet[]>([])

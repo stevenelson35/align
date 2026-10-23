@@ -139,7 +139,6 @@ export function AppShell({ uid, household, member }: Props) {
     <AppContext.Provider value={app}>
       <div className="app-shell">
         <TopBar
-          householdName={household.name}
           member={member}
           onMenu={() => setSidebarOpen((o) => !o)}
           onChat={() => setChat((c) => ({ ...c, open: !c.open }))}

@@ -5,7 +5,7 @@ import { addTaskNow, inboxFor, updateTask, withStatus } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { Task } from '../../types'
 import { dayBuckets, pushToNextDay, relativeDay } from '../../utils/day'
-import { sortTasks, targetName } from '../../utils/tasks'
+import { people, sortTasks, targetName } from '../../utils/tasks'
 import { GoalsStrip } from '../Goals/GoalsStrip'
 import { OnThisDay } from '../Photos/OnThisDay'
 import { CalendarActions } from './CalendarActions'
@@ -17,6 +17,7 @@ import { ColorKey } from '../UI/ColorKey'
 import { HelpTip } from '../UI/HelpTip'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { useStoredSet } from '../../hooks/useStoredSet'
+import { splitTitleNote } from '../../utils/quickAdd'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -33,12 +34,25 @@ export function DayView({ day }: { day: string }) {
   // editing to themselves) are added per person with the "Also show" chips, remembered on this device. View-only
   // accounts see everything they can, as before.
   const [also, toggleAlso] = useStoredSet('align-today-also')
+  // Tap a section's title to fold it away (To do, Done, Won't do, Pushed); remembered on this device.
+  const [hide, setHideState] = useState<Record<string, boolean>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('align-day-hidden') ?? '{}') as Record<string, boolean>
+    } catch {
+      return {}
+    }
+  })
+  const setHide = (next: Record<string, boolean>) => {
+    localStorage.setItem('align-day-hidden', JSON.stringify(next))
+    setHideState(next)
+  }
   const whose = (t: Task) => t.assigneeId ?? t.ownerId
   const filtering = app.member.role === 'member'
   const shown = (t: Task) => !filtering || app.canEdit(t) || also.has('everyone') || also.has(whose(t))
   const b = dayBuckets(tasks.filter(shown), day, now)
   const viewOnlyToday = filtering ? Object.values(dayBuckets(tasks.filter((t) => !app.canEdit(t)), day, now)).flat() : []
-  const viewOnlyPeople = [...new Set(viewOnlyToday.map(whose))].filter((id) => id !== app.uid)
+  // Everyone else in the household is listed, even with nothing extra today (0), so ticking them is never a mystery.
+  const viewOnlyPeople = filtering ? people(app.household, true).map(([id]) => id).filter((id) => id !== app.uid) : []
   const byDate = (list: Task[]) => sortTasks(list, 'date')
   const canEditId = (id: string) => {
     const t = tasks.find((x) => x.id === id)
@@ -86,7 +100,7 @@ export function DayView({ day }: { day: string }) {
     setTitle('') // clear at once, so a second tap can't add it twice
     try {
       const list = await inboxFor(app.uid, app.member.defaultVisibility, lists.filter((l) => app.canEdit(l)), parentsOf(app.household))
-      await addTaskNow(list, { title: text, priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [], startDate: day }, app.uid).written
+      await addTaskNow(list, { ...splitTitleNote(text), priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [], startDate: day }, app.uid).written
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setTitle(text)
@@ -139,6 +153,8 @@ export function DayView({ day }: { day: string }) {
           title={day < now ? 'Not done' : 'To do'}
           count={b.todo.length}
           help="today"
+          onTitleClick={() => setHide({ ...hide, todo: !hide.todo })}
+          expanded={!hide.todo}
           beside={
             <button
               type="button"
@@ -164,7 +180,7 @@ export function DayView({ day }: { day: string }) {
           )}
         </SectionHeader>
         {showKey && <ColorKey />}
-        {viewOnlyToday.length > 0 && (
+        {viewOnlyPeople.length > 0 && (
           <div className="also-show small" role="group" aria-label="Also show tasks you can only view">
             <span className="muted">Also show:</span>
             {viewOnlyPeople.map((id) => (
@@ -175,15 +191,16 @@ export function DayView({ day }: { day: string }) {
             ))}
             <label className={`chip-toggle${also.has('everyone') ? ' on' : ''}`}>
               <input type="checkbox" checked={also.has('everyone')} onChange={() => toggleAlso('everyone')} />
-              Everyone
+              Everyone ({viewOnlyToday.length})
             </label>
+            <HelpTip topic="today" label="Also show" />
           </div>
         )}
         {app.isMember && adding && (
           <form className="row add-task" onSubmit={add}>
             <input
               autoFocus
-              placeholder={day === now ? 'Add a task for today…' : `Add a task for ${formatDay(day)}…`}
+              placeholder={day === now ? 'Add a task for today… (title: note)' : `Add a task for ${formatDay(day)}… (title: note)`}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onKeyDown={(e) => e.key === 'Escape' && setAdding(false)}
@@ -196,25 +213,25 @@ export function DayView({ day }: { day: string }) {
         )}
         {error && <p className="error">{error}</p>}
         {note && <p className="muted small">{note}</p>}
-        <div className="task-list">{byDate(b.todo).map((t) => card(t))}</div>
-        {b.todo.length === 0 && <p className="muted small">{day < now ? 'Nothing was left undone.' : 'Nothing left to do.'}</p>}
+        {!hide.todo && <div className="task-list">{byDate(b.todo).map((t) => card(t))}</div>}
+        {!hide.todo && b.todo.length === 0 && <p className="muted small">{day < now ? 'Nothing was left undone.' : 'Nothing left to do.'}</p>}
       </div>
       {b.done.length > 0 && (
         <div className="day-section">
-          <SectionHeader icon="check" title="Done" count={b.done.length} />
-          <div className="task-list">{byDate(b.done).map((t) => card(t))}</div>
+          <SectionHeader icon="check" title="Done" count={b.done.length} onTitleClick={() => setHide({ ...hide, done: !hide.done })} expanded={!hide.done} />
+          {!hide.done && <div className="task-list">{byDate(b.done).map((t) => card(t))}</div>}
         </div>
       )}
       {b.skipped.length > 0 && (
         <div className="day-section">
-          <SectionHeader icon="close" title="Won't do" count={b.skipped.length} />
-          <div className="task-list">{byDate(b.skipped).map((t) => card(t))}</div>
+          <SectionHeader icon="close" title="Won't do" count={b.skipped.length} onTitleClick={() => setHide({ ...hide, skipped: !hide.skipped })} expanded={!hide.skipped} />
+          {!hide.skipped && <div className="task-list">{byDate(b.skipped).map((t) => card(t))}</div>}
         </div>
       )}
       {b.pushed.length > 0 && (
         <div className="day-section">
-          <SectionHeader icon="skip" title="Pushed to a later day" count={b.pushed.length} />
-          <div className="task-list">{byDate(b.pushed).map((t) => card(t, { note: movedTo(t), dayActions: undefined }))}</div>
+          <SectionHeader icon="skip" title="Pushed to a later day" count={b.pushed.length} onTitleClick={() => setHide({ ...hide, pushed: !hide.pushed })} expanded={!hide.pushed} />
+          {!hide.pushed && <div className="task-list">{byDate(b.pushed).map((t) => card(t, { note: movedTo(t), dayActions: undefined }))}</div>}
         </div>
       )}
     </section>

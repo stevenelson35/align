@@ -102,7 +102,8 @@ async function addTask(cmd: Extract<Command, { type: 'add' }>, ctx: ExecContext,
         context: cmd.context ?? target.defaultContext,
         for: forIds.length ? forIds : undefined,
         startDate: cmd.startDate,
-        targetDate: cmd.targetDate,
+        // No date given: due today (so it shows on Today) unless you chose "no date" in Settings.
+        targetDate: cmd.targetDate ?? (cmd.startDate || app.member.newTaskDue === 'none' ? undefined : today()),
         durationDays: 1,
         dependsOn: [],
       },
@@ -127,7 +128,7 @@ function textCommand(rest: string, ctx: ExecContext): Promise<Reply> | Reply {
   const to = splitRecipient(rest, app.household)
   if (!to) {
     const names = people(app.household).map(([, m]) => m.displayName).join(', ')
-    return { text: `Who should I text? Start with their name, e.g. "text ${names.split(', ')[0] ?? 'Linda'} I picked up milk". People: ${names}.` }
+    return { text: `Who should I text? Start with their name, e.g. "text ${names.split(', ')[0] ?? 'Sam'} I picked up milk". People: ${names}.` }
   }
   const { about, message } = splitAbout(to.rest)
   const name = targetName(to.uid, app.household)

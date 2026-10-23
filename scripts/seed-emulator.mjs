@@ -30,7 +30,7 @@ for (const { uid, email, displayName } of people) {
 await getFirestore()
   .doc('household/main')
   .set({
-    name: 'Nelson Household',
+    name: 'Our Family',
     members: Object.fromEntries(
       people.map(({ uid, displayName, role, color, bot }) => [uid, { role, displayName, color, ...(bot && { bot }) }]),
     ),

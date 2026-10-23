@@ -13,6 +13,11 @@ export interface HouseholdMember {
   defaultVisibility?: 'private' | 'parents' | 'family' | 'everyone'
   /** Their mobile number, for "text <name> …" (they enter it in Settings). */
   phone?: string
+  /**
+   * Tasks added without a date (list quick add, chat): due the day they're added so they show on Today (the
+   * default), or no date ('none').
+   */
+  newTaskDue?: 'today' | 'none'
   /** Links (links-list item ids) this person pinned to their own Align menu, in order. */
   pinnedLinks?: string[]
   /** The calendar-sync account: a member for the rules, hidden from people pickers. Set in the console. */

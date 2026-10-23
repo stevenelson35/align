@@ -132,7 +132,7 @@ export function GoalChart({ goal, days }: { goal: Goal; days: number }) {
     .filter((p): p is { i: number; v: number } => p.v !== undefined)
   const ref2 = data.map((d, i) => ({ i, v: d.suggested })).filter((p): p is { i: number; v: number } => p.v !== undefined)
   const values = [...actual.map((p) => p.v), ...ref2.map((p) => p.v)]
-  // Counting up from nothing starts the axis at 0; a weight going down from 200 to 169 doesn't.
+  // Counting up from nothing starts the axis at 0; a weight going down from 180 to 165 doesn't.
   const ticks = niceTicks(Math.min(...values, total || (goal.kind === 'progressive' && !decreasing(goal)) ? 0 : Infinity), Math.max(...values))
   const lo = ticks[0]
   const hi = ticks.at(-1) ?? lo + 1

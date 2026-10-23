@@ -16,6 +16,7 @@ import { Icon } from '../UI/Icon'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 import { cleanLinks, cleanUrls, detailsOf, MAX_IMAGES, taskDetails } from '../../utils/details'
 import { DetailsView, LinksAndPictures } from '../UI/Details'
+import { AutoTextarea } from '../UI/AutoTextarea'
 
 /** ✓ done, ✕ canceled, ⏳ not finished yet. */
 function statusIcon(t: Task) {
@@ -290,7 +291,7 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
         </label>
         <label>
           Notes
-          <textarea rows={3} value={form.notes ?? ''} onChange={(e) => set({ notes: e.target.value })} />
+          <AutoTextarea rows={3} value={form.notes ?? ''} onChange={(e) => set({ notes: e.target.value })} />
         </label>
         {editable ? (
           <LinksAndPictures value={extras} onChange={(d) => setExtras({ ...extras, ...d })} onError={setError} />

@@ -6,6 +6,7 @@ import type { List, Task } from '../../types'
 import { ListHeader } from './ListHeader'
 import { Icon } from '../UI/Icon'
 import { DetailsMarks } from '../UI/Details'
+import { splitTitleNote } from '../../utils/quickAdd'
 
 /** When it was added (to the nanosecond: quick additions land in the same second); one still being saved is newest. */
 const added = (t: Task) => (t.createdAt ? t.createdAt.seconds + t.createdAt.nanoseconds / 1e9 : Infinity)
@@ -32,7 +33,7 @@ export function ChecklistView({ list }: { list: List }) {
     if (!text) return
     setError(null)
     setTitle('') // clear at once: the item shows immediately, and a second tap finds nothing to add
-    addTaskNow(list, { title: text, priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] }, app.uid).written.catch((err) => {
+    addTaskNow(list, { ...splitTitleNote(text), priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] }, app.uid).written.catch((err) => {
       setError(err instanceof Error ? err.message : String(err))
       setTitle(text)
     })
@@ -52,7 +53,7 @@ export function ChecklistView({ list }: { list: List }) {
       <ListHeader list={list} />
       {editable && (
         <form className="row add-task" onSubmit={add}>
-          <input placeholder="Add an item…" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="New item" />
+          <input placeholder="Add an item… (item: details)" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="New item" />
 <button type="submit" className="icon-button" aria-label="Add" title="Add">
             <Icon name="plus" />
           </button>

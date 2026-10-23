@@ -21,7 +21,7 @@ export type Command =
     }
   | { type: 'done'; task: string }
   | { type: 'cancel'; task: string }
-  /** "text Linda I picked up milk" / "text Linda about pick up Camilla: are you getting her?" (names resolved in execute). */
+  /** "text Sam I picked up milk" / "text Sam about pick up Alex: are you getting her?" (names resolved in execute). */
   | { type: 'text'; rest: string }
   | { type: 'move'; task: string; date: string }
   | { type: 'meet'; task: string; date: string }
@@ -159,7 +159,7 @@ export const HELP_TEXT = [
   'add task fertilize lawn on Oct 5 to Lawn project for work priority high',
   'done fertilize lawn',
   'cancel fertilize lawn',
-  'text Linda I picked up milk · text Linda about pick up Camilla: are you getting her?',
+  'text Sam I picked up milk · text Sam about pick up Alex: are you getting her?',
   'move fertilize lawn to Oct 8',
   'shift dependencies so apply fertilizer is done by Oct 10',
   'recalculate lawn',

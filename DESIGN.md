@@ -419,7 +419,16 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-22 (pinned links): built, tested, NOT yet committed
+### 2026-10-23 ("Align Updates" round 2): built, tested, NOT yet committed
+- No family name in what ships or is public: the manifest, About, setup default and test data say "our family"; the top bar no longer shows the household name; real names in source and tests replaced with Sam / Alex / Lee (the repo is public). Older docs and git history still mention them.
+- **New tasks without a date** (list quick add, chat): due the day added, so they show on Today, unless Settings says "no date" (`members[uid].newTaskDue`; rules + test).
+- **Goal status** (`goalStatus`): none / "4 to go" / Done / "+3 extra"; lower-is-better single measurements say "1.2 lb to go" / On target / "0.8 lb ahead"; totals "… to go" / Reached. Count-up goals (`accumulates`) get "+ more" and Reset.
+- Today: "Also show" lists everyone (with counts, 0 included); To do / Done / Won't do / Pushed fold by tapping their titles (`align-day-hidden`); On this day has an "All" photos shortcut.
+- Quick adds take "Title: note" (`splitTitleNote`; a time like 3:30 stays in the title).
+- Note boxes in edit forms grow to fit their text (`AutoTextarea`, up to 60% of the screen).
+- **Deploy the rules before the web app** (they also include the not-yet-deployed `a296af2` changes). Tests: 115 unit, 43 rules.
+
+### 2026-10-22 (pinned links): built and pushed (`a296af2`), rules NOT yet deployed
 - **Pin to my menu** for links (when adding, in Edit, or Pin / Unpin on the link's page): a shortcut in your own ☰ menu, under the blog link, that opens the site in a new tab. Stored per person as `household.members[uid].pinnedLinks` (≤ 30 link ids), so it follows you to every device; links you can no longer see drop out. Rules + test.
 
 ### 2026-10-22 (pick lists): built, tested, NOT yet committed

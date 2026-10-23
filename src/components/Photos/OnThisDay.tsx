@@ -4,6 +4,8 @@ import { useDailyFlag } from '../../hooks/useDailyFlag'
 import { photoCaption, photoDate, photosForDay, photoUrl, yearsAgo, type Favorite } from '../../photos/favorites'
 import { PhotoViewer } from './PhotoViewer'
 import { SectionHeader } from '../UI/SectionHeader'
+import { useApp } from '../../hooks/useApp'
+import { Icon } from '../UI/Icon'
 
 /**
  * "On this day": favorites taken on this date in earlier years, on the day view. With none, the nearest date within
@@ -11,6 +13,7 @@ import { SectionHeader } from '../UI/SectionHeader'
  */
 export function OnThisDay({ day }: { day: string }) {
   const { manifest } = useFavorites()
+  const { navigate } = useApp()
   // Shown each morning; Hide lasts for the rest of the day.
   const [hidden, setHidden] = useDailyFlag('align-on-this-day-hidden', false)
   const [open, setOpen] = useState<Favorite | null>(null)
@@ -25,6 +28,9 @@ export function OnThisDay({ day }: { day: string }) {
   return (
     <div className="day-section on-this-day">
       <SectionHeader icon="photo" title={title} count={photos.length} onTitleClick={() => setHidden(!hidden)} expanded={!hidden} help="photos">
+        <button type="button" className="link small" onClick={() => navigate({ view: 'photos' })} title="All the favorite photos" aria-label="All photos">
+          <Icon name="photo" /> All
+        </button>
         <button type="button" className="link small" onClick={() => setHidden(!hidden)} aria-expanded={!hidden}>
           {hidden ? 'Show' : 'Hide'}
         </button>

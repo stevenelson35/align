@@ -74,7 +74,7 @@ beforeEach(async () => {
       members: {
         steve: { role: 'member', displayName: 'Steve', color: '#1f6feb' },
         daughter: { role: 'member', displayName: 'Daughter', color: '#d63384' },
-        wife: { role: 'member', displayName: 'Linda', color: '#1a7f37' },
+        wife: { role: 'member', displayName: 'Sam', color: '#1a7f37' },
         grandma: { role: 'viewer', displayName: 'Grandma', color: '#6f42c1' },
       },
       pets: [],
@@ -376,7 +376,7 @@ describe('who can edit a list', () => {
     await assertFails(setDoc(doc(db('wife'), 'tasks/m2'), { ...t, createdBy: 'wife' }))
     await assertFails(updateDoc(doc(db('wife'), 'lists/mine'), { name: 'Mine now', editAudience: 'family' }))
     await assertFails(setDoc(doc(db('steve'), 'tasks/m3'), { ...t, editAudience: 'family' })) // tasks match their list
-    // Steve lets Linda edit too (Chosen people), and she can.
+    // Steve lets Sam edit too (Chosen people), and she can.
     const steve = db('steve')
     const batch = writeBatch(steve)
     batch.update(doc(steve, 'lists/mine'), { editAudience: 'shared', editors: ['steve', 'wife'] })
@@ -410,6 +410,8 @@ describe('pinned links', () => {
     await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.pinnedLinks': ['link1', 'link2'] }))
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.steve.pinnedLinks': ['link1'] }))
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.pinnedLinks': 'link1' }))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.newTaskDue': 'none' }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.newTaskDue': 'someday' }))
   })
 })
 

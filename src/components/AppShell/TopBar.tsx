@@ -5,7 +5,6 @@ import { ThemeToggle } from './ThemeToggle'
 import { Icon } from '../UI/Icon'
 
 interface Props {
-  householdName: string
   member: HouseholdMember
   onMenu: () => void
   onChat: () => void
@@ -13,7 +12,8 @@ interface Props {
   onSearch: () => void
 }
 
-export function TopBar({ householdName, member, onMenu, onChat, onSettings, onSearch }: Props) {
+// The household's name isn't shown (it can identify the family on a shared or borrowed screen).
+export function TopBar({ member, onMenu, onChat, onSettings, onSearch }: Props) {
   const { isMember, openChat } = useApp()
   return (
     <header className="top-bar">
@@ -22,7 +22,6 @@ export function TopBar({ householdName, member, onMenu, onChat, onSettings, onSe
           <Icon name="menu" />
         </button>
         <strong>Align</strong>
-        <span className="muted hide-mobile">{householdName}</span>
       </div>
       <div className="user">
         {isMember && (

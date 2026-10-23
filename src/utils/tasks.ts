@@ -17,7 +17,7 @@ export function canEditTask(task: Shareable, uid: string, role: Role): boolean {
 
 export const PRIVACY_ICON: Record<List['visibility'], string> = { private: '🔒', family: '👪', shared: '👥' } // plain-text places (chat, search)
 
-/** "You, Linda and Grandma" for a sharedWith list (you first). */
+/** "You, Sam and Grandma" for a sharedWith list (you first). */
 export function sharedNames(sharedWith: string[], household: Household, uid: string): string {
   const names = [...sharedWith].sort((a, b) => (a === uid ? -1 : b === uid ? 1 : 0)).map((id) => (id === uid ? 'You' : targetName(id, household)))
   return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`

@@ -2280,3 +2280,34 @@ a.nav-link {
   font-size: 0.85rem;
   padding: 0.15rem 0.3rem;
 }
+
+/* Goal day status (goalStatus): to go / done / extra / ahead */
+.goal-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: var(--bg);
+}
+.goal-status.status-partial {
+  background: var(--tint-yellow-bg);
+  border-color: var(--tint-yellow-border);
+  color: var(--text);
+}
+.goal-status.status-met,
+.goal-status.status-exceeded {
+  background: var(--tint-green-bg);
+  border-color: var(--tint-green-border);
+  color: var(--text);
+}
+.goal-more {
+  margin-top: 0.35rem;
+}
+.goal-more input {
+  width: 6rem;
+}

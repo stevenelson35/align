@@ -11,6 +11,7 @@ import { CalendarActions } from './CalendarActions'
 import { ListHeader } from './ListHeader'
 import { TaskCard } from './TaskCard'
 import { Icon } from '../UI/Icon'
+import { splitTitleNote } from '../../utils/quickAdd'
 
 export function ListView({ list }: { list: List }) {
   const app = useApp()
@@ -43,9 +44,10 @@ export function ListView({ list }: { list: List }) {
     setTitle('') // clear at once: a second tap on a slow connection finds nothing to add
     try {
       const previous = lastAdded && tasks.find((t) => t.id === lastAdded.id && t.listId === list.id)
-      const input = { title: text, priority: 2 as const, status: 'todo' as const, context: list.defaultContext,
+      const input = { ...splitTitleNote(text), priority: 2 as const, status: 'todo' as const, context: list.defaultContext,
         durationDays: 1, dependsOn: followPrevious && previous ? [{ taskId: previous.id, offsetDays: 0 }] : [],
-        ...(list.kind === 'project' ? { startDate: today() } : {}) }
+        // Projects start today; other tasks are due today unless you chose "no date" in Settings.
+        ...(list.kind === 'project' ? { startDate: today() } : app.member.newTaskDue === 'none' ? {} : { targetDate: today() }) }
       const { id, written } = addTaskNow(list, input, app.uid)
       const added: Task = { ...input, id, listId: list.id, visibility: list.visibility, ownerId: list.ownerId,
         viewerVisible: list.viewerVisible, createdBy: app.uid }
@@ -121,7 +123,7 @@ export function ListView({ list }: { list: List }) {
 
       {editable && (
         <form className="row add-task" onSubmit={add}>
-          <input placeholder="Add a task…" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input placeholder="Add a task… (title: note)" value={title} onChange={(e) => setTitle(e.target.value)} />
 <button type="submit" className="icon-button" aria-label="Add" title="Add" disabled={adding || !title.trim()}>
             <Icon name="plus" />
           </button>

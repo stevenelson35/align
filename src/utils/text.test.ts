@@ -6,7 +6,7 @@ const household = {
   name: 'H',
   members: {
     steve: { role: 'member', displayName: 'Steve', color: '' },
-    linda: { role: 'member', displayName: 'Linda', color: '' },
+    sam: { role: 'member', displayName: 'Sam', color: '' },
     gj: { role: 'viewer', displayName: 'Grandma Jo', color: '' },
     bot: { role: 'member', displayName: 'Calendar', color: '', bot: true },
   },
@@ -21,7 +21,7 @@ describe('texting', () => {
   })
 
   it('finds who the text is for, preferring the longest name', () => {
-    expect(splitRecipient('Linda I picked up milk', household)).toEqual({ uid: 'linda', rest: 'I picked up milk' })
+    expect(splitRecipient('Sam I picked up milk', household)).toEqual({ uid: 'sam', rest: 'I picked up milk' })
     expect(splitRecipient('grandma jo see you sunday', household)).toEqual({ uid: 'gj', rest: 'see you sunday' })
     expect(splitRecipient('Grandma see you', household)).toEqual({ uid: 'gj', rest: 'see you' }) // first name
     expect(splitRecipient('Calendar hi', household)).toBeNull() // the sync bot isn't a person
@@ -29,18 +29,18 @@ describe('texting', () => {
   })
 
   it('splits "about <task>: <message>"', () => {
-    expect(splitAbout('about pick up camilla: are you getting her?')).toEqual({ about: 'pick up camilla', message: 'are you getting her?' })
-    expect(splitAbout('about pick up camilla - are you getting her?')).toEqual({ about: 'pick up camilla', message: 'are you getting her?' })
-    expect(splitAbout('about pick up camilla')).toEqual({ about: 'pick up camilla', message: '' })
+    expect(splitAbout('about pick up alex: are you getting her?')).toEqual({ about: 'pick up alex', message: 'are you getting her?' })
+    expect(splitAbout('about pick up alex - are you getting her?')).toEqual({ about: 'pick up alex', message: 'are you getting her?' })
+    expect(splitAbout('about pick up alex')).toEqual({ about: 'pick up alex', message: '' })
     expect(splitAbout('I picked up milk')).toEqual({ message: 'I picked up milk' })
   })
 
   it('writes the message with the title, time and link', () => {
     const link = taskLink('t1', 'https://align.example/')
     expect(link).toBe('https://align.example/#/task/t1')
-    const about = { title: 'Pick up Camilla', when: whenText({ startDate: '2026-10-09', calendar: { eventId: 'e', time: '3:00 PM–4:00 PM' } }), link }
+    const about = { title: 'Pick up Alex', when: whenText({ startDate: '2026-10-09', calendar: { eventId: 'e', time: '3:00 PM–4:00 PM' } }), link }
     expect(textBody('Are you getting her?', about)).toBe(
-      `Are you getting her?\n\nRe: Pick up Camilla (${about.when})\nhttps://align.example/#/task/t1`,
+      `Are you getting her?\n\nRe: Pick up Alex (${about.when})\nhttps://align.example/#/task/t1`,
     )
     expect(about.when).toMatch(/Oct 9 · 3:00 PM–4:00 PM$/)
     expect(textBody('', { title: 'Buy paint', when: '', link })).toBe('Re: Buy paint\nhttps://align.example/#/task/t1')

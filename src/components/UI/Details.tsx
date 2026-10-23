@@ -10,6 +10,7 @@ import { PhotoPicker } from '../Photos/PhotoPicker'
 import { Icon } from './Icon'
 import { Picture, PictureLightbox } from './Picture'
 import { PictureEditor } from './PictureEditor'
+import { AutoTextarea } from './AutoTextarea'
 
 /**
  * Links and pictures, editable: a box per link with ✕ and "+ Add link"; picture thumbnails with ✕, plus Add a
@@ -170,7 +171,7 @@ export function DetailsFields({
     <>
       <label>
         Note
-        <textarea rows={3} value={value.note} onChange={(e) => onChange({ ...value, note: e.target.value })} maxLength={5000} />
+        <AutoTextarea rows={3} value={value.note} onChange={(e) => onChange({ ...value, note: e.target.value })} maxLength={5000} />
       </label>
       <LinksAndPictures value={value} onChange={(d) => onChange({ ...value, ...d })} onError={onError} linkHint={linkHint} />
     </>

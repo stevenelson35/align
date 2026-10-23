@@ -4,7 +4,7 @@
 export const BLOG_URL = 'https://blog.itsallonesong.com'
 /** Categories the blog has pages for (same list as blogupdate.html); a new one can be typed. */
 export const BLOG_CATEGORIES = [
-  'camilla-ba-dilla-videos',
+  'alex-ba-dilla-videos',
   'farraginous',
   'spring break 2024',
   'summer vacation 2021',

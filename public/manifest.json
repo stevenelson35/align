@@ -1,7 +1,7 @@
 {
   "name": "Align",
   "short_name": "Align",
-  "description": "The Nelson family's tasks, checklists, notes, calendar and goals",
+  "description": "Our family's tasks, checklists, notes, calendar and goals",
   "start_url": "/#/today",
   "scope": "/",
   "display": "standalone",

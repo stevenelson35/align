@@ -63,7 +63,9 @@ service cloud.firestore {
       let uid = request.auth.uid;
       return after.diff(before).affectedKeys().hasOnly([uid])
         && after[uid].role == before[uid].role
-        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks'])
+        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'newTaskDue'])
+        // Whether tasks added without a date are due the day they're added (Settings).
+        && (!('newTaskDue' in after[uid]) || after[uid].newTaskDue in ['today', 'none'])
         // Their own default for new lists and quick adds, and their mobile number for "text …" (Settings).
         && (!('defaultVisibility' in after[uid]) || after[uid].defaultVisibility in ['private', 'parents', 'family', 'everyone'])
         && (!('phone' in after[uid]) || (after[uid].phone is string && after[uid].phone.size() <= 24))

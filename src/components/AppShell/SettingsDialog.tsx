@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { setDefaultVisibility, setParents, setPhone } from '../../firebase/db'
+import { setDefaultVisibility, setNewTaskDue, setParents, setPhone } from '../../firebase/db'
 import { changePassword } from '../../firebase/auth'
 import { people } from '../../utils/tasks'
 import { githubToken, setGithubToken, testToken } from '../../blog/github'
@@ -113,6 +113,20 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               Quick adds go to {visibility === 'private' ? 'your "Inbox"' : visibility === 'parents' ? 'the "Parents Inbox"' : 'the "Family Inbox"'}.
               {saved && ' Saved.'}
             </p>
+          </fieldset>
+        )}
+        {isMember && (
+          <fieldset className="setting">
+            <legend>New tasks without a date</legend>
+            <p className="muted small">For tasks added in a list or in chat when you don’t give a date.</p>
+            <label className="inline">
+              <input type="radio" name="newTaskDue" checked={member.newTaskDue !== 'none'} onChange={() => setNewTaskDue(uid, 'today').catch((e) => setError(String(e)))} />
+              <Icon name="todo" /> Due the day you add them, so they show on Today (push or change the date later)
+            </label>
+            <label className="inline">
+              <input type="radio" name="newTaskDue" checked={member.newTaskDue === 'none'} onChange={() => setNewTaskDue(uid, 'none').catch((e) => setError(String(e)))} />
+              <Icon name="list" /> No date (they stay in their list)
+            </label>
           </fieldset>
         )}
         {isMember && (

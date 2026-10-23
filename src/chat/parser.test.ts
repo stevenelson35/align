@@ -59,10 +59,10 @@ describe('parse', () => {
   })
 
   it('parses text, keeping the message as typed', () => {
-    expect(parse('text Linda are you getting Camilla?', ref)).toEqual({ type: 'text', rest: 'Linda are you getting Camilla?' })
-    expect(parse('Text Linda about pick up camilla: are you getting her?', ref)).toEqual({
+    expect(parse('text Sam are you getting Alex?', ref)).toEqual({ type: 'text', rest: 'Sam are you getting Alex?' })
+    expect(parse('Text Sam about pick up alex: are you getting her?', ref)).toEqual({
       type: 'text',
-      rest: 'Linda about pick up camilla: are you getting her?',
+      rest: 'Sam about pick up alex: are you getting her?',
     })
   })
 

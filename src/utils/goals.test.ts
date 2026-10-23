@@ -74,7 +74,7 @@ describe('progressive toward a goal, and running totals', () => {
 describe('goalGroups', () => {
   it('groups goals by who can log them: mine, shared, and view-only per person', async () => {
     const { goalGroups } = await import('./goals')
-    const household = { members: { me: { displayName: 'Steve', role: 'member' }, wife: { displayName: 'Linda', role: 'member' } } } as never
+    const household = { members: { me: { displayName: 'Steve', role: 'member' }, wife: { displayName: 'Sam', role: 'member' } } } as never
     const base = { kind: 'check', ownerId: 'me', visibility: 'family', viewerVisible: true, createdBy: 'me' } as const
     const goals = [
       { ...base, id: 'w', name: 'Weight', editAudience: 'private' },
@@ -85,11 +85,11 @@ describe('goalGroups', () => {
     expect(goalGroups(goals, 'me', 'member', household).map((g) => [g.title, g.goals.map((x) => x.id)])).toEqual([
       ['My goals', ['w']],
       ['Shared goals', ['v']],
-      ["Linda's goals", ['r']],
+      ["Sam's goals", ['r']],
     ])
-    // Linda sees the vacation goal as shared (she can log it) and the weight as Steve's, view only.
+    // Sam sees the vacation goal as shared (she can log it) and the weight as Steve's, view only.
     expect(goalGroups(goals, 'wife', 'member', household).map((g) => g.title)).toEqual(['My goals', 'Shared goals', "Steve's goals"])
-    expect(goalGroups(goals, 'wife', 'viewer', household).map((g) => g.title)).toEqual(["Steve's goals", "Linda's goals"])
+    expect(goalGroups(goals, 'wife', 'viewer', household).map((g) => g.title)).toEqual(["Steve's goals", "Sam's goals"])
   })
 })
 
@@ -106,9 +106,28 @@ describe('timerValue', () => {
 describe('otherLoggers', () => {
   it('names who else logs a goal', async () => {
     const { otherLoggers } = await import('./goals')
-    const household = { members: { me: { displayName: 'Steve' }, wife: { displayName: 'Linda' } } } as never
+    const household = { members: { me: { displayName: 'Steve' }, wife: { displayName: 'Sam' } } } as never
     expect(otherLoggers({ ownerId: 'me', editAudience: 'private', visibility: 'family' }, household, 'me')).toBe('')
-    expect(otherLoggers({ ownerId: 'me', editAudience: 'shared', editors: ['me', 'wife'], visibility: 'family' }, household, 'me')).toBe('with Linda')
+    expect(otherLoggers({ ownerId: 'me', editAudience: 'shared', editors: ['me', 'wife'], visibility: 'family' }, household, 'me')).toBe('with Sam')
     expect(otherLoggers({ ownerId: 'me', editAudience: 'everyone', visibility: 'family' }, household, 'wife')).toBe('Family')
+  })
+})
+
+describe('goalStatus', () => {
+  it('says where the day stands: to go, done, extra; ahead for lower-is-better', async () => {
+    const { goalStatus, accumulates } = await import('./goals')
+    const base = { id: 'g', name: 'G', visibility: 'private', ownerId: 'me', viewerVisible: false, createdBy: 'me' } as const
+    const situps = { ...base, kind: 'progressive', unit: 'reps', progression: { start: 10, step: 0, every: 1, per: 'day', from: '2026-10-01' } } as never
+    expect(goalStatus(situps, undefined, '2026-10-23')).toEqual({ state: 'none', text: '' })
+    expect(goalStatus(situps, { value: 6 }, '2026-10-23')).toEqual({ state: 'partial', text: '4 reps to go' })
+    expect(goalStatus(situps, { value: 10 }, '2026-10-23')).toEqual({ state: 'met', text: 'Done' })
+    expect(goalStatus(situps, { value: 13 }, '2026-10-23')).toEqual({ state: 'exceeded', text: '+3 reps extra' })
+    expect(accumulates(situps)).toBe(true)
+    const weight = { ...base, kind: 'measure', unit: 'lb', target: 170, direction: 'down' } as never
+    expect(goalStatus(weight, { value: 171.2 }, '2026-10-23')).toEqual({ state: 'notYet', text: '1.2 lb to go' })
+    expect(goalStatus(weight, { value: 169.2 }, '2026-10-23')).toEqual({ state: 'exceeded', text: '0.8 lb ahead' })
+    expect(accumulates(weight)).toBe(false)
+    const water = { ...base, kind: 'tally', perDay: 8 } as never
+    expect(goalStatus(water, { count: 5 }, '2026-10-23').text).toBe('3 to go')
   })
 })

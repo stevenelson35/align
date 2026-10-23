@@ -5,6 +5,7 @@ import type { List } from '../../types'
 import { ListHeader } from './ListHeader'
 import { DetailsMarks } from '../UI/Details'
 import { Icon } from '../UI/Icon'
+import { splitTitleNote } from '../../utils/quickAdd'
 
 /** Notes: reference info (Wi-Fi password, sizes, the plumber's number). Alphabetical; tap one to read or edit it. */
 export function NotesView({ list }: { list: List }) {
@@ -21,7 +22,7 @@ export function NotesView({ list }: { list: List }) {
     if (!text) return
     setError(null)
     setTitle('')
-    const { id, written } = addTaskNow(list, { title: text, priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] }, app.uid)
+    const { id, written } = addTaskNow(list, { ...splitTitleNote(text), priority: 2, status: 'todo', context: list.defaultContext, durationDays: 1, dependsOn: [] }, app.uid)
     app.selectTask(id) // straight to writing it
     written.catch((err) => {
       setError(err instanceof Error ? err.message : String(err))
@@ -34,7 +35,7 @@ export function NotesView({ list }: { list: List }) {
       <ListHeader list={list} />
       {editable && (
         <form className="row add-task" onSubmit={add}>
-          <input placeholder="New note title…" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="New note title" />
+          <input placeholder="New note… (title: text)" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="New note title" />
 <button type="submit" className="icon-button" aria-label="Add note" title="Add note">
             <Icon name="plus" />
           </button>

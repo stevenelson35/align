@@ -69,14 +69,14 @@ export function photoDate(p: Favorite): string {
   return `${MONTHS[m - 1]} ${d}, ${y}`
 }
 
-/** Plain words for a photo: "Oct 21, 2012 · Camilla and Steve · summer vacation 2026". */
+/** Plain words for a photo: "Oct 21, 2012 · Alex and Steve · summer vacation 2026". */
 export function photoCaption(p: Favorite): string {
   const first = p.people.map((n) => n.split(/\s+/)[0])
   const who = first.length <= 1 ? first.join('') : `${first.slice(0, -1).join(', ')} and ${first.at(-1)}`
   return [photoDate(p), who, p.event?.replace(/-/g, ' ')].filter(Boolean).join(' · ')
 }
 
-/** Search: every word must match a name, the event, the year, or the month ("camilla 2012", "oct", "vacation"). */
+/** Search: every word must match a name, the event, the year, or the month ("alex 2012", "oct", "vacation"). */
 export function matchesSearch(p: Favorite, query: string): boolean {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
   if (!words.length) return true

@@ -14,7 +14,7 @@ export function appliesOn(goal: Pick<Goal, 'weekdays' | 'archived'>, day: string
   return !goal.weekdays?.length || goal.weekdays.includes(weekday(day))
 }
 
-/** A decreasing progressive goal (weight: start 200, −1 every 2 days, goal 169): lower is better. */
+/** A decreasing progressive goal (weight: start 180, −1 every 2 days, goal 165): lower is better. */
 export function decreasing(goal: Pick<Goal, 'progression' | 'target'>): boolean {
   const p = goal.progression
   if (!p) return false
@@ -135,7 +135,7 @@ export function timerValue(ms: number, unit?: string): number {
 }
 
 /**
- * Who else logs a goal, for a short note beside its name: "Family" (everyone in the household can), "with Linda"
+ * Who else logs a goal, for a short note beside its name: "Family" (everyone in the household can), "with Sam"
  * (named people besides you), or "" when only you (or only its owner) log it.
  */
 export function otherLoggers(goal: Pick<Goal, 'ownerId' | 'editAudience' | 'editors' | 'visibility'>, household: Household, uid: string): string {
@@ -144,4 +144,50 @@ export function otherLoggers(goal: Pick<Goal, 'ownerId' | 'editAudience' | 'edit
   if (a === 'family' || a === 'everyone') return 'Family'
   const names = (goal.editors ?? []).filter((id) => id !== uid).map((id) => household.members[id]?.displayName ?? 'someone')
   return names.length ? `with ${names.join(', ')}` : ''
+}
+
+/**
+ * Goals you add to through the day (reps, minutes, a tally): more is better and it accumulates, so the log box offers
+ * "+ more". Single measurements (weight) and lower-is-better goals don't.
+ */
+export function accumulates(goal: Pick<Goal, 'kind' | 'progression' | 'target' | 'direction'>): boolean {
+  if (goal.kind === 'tally') return true
+  if (goal.kind === 'progressive') return !decreasing(goal)
+  if (goal.kind === 'measure') return goal.direction === 'up'
+  return false
+}
+
+export type GoalState = 'none' | 'partial' | 'notYet' | 'met' | 'exceeded'
+
+/**
+ * Where the day stands, in words: nothing logged yet; started but more to do ("4 to go"); a single measurement not
+ * there yet ("1.2 lb to go"); met; or beyond it ("+3 extra", "0.8 lb ahead"). Lower-is-better goals (weight) count
+ * being under the target as ahead. A running total is about the whole goal ("$2,650 to go", then reached).
+ */
+export function goalStatus(goal: Goal, entry: GoalEntry | undefined, day: string): { state: GoalState; text: string } {
+  const u = (n: number) => amount(Math.round(Math.abs(n) * 100) / 100, goal.unit)
+  const compare = (value: number | undefined, target: number | undefined, lowerIsBetter: boolean, single: boolean) => {
+    if (value === undefined) return { state: 'none' as const, text: '' }
+    if (target === undefined) return { state: 'met' as const, text: 'Logged' }
+    const gap = lowerIsBetter ? value - target : target - value // > 0: not there yet
+    if (gap > 0) return { state: single ? ('notYet' as const) : ('partial' as const), text: `${u(gap)} to go` }
+    if (gap === 0) return { state: 'met' as const, text: single ? 'On target' : 'Done' }
+    return { state: 'exceeded' as const, text: lowerIsBetter ? `${u(gap)} ahead` : `+${u(gap)} extra` }
+  }
+  switch (goal.kind) {
+    case 'check':
+      return entry?.done ? { state: 'met', text: 'Done' } : { state: 'none', text: '' }
+    case 'tally':
+      return compare(entry?.count || undefined, goal.perDay ?? 1, false, false)
+    case 'progressive':
+      return compare(entry?.value, suggested(goal, day), decreasing(goal), decreasing(goal))
+    case 'measure':
+      return compare(entry?.value, goal.target, goal.direction !== 'up', goal.direction !== 'up')
+    case 'total': {
+      if (goal.target === undefined) return { state: entry?.value ? 'met' : 'none', text: '' }
+      const sofar = totalTo(goal, day)
+      if (sofar >= goal.target) return { state: sofar > goal.target ? 'exceeded' : 'met', text: 'Reached' }
+      return { state: sofar > 0 ? 'partial' : 'none', text: `${u(goal.target - sofar)} to go` }
+    }
+  }
 }
