@@ -2512,3 +2512,82 @@ a.nav-link {
 .card-state.missed {
   color: var(--danger);
 }
+
+.video-thumb {
+  position: relative;
+  display: block;
+  margin-bottom: 0.35rem;
+}
+.video-thumb img {
+  width: 100%;
+  max-height: 12rem;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+.video-thumb .icon {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 1.3rem;
+}
+.daily-video {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  max-height: 70vh;
+  border: 0;
+  border-radius: 6px;
+}
+
+/* The Daily's chess board */
+.chess-board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  width: min(100%, 18rem);
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.35rem;
+  user-select: none;
+}
+.chess-board .sq {
+  position: relative;
+  display: grid;
+  place-items: center;
+  font-size: clamp(1rem, 5.5vw, 1.6rem);
+  line-height: 1;
+}
+.chess-board .sq.light {
+  background: #f0d9b5;
+}
+.chess-board .sq.dark {
+  background: #b58863;
+}
+.chess-board .pc.w {
+  color: #fff;
+  text-shadow: 0 0 1px #000, 0 0 1px #000, 0 0 2px #000;
+}
+.chess-board .pc.b {
+  color: #111;
+}
+.chess-board .coord {
+  position: absolute;
+  font-size: 0.55rem;
+  color: rgba(0, 0, 0, 0.55);
+}
+.chess-board .coord.rank {
+  top: 1px;
+  left: 2px;
+}
+.chess-board .coord.file {
+  bottom: 0;
+  right: 2px;
+}

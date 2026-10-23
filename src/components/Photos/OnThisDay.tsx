@@ -20,7 +20,7 @@ export function OnThisDay({ day }: { day: string }) {
   const found = manifest ? photosForDay(manifest.photos, day) : null
   const photos = found?.photos ?? []
   if (!photos.length) return null // while loading, or if the list can't be reached: it's a nice extra
-  const title = found!.kind === 'same' ? 'On this day' : found!.kind === 'near' ? 'Near this day' : 'From the archive'
+  const title = found!.kind === 'same' ? 'On This Day' : found!.kind === 'near' ? 'Near This Day' : 'Archive Pics'
   const label = (p: Favorite) => {
     const ago = yearsAgo(p, day) === 1 ? '1 year ago' : `${yearsAgo(p, day)} years ago`
     return found!.kind === 'same' ? ago : found!.kind === 'near' ? photoDate(p).replace(/, \d{4}$/, '') + ` · ${ago}` : photoDate(p)

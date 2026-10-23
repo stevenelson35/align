@@ -152,7 +152,7 @@ export function DayView({ day }: { day: string }) {
       <div className="day-section">
         <SectionHeader
           icon="todo"
-          title={day < now ? 'Not done' : 'To do'}
+          title={day < now ? 'Not Done' : 'To Do'}
           count={b.todo.length}
           help="today"
           onTitleClick={() => setHide({ ...hide, todo: !hide.todo })}
@@ -226,13 +226,13 @@ export function DayView({ day }: { day: string }) {
       )}
       {b.skipped.length > 0 && (
         <div className="day-section">
-          <SectionHeader icon="close" title="Won't do" count={b.skipped.length} onTitleClick={() => setHide({ ...hide, skipped: !hide.skipped })} expanded={!hide.skipped} />
+          <SectionHeader icon="close" title="Won't Do" count={b.skipped.length} onTitleClick={() => setHide({ ...hide, skipped: !hide.skipped })} expanded={!hide.skipped} />
           {!hide.skipped && <div className="task-list">{byDate(b.skipped).map((t) => card(t))}</div>}
         </div>
       )}
       {b.pushed.length > 0 && (
         <div className="day-section">
-          <SectionHeader icon="skip" title="Pushed to a later day" count={b.pushed.length} onTitleClick={() => setHide({ ...hide, pushed: !hide.pushed })} expanded={!hide.pushed} />
+          <SectionHeader icon="skip" title="Pushed to a Later Day" count={b.pushed.length} onTitleClick={() => setHide({ ...hide, pushed: !hide.pushed })} expanded={!hide.pushed} />
           {!hide.pushed && <div className="task-list">{byDate(b.pushed).map((t) => card(t, { note: movedTo(t), dayActions: undefined }))}</div>}
         </div>
       )}

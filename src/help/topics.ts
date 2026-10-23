@@ -42,7 +42,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     tip: 'Align keeps the family’s tasks, lists, goals, calendar and votes in one place. Start on Today; everything else is in the ☰ menu.',
     body: [
       'Align is the family’s shared to-do list, notebook, calendar and decision helper. It works in a browser on phones and computers; on a phone, “Add to Home Screen” makes it open like an app.',
-      '• Today: what’s on for the day, your goals, and photos from this day in other years.',
+      '• Today: what’s on for the day, your goals, and Archive Pics from this day in other years.',
       '• ☰ menu: My tasks, Family tasks, Work, Goals, Photos, the blog, your lists (they fold up by kind), Voting, Settings and this Help.',
       '• The chat-bubble ＋ at the top: add a task by typing a sentence (see Chat).',
       '• Tap anything (a task, a list item, a note, a vote option) to see it; Edit changes it.',
@@ -56,10 +56,10 @@ export const HELP_TOPICS: HelpTopic[] = [
     body: [
       'Today shows one day at a time; ‹ and › go to other days (past days show what was done, skipped or pushed then).',
       '• Goals: the goals you log, with a small trend chart. They start hidden each morning; tap “Goals” or Show.',
-      '• On this day: favorite photos taken on this date in earlier years (or near it, or a few from the archive). Tap one to see it larger or text it.',
+      '• On This Day / Near This Day / Archive Pics: favorite photos taken on this date in earlier years (or near it, or a few from the archive). Tap one to see it larger or text it.',
       '• To do: tasks for the day, overdue ones, and what’s in progress. The buttons on each card move it to the next day, mark it won’t do, or text someone about it.',
       '• + Add: type a to do for this day (it goes to your Inbox list); “Title: note” puts what follows the colon in the note. Push rest (⏭): the end-of-day sweep to tomorrow.',
-      '• Tap a section’s title (To do, Done, Won’t do, Pushed, Goals, On this day) to fold it away or open it again.',
+      '• Tap a section’s title (To Do, Done, Won’t Do, Pushed, Goals, Archive Pics) to fold it away or open it again.',
       '• The color swatch next to the count shows what the card colors mean (who can see each task).',
       '• Also show: tasks you can see but not change (someone kept editing their list to themselves) are left off; tick a person, or Everyone, to include theirs.',
     ],
@@ -162,10 +162,12 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'daily',
     title: 'The Daily',
-    tip: 'Something new each day: a word, a joke, a quote, something to think about, a science fact, a riddle, a math puzzle, and pictures. Tap to reveal answers.',
+    tip: 'Something new each day: a word, a joke, a quote, things to think about, science, a riddle, math and chess puzzles, poker odds and pictures. Tap to reveal answers.',
     body: [
       'The Daily on Today changes every day. Each item shows something first; “Show answer” (or “Tell me more”) reveals the rest, so you can guess or think first.',
       '• Word of the day, a quote, a question to think about, a science fact and a riddle come with Align (the same for everyone that day).',
+      '• A Mini Philosophy short video by Jonny Thomson (YouTube @philosophyminis), a different one each day; “Watch here” plays it, or open it on YouTube.',
+      '• An easy chess puzzle (mate in one, from Lichess), a short chess lesson, and Texas Hold’em poker odds.',
       '• A math puzzle at the grade you choose, a joke, NASA’s astronomy picture, Wikipedia’s picture of the day and a wild animal photo (guess what it is) are fetched fresh from free public sites.',
       '• Choose which items you see and the math grade in Settings → The Daily. Tap “The Daily” to fold it away; it remembers for the day.',
     ],
@@ -228,7 +230,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     body: [
       'Favorites come from the family photo library (psort): starred photos that aren’t marked private are published for the blog’s photo browser, and Align shows the same ones.',
       '• Photos page: search names, years, months or events; Top picks; tap to see larger, open full size, or text it.',
-      '• On this day (Today): favorites from this date in earlier years.',
+      '• On This Day / Archive Pics (on Today): favorites from this date, a nearby date, or the archive.',
       '• “From favorites” adds one to a blog post, a task, a vote option or a goal day.',
     ],
   },

@@ -364,6 +364,8 @@ psort's `publish-browse` puts the family's starred, non-private photos on Turbif
 On Today, between On this day and To do (folded each morning; `components/Daily/TheDaily.tsx`). Each item is a `RevealCard` (something first, the answer or more after a tap).
 - **Built in** (`src/daily/content.ts`, the same for everyone each day): word of the day, a quote (only well-sourced ones), something to think about, a science question, a riddle. **Math puzzle** made from the day and a grade 1–8 (`src/daily/math.ts`, tested).
 - **Fetched** (`src/daily/sources.ts`, free sites a browser may read, no keys; once a day per device in localStorage; hidden if a site is down): a joke (JokeAPI safe mode, else icanhazdadjoke), a space picture (NASA image library; NASA's APOD API only returned a placeholder logo in Oct 2026), Wikipedia's picture of the day, and an iNaturalist animal photo (guess, then reveal).
+- **Chess:** an easy mate-in-one from Lichess (`/api/puzzle/next?angle=mateIn1&difficulty=easiest`, browser-readable; `chess.js`, loaded only for this, turns the game into a position and the answer into notation) on a drawn board, plus a built-in chess lesson. **Poker odds** (Texas Hold'em) are built in (`src/daily/poker.ts`).
+- **Mini Philosophy:** one of Jonny Thomson's short videos (YouTube @philosophyminis) a day, from `src/daily/miniPhilosophy.json`; YouTube doesn't let a browser read the channel, so refresh the list with `node scripts/update-mini-philosophy.mjs` (keeps old videos, adds new).
 - Settings → The Daily (this device): which items show, and the math grade. A daily script (e.g. the Apps Script writing a `daily/<date>` doc) is only worth adding for a source that needs a key or blocks browsers.
 
 ### 10.1 Folder structure
@@ -428,7 +430,12 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-10-23 (The Daily, flashcards, breadcrumb): built, tested, NOT yet committed
+### 2026-10-23 (decks, Title Case, chess, poker, Mini Philosophy): built, tested, NOT yet committed
+- `samples/flashcards/`: seven decks (state ↔ capital, country → capital, country → continent, U.S. city → state, world city → country, Texas Hold'em odds) built by `make_decks.py`; `tests/samples/sampleDecks.test.ts` (part of `npm test`) checks they all import.
+- Today's headings in Title Case ("Archive Pics" for the archive photos, "To Do", "Won't Do", "Pushed to a Later Day", Daily labels).
+- The Daily: chess puzzle and lesson, poker odds, Mini Philosophy video (§10.5). No rules change. Tests: 123 unit.
+
+### 2026-10-23 (The Daily, flashcards, breadcrumb): built and deployed (`bcea1ec`, rules deployed)
 - **The Daily** (§10.5) and **Flashcards** (§5.9), sharing `RevealCard`.
 - **Breadcrumb** on list pages ("Menu › Links › Art"): Menu opens the ☰ menu, the section name opens it with that section expanded (`openMenu`, `utils/menu.ts` `menuSectionOf`, also used by the menu).
 - Measure goals' "better is" now defaults from the unit (lower for lb / kg / $ / calories, else higher); the user's Walking goal was set to "lower" by the old default.
