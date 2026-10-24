@@ -104,9 +104,10 @@ function manualSync_(idToken) {
 // ---- Voice (the Align Alexa skill: scripts/alexa) ----
 
 /**
- * "Alexa, ask sir georgie to add buy milk" / "…what's on today". The skill posts {voice: true, secret, action:
- * "add" | "today", text}. The secret (Script Property VOICE_SECRET, also in the skill's code) keeps strangers out.
- * Tasks go to the "Family Inbox", due today; the script writes them as its calendar-helper member.
+ * "Alexa, ask sir georgie to add buy milk" / "…to add milk to groceries" / "…what's on today". The skill posts
+ * {voice: true, secret, action: "add" | "today", text}. The secret (Script Property VOICE_SECRET, also in the skill's
+ * code) keeps strangers out. "… to <list>" adds to that family list (a task list, project or checklist, no date);
+ * otherwise it goes to the "Family Inbox", due today. The script writes as its calendar-helper member.
  */
 function voice_(body) {
   var props = PropertiesService.getScriptProperties()
@@ -117,10 +118,16 @@ function voice_(body) {
   var day = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd')
   var api = firestoreApi_(cfg, signIn_(cfg))
   if (body.action === 'add') {
-    var title = voiceTitle_(body.text)
+    var lists = api.query('lists', [['visibility', 'family']])
+    var target = voiceTarget_(body.text, lists)
+    if (target && target.list.fields.name === 'Family Inbox') target = { text: target.text, list: null } // due today, as usual
+    var title = voiceTitle_(target ? target.text : body.text)
     if (!title) return { ok: false, speech: 'What should I add?' }
-    var inbox = voiceInbox_(api)
-    api.create('tasks', voiceTaskFields_(inbox, title, day, api.uid))
+    if (target && target.list) {
+      api.create('tasks', voiceTaskFields_(voiceList_(target.list), title, null, api.uid))
+      return { ok: true, speech: 'Added ' + title + ' to ' + target.list.fields.name + '.' }
+    }
+    api.create('tasks', voiceTaskFields_(voiceInbox_(api, lists), title, day, api.uid))
     return { ok: true, speech: 'Added ' + title + ' to the Family Inbox, for today.' }
   }
   if (body.action === 'today') {
@@ -136,7 +143,7 @@ function voice_(body) {
     })
     return { ok: true, speech: voiceSummary_(all) }
   }
-  return { ok: false, speech: 'You can say: add buy milk, or what’s on today.' }
+  return { ok: false, speech: 'You can say: add buy milk, add milk to groceries, or what’s on today.' }
 }
 
 /** "buy milk" → "Buy milk": trimmed, a little tidy, at most 200 characters. */
@@ -146,15 +153,65 @@ function voiceTitle_(text) {
   return (t.charAt(0).toUpperCase() + t.slice(1)).slice(0, 200)
 }
 
-/** The shared "Family Inbox" task list (found, or made for everyone to see). */
-function voiceInbox_(api) {
-  var match = api.query('lists', [['visibility', 'family']]).filter(function (l) {
+/** A list name or spoken name, simplified for matching: "Steve's Groceries List" → "steve grocery". */
+function voiceKey_(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/[’']s\b/g, '')
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .split(/\s+/)
+    .filter(function (w) {
+      return w && ['the', 'my', 'our', 'list'].indexOf(w) < 0
+    })
+    .map(function (w) {
+      return w.length > 3 ? w.replace(/(ies)$/, 'y').replace(/s$/, '') : w
+    })
+    .join(' ')
+}
+
+/**
+ * "milk to groceries" / "milk to the grocery list" / "drill bits on home depot" → { text: 'milk', list } when the
+ * words after the last "to" / "on" name one family list you can add tasks to (a task list, project or checklist):
+ * the same name, or the start of exactly one name ("best buy" → "Best Buy Shopping"). Otherwise null, and the whole
+ * thing is the task ("go to the store").
+ */
+function voiceTarget_(text, lists) {
+  var t = String(text || '').replace(/\s+/g, ' ').trim()
+  var re = /\s(?:to|on|onto|in|into)\s/gi
+  var m
+  var cut = -1
+  while ((m = re.exec(t))) cut = m.index
+  if (cut < 0) return null
+  var spoken = voiceKey_(t.slice(cut).replace(/^\s\S+\s/, ''))
+  if (!spoken) return null
+  var usable = lists.filter(function (l) {
+    return ['list', 'project', 'checklist'].indexOf(l.fields.kind || 'list') >= 0 && !l.fields.archived
+  })
+  var exact = usable.filter(function (l) {
+    return voiceKey_(l.fields.name) === spoken
+  })
+  var starts = usable.filter(function (l) {
+    return (voiceKey_(l.fields.name) + ' ').indexOf(spoken + ' ') === 0
+  })
+  var list = exact.length === 1 ? exact[0] : !exact.length && starts.length === 1 ? starts[0] : null
+  return list ? { text: t.slice(0, cut), list: list } : null
+}
+
+/** The shared "Family Inbox" task list (found among `lists`, or made for everyone to see). */
+function voiceInbox_(api, lists) {
+  var match = lists.filter(function (l) {
     return l.fields.name === 'Family Inbox' && (l.fields.kind || 'list') === 'list'
   })[0]
   if (!match) {
     var id = api.create('lists', { name: 'Family Inbox', kind: 'list', visibility: 'family', ownerId: api.uid, viewerVisible: true, defaultContext: 'family' })
     match = api.get('lists/' + id)
   }
+  return voiceList_(match)
+}
+
+/** What a new task copies from its list (the rules require the list's privacy on each task). */
+function voiceList_(match) {
   var f = match.fields
   var list = { id: match.id, visibility: f.visibility, ownerId: f.ownerId, viewerVisible: f.viewerVisible, defaultContext: f.defaultContext || 'family' }
   if (f.editAudience) list.editAudience = f.editAudience
@@ -162,7 +219,7 @@ function voiceInbox_(api) {
   return list
 }
 
-/** A new task's fields: the list's privacy copied (the rules require it), due today, written by the script's member. */
+/** A new task's fields: the list's privacy copied (the rules require it), due `day` (none when null), written by the script's member. */
 function voiceTaskFields_(list, title, day, uid) {
   var t = {
     listId: list.id,
@@ -172,12 +229,12 @@ function voiceTaskFields_(list, title, day, uid) {
     context: list.defaultContext || 'family',
     durationDays: 1,
     dependsOn: [],
-    targetDate: day,
     visibility: list.visibility,
     ownerId: list.ownerId,
     viewerVisible: list.viewerVisible,
     createdBy: uid,
   }
+  if (day) t.targetDate = day
   if (list.editAudience) t.editAudience = list.editAudience
   if (list.editors) t.editors = list.editors
   return t

@@ -119,6 +119,37 @@ describe('voice helpers (Alexa)', () => {
       visibility: 'family', ownerId: 'steve', viewerVisible: true, createdBy: 'bot', editAudience: 'family',
     })
   })
+  it('leaves the due date off when there is no day (adding to a named list)', () => {
+    const list = { id: 'groc', visibility: 'family', ownerId: 'steve', viewerVisible: true, defaultContext: 'family' }
+    expect((gs.voiceTaskFields_ as (...a: unknown[]) => Record<string, unknown>)(list, 'Milk', null, 'bot')).not.toHaveProperty('targetDate')
+  })
+  it('finds the list named after “to” / “on”, or none', () => {
+    const lists = [
+      { id: 'g', fields: { name: 'Groceries', kind: 'checklist' } },
+      { id: 'h', fields: { name: 'Home Depot', kind: 'checklist' } },
+      { id: 'b', fields: { name: 'Best Buy Shopping', kind: 'checklist' } },
+      { id: 'x', fields: { name: 'Steve’s Christmas List', kind: 'checklist' } },
+      { id: 'p', fields: { name: 'Porch walls', kind: 'project' } },
+      { id: 'w', fields: { name: 'Work', kind: 'links' } },
+      { id: 'i1', fields: { name: 'Inbox', kind: 'list' } },
+      { id: 'i2', fields: { name: 'Family Inbox', kind: 'list' } },
+    ]
+    const target = (t: string) => {
+      const r = (gs.voiceTarget_ as (t: string, l: object[]) => { text: string; list: { id: string } } | null)(t, lists)
+      return r && [r.text, r.list.id]
+    }
+    expect(target('milk to groceries')).toEqual(['milk', 'g'])
+    expect(target('milk to the grocery list')).toEqual(['milk', 'g'])
+    expect(target('eggs and bread to my groceries')).toEqual(['eggs and bread', 'g'])
+    expect(target('drill bits on home depot')).toEqual(['drill bits', 'h'])
+    expect(target('a new cable to best buy')).toEqual(['a new cable', 'b'])
+    expect(target('a sweater to steve’s christmas list')).toEqual(['a sweater', 'x'])
+    expect(target('buy primer to porch walls')).toEqual(['buy primer', 'p'])
+    expect(target('call mom to inbox')).toEqual(['call mom', 'i1'])
+    expect(target('go to the store')).toBeNull()
+    expect(target('send the report to work')).toBeNull() // a links list, not for tasks
+    expect(target('buy milk')).toBeNull()
+  })
   it('says what’s on today', () => {
     const say = gs.voiceSummary_ as (t: object[]) => string
     expect(say([{ title: 'Dentist', calendar: { time: '3:00 PM–4:00 PM' }, status: 'todo' }, { title: 'Buy milk', status: 'todo' }, { title: 'Old', status: 'done' }])).toBe(

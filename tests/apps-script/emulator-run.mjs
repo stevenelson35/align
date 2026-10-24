@@ -55,7 +55,7 @@ const sandbox = createContext({
   },
   Session: { getScriptTimeZone: () => TZ },
   PropertiesService: {
-    getScriptProperties: () => ({ getProperties: () => ({ ...props }), setProperty: (k, v) => (props[k] = v) }),
+    getScriptProperties: () => ({ getProperties: () => ({ ...props }), getProperty: (k) => props[k] ?? null, setProperty: (k, v) => (props[k] = v) }),
   },
   Calendar: {
     // The calendar's own zone set to UTC reproduces the 4 PM → 8 PM bug; times must follow the script's zone.
@@ -159,5 +159,18 @@ lockHeld = true
 reply = post({ idToken: await idTokenFor('steve@example.com') })
 check(!reply.ok && /still running/.test(reply.error), 'a refresh during a running sync says so instead of overlapping')
 lockHeld = false
+
+// Voice (the Alexa skill): adds to the Family Inbox, or to a family list named after "to".
+props.VOICE_SECRET = 'test-secret'
+check(post({ voice: true, secret: 'wrong', action: 'add', text: 'milk' }).ok === false, 'voice: a wrong secret is refused')
+await admin.doc('lists/voice-groceries').set({ name: 'Groceries', kind: 'checklist', visibility: 'family', ownerId: 'steve', viewerVisible: true, defaultContext: 'family' })
+reply = post({ voice: true, secret: 'test-secret', action: 'add', text: 'milk to the grocery list' })
+check(reply.ok && reply.speech === 'Added Milk to Groceries.', `voice: "milk to the grocery list" adds to Groceries (${reply.speech})`)
+const grocery = (await admin.collection('tasks').where('listId', '==', 'voice-groceries').get()).docs.map((d) => d.data())
+check(grocery.length === 1 && grocery[0].title === 'Milk' && !grocery[0].targetDate && grocery[0].createdBy === 'calendar-bot', 'voice: the checklist item is written (no due date) and the rules allow it')
+reply = post({ voice: true, secret: 'test-secret', action: 'add', text: 'go to the store' })
+check(reply.ok && /Go to the store to the Family Inbox/.test(reply.speech), `voice: other phrases go to the Family Inbox (${reply.speech})`)
+reply = post({ voice: true, secret: 'test-secret', action: 'today' })
+check(reply.ok && /Go to the store/.test(reply.speech), `voice: what's on today includes it (${reply.speech})`)
 console.log('Calendar sync works against the emulator.')
 process.exit(0)

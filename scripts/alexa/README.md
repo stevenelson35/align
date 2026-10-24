@@ -1,6 +1,8 @@
 # Align on Alexa (voice)
 
-Say **"Alexa, ask sir georgie to add buy milk"** (added to the Family Inbox, due today) or
+Say **"Alexa, ask sir georgie to add buy milk"** (added to the Family Inbox, due today),
+**"Alexa, ask sir georgie to add milk to groceries"** (added to the family list with that name: a task list, project
+or checklist, no due date; "the grocery list", "my groceries" and the start of a name like "best buy" work too), or
 **"Alexa, ask sir georgie what's on today"** (reads today's calendar and to-dos).
 
 How it works: an Alexa-hosted skill (free) sends what you said to Align's Google Apps Script web app (the same script
