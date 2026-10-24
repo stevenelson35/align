@@ -104,7 +104,7 @@ function manualSync_(idToken) {
 // ---- Voice (the Align Alexa skill: scripts/alexa) ----
 
 /**
- * "Alexa, ask family align to add buy milk" / "…what's on today". The skill posts {voice: true, secret, action:
+ * "Alexa, ask sir georgie to add buy milk" / "…what's on today". The skill posts {voice: true, secret, action:
  * "add" | "today", text}. The secret (Script Property VOICE_SECRET, also in the skill's code) keeps strangers out.
  * Tasks go to the "Family Inbox", due today; the script writes them as its calendar-helper member.
  */

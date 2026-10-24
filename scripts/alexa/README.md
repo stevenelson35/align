@@ -1,7 +1,7 @@
 # Align on Alexa (voice)
 
-Say **"Alexa, ask family align to add buy milk"** (added to the Family Inbox, due today) or
-**"Alexa, ask family align what's on today"** (reads today's calendar and to-dos).
+Say **"Alexa, ask sir georgie to add buy milk"** (added to the Family Inbox, due today) or
+**"Alexa, ask sir georgie what's on today"** (reads today's calendar and to-dos).
 
 How it works: an Alexa-hosted skill (free) sends what you said to Align's Google Apps Script web app (the same script
 and URL as "Refresh calendar"), which adds the task as its calendar-helper member. A shared **voice secret** keeps
@@ -22,10 +22,10 @@ anyone else from using it. Nothing here costs money.
 4. **Code** tab → replace `index.js` with `lambda/index.js` and `package.json` with `lambda/package.json`. In
    `index.js`, fill in `WEB_APP_URL` (your Apps Script web app URL, ends in `/exec`) and `VOICE_SECRET`. **Deploy**.
 5. **Test** tab → set "Skill testing is enabled in" to **Development**. Type or say
-   *"ask family align what's on today"*, then *"ask family align to add test from Alexa"* (check Align's Family Inbox).
+   *"ask sir georgie what's on today"*, then *"ask sir georgie to add test from Alexa"* (check Align's Family Inbox).
 
 Development skills work on every Echo signed in to that Amazon account; there's no need to publish it.
 
 ## Changing it later
 - What you can say: `interactionModel.json` (then Build again). The words go to `voice_` in the Apps Script.
-- Another phrase to start it: change `invocationName` (two or more words, e.g. "family align").
+- Another phrase to start it: change `invocationName` (two or more words, e.g. "sir georgie").

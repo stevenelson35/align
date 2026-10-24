@@ -35,6 +35,12 @@ export function CardsView({ list }: { list: List }) {
   const [revealed, setRevealed] = useState(false)
   const [shuffling, setShuffling] = useState(false)
   const [showBacks, setShowBacks] = useState(false)
+  // The page opens on Study alone; "Cards (50)" lists them, and Edit there adds, imports and edits the list. A new,
+  // empty set opens ready for adding.
+  const [showCards, setShowCards] = useState(false)
+  const [editingState, setEditing] = useState(false)
+  const editing = editable && (editingState || !cards.length)
+  const listing = showCards || editing
   const [error, setError] = useState<string | null>(null)
   const fail = (err: unknown) => setError(err instanceof Error ? err.message : String(err))
 
@@ -65,7 +71,7 @@ export function CardsView({ list }: { list: List }) {
 
   return (
     <section className="cards-view">
-      <ListHeader list={list} />
+      <ListHeader list={list} tools={editing} />
 
       <div className="day-section">
         <SectionHeader icon="todo" title="Study" count={`${known}/${cards.length} known`} help="cards" />
@@ -158,28 +164,42 @@ export function CardsView({ list }: { list: List }) {
       </div>
 
       <div className="day-section">
-        <SectionHeader icon="list" title="Cards" count={cards.length}>
-          <button type="button" className="link small" onClick={() => setShowBacks(!showBacks)}>
-            {showBacks ? 'Hide answers' : 'Show answers'}
-          </button>
+        <SectionHeader icon="list" title="Cards" count={cards.length} onTitleClick={() => setShowCards(!listing)} expanded={listing}>
+          {listing && cards.length > 0 && (
+            <button type="button" className="link small" onClick={() => setShowBacks(!showBacks)}>
+              {showBacks ? 'Hide answers' : 'Show answers'}
+            </button>
+          )}
+          {listing && editable && cards.length > 0 && (
+            <button type="button" className="link small" onClick={() => setEditing(!editing)} aria-pressed={editing} title={editing ? 'Done adding and editing' : 'Add cards, import a set, or edit the list'}>
+              <Icon name={editing ? 'check' : 'edit'} /> {editing ? 'Done' : 'Edit'}
+            </button>
+          )}
+          {!listing && (
+            <button type="button" className="link small" onClick={() => setShowCards(true)} aria-expanded={false}>
+              Show
+            </button>
+          )}
         </SectionHeader>
-        {editable && <AddCards list={list} onError={fail} />}
-        <ul className="cards-list">
-          {cards.map((c) => {
-            const r = resultFor(c, app.uid)
-            return (
-              <li key={c.id} className={`card-row${app.selectedTaskId === c.id ? ' selected' : ''}`}>
-                <button type="button" className="link card-front" onClick={() => app.selectTask(c.id)}>
-                  {c.title}
-                </button>
-                {showBacks && <span className="muted small card-back">{c.notes}</span>}
-                <span className={`card-state small ${r.known ? 'known' : r.wrong ? 'missed' : ''}`} title={r.right || r.wrong ? `✓ ${r.right ?? 0} · ✗ ${r.wrong ?? 0}` : 'Not studied yet'}>
-                  {r.known ? '✓' : r.wrong ? '✗' : '–'}
-                </span>
-              </li>
-            )
-          })}
-        </ul>
+        {editing && <AddCards list={list} onError={fail} />}
+        {listing && (
+          <ul className="cards-list">
+            {cards.map((c) => {
+              const r = resultFor(c, app.uid)
+              return (
+                <li key={c.id} className={`card-row${app.selectedTaskId === c.id ? ' selected' : ''}`}>
+                  <button type="button" className="link card-front" onClick={() => app.selectTask(c.id)}>
+                    {c.title}
+                  </button>
+                  {showBacks && <span className="muted small card-back">{c.notes}</span>}
+                  <span className={`card-state small ${r.known ? 'known' : r.wrong ? 'missed' : ''}`} title={r.right || r.wrong ? `✓ ${r.right ?? 0} · ✗ ${r.wrong ?? 0}` : 'Not studied yet'}>
+                    {r.known ? '✓' : r.wrong ? '✗' : '–'}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
         {!cards.length && <p className="muted small">No cards yet. Add one above, or import a set.</p>}
       </div>
     </section>

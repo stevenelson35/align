@@ -3,6 +3,8 @@
 // Samsung, Outlook and iPhone export), the CSV files Google and Outlook export, merging duplicates on import, and the
 // links that call / text / email / map. Pure logic, unit-tested.
 
+import type { Task } from '../types'
+
 export type ContactLabel = 'mobile' | 'home' | 'work' | 'other'
 export const CONTACT_LABELS: ContactLabel[] = ['mobile', 'home', 'work', 'other']
 
@@ -270,3 +272,20 @@ export function dedupe(contacts: ContactIn[]): ContactIn[] {
   }
   return out
 }
+
+/** What to search: the name, company, numbers (digits too), emails and addresses. */
+export function haystack(t: Task): string {
+  const c = t.contact ?? {}
+  return [t.title, c.org, c.jobTitle, ...(c.phones ?? []).flatMap((p) => [p.value, p.value.replace(/\D/g, '')]), ...(c.emails ?? []).map((e) => e.value), ...(c.addresses ?? []).map((a) => a.value)]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+}
+
+/** Whether a contact matches every word typed in a search box. */
+export const matches = (t: Task, query: string) =>
+  query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .every((w) => haystack(t).includes(w))

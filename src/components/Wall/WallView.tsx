@@ -57,6 +57,7 @@ export function WallView() {
   const later = eventsOn(tasks, tomorrow)
   const todos = dayBuckets(tasks, day, day).todo.filter((t) => !t.calendar && app.canEdit(t))
   const dayGoals = goals.filter((g) => appliesOn(g, day))
+  const offGoals = goals.filter((g) => !g.archived && !appliesOn(g, day))
   const photos = manifest ? photosForDay(manifest.photos, day, 7, 12).photos : []
   const photo = photos.length ? photos[Math.floor(now.getTime() / 60_000) % photos.length] : null
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
@@ -137,7 +138,7 @@ export function WallView() {
           <h2>
             <Icon name="goal" /> Goals
           </h2>
-          {dayGoals.length ? (
+          {dayGoals.length || offGoals.length ? (
             <ul className="wall-list">
               {dayGoals.map((g) => {
                 const s = goalStatus(g, g.log?.[day], day)
@@ -149,6 +150,12 @@ export function WallView() {
                   </li>
                 )
               })}
+              {offGoals.map((g) => (
+                <li key={g.id} className="past">
+                  <span className="grow">{g.name}</span>
+                  <span className="wall-sub">Not today</span>
+                </li>
+              ))}
             </ul>
           ) : (
             <p className="wall-empty">No goals today.</p>

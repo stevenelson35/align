@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { addTaskNow } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
-import { mailUrl, telUrl } from '../../utils/contacts'
+import { mailUrl, matches, telUrl } from '../../utils/contacts'
 import { smsUrl } from '../../utils/text'
 import { ListHeader } from '../Tasks/ListHeader'
 import { Icon } from '../UI/Icon'
@@ -16,15 +16,6 @@ const initials = (name: string) =>
     .map((w) => w[0]!.toUpperCase())
     .join('')
 
-/** What to search: the name, company, numbers (digits too), emails and addresses. */
-function haystack(t: Task): string {
-  const c = t.contact ?? {}
-  return [t.title, c.org, c.jobTitle, ...(c.phones ?? []).flatMap((p) => [p.value, p.value.replace(/\D/g, '')]), ...(c.emails ?? []).map((e) => e.value), ...(c.addresses ?? []).map((a) => a.value)]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase()
-}
-
 /**
  * Contacts (DESIGN.md §5.10): everyone in the list, A–Z, with a search box and one-tap call / text / email for the
  * first number and address. Tap a person for everything else; Import / Export (vCard) is in the header.
@@ -35,8 +26,7 @@ export function ContactsView({ list }: { list: List }) {
   const [query, setQuery] = useState('')
   const [name, setName] = useState('')
   const people = listItems.filter((t) => t.listId === list.id).sort((a, b) => a.title.localeCompare(b.title))
-  const q = query.trim().toLowerCase()
-  const shown = q ? people.filter((p) => q.split(/\s+/).every((w) => haystack(p).includes(w))) : people
+  const shown = query.trim() ? people.filter((p) => matches(p, query)) : people
 
   function add(e: FormEvent) {
     e.preventDefault()
@@ -60,41 +50,48 @@ export function ContactsView({ list }: { list: List }) {
         </form>
       )}
       <ul className="contacts-list">
-        {shown.map((p) => {
-          const phone = p.contact?.phones?.[0]
-          const email = p.contact?.emails?.[0]
-          return (
-            <li key={p.id} className={`contact-row${app.selectedTaskId === p.id ? ' selected' : ''}`}>
-              <button type="button" className="contact-main" onClick={() => app.selectTask(p.id)}>
-                <span className="avatar contact-avatar" aria-hidden="true">
-                  {p.images?.[0] ? <Picture src={p.images[0]} alt="" /> : initials(p.title)}
-                </span>
-                <span className="contact-text">
-                  <strong>{p.title}</strong>
-                  {(p.contact?.org || p.contact?.jobTitle) && <span className="muted small">{[p.contact.jobTitle, p.contact.org].filter(Boolean).join(', ')}</span>}
-                </span>
-              </button>
-              {phone && (
-                <>
-                  <a className="row-action" href={telUrl(phone.value)} title={`Call ${phone.value}`} aria-label={`Call ${p.title}`}>
-                    <Icon name="phone" />
-                  </a>
-                  <a className="row-action" href={smsUrl(phone.value, '')} title={`Text ${phone.value}`} aria-label={`Text ${p.title}`}>
-                    <Icon name="message" />
-                  </a>
-                </>
-              )}
-              {email && (
-                <a className="row-action" href={mailUrl(email.value)} title={`Email ${email.value}`} aria-label={`Email ${p.title}`}>
-                  <Icon name="mail" />
-                </a>
-              )}
-            </li>
-          )
-        })}
+        {shown.map((p) => (
+          <ContactRow key={p.id} person={p} />
+        ))}
       </ul>
       {!people.length && <p className="muted small">No contacts yet. Add a person above, or Import a .vcf or CSV file from your phone, Google or Outlook.</p>}
       {people.length > 0 && !shown.length && <p className="muted small">Nobody matches “{query}”.</p>}
     </section>
+  )
+}
+
+/** One person: picture or initials, name and company (tap for the details panel), then call / text / email. */
+export function ContactRow({ person: p, note }: { person: Task; note?: string }) {
+  const app = useApp()
+  const phone = p.contact?.phones?.[0]
+  const email = p.contact?.emails?.[0]
+  const sub = [[p.contact?.jobTitle, p.contact?.org].filter(Boolean).join(', '), note].filter(Boolean).join(' · ')
+  return (
+    <li className={`contact-row${app.selectedTaskId === p.id ? ' selected' : ''}`}>
+      <button type="button" className="contact-main" onClick={() => app.selectTask(p.id)}>
+        <span className="avatar contact-avatar" aria-hidden="true">
+          {p.images?.[0] ? <Picture src={p.images[0]} alt="" /> : initials(p.title)}
+        </span>
+        <span className="contact-text">
+          <strong>{p.title}</strong>
+          {sub && <span className="muted small">{sub}</span>}
+        </span>
+      </button>
+      {phone && (
+        <>
+          <a className="row-action" href={telUrl(phone.value)} title={`Call ${phone.value}`} aria-label={`Call ${p.title}`}>
+            <Icon name="phone" />
+          </a>
+          <a className="row-action" href={smsUrl(phone.value, '')} title={`Text ${phone.value}`} aria-label={`Text ${p.title}`}>
+            <Icon name="message" />
+          </a>
+        </>
+      )}
+      {email && (
+        <a className="row-action" href={mailUrl(email.value)} title={`Email ${email.value}`} aria-label={`Email ${p.title}`}>
+          <Icon name="mail" />
+        </a>
+      )}
+    </li>
   )
 }

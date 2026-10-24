@@ -3,7 +3,7 @@ import { addDays, formatDay, today } from '../../engine/dates'
 import { commentThread, deleteRemovedImages, logGoal, updateGoal } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
 import type { Goal } from '../../types'
-import { appliesOn, goalHint, history, totalTo } from '../../utils/goals'
+import { appliesOn, goalDaysText, goalHint, history, totalTo } from '../../utils/goals'
 import { canLogGoal, privacyText, sharedNames } from '../../utils/tasks'
 import { cleanDetails, detailsOf, hasDetails, storedDetails } from '../../utils/details'
 import { DetailsFields, DetailsView } from '../UI/Details'
@@ -67,7 +67,7 @@ export function GoalDetail({ goal }: { goal: Goal }) {
       <p className="muted small">
         {goalHint(goal, today())}
         {goalHint(goal, today()) && ' · '}
-        {goal.weekdays?.length ? `On ${goal.weekdays.map((d) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]).join(', ')}` : 'Every day'} ·{' '}
+        {goal.weekdays?.length ? `On ${goalDaysText(goal).replace(/^W/, 'w')}` : 'Every day'} ·{' '}
         {privacyText(goal, 'goal', app.household, app.uid)}
         {loggers && ` Who can log it: ${loggers}.`}
       </p>

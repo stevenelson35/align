@@ -40,8 +40,9 @@ const KIND_LABEL: Record<List['kind'], string> = {
   contacts: ' contacts',
 }
 
-/** Name, who can see it, and Edit list; `children` adds view-specific buttons. */
-export function ListHeader({ list, children }: { list: List; children?: ReactNode }) {
+/** Name, who can see it, and Edit list; `children` adds view-specific buttons. `tools={false}` leaves out Import /
+ * Export and Edit list (flashcards keep them behind their own Edit). */
+export function ListHeader({ list, children, tools = true }: { list: List; children?: ReactNode; tools?: boolean }) {
   const app = useApp()
   return (
     <>
@@ -67,8 +68,8 @@ export function ListHeader({ list, children }: { list: List; children?: ReactNod
         {list.defaultContext === 'work' && (list.kind === 'list' || list.kind === 'project') && <span className="badge work">Work</span>}
         <span className="grow" />
         {children}
-      <ListTransfer list={list} />
-        {app.canEdit(list) && (
+        {tools && <ListTransfer list={list} />}
+        {tools && app.canEdit(list) && (
           <button type="button" className="secondary small" onClick={() => app.editList(list)}>
             Edit list
           </button>

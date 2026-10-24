@@ -14,6 +14,15 @@ export function appliesOn(goal: Pick<Goal, 'weekdays' | 'archived'>, day: string
   return !goal.weekdays?.length || goal.weekdays.includes(weekday(day))
 }
 
+/** The days a goal is on, for people: "Every day", "Weekdays", "Weekends" or "Mon, Wed, Fri". */
+export function goalDaysText(goal: Pick<Goal, 'weekdays'>): string {
+  const days = [...(goal.weekdays ?? [])].sort()
+  if (!days.length || days.length === 7) return 'Every day'
+  if (days.join() === '1,2,3,4,5') return 'Weekdays'
+  if (days.join() === '0,6') return 'Weekends'
+  return days.map((d) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]).join(', ')
+}
+
 /** A decreasing progressive goal (weight: start 180, −1 every 2 days, goal 165): lower is better. */
 export function decreasing(goal: Pick<Goal, 'progression' | 'target'>): boolean {
   const p = goal.progression

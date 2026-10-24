@@ -55,10 +55,11 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'today',
     title: 'Today',
-    tip: 'One day at a time: your Goals, Archive Pics, The Daily, and To Do. ‹ › go to other days; tap a section’s title to fold it away or open it.',
+    tip: 'One day at a time: your Goals, Contacts, Archive Pics, The Daily, and To Do. ‹ › go to other days; tap a section’s title to fold it away or open it.',
     body: [
       'Today shows one day; ‹ and › go to other days (past days show what was done, skipped or pushed then). From top to bottom:',
-      '• Goals: the goals you log, with where you stand (“4 to go”, Done) and a small trend chart. Folded each morning.',
+      '• Goals: the goals you log, with where you stand (“4 to go”, Done) and a small trend chart. Goals that don’t run that day (a weekdays-only walk on Saturday) show greyed as “Not today”. Folded each morning.',
+      '• Contacts: a quick look-up: pick a contacts list, type a name or number, then call, text or email (today only).',
       '• On This Day / Archive Pics: favorite family photos from this date in earlier years (see Archive Pics).',
       '• The Daily: a word, joke, puzzles, pictures and more, with answers to reveal. Folded each morning.',
       '• To Do: the day’s tasks (see To Do), then Done, Won’t Do and Pushed to a Later Day.',
@@ -185,6 +186,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     tip: 'A set of cards to learn: think of the answer, Show answer, then “Got it” or “Not yet”. Study in order, shuffled, or only the ones you haven’t got yet.',
     body: [
       'Make a set with “+ New list” → Flashcards (spelling words, times tables, state capitals…).',
+      '• The set opens ready to study. Tap Cards (the number of cards) to list them with your ✓ / ✗, and Edit there to add cards, import a set, export, or change the list.',
       '• Add a card with its front (the question) and back (the answer), or “Import a set of cards…”: paste lines like “Paris | Capital of France” (or Q: / A: lines), or choose a YAML file with front: / back: for each card.',
       '• Study: pick In order, Shuffled, or Only ones not known yet, then Start. Think, tap Show answer, and say Got it or Not yet; at the end you can go over the ones you missed.',
       '• Results are kept for each person (the ✓ / ✗ beside each card is yours). Start over forgets yours; anyone who can see the set can study it.',
@@ -200,6 +202,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Tap a phone number to call it (or the message icon to text), an email to write, or an address to open it in Maps.',
       '• Import: a .vcf file (Google Contacts, Samsung Contacts, iPhone and Outlook all export these) or the CSV file Google or Outlook exports. The same person from several files—or already in the list—is merged (same name, email or phone), so importing from each source brings them together.',
       '• Export saves the list as a .vcf file you can import into your phone, Google Contacts or Outlook.',
+      '• Today has a Contacts section too: open it, pick a list (or All contacts) and type a name, company or number to call, text or email from there. “All contacts” opens the full list.',
     ],
   },
   {

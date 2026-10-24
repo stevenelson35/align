@@ -1,4 +1,4 @@
-// The Align Alexa skill (Alexa-hosted, Node.js): "Alexa, ask family align to add buy milk" and "…what's on today".
+// The Align Alexa skill (Alexa-hosted, Node.js): "Alexa, ask sir georgie to add buy milk" and "…what's on today".
 // It forwards what was said to Align's Google Apps Script web app (the calendar sync script), which adds the task to
 // the Family Inbox or reads back today. Fill in the two settings below (see scripts/alexa/README.md).
 const Alexa = require('ask-sdk-core')

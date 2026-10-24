@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "family align",
+      "invocationName": "sir georgie",
       "intents": [
         {
           "name": "AddTaskIntent",

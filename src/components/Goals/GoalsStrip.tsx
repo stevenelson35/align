@@ -1,7 +1,7 @@
 import { today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import { useDailyFlag } from '../../hooks/useDailyFlag'
-import { appliesOn, goalGroups, met, otherLoggers } from '../../utils/goals'
+import { appliesOn, goalDaysText, goalGroups, met, otherLoggers } from '../../utils/goals'
 import { canLogGoal } from '../../utils/tasks'
 import { GoalControl } from './GoalControl'
 import { SectionHeader } from '../UI/SectionHeader'
@@ -13,11 +13,14 @@ export function GoalsStrip({ day }: { day: string }) {
   const [hidden, setHidden] = useDailyFlag('align-goals-hidden', true)
   // Only the goals you log; ones you can just view are on the Goals page.
   // Your own goals first, then shared ones (with who else logs them), like the Goals page.
-  const forDay = goalGroups(goals, uid, member.role, household)
+  const yours = goalGroups(goals, uid, member.role, household)
     .filter((group) => group.key === 'mine' || group.key === 'shared')
     .flatMap((group) => group.goals)
-    .filter((g) => appliesOn(g, day) && canLogGoal(g, uid, member.role))
-  if (!forDay.length) return null
+    .filter((g) => !g.archived && canLogGoal(g, uid, member.role))
+  const forDay = yours.filter((g) => appliesOn(g, day))
+  // Goals that skip this day (Walking on weekdays only) stay listed, greyed, so they don't seem to have vanished.
+  const offDay = yours.filter((g) => !appliesOn(g, day))
+  if (!yours.length) return null
   const metCount = forDay.filter((g) => met(g, g.log?.[day], day)).length
   return (
     <div className="day-section goals-strip">
@@ -35,6 +38,16 @@ export function GoalsStrip({ day }: { day: string }) {
           <div className="goal-list">
             {forDay.map((g) => (
               <GoalControl key={g.id} goal={g} day={day} who={otherLoggers(g, household, uid) || undefined} />
+            ))}
+            {offDay.map((g) => (
+              <div key={g.id} className="goal-control off-day">
+                <div className="goal-head">
+                  <button type="button" className="goal-name link" onClick={() => navigate({ view: 'goal', goalId: g.id })} title="See this goal's history">
+                    {g.name}
+                  </button>
+                  <span className="muted small">Not today · {goalDaysText(g)}</span>
+                </div>
+              </div>
             ))}
           </div>
         </>
