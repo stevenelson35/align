@@ -3,10 +3,10 @@ import { addTaskNow, updateTask, type TaskInput } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
 import { cleanCategory } from '../../utils/links'
-import { contactsToVcf, csvToContacts, dedupe, looksLikeVcard, mergeContact, samePerson, vcfToContacts, type ContactIn } from '../../utils/contacts'
-import { detailsOf } from '../../utils/details'
+import { asContact, contactsToVcf, csvToContacts, dedupe, looksLikeVcard, mergeContact, samePerson, vcfToContacts, type ContactIn } from '../../utils/contacts'
 import {
   bookmarksHtmlToLinks,
+  download,
   fileNameFor,
   linksToBookmarksHtml,
   linksToMarkdown,
@@ -21,19 +21,6 @@ import {
   type TaskIn,
 } from '../../utils/transfer'
 import { Icon } from '../UI/Icon'
-
-/** Saves text as a file (the browser's download). */
-function download(name: string, text: string, type: string) {
-  const url = URL.createObjectURL(new Blob([text], { type }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
-
-/** A contact item as importable data (for matching and merging). */
-const asContact = (t: Task): ContactIn => ({ name: t.title, ...(t.contact ?? {}), notes: t.notes, links: detailsOf(t, false).links.map((l) => l.url) })
 
 const added = (t: Task) => (t.createdAt ? t.createdAt.seconds + t.createdAt.nanoseconds / 1e9 : Infinity)
 
@@ -61,7 +48,7 @@ export function ListTransfer({ list }: { list: List }) {
         : download(fileNameFor(list.name, 'md'), linksToMarkdown(list.name, links), 'text/markdown')
     }
     if (list.kind === 'contacts') {
-      const people: ContactIn[] = items.map((t) => ({ name: t.title, ...(t.contact ?? {}), notes: t.notes, links: detailsOf(t, false).links.map((l) => l.url) }))
+      const people: ContactIn[] = items.map(asContact)
       return download(fileNameFor(list.name, 'vcf'), contactsToVcf(people), 'text/vcard')
     }
     if (list.kind === 'cards') {

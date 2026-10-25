@@ -119,6 +119,8 @@ export interface Task {
     org?: string
     jobTitle?: string
     birthday?: string
+    /** Groups it belongs to (Family, School, Christmas List…): any words, several per person. */
+    tags?: string[]
   }
   /** Flashcards: each person's own results for this card (utils/flashcards.ts CardResult). */
   results?: Record<string, { known?: boolean; right?: number; wrong?: number; last?: string }>

@@ -58,8 +58,8 @@ export const HELP_TOPICS: HelpTopic[] = [
     tip: 'One day at a time: your Goals, Contacts, Archive Pics, The Daily, and To Do. ‹ › go to other days; tap a section’s title to fold it away or open it.',
     body: [
       'Today shows one day; ‹ and › go to other days (past days show what was done, skipped or pushed then). From top to bottom:',
-      '• Goals: the goals you log, with where you stand (“4 to go”, Done) and a small trend chart. Goals that don’t run that day (a weekdays-only walk on Saturday) show greyed as “Not today”. Folded each morning.',
-      '• Contacts: a quick look-up: pick a contacts list, type a name or number, then call, text or email (today only).',
+      '• Goals: a summary of the goals you log: where each stands (“4 to go”, Done) and a small trend chart. The pencil beside a goal opens logging for just that one; Log all shows every goal ready to log (remembered on this device). Goals that don’t run that day (a weekdays-only walk on Saturday) show greyed as “Not today”. Folded each morning.',
+      '• Contacts: a quick look-up: choose which contact lists and tags to include (All by default), type a name or number, then call, text or email. Choosing a tag alone lists everyone with it, and Export saves them to a file (today only).',
       '• On This Day / Archive Pics: favorite family photos from this date in earlier years (see Archive Pics).',
       '• The Daily: a word, joke, puzzles, pictures and more, with answers to reveal. Folded each morning.',
       '• To Do: the day’s tasks (see To Do), then Done, Won’t Do and Pushed to a Later Day.',
@@ -202,7 +202,9 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Tap a phone number to call it (or the message icon to text), an email to write, or an address to open it in Maps.',
       '• Import: a .vcf file (Google Contacts, Samsung Contacts, iPhone and Outlook all export these) or the CSV file Google or Outlook exports. The same person from several files—or already in the list—is merged (same name, email or phone), so importing from each source brings them together.',
       '• Export saves the list as a .vcf file you can import into your phone, Google Contacts or Outlook.',
-      '• Today has a Contacts section too: open it, pick a list (or All contacts) and type a name, company or number to call, text or email from there. “All contacts” opens the full list.',
+      '• Tags group people (Family, School, Services, Christmas List, Ballet…): in Edit, tap a suggested tag or type a new one; a person can have several. Tags come in from Google labels, Outlook categories and vCard CATEGORIES on import, and go out on export.',
+      '• Filter by tag above the list (any of the chosen tags; No tag finds people not tagged yet). With a search or filter on, Export saves just those people: vCard for a phone, or a spreadsheet (.csv) for mailing labels such as Christmas cards.',
+      '• Today has a Contacts section too: choose which contact lists and tags to include, type a name, company or number, and call, text or email from there. “All contacts” opens the full list.',
     ],
   },
   {

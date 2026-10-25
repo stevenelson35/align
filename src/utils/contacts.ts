@@ -4,6 +4,7 @@
 // links that call / text / email / map. Pure logic, unit-tested.
 
 import type { Task } from '../types'
+import { detailsOf } from './details'
 
 export type ContactLabel = 'mobile' | 'home' | 'work' | 'other'
 export const CONTACT_LABELS: ContactLabel[] = ['mobile', 'home', 'work', 'other']
@@ -21,12 +22,46 @@ export interface ContactInfo {
   jobTitle?: string
   /** YYYY-MM-DD, or --MM-DD when the year isn't known. */
   birthday?: string
+  tags?: string[]
 }
 
 export interface ContactIn extends ContactInfo {
   name: string
   notes?: string
   links?: string[]
+}
+
+// ---------- Tags ----------
+
+/** Suggested when tagging, besides the tags already in use. Any other word can be added. */
+export const STARTER_TAGS = ['Family', 'Friend', 'School', 'Activities', 'Services', 'Commercial', 'Government', 'Christmas List']
+export const MAX_TAGS = 20
+
+/** Tidy tags: trimmed, single spaces, at most 40 characters, no repeats (ignoring case; the first spelling wins). */
+export function cleanTags(tags: string[] = []): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of tags) {
+    const t = raw.replace(/\s+/g, ' ').trim().slice(0, 40)
+    if (t && !seen.has(t.toLowerCase())) {
+      seen.add(t.toLowerCase())
+      out.push(t)
+    }
+  }
+  return out.slice(0, MAX_TAGS)
+}
+
+/** Every tag used by these people, A–Z (one spelling each). */
+export const tagsIn = (people: Task[]) => cleanTags(people.flatMap((p) => p.contact?.tags ?? [])).sort((a, b) => a.localeCompare(b))
+
+/** The filter value for "people with no tag". */
+export const NO_TAG = '\u0000none'
+
+/** Whether someone passes a tag filter: none chosen = everyone; otherwise any chosen tag (or no tags, for NO_TAG). */
+export function hasAnyTag(t: Task, chosen: Set<string>): boolean {
+  if (!chosen.size) return true
+  const mine = (t.contact?.tags ?? []).map((x) => x.toLowerCase())
+  return (chosen.has(NO_TAG) && !mine.length) || mine.some((x) => chosen.has(x))
 }
 
 // ---------- Links that act ----------
@@ -65,6 +100,7 @@ export function contactsToVcf(contacts: ContactIn[]): string {
     for (const e of c.emails ?? []) out.push(`EMAIL;TYPE=${e.label === 'mobile' ? 'OTHER' : type(e.label)}:${e.value}`)
     for (const a of c.addresses ?? []) out.push(`ADR;TYPE=${a.label === 'mobile' ? 'OTHER' : type(a.label)}:;;${vEsc(a.value)};;;;`)
     if (c.birthday) out.push(`BDAY:${c.birthday}`)
+    if (c.tags?.length) out.push(`CATEGORIES:${c.tags.map(vEsc).join(',')}`)
     for (const u of c.links ?? []) out.push(`URL:${u}`)
     if (c.notes?.trim()) out.push(`NOTE:${vEsc(c.notes.trim())}`)
     out.push('END:VCARD')
@@ -133,6 +169,11 @@ export function vcfToContacts(text: string): ContactIn[] {
       case 'NOTE':
         c.notes = vUnesc(value).trim() || undefined
         break
+      case 'CATEGORIES': {
+        const tags = cleanTags([...(c.tags ?? []), ...value.split(/(?<!\\),/).map(vUnesc)].filter((t) => !/^(mycontacts|starred)$/i.test(t.trim())))
+        if (tags.length) c.tags = tags
+        break
+      }
     }
   }
   return out
@@ -218,6 +259,11 @@ export function csvToContacts(text: string): ContactIn[] {
     c.org = get(col(/^(company|organization name|organization 1 - name)$/)) || undefined
     c.jobTitle = get(col(/^(job title|organization title|organization 1 - title)$/)) || undefined
     c.notes = get(col(/^(notes|note)$/)) || undefined
+    // Google "Labels" ("* myContacts ::: Family"; "Group Membership" in older files), Outlook "Categories" ("A;B").
+    const labels = [get(col(/^(labels|group membership)$/)), get(col(/^categories$/))]
+      .flatMap((v) => v.split(/\s*(?::::|;)\s*/))
+      .filter((t) => t && !t.startsWith('*'))
+    if (cleanTags(labels).length) c.tags = cleanTags(labels)
     const bday = get(col(/^birthday$/))
     if (/^\d{4}-\d{2}-\d{2}$/.test(bday)) c.birthday = bday
     if (!c.name) c.name = c.org || c.emails?.[0]?.value || c.phones?.[0]?.value || ''
@@ -225,6 +271,20 @@ export function csvToContacts(text: string): ContactIn[] {
   }
   return out
 }
+
+/**
+ * A CSV file for a spreadsheet, or a mail merge (Christmas card labels): one row per person with Name, Company, Job
+ * Title, Phone, Email, Address (the first of each, the address on its lines), Birthday, Tags, Notes.
+ */
+export function contactsToCsv(contacts: ContactIn[]): string {
+  const cell = (v = '') => (/[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
+  const rows = [['Name', 'Company', 'Job Title', 'Phone', 'Email', 'Address', 'Birthday', 'Tags', 'Notes']]
+  for (const c of contacts) rows.push([c.name, c.org, c.jobTitle, c.phones?.[0]?.value, c.emails?.[0]?.value, c.addresses?.[0]?.value, c.birthday, (c.tags ?? []).join('; '), c.notes].map((v) => cell(v ?? '')))
+  return rows.map((r) => r.join(',')).join('\r\n') + '\r\n'
+}
+
+/** A contact item as importable / exportable data (for matching, merging and saving to a file). */
+export const asContact = (t: Task): ContactIn => ({ name: t.title, ...(t.contact ?? {}), notes: t.notes, links: detailsOf(t, false).links.map((l) => l.url) })
 
 /** A .vcf file, or a CSV export? */
 export const looksLikeVcard = (text: string) => /BEGIN:VCARD/i.test(text)
@@ -259,6 +319,7 @@ export function mergeContact<T extends ContactIn>(a: T, b: ContactIn): T {
     birthday: a.birthday ?? b.birthday,
     notes,
     links: [...new Set([...(a.links ?? []), ...(b.links ?? [])])],
+    ...(a.tags?.length || b.tags?.length ? { tags: cleanTags([...(a.tags ?? []), ...(b.tags ?? [])]) } : {}),
   }
 }
 
@@ -276,7 +337,7 @@ export function dedupe(contacts: ContactIn[]): ContactIn[] {
 /** What to search: the name, company, numbers (digits too), emails and addresses. */
 export function haystack(t: Task): string {
   const c = t.contact ?? {}
-  return [t.title, c.org, c.jobTitle, ...(c.phones ?? []).flatMap((p) => [p.value, p.value.replace(/\D/g, '')]), ...(c.emails ?? []).map((e) => e.value), ...(c.addresses ?? []).map((a) => a.value)]
+  return [t.title, c.org, c.jobTitle, ...(c.tags ?? []), ...(c.phones ?? []).flatMap((p) => [p.value, p.value.replace(/\D/g, '')]), ...(c.emails ?? []).map((e) => e.value), ...(c.addresses ?? []).map((a) => a.value)]
     .filter(Boolean)
     .join(' ')
     .toLowerCase()

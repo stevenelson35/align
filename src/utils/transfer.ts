@@ -300,4 +300,14 @@ export function markdownToTasks(text: string): TaskIn[] {
 }
 
 /** A safe file name from a list name: "Home & Garden" → "home-garden". */
+/** Saves text as a file (the browser's download). */
+export function download(name: string, text: string, type: string) {
+  const url = URL.createObjectURL(new Blob([text], { type }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export const fileNameFor = (name: string, ext: string) => `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'list'}.${ext}`

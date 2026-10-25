@@ -1,14 +1,15 @@
 import { useState, type FormEvent } from 'react'
 import { commentThread, deleteRemovedImages, deleteTask, updateTask } from '../../firebase/db'
-import { useApp } from '../../hooks/useApp'
+import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
-import { CONTACT_LABELS, mailUrl, mapUrl, telUrl, type ContactLabel, type Labeled } from '../../utils/contacts'
+import { cleanTags, CONTACT_LABELS, mailUrl, mapUrl, tagsIn, telUrl, type ContactLabel, type Labeled } from '../../utils/contacts'
 import { cleanLinks, cleanUrls, detailsOf, MAX_IMAGES, taskDetails } from '../../utils/details'
 import { smsUrl } from '../../utils/text'
 import { AutoTextarea } from '../UI/AutoTextarea'
 import { LinksAndPictures } from '../UI/Details'
 import { EntryExtras, EntryFact, EntryPanel } from '../UI/EntryExtras'
 import { Icon } from '../UI/Icon'
+import { TagPicker } from './ContactTags'
 
 type Contact = NonNullable<Task['contact']>
 
@@ -59,6 +60,17 @@ export function ContactDetails({ item, list }: { item: Task; list: List }) {
             </EntryFact>
           ))}
           {c.birthday && <EntryFact icon="calendar">Birthday {birthdayText(c.birthday)}</EntryFact>}
+          {c.tags?.length ? (
+            <EntryFact icon="pin">
+              <span className="tag-chips">
+                {c.tags.map((t) => (
+                  <span key={t} className="badge">
+                    {t}
+                  </span>
+                ))}
+              </span>
+            </EntryFact>
+          ) : null}
           <EntryFact icon="list">{list.name}</EntryFact>
         </>
       }
@@ -117,6 +129,8 @@ function ContactForm({ item, onDone }: { item: Task; onDone: () => void }) {
   const [emails, setEmails] = useState<Labeled[]>(c.emails ?? [])
   const [addresses, setAddresses] = useState<Labeled[]>(c.addresses ?? [])
   const [notes, setNotes] = useState(item.notes ?? '')
+  const [tags, setTags] = useState<string[]>(c.tags ?? [])
+  const { listItems } = useData()
   const [extras, setExtras] = useState(() => detailsOf(item, false))
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -134,6 +148,7 @@ function ContactForm({ item, onDone }: { item: Task; onDone: () => void }) {
       ...(org.trim() ? { org: org.trim() } : {}),
       ...(jobTitle.trim() ? { jobTitle: jobTitle.trim() } : {}),
       ...(birthday ? { birthday } : {}),
+      ...(cleanTags(tags).length ? { tags: cleanTags(tags) } : {}),
     }
     setBusy(true)
     try {
@@ -184,6 +199,7 @@ function ContactForm({ item, onDone }: { item: Task; onDone: () => void }) {
         Birthday
         <input type="date" value={/^\d{4}-/.test(birthday) ? birthday : ''} onChange={(e) => setBirthday(e.target.value)} />
       </label>
+      <TagPicker value={tags} onChange={setTags} suggestions={tagsIn(listItems.filter((t) => t.contact?.tags?.length))} />
       <label>
         Notes
         <AutoTextarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />

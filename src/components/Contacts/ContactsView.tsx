@@ -2,7 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { addTaskNow } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
-import { mailUrl, matches, telUrl } from '../../utils/contacts'
+import { hasAnyTag, mailUrl, matches, NO_TAG, tagsIn, telUrl } from '../../utils/contacts'
+import { useStoredSet } from '../../hooks/useStoredSet'
+import { ContactFilters, ExportContacts } from './ContactTags'
 import { smsUrl } from '../../utils/text'
 import { ListHeader } from '../Tasks/ListHeader'
 import { Icon } from '../UI/Icon'
@@ -26,7 +28,11 @@ export function ContactsView({ list }: { list: List }) {
   const [query, setQuery] = useState('')
   const [name, setName] = useState('')
   const people = listItems.filter((t) => t.listId === list.id).sort((a, b) => a.title.localeCompare(b.title))
-  const shown = query.trim() ? people.filter((p) => matches(p, query)) : people
+  const tags = tagsIn(people)
+  const [chosen, toggleTag, allTags] = useStoredSet(`align-contacts-tags-${list.id}`)
+  const tagFilter = new Set([...chosen].filter((t) => t === NO_TAG || tags.some((x) => x.toLowerCase() === t)))
+  const filtering = !!query.trim() || tagFilter.size > 0
+  const shown = filtering ? people.filter((p) => hasAnyTag(p, tagFilter) && matches(p, query)) : people
 
   function add(e: FormEvent) {
     e.preventDefault()
@@ -40,7 +46,16 @@ export function ContactsView({ list }: { list: List }) {
   return (
     <section className="contacts-view">
       <ListHeader list={list} />
-      <input type="search" className="contacts-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${people.length} contacts (name, company, number…)`} aria-label="Search contacts" />
+      <input type="search" className="contacts-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${people.length} contacts (name, company, number, tag…)`} aria-label="Search contacts" />
+      <ContactFilters tags={tags} chosenTags={tagFilter} onToggleTag={toggleTag} onAllTags={allTags} />
+      {filtering && shown.length > 0 && (
+        <p className="muted small row">
+          <span className="grow">
+            {shown.length} of {people.length}
+          </span>
+          <ExportContacts people={shown} name={`${list.name} ${[...tagFilter].filter((t) => t !== NO_TAG).join(' ') || query.trim()}`} />
+        </p>
+      )}
       {app.canEdit(list) && (
         <form className="row add-task" onSubmit={add}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Add a person…" aria-label="New contact name" />
@@ -55,7 +70,7 @@ export function ContactsView({ list }: { list: List }) {
         ))}
       </ul>
       {!people.length && <p className="muted small">No contacts yet. Add a person above, or Import a .vcf or CSV file from your phone, Google or Outlook.</p>}
-      {people.length > 0 && !shown.length && <p className="muted small">Nobody matches “{query}”.</p>}
+      {people.length > 0 && !shown.length && <p className="muted small">Nobody matches{query.trim() ? ` “${query}”` : ' those tags'}.</p>}
     </section>
   )
 }
@@ -65,7 +80,7 @@ export function ContactRow({ person: p, note }: { person: Task; note?: string })
   const app = useApp()
   const phone = p.contact?.phones?.[0]
   const email = p.contact?.emails?.[0]
-  const sub = [[p.contact?.jobTitle, p.contact?.org].filter(Boolean).join(', '), note].filter(Boolean).join(' · ')
+  const sub = [[p.contact?.jobTitle, p.contact?.org].filter(Boolean).join(', '), note, (p.contact?.tags ?? []).join(', ')].filter(Boolean).join(' · ')
   return (
     <li className={`contact-row${app.selectedTaskId === p.id ? ' selected' : ''}`}>
       <button type="button" className="contact-main" onClick={() => app.selectTask(p.id)}>

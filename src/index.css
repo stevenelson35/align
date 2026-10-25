@@ -2822,11 +2822,60 @@ a.nav-link {
   color: var(--muted);
   font-weight: 400;
 }
-.contacts-strip-search {
-  margin: 0.25rem 0 0.5rem;
+.goal-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2rem;
 }
-.contacts-strip-search select {
-  width: auto;
-  flex: 0 1 auto;
-  max-width: 45%;
+.goal-summary.met .goal-name {
+  color: var(--muted);
+}
+.goal-summary .goal-log-one {
+  width: 1.9rem;
+  height: 1.9rem;
+}
+.goal-summary-open {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.goal-summary-open > .link {
+  justify-self: end;
+}
+.tag-picker {
+  display: grid;
+  gap: 0.35rem;
+}
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.tag-chips .chip-toggle {
+  background: none;
+  font-size: 0.85rem;
+}
+.tag-chips .chip-toggle.on {
+  background: var(--tint-blue-bg);
+}
+.contact-filters {
+  display: grid;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+.chip-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+.export-contacts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
 }
