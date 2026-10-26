@@ -12,6 +12,7 @@ import { LinksView } from '../Tasks/LinksView'
 import { PicksView } from '../Picks/PicksView'
 import { CardsView } from '../Cards/CardsView'
 import { ContactsView } from '../Contacts/ContactsView'
+import { GiftsView } from '../Gifts/GiftsView'
 import { NotesView } from '../Tasks/NotesView'
 import { ListView } from '../Tasks/ListView'
 import { PhotosView } from '../Photos/PhotosView'
@@ -51,6 +52,11 @@ export function MainView() {
       if (list.kind === 'picks') return <PicksView key={list.id} list={list} />
       if (list.kind === 'cards') return <CardsView key={list.id} list={list} />
       if (list.kind === 'contacts') return <ContactsView key={list.id} list={list} />
+      if (list.kind === 'gifts') {
+        // A secret companion opens as the gift list it belongs to.
+        const shown = (list.giftSecret && lists.find((l) => l.id === list.secretOf)) || list
+        return <GiftsView key={shown.id} list={shown} />
+      }
       return <ListView key={list.id} list={list} />
     }
     case 'list': {
@@ -62,6 +68,10 @@ export function MainView() {
       if (list.kind === 'picks') return <PicksView key={list.id} list={list} />
       if (list.kind === 'cards') return <CardsView key={list.id} list={list} />
       if (list.kind === 'contacts') return <ContactsView key={list.id} list={list} />
+      if (list.kind === 'gifts') {
+        const shown = (list.giftSecret && lists.find((l) => l.id === list.secretOf)) || list
+        return <GiftsView key={shown.id} list={shown} />
+      }
       return route.timeline ? <TimelineView list={list} /> : <ListView key={list.id} list={list} />
     }
     case 'goals':

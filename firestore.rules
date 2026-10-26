@@ -114,7 +114,14 @@ service cloud.firestore {
 
     function validList(d) {
       return d.name is string && d.name.size() > 0
-        && d.kind in ['list', 'project', 'checklist', 'notes', 'links', 'picks', 'cards', 'contacts']
+        && d.kind in ['list', 'project', 'checklist', 'notes', 'links', 'picks', 'cards', 'contacts', 'gifts']
+        // Gift lists: for a member (recipientId) or anyone by name. A secret companion (surprise ideas) must be
+        // shared with chosen people that don't include the recipient, so the rules keep it from them.
+        && (!('recipientId' in d) || (d.kind == 'gifts' && d.recipientId is string))
+        && (!('recipientName' in d) || (d.kind == 'gifts' && d.recipientName is string && d.recipientName.size() <= 100))
+        && (!('giftSecret' in d) || (d.giftSecret == true && d.kind == 'gifts' && d.visibility == 'shared'
+                                     && 'recipientId' in d && !(d.recipientId in d.sharedWith)))
+        && (!('secretOf' in d) || (d.get('giftSecret', false) == true && d.secretOf is string))
         && (!('pickKind' in d) || d.pickKind in ['shows', 'movies', 'theater', 'music', 'books', 'games', 'other'])
         && d.visibility in ['private', 'family', 'shared']
         && sharedOk(d)
@@ -201,6 +208,9 @@ service cloud.firestore {
         // Links lists: the address and an optional "Home/Utilities" category.
         && (!('url' in d) || (d.url is string && d.url.size() <= 2048))
         && (!('category' in d) || (d.category is string && d.category.size() <= 200))
+        // Notes this entry refers to (ids), and a gift's quantity / color / size.
+        && (!('noteIds' in d) || (d.noteIds is list && d.noteIds.size() <= 10))
+        && (!('gift' in d) || d.gift is map)
         // A reading-list task: the link (in a links list) it's about.
         && (!('linkId' in d) || (d.linkId is string && d.linkId.size() <= 100))
         // Pick-list items: each person's stars (uid -> 1..5) and the days it was watched.
@@ -382,6 +392,37 @@ service cloud.firestore {
         && ((isMember() && request.auth.uid == uid)
             || (isBot() && resource.data.off == false && request.resource.data.off == false));
       allow delete: if isMember() && request.auth.uid == uid;
+    }
+
+    // Gift claims: who is getting what. Never readable by the person the gift is for (recipientId is their uid, or
+    // "name:…" for someone outside the household), so the app queries them with recipientId == the list's
+    // recipient. You add, change and remove only your own claim (id <item>_<you>), on an item of that list, with the
+    // list's real recipient, and never on a gift meant for you.
+    function giftRecipientOf(listId) {
+      let l = get(/databases/$(database)/documents/lists/$(listId)).data;
+      return l.get('recipientId', 'name:' + l.get('recipientName', ''));
+    }
+
+    function validClaim(claimId, d) {
+      return d.keys().hasOnly(['listId', 'itemId', 'recipientId', 'claimedBy', 'title', 'qty', 'bought', 'note', 'updatedAt'])
+        && d.claimedBy == request.auth.uid
+        && claimId == d.itemId + '_' + request.auth.uid
+        && d.recipientId != request.auth.uid
+        && get(/databases/$(database)/documents/lists/$(d.listId)).data.kind == 'gifts'
+        && d.recipientId == giftRecipientOf(d.listId)
+        && d.title is string && d.title.size() <= 500
+        && d.qty is int && d.qty >= 1 && d.qty <= 99
+        && d.bought is bool
+        && (!('note' in d) || (d.note is string && d.note.size() <= 500));
+    }
+
+    match /giftClaims/{claimId} {
+      allow read: if isMember() && resource.data.recipientId != request.auth.uid;
+      allow create: if isMember() && validClaim(claimId, request.resource.data)
+        && get(/databases/$(database)/documents/tasks/$(request.resource.data.itemId)).data.listId == request.resource.data.listId;
+      allow update: if isMember() && resource.data.claimedBy == request.auth.uid && validClaim(claimId, request.resource.data)
+        && request.resource.data.itemId == resource.data.itemId && request.resource.data.listId == resource.data.listId;
+      allow delete: if isMember() && resource.data.claimedBy == request.auth.uid;
     }
 
     // Members compute their token balance with a collection-group query over their own votes.

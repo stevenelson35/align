@@ -577,3 +577,66 @@ describe('family map locations', () => {
     await assertSucceeds(deleteDoc(doc(db('steve'), 'locations/steve')))
   })
 })
+
+describe('gift lists, secret ideas and claims', () => {
+  const giftList = { name: 'Daughter Christmas', kind: 'gifts', recipientId: 'daughter', visibility: 'family', ownerId: 'daughter', viewerVisible: false, defaultContext: 'family' }
+  const secret = {
+    name: 'Daughter Christmas (secret ideas)', kind: 'gifts', recipientId: 'daughter', giftSecret: true, secretOf: 'gifts1',
+    visibility: 'shared', sharedWith: ['steve', 'wife'], ownerId: 'steve', viewerVisible: false, defaultContext: 'family',
+  }
+  const item = (listId: string, l: Record<string, unknown>, extra: Record<string, unknown> = {}) => ({
+    listId, visibility: l.visibility, ownerId: l.ownerId, viewerVisible: l.viewerVisible, ...(l.sharedWith ? { sharedWith: l.sharedWith } : {}),
+    title: 'Shorts', priority: 2, status: 'todo', context: 'family', durationDays: 1, dependsOn: [], createdBy: l.ownerId, ...extra,
+  })
+  const claim = (by: string, extra: Record<string, unknown> = {}) => ({ listId: 'gifts1', itemId: 'g1', recipientId: 'daughter', claimedBy: by, title: 'Shorts', qty: 1, bought: false, ...extra })
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const admin = ctx.firestore() as unknown as Firestore
+      await setDoc(doc(admin, 'lists/gifts1'), giftList)
+      await setDoc(doc(admin, 'lists/secret1'), secret)
+      await setDoc(doc(admin, 'tasks/g1'), item('gifts1', giftList, { gift: { qty: 2, color: 'blue' }, noteIds: ['n1'] }))
+      await setDoc(doc(admin, 'tasks/s1'), item('secret1', secret, { title: 'Necklace' }))
+    })
+  })
+  it('hides the secret ideas from the recipient, and shows them to everyone else on it', async () => {
+    await assertSucceeds(getDoc(doc(db('daughter'), 'tasks/g1')))
+    await assertFails(getDoc(doc(db('daughter'), 'lists/secret1')))
+    await assertFails(getDoc(doc(db('daughter'), 'tasks/s1')))
+    await assertSucceeds(getDoc(doc(db('wife'), 'tasks/s1')))
+    await assertSucceeds(setDoc(doc(db('wife'), 'tasks/s2'), item('secret1', secret, { title: 'Book', createdBy: 'wife' })))
+  })
+  it('refuses a secret list that includes the recipient, or a gift field elsewhere', async () => {
+    await assertFails(setDoc(doc(db('steve'), 'lists/bad'), { ...secret, sharedWith: ['steve', 'daughter'] }))
+    const { sharedWith: _unused, ...familySecret } = secret
+    await assertFails(setDoc(doc(db('steve'), 'lists/bad2'), { ...familySecret, visibility: 'family' }))
+    await assertFails(setDoc(doc(db('steve'), 'lists/bad3'), { ...lists.familyVisible, recipientId: 'daughter' }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'lists/ok'), { ...secret, secretOf: 'gifts1' }))
+  })
+  it('lets others claim a gift and see claims, but never the recipient', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'giftClaims/g1_steve'), claim('steve')))
+    await assertSucceeds(getDoc(doc(db('wife'), 'giftClaims/g1_steve')))
+    await assertSucceeds(getDocs(query(collection(db('wife'), 'giftClaims'), where('recipientId', '==', 'daughter'))))
+    await assertFails(getDoc(doc(db('daughter'), 'giftClaims/g1_steve')))
+    await assertFails(getDocs(query(collection(db('daughter'), 'giftClaims'), where('recipientId', '==', 'daughter'))))
+    await assertFails(getDocs(collection(db('daughter'), 'giftClaims')))
+    await assertFails(getDoc(doc(db('grandma'), 'giftClaims/g1_steve')))
+  })
+  it('checks claims: your own, the real recipient, the right item; the recipient can’t claim', async () => {
+    await assertFails(setDoc(doc(db('daughter'), 'giftClaims/g1_daughter'), claim('daughter')))
+    await assertFails(setDoc(doc(db('steve'), 'giftClaims/g1_steve'), claim('steve', { recipientId: 'wife' })))
+    await assertFails(setDoc(doc(db('steve'), 'giftClaims/g1_steve'), claim('steve', { recipientId: '' })))
+    await assertFails(setDoc(doc(db('steve'), 'giftClaims/g1_wife'), claim('steve')))
+    await assertFails(setDoc(doc(db('steve'), 'giftClaims/g1_steve'), claim('wife')))
+    await assertFails(setDoc(doc(db('steve'), 'giftClaims/x_steve'), claim('steve', { itemId: 'x' })))
+    await assertFails(setDoc(doc(db('steve'), 'giftClaims/g1_steve'), claim('steve', { qty: 0 })))
+    await assertSucceeds(setDoc(doc(db('steve'), 'giftClaims/g1_steve'), claim('steve', { qty: 2, note: 'Target' })))
+    await assertFails(setDoc(doc(db('wife'), 'giftClaims/g1_steve'), claim('steve', { bought: true })))
+    await assertFails(deleteDoc(doc(db('wife'), 'giftClaims/g1_steve')))
+    await assertSucceeds(setDoc(doc(db('steve'), 'giftClaims/g1_steve'), claim('steve', { bought: true })))
+    await assertSucceeds(deleteDoc(doc(db('steve'), 'giftClaims/g1_steve')))
+  })
+  it('allows claims on a secret idea, still hidden from the recipient', async () => {
+    await assertSucceeds(setDoc(doc(db('wife'), 'giftClaims/s1_wife'), { ...claim('wife'), listId: 'secret1', itemId: 's1', title: 'Necklace' }))
+    await assertFails(getDoc(doc(db('daughter'), 'giftClaims/s1_wife')))
+  })
+})

@@ -67,7 +67,8 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
     (isItemList(l) ? listItems : tasks).filter((t) => t.listId === l.id && (l.kind === 'notes' || l.kind === 'links' || !isFinished(t))).length
   const color = (l: List) => `var(--color-${l.visibility})`
 
-  const inSection = (title: string) => lists.filter((l) => menuSectionOf(l) === title && (l.visibility !== 'private' || l.ownerId === uid))
+  // A gift list's secret companion shows inside the gift list, not on its own.
+  const inSection = (title: string) => lists.filter((l) => menuSectionOf(l) === title && !l.giftSecret && (l.visibility !== 'private' || l.ownerId === uid))
   const sections: { title: string; lists: List[]; color: string }[] = [
     { title: 'My lists', lists: inSection('My lists'), color: 'var(--color-private)' },
     { title: 'Family lists', lists: inSection('Family lists'), color: 'var(--color-family)' },
@@ -79,6 +80,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
     { title: 'Pick lists', lists: inSection('Pick lists'), color: '' },
     { title: 'Flashcards', lists: inSection('Flashcards'), color: '' },
     { title: 'Contacts', lists: inSection('Contacts'), color: '' },
+    { title: 'Gifts', lists: inSection('Gifts'), color: '' },
   ]
 
   return (

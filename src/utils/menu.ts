@@ -22,6 +22,8 @@ export function menuSectionOf(list: Pick<List, 'kind' | 'visibility'>): string {
       return 'Flashcards'
     case 'contacts':
       return 'Contacts'
+    case 'gifts':
+      return 'Gifts'
     default:
       return list.visibility === 'private' ? 'My lists' : list.visibility === 'family' ? 'Family lists' : 'Shared lists'
   }

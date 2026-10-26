@@ -7,6 +7,7 @@ import { Comments } from './Comments'
 import { DetailsView } from './Details'
 import { Icon, type IconName } from './Icon'
 import { HelpTip } from './HelpTip'
+import { RelatedNotes } from './RelatedNotes'
 
 /** What a text about an entry says: its title, when (if anything), and a link that opens it. */
 export interface TextSubject {
@@ -26,6 +27,8 @@ export function EntryExtras({
   thread,
   text,
   startTextOpen = false,
+  noteIds,
+  commentsNote,
 }: {
   details: Partial<Details>
   alt: string
@@ -33,6 +36,10 @@ export function EntryExtras({
   thread: string
   text: TextSubject
   startTextOpen?: boolean
+  /** Notes it refers to (shown, each opening in place). */
+  noteIds?: string[]
+  /** A line above the comments (e.g. a gift: the recipient can read them). */
+  commentsNote?: ReactNode
 }) {
   const { isMember } = useApp()
   const [seed, setSeed] = useState<{ key: number; message: string } | null>(startTextOpen ? { key: 0, message: '' } : null)
@@ -44,11 +51,13 @@ export function EntryExtras({
   return (
     <div className="entry-extras">
       <DetailsView note={details.note} links={details.links} images={details.images} alt={alt} />
+      <RelatedNotes noteIds={noteIds} />
       <div className="entry-section">
         <h4>
           <Icon name="message" /> Comments
           <HelpTip topic="details" label="comments, links and pictures" />
         </h4>
+        {commentsNote && <p className="muted small">{commentsNote}</p>}
         <Comments thread={thread} onText={textComment} />
       </div>
       {isMember && (

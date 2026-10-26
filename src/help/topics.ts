@@ -16,6 +16,7 @@ export type HelpTopicId =
   | 'picks'
   | 'cards'
   | 'contacts'
+  | 'gifts'
   | 'daily'
   | 'privacy'
   | 'details'
@@ -56,10 +57,12 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'today',
     title: 'Today',
-    tip: 'One day at a time: your Goals, Contacts, Archive Pics, The Daily, and To Do. ‹ › go to other days; tap a section’s title to fold it away or open it.',
+    tip: 'One day at a time: your Goals, Family Map, Contacts, Gifts, Archive Pics, The Daily, and To Do. ‹ › go to other days; tap a section’s title to fold it away or open it.',
     body: [
       'Today shows one day; ‹ and › go to other days (past days show what was done, skipped or pushed then). From top to bottom:',
       '• Goals: a summary of the goals you log: where each stands (“4 to go”, Done) and a small trend chart. The pencil beside a goal opens logging for just that one; Log all shows every goal ready to log (remembered on this device). Goals that don’t run that day (a weekdays-only walk on Saturday) show greyed as “Not today”. Folded each morning.',
+      '• Family Map: where everyone sharing their location was last seen (open it for each person; Open map for the map).',
+      '• Gifts: what you’re getting for others (tick when bought) and each gift list.',
       '• Contacts: a quick look-up: choose which contact lists and tags to include (All by default), type a name or number, then call, text or email. Choosing a tag alone lists everyone with it, and Export saves them to a file (today only).',
       '• On This Day / Archive Pics: favorite family photos from this date in earlier years (see Archive Pics).',
       '• The Daily: a word, joke, puzzles, pictures and more, with answers to reveal. Folded each morning.',
@@ -246,6 +249,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Links: a name (shown) and an address (Show address reveals it); tapping opens it in a new tab.',
       '• Pictures: “+ Add a picture” uses your phone’s photo picker, then lets you crop or rotate; they’re stored in Align and only household accounts can open them. “From favorites” picks one of the family photos.',
       '• Comments: anyone who can see the entry can read them; members can add their own. The message icon on a comment texts it to someone.',
+      '• Related notes (in Edit): link notes you already keep, such as sizes and brands for a gift, or the paint colors for a project task. Each opens in place to show its text. A note seen by fewer people than the entry says so.',
     ],
   },
   {
@@ -271,6 +275,19 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Each day shows where you stand: “4 to go”, Done, “+3 extra”, or for lower-is-better goals like weight “1.2 lb to go” / “0.8 lb ahead”. Count-up goals (reps, minutes) have “+ more” to add to the day and Reset to clear it.',
       'Each goal has “who can view” and “who can log” (only you, by default). The Goals page groups them: yours, shared ones (with who else logs them), and other people’s.',
       'Turn on “Show a timer” for number goals: time a walk, then “Add” puts the minutes on that day (time several walks and they add up). Each day can also have a note, links and pictures; the goal page has a chart, a table and comments.',
+    ],
+  },
+  {
+    id: 'gifts',
+    title: 'Gift lists',
+    tip: 'Ideas for one person. Everyone sees the ideas; everyone except that person also sees secret ideas and quietly marks what they’re getting.',
+    body: [
+      'Make one with “+ New list” → Gift list, and choose who it’s for: a family member (yourself, for a wish list) or anyone else by name.',
+      '• Add an idea with how many, color, size and details. Tap it → Edit to add links (where to buy), pictures, and Related notes: link a note you already keep (sizes, brands) instead of retyping it.',
+      '• I’ll get it quietly claims an idea (or what’s left of a quantity). Tap Mark bought when you have it. Your claim note (where, price, wrapped) is for the family only.',
+      '• The person a list is for never sees claims or secret ideas: the database refuses to show them. Ideas they wrote themselves, and comments, they can see, so keep surprises in secret ideas and claim notes.',
+      '• Secret idea (when adding to someone else’s list) hides that idea from them; it lives in a hidden companion list shared with everyone else.',
+      '• Today → Gifts lists what you’re getting (tick when bought) and how many ideas are still open on each list.',
     ],
   },
   {

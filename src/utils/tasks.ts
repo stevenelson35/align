@@ -58,7 +58,7 @@ export function canLogGoal(g: Pick<Goal, 'ownerId' | 'editAudience' | 'editors'>
 
 /** Checklists and notes hold items, not tasks: they stay out of the task views, chat and scheduling. */
 export function isItemList(list: Pick<List, 'kind'>): boolean {
-  return list.kind === 'checklist' || list.kind === 'notes' || list.kind === 'links' || list.kind === 'picks' || list.kind === 'cards' || list.kind === 'contacts'
+  return list.kind === 'checklist' || list.kind === 'notes' || list.kind === 'links' || list.kind === 'picks' || list.kind === 'cards' || list.kind === 'contacts' || list.kind === 'gifts'
 }
 
 /** Done or canceled: nothing more to do, and it no longer holds up the tasks that depend on it. */

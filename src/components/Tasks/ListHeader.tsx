@@ -18,6 +18,7 @@ const HELP_FOR_KIND: Record<List['kind'], HelpTopicId> = {
   picks: 'picks',
   cards: 'cards',
   contacts: 'contacts',
+  gifts: 'gifts',
 }
 const KIND_NAME: Record<List['kind'], string> = {
   list: 'task lists',
@@ -28,6 +29,7 @@ const KIND_NAME: Record<List['kind'], string> = {
   picks: 'pick lists',
   cards: 'flashcards',
   contacts: 'contacts',
+  gifts: 'gift lists',
 }
 const KIND_LABEL: Record<List['kind'], string> = {
   list: '',
@@ -38,6 +40,7 @@ const KIND_LABEL: Record<List['kind'], string> = {
   picks: ' pick list',
   cards: ' flashcards',
   contacts: ' contacts',
+  gifts: ' gift list',
 }
 
 /** Name, who can see it, and Edit list; `children` adds view-specific buttons. `tools={false}` leaves out Import /

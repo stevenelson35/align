@@ -16,6 +16,7 @@ import { Icon } from '../UI/Icon'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 import { cleanLinks, cleanUrls, detailsOf, MAX_IMAGES, taskDetails } from '../../utils/details'
 import { DetailsView, LinksAndPictures } from '../UI/Details'
+import { NotePicker } from '../UI/RelatedNotes'
 import { AutoTextarea } from '../UI/AutoTextarea'
 
 /** ✓ done, ✕ canceled, ⏳ not finished yet. */
@@ -105,6 +106,7 @@ function TaskView({ task, onEdit }: { task: Task; onEdit: () => void }) {
         thread={commentThread.task(task.id)}
         text={{ title: task.title, when: whenText(task), link: shareLink(task) }}
         startTextOpen={app.textingId === task.id}
+        noteIds={task.noteIds}
       />
     </EntryPanel>
   )
@@ -117,6 +119,7 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
   const editable = app.canEdit(task)
   const [form, setForm] = useState(task)
   const [extras, setExtras] = useState(() => detailsOf(task, false))
+  const [noteIds, setNoteIds] = useState<string[]>(task.noteIds ?? [])
   const [newDep, setNewDep] = useState({ taskId: '', offsetDays: 0 })
   const [showOtherTasks, setShowOtherTasks] = useState(false)
   const [meetBy, setMeetBy] = useState('')
@@ -157,6 +160,7 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
     }
     const patch: Partial<TaskInput> = {
       ...taskDetails({ links, images }),
+      noteIds: noteIds.length ? noteIds : undefined,
       title: form.title.trim() || task.title,
       notes: form.notes || undefined,
       priority: form.priority,
@@ -298,6 +302,7 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
         ) : (
           <DetailsView links={extras.links} images={extras.images} alt={task.title} />
         )}
+        {editable && <NotePicker value={noteIds} onChange={setNoteIds} audience={audienceOf(task)} />}
         <label>
           List
           <select value={newList === 'list' ? NEW : form.listId} onChange={(e) => {

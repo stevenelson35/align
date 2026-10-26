@@ -45,6 +45,8 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
       name: form.name.trim(),
       ownerId,
       pickKind: form.kind === 'picks' ? (form.pickKind ?? 'movies') : undefined,
+      recipientId: form.kind === 'gifts' ? form.recipientId : undefined,
+      recipientName: form.kind === 'gifts' && !form.recipientId ? form.recipientName?.trim() : undefined,
       sharedWith: undefined,
       audience: undefined,
       ...privacyFields(effective.view, ownerId, effective.viewChosen, parents),
@@ -53,7 +55,9 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
       editors: !isOwner ? list?.editors : edit === 'parents' || edit === 'shared' ? privacyFields(edit, ownerId, editChosen, parents).sharedWith : undefined,
     }
     const problem =
-      edit === 'shared' && !editChosen.length
+      form.kind === 'gifts' && !form.recipientId && !form.recipientName?.trim()
+        ? 'Choose who the gifts are for.'
+        : edit === 'shared' && !editChosen.length
         ? 'Pick at least one other person who can edit, or choose another option.'
         : edit === 'parents' && !parents.length
           ? 'Nobody is set as a parent yet: tick the parents in ⚙ Settings → Parents first.'
@@ -114,8 +118,39 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
               <option value="picks">Pick list (rate and pick: shows, movies, music…)</option>
               <option value="cards">Flashcards (study a set: question and answer)</option>
               <option value="contacts">Contacts (people: phones, emails, addresses)</option>
+              <option value="gifts">Gift list (ideas for someone; others quietly claim them)</option>
             </select>
           </label>
+          {form.kind === 'gifts' &&
+            (list ? (
+              <p className="small">
+                For <strong>{list.recipientId ? (app.household.members[list.recipientId]?.displayName ?? 'someone') : list.recipientName}</strong>
+              </p>
+            ) : (
+              <label>
+                For
+                <select
+                  value={form.recipientId ?? (form.recipientName !== undefined ? '__name' : '')}
+                  onChange={(e) => set(e.target.value === '__name' ? { recipientId: undefined, recipientName: '' } : { recipientId: e.target.value || undefined, recipientName: undefined })}
+                  required
+                >
+                  <option value="">Who is it for?</option>
+                  {people(app.household).map(([id, m]) => (
+                    <option key={id} value={id}>
+                      {m.displayName}
+                      {id === app.uid ? ' (me: my wish list)' : ''}
+                    </option>
+                  ))}
+                  <option value="__name">Someone else…</option>
+                </select>
+              </label>
+            ))}
+          {form.kind === 'gifts' && !list && form.recipientName !== undefined && (
+            <label>
+              Their name
+              <input value={form.recipientName} onChange={(e) => set({ recipientName: e.target.value })} placeholder="Grandma Rose" required maxLength={100} />
+            </label>
+          )}
           {form.kind === 'picks' && (
             <label>
               What’s on it

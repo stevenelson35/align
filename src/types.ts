@@ -52,7 +52,17 @@ export interface List {
    * tasks (shopping, gifts, people to call). notes: reference info. Checklist items and notes are stored like tasks
    * (same collection and rules) but stay out of the task views.
    */
-  kind: 'list' | 'project' | 'checklist' | 'notes' | 'links' | 'picks' | 'cards' | 'contacts'
+  kind: 'list' | 'project' | 'checklist' | 'notes' | 'links' | 'picks' | 'cards' | 'contacts' | 'gifts'
+  /** Gift lists: who the gifts are for, a household member (recipientId) or anyone else by name (recipientName). */
+  recipientId?: string
+  recipientName?: string
+  /**
+   * A gift list's hidden companion for surprise ideas: shared with everyone except the recipient (so the rules keep
+   * it from them), shown merged into the recipient's list for everyone else, never in the menu.
+   */
+  giftSecret?: boolean
+  /** On a secret companion: the gift list it belongs to. */
+  secretOf?: string
   /** Pick lists: what's on it (shows, movies, music…), for its icon and words ("Watched", "Played"). */
   pickKind?: 'shows' | 'movies' | 'theater' | 'music' | 'books' | 'games' | 'other'
   visibility: Visibility
@@ -130,6 +140,10 @@ export interface Task {
   /** Extra details, as on every entry: more links and pictures (utils/details.ts). `notes` is the note. */
   links?: StoredLink[]
   images?: string[]
+  /** Notes (ids of notes-list items) this entry refers to, e.g. a gift → "Steve's clothes sizes". Any kind of entry. */
+  noteIds?: string[]
+  /** Gift-list items: how many, and the color / size wanted (details go in notes; where to buy in links). */
+  gift?: { qty?: number; color?: string; size?: string }
   /** A reading-list task: the link it's about ("Read: …"); the link shows 📖 until this task is done. */
   linkId?: string
   /** Days it was pushed off ("⏭ next day"), so a past day can show what was rescheduled. */
@@ -230,4 +244,21 @@ export interface Vote {
   itemId: string
   uid: string
   tokens: number
+}
+
+/**
+ * giftClaims/{itemId}_{uid}: someone getting (some of) a gift. The rules never show these to the recipient
+ * (recipientId: their uid, or "name:<name>" for someone outside the household). `title` is kept so a claim still
+ * makes sense if the item is removed.
+ */
+export interface GiftClaim {
+  id: string
+  listId: string
+  itemId: string
+  recipientId: string
+  claimedBy: string
+  title: string
+  qty: number
+  bought: boolean
+  note?: string
 }

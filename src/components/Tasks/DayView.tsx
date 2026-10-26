@@ -20,6 +20,8 @@ import { useStoredSet } from '../../hooks/useStoredSet'
 import { splitTitleNote } from '../../utils/quickAdd'
 import { TheDaily } from '../Daily/TheDaily'
 import { ContactsStrip } from '../Contacts/ContactsStrip'
+import { FamilyMapStrip } from '../Map/FamilyMapStrip'
+import { GiftsStrip } from '../Gifts/GiftsStrip'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -147,7 +149,9 @@ export function DayView({ day }: { day: string }) {
       </header>
 
       <GoalsStrip day={day} />
+      {day === now && <FamilyMapStrip />}
       {day === now && <ContactsStrip />}
+      {day === now && <GiftsStrip />}
       <OnThisDay day={day} />
       <TheDaily day={day} />
 

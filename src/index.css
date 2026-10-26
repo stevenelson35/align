@@ -2940,3 +2940,91 @@ a.nav-link {
 .map-person > .grow .muted {
   display: block;
 }
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+/* Gifts */
+.gift-banner {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tint-blue-bg);
+}
+.add-gift {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+.add-gift-open {
+  margin: 0.5rem 0;
+}
+.gift-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.gift-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface, transparent);
+}
+.gift-row.selected {
+  border-color: var(--tint-blue-border);
+}
+.gift-main {
+  flex: 1 1 12rem;
+  display: grid;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+}
+.gift-secret {
+  margin-left: 0.4rem;
+}
+.claim {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+.claim.full {
+  display: grid;
+  justify-items: start;
+}
+.claim-badge.bought {
+  border-color: var(--color-project);
+}
+.claim-more {
+  display: grid;
+  gap: 0.3rem;
+  width: 100%;
+}
+.related-note summary {
+  cursor: pointer;
+}
+.related-note-text {
+  white-space: pre-wrap;
+  margin: 0.3rem 0;
+}
+.note-picker {
+  display: grid;
+  gap: 0.3rem;
+}
+.note-picker-chosen {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
