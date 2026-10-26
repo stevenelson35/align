@@ -447,7 +447,7 @@ describe('stored pictures', () => {
   it('lets members add pictures, the household open them by id, and only the adder delete them', async () => {
     await assertSucceeds(setDoc(doc(db('steve'), 'images/p1'), pic('steve')))
     await assertFails(setDoc(doc(db('steve'), 'images/p2'), pic('wife'))) // posing as someone else
-    await assertFails(setDoc(doc(db('grandma'), 'images/p3'), pic('grandma'))) // viewers don't add
+    await assertSucceeds(setDoc(doc(db('grandma'), 'images/p3'), pic('grandma'))) // viewers add them too (gift ideas)
     await assertFails(setDoc(doc(db('steve'), 'images/p4'), pic('steve', { data: 'https://example.com/x.jpg' })))
     await assertFails(setDoc(doc(db('steve'), 'images/p5'), pic('steve', { data: 'data:image/jpeg;base64,' + 'A'.repeat(1000001) })))
     await assertFails(setDoc(doc(db('steve'), 'images/p6'), pic('steve', { listId: 'x' })))
@@ -657,5 +657,59 @@ describe('gift lists, secret ideas and claims', () => {
   it('allows claims on a secret idea, still hidden from the recipient', async () => {
     await assertSucceeds(setDoc(doc(db('wife'), 'giftClaims/s1_wife'), { ...claim('wife'), listId: 'secret1', itemId: 's1', title: 'Necklace' }))
     await assertFails(getDoc(doc(db('daughter'), 'giftClaims/s1_wife')))
+  })
+})
+
+describe('view-only accounts adding gift ideas', () => {
+  const giftList = { name: 'Daughter Christmas', kind: 'gifts', recipientId: 'daughter', visibility: 'family', ownerId: 'daughter', viewerVisible: true, defaultContext: 'family' }
+  const idea = (listId: string, l: Record<string, unknown>, by: string, extra: Record<string, unknown> = {}) => ({
+    listId, visibility: l.visibility, ownerId: l.ownerId, viewerVisible: l.viewerVisible, ...(l.sharedWith ? { sharedWith: l.sharedWith } : {}),
+    ...(l.editAudience ? { editAudience: l.editAudience } : {}),
+    title: 'Puzzle', priority: 2, status: 'todo', context: 'family', durationDays: 1, dependsOn: [], createdBy: by, ...extra,
+  })
+  const companion = {
+    name: 'Daughter Christmas (secret ideas)', kind: 'gifts', recipientId: 'daughter', giftSecret: true, secretOf: 'gl',
+    visibility: 'shared', sharedWith: ['grandma', 'steve', 'wife'], ownerId: 'grandma', viewerVisible: false, defaultContext: 'family',
+  }
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const admin = ctx.firestore() as unknown as Firestore
+      await setDoc(doc(admin, 'lists/gl'), giftList)
+      await setDoc(doc(admin, 'lists/onlyMe'), { ...giftList, editAudience: 'private' })
+      await setDoc(doc(admin, 'tasks/byDaughter'), idea('gl', giftList, 'daughter', { title: 'Skates' }))
+    })
+  })
+  it('lets a viewer make the secret companion and add secret ideas the recipient can’t see', async () => {
+    await assertSucceeds(setDoc(doc(db('grandma'), 'lists/sec'), companion))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'tasks/v1'), idea('sec', companion, 'grandma')))
+    await assertSucceeds(setDoc(doc(db('steve'), 'tasks/m1'), idea('sec', companion, 'steve', { title: 'Book' })))
+    await assertFails(getDoc(doc(db('daughter'), 'tasks/v1')))
+    await assertFails(setDoc(doc(db('grandma'), 'lists/sec2'), { ...companion, sharedWith: ['grandma', 'daughter'] }))
+    await assertFails(setDoc(doc(db('grandma'), 'lists/sec3'), { ...companion, recipientId: 'wife' }))
+    await assertFails(setDoc(doc(db('grandma'), 'lists/plain'), { ...lists.familyVisible, ownerId: 'grandma' }))
+  })
+  it('lets a viewer add to a gift list unless its owner narrowed who edits, and never to other lists', async () => {
+    await assertSucceeds(setDoc(doc(db('grandma'), 'tasks/v2'), idea('gl', giftList, 'grandma')))
+    await assertFails(setDoc(doc(db('grandma'), 'tasks/v3'), idea('onlyMe', { ...giftList, editAudience: 'private' }, 'grandma')))
+    await assertFails(setDoc(doc(db('grandma'), 'tasks/v4'), task('familyVisible', { createdBy: 'grandma' })))
+    await assertFails(setDoc(doc(db('grandma'), 'tasks/v5'), idea('gl', giftList, 'steve')))
+  })
+  it('lets a viewer change or remove only their own ideas', async () => {
+    await assertSucceeds(setDoc(doc(db('grandma'), 'tasks/v6'), idea('gl', giftList, 'grandma')))
+    await assertSucceeds(updateDoc(doc(db('grandma'), 'tasks/v6'), { title: 'Bigger puzzle', gift: { qty: 2 } }))
+    await assertFails(updateDoc(doc(db('grandma'), 'tasks/byDaughter'), { title: 'Changed' }))
+    await assertFails(updateDoc(doc(db('grandma'), 'tasks/v6'), { listId: 'familyVisible', visibility: 'family' }))
+    await assertFails(deleteDoc(doc(db('grandma'), 'tasks/byDaughter')))
+    await assertSucceeds(deleteDoc(doc(db('grandma'), 'tasks/v6')))
+  })
+})
+
+describe('pictures from view-only accounts', () => {
+  it('lets a viewer add and remove their own picture (for the gift ideas they suggest)', async () => {
+    const pic = { data: 'data:image/jpeg;base64,AAAA', width: 10, height: 10, createdBy: 'grandma' }
+    await assertSucceeds(setDoc(doc(db('grandma'), 'images/p1'), pic))
+    await assertFails(setDoc(doc(db('grandma'), 'images/p2'), { ...pic, createdBy: 'steve' }))
+    await assertFails(deleteDoc(doc(db('wife'), 'images/p1')))
+    await assertSucceeds(deleteDoc(doc(db('grandma'), 'images/p1')))
   })
 })

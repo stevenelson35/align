@@ -288,7 +288,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• I’ll get it quietly claims an idea (or what’s left of a quantity). Tap Mark bought when you have it. Your claim note (where, price, wrapped) is for the family only.',
       '• The person a list is for never sees claims or secret ideas: the database refuses to show them. Ideas they wrote themselves, and comments, they can see, so keep surprises in secret ideas and claim notes.',
       '• Secret idea (when adding to someone else’s list) hides that idea from them; it lives in a hidden companion list shared with everyone else.',
-      '• Extended family with view-only accounts can claim too (and see claims and secret ideas, except on lists for themselves), so everyone coordinates in one place. Adding ideas is for members. A list can be shared with up to 50 people.',
+      '• Extended family with view-only accounts can claim too (and see claims and secret ideas, except on lists for themselves), so everyone coordinates in one place. They can add ideas as well (secret ideas always; ideas on the list itself unless its owner set Who can edit to only some people) and change or remove the ones they added. A list can be shared with up to 50 people.',
       '• Today → Gifts lists what you’re getting (tick when bought) and how many ideas are still open on each list.',
     ],
   },

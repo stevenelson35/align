@@ -3,7 +3,7 @@ import { addTaskNow } from '../../firebase/db'
 import { ensureSecretList, removeClaim, saveClaim, useGiftClaims } from '../../firebase/gifts'
 import { useApp, useData } from '../../hooks/useApp'
 import type { GiftClaim, List, Task } from '../../types'
-import { canClaim, claimState, cleanGift, giftSummary, isRecipient, recipientKey, recipientLabel, secretListFor } from '../../utils/gifts'
+import { canAddIdeas, canClaim, claimState, cleanGift, giftSummary, isRecipient, recipientKey, recipientLabel, secretListFor } from '../../utils/gifts'
 import { targetName } from '../../utils/tasks'
 import { ListHeader } from '../Tasks/ListHeader'
 import { Icon } from '../UI/Icon'
@@ -41,7 +41,7 @@ export function GiftsView({ list }: { list: List }) {
               ? `For ${name}, and hidden from ${name}: the whole list is a surprise.`
             : `For ${name}. ${name} sees the ideas on this list, but not who’s getting what, or the secret ideas.`}
       </p>
-      {app.isMember && <AddGift list={list} secretAllowed={!mine && !outside && !hidden} name={name} />}
+      {canClaim(app.member.role) && <AddGift list={list} secretAllowed={!mine && !outside && !hidden} name={name} />}
       {claimError && <p className="error small">{claimError}</p>}
       <ul className="gift-list">
         {items.map((t) => (
@@ -144,7 +144,7 @@ function AddGift({ list, secretAllowed, name }: { list: List; secretAllowed: boo
   const [color, setColor] = useState('')
   const [size, setSize] = useState('')
   const [details, setDetails] = useState('')
-  const canPublic = app.canEdit(list)
+  const canPublic = canAddIdeas(list, app.member.role, app.canEdit(list))
   const [secret, setSecret] = useState(secretAllowed)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)

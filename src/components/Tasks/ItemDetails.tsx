@@ -18,7 +18,7 @@ import { StarRating } from '../Picks/StarRating'
 import { AutoTextarea } from '../UI/AutoTextarea'
 import { ContactDetails } from '../Contacts/ContactDetails'
 import { GiftClaimPanel } from '../Gifts/GiftDetails'
-import { cleanGift, giftSummary, isRecipient, recipientLabel } from '../../utils/gifts'
+import { cleanGift, giftSummary, isRecipient, ownGiftIdea, recipientLabel } from '../../utils/gifts'
 
 /**
  * Side panel for a checklist item, a note or a link. It opens as a view (the item, its note, links, pictures,
@@ -42,7 +42,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
     <EntryPanel
       kind={isNote ? 'Note' : isLink ? 'Link' : isPick ? pickKind(list.pickKind).label : list.kind === 'cards' ? 'Flashcard' : isGift ? (list.giftSecret ? 'Secret gift idea' : 'Gift idea') : 'Checklist item'}
       title={item.title}
-      onEdit={app.canEdit(item) ? () => setEditing(true) : undefined}
+      onEdit={app.canEdit(item) || ownGiftIdea(item, list, app.member.role, app.uid) ? () => setEditing(true) : undefined}
       onClose={() => app.selectTask(null)}
       facts={
         <>
@@ -164,7 +164,7 @@ function ReadingListButton({ item }: { item: Task }) {
 function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: () => void }) {
   const app = useApp()
   const { lists } = useData()
-  const editable = app.canEdit(item)
+  const editable = app.canEdit(item) || ownGiftIdea(item, list, app.member.role, app.uid)
   const isNote = list.kind === 'notes'
   const isLink = list.kind === 'links'
   const noun = isNote ? 'note' : isLink ? 'link' : 'item'

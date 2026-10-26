@@ -13,6 +13,16 @@ export function recipientLabel(list: Pick<List, 'recipientId' | 'recipientName'>
 /** Whether this account can claim gifts: any household account, view-only ones included. */
 export const canClaim = (role: string) => role === 'member' || role === 'viewer'
 
+/**
+ * Whether you can add ideas to a gift list itself: if you can edit it, or as a view-only account when its owner
+ * hasn't narrowed who edits (the rules say the same). Secret ideas are open to anyone who can claim.
+ */
+export const canAddIdeas = (list: Pick<List, 'editAudience'>, role: string, canEdit: boolean) =>
+  canEdit || (role === 'viewer' && (!list.editAudience || list.editAudience === 'family' || list.editAudience === 'everyone'))
+
+/** A view-only account's own gift idea, which it may change or remove (nothing else). */
+export const ownGiftIdea = (item: Pick<Task, 'createdBy'>, list: Pick<List, 'kind'>, role: string, uid: string) => list.kind === 'gifts' && role === 'viewer' && item.createdBy === uid
+
 /** Whether you're the person a gift list is for (then claims and secret ideas are hidden from you). */
 export const isRecipient = (list: Pick<List, 'recipientId'>, uid: string) => !!list.recipientId && list.recipientId === uid
 
