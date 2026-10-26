@@ -539,3 +539,41 @@ describe('voting', () => {
     await assertFails(getDocs(query(collectionGroup(db('stranger'), 'votes'), where('uid', '==', 'stranger'))))
   })
 })
+
+describe('family map locations', () => {
+  const point = { lat: 28.6, lon: -81.35, acc: 12, batt: 80, tst: 1761400000000, trail: [], off: false }
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore() as unknown as Firestore, 'household/main'), { 'members.bot': { role: 'member', displayName: 'Calendar', color: '#57606a', bot: true } })
+    })
+  })
+  it('lets the helper account post a member’s location, which members (not viewers) can see', async () => {
+    await assertSucceeds(setDoc(doc(db('bot'), 'locations/steve'), point))
+    await assertSucceeds(getDoc(doc(db('wife'), 'locations/steve')))
+    await assertSucceeds(getDocs(collection(db('daughter'), 'locations')))
+    await assertFails(getDoc(doc(db('grandma'), 'locations/steve')))
+    await assertFails(getDoc(doc(db(), 'locations/steve')))
+  })
+  it('keeps people from posting someone else’s location, or for a non-member', async () => {
+    await assertFails(setDoc(doc(db('wife'), 'locations/steve'), point))
+    await assertFails(setDoc(doc(db('bot'), 'locations/grandma'), point))
+    await assertFails(setDoc(doc(db('bot'), 'locations/stranger'), point))
+    await assertSucceeds(setDoc(doc(db('wife'), 'locations/wife'), point))
+  })
+  it('honors a pause: the helper can neither update a paused person nor pause or unpause anyone', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'locations/steve'), { off: true }))
+    await assertFails(setDoc(doc(db('bot'), 'locations/steve'), point))
+    await assertFails(setDoc(doc(db('bot'), 'locations/daughter'), { ...point, off: true }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'locations/steve'), { off: false }, { merge: true }))
+    await assertSucceeds(setDoc(doc(db('bot'), 'locations/steve'), point))
+  })
+  it('checks the shape and lets only the person delete theirs', async () => {
+    await assertFails(setDoc(doc(db('bot'), 'locations/steve'), { ...point, lat: 123 }))
+    await assertFails(setDoc(doc(db('bot'), 'locations/steve'), { ...point, extra: 1 }))
+    await assertFails(setDoc(doc(db('bot'), 'locations/steve'), { ...point, trail: Array(101).fill({ lat: 1, lon: 1, tst: 1 }) }))
+    await assertSucceeds(setDoc(doc(db('bot'), 'locations/steve'), point))
+    await assertFails(deleteDoc(doc(db('wife'), 'locations/steve')))
+    await assertFails(deleteDoc(doc(db('bot'), 'locations/steve')))
+    await assertSucceeds(deleteDoc(doc(db('steve'), 'locations/steve')))
+  })
+})

@@ -158,3 +158,30 @@ describe('voice helpers (Alexa)', () => {
     expect(say([])).toBe('Nothing on the calendar or the to-do list for today.')
   })
 })
+
+describe('location helpers (family map)', () => {
+  const point = gs.locationPoint_ as (m: object) => Record<string, number> | null
+  const docOf = gs.locationDoc_ as (prev: object | null, p: object) => { lat: number; tst: number; trail: { tst: number }[]; off: boolean; batt?: number }
+  it('keeps the parts of an OwnTracks location message Align uses', () => {
+    expect(point({ _type: 'location', lat: 28.6012345678, lon: -81.35, acc: 12.4, batt: 80, tst: 1761400000, tid: 'SN', conn: 'w' })).toEqual({
+      lat: 28.601235, lon: -81.35, acc: 12, batt: 80, tst: 1761400000000,
+    })
+    expect(point({ _type: 'transition', lat: 1, lon: 1 })).toBeNull()
+    expect(point({ _type: 'location', lat: 95, lon: 1 })).toBeNull()
+    expect(point({ _type: 'location', lat: '1', lon: 1 })).toBeNull()
+  })
+  it('puts the newest point on top and the previous one on the day’s trail', () => {
+    const first = docOf(null, { lat: 1, lon: 1, tst: 1000, batt: 50 })
+    expect(first).toEqual({ lat: 1, lon: 1, tst: 1000, trail: [], off: false, batt: 50 })
+    const second = docOf(first, { lat: 2, lon: 2, tst: 2000 })
+    expect(second.lat).toBe(2)
+    expect(second.trail).toEqual([{ lat: 1, lon: 1, tst: 1000 }])
+    expect(second.batt).toBeUndefined()
+  })
+  it('drops trail points older than a day, and ignores a late older report', () => {
+    const day = 24 * 3600000
+    const prev = { lat: 5, lon: 5, tst: 10 * day, trail: [{ lat: 1, lon: 1, tst: 8 * day }, { lat: 4, lon: 4, tst: 9.5 * day }] }
+    expect(docOf(prev, { lat: 6, lon: 6, tst: 10.2 * day }).trail.map((t) => t.tst)).toEqual([9.5 * day, 10 * day])
+    expect(docOf(prev, { lat: 0, lon: 0, tst: 9 * day }).lat).toBe(5)
+  })
+})

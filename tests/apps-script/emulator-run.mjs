@@ -1,6 +1,7 @@
 // Runs the real Apps Script calendar sync against the local emulators, with stand-ins for Google's services.
 // Needs `npm run emulators` and `npm run seed` first. Usage: npm run test:calendar
 import { execFileSync } from 'node:child_process'
+import { createHmac } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { createContext, runInContext } from 'node:vm'
 import { initializeApp } from 'firebase-admin/app'
@@ -62,6 +63,8 @@ const sandbox = createContext({
     Events: { list: () => ({ timeZone: 'UTC', items: events }) },
   },
   Utilities: {
+    // Apps Script returns signed bytes.
+    computeHmacSha256Signature: (value, key) => [...createHmac('sha256', key).update(value).digest()].map((b) => (b > 127 ? b - 256 : b)),
     formatDate: (d, tz, pattern) =>
       pattern === 'yyyy-MM-dd'
         ? new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d)
@@ -172,5 +175,24 @@ reply = post({ voice: true, secret: 'test-secret', action: 'add', text: 'go to t
 check(reply.ok && /Go to the store to the Family Inbox/.test(reply.speech), `voice: other phrases go to the Family Inbox (${reply.speech})`)
 reply = post({ voice: true, secret: 'test-secret', action: 'today' })
 check(reply.ok && /Go to the store/.test(reply.speech), `voice: what's on today includes it (${reply.speech})`)
+
+// Location (the family map): Align gets a personal key; OwnTracks posts with it in the URL.
+const postTo = (params, body) => JSON.parse(sandbox.doPost({ parameter: params, postData: { contents: JSON.stringify(body) } }).text)
+reply = post({ action: 'locationKey', idToken: await idTokenFor('steve@example.com') })
+check(reply.ok && /^steve\.[0-9a-f]{32}$/.test(reply.key), `location: a member gets a personal key (${JSON.stringify(reply)})`)
+const key = reply.key
+check(!post({ action: 'locationKey', idToken: await idTokenFor('grandparent@example.com') }).ok, 'location: a viewer gets no key')
+const report = { _type: 'location', lat: 28.6, lon: -81.35, acc: 10, batt: 77, tst: Math.floor(Date.now() / 1000), tid: 'SN' }
+check(JSON.stringify(postTo({ loc: key }, report)) === '[]', 'location: a report is answered with [] (what OwnTracks expects)')
+let loc = (await admin.doc('locations/steve').get()).data()
+check(loc && loc.lat === 28.6 && loc.batt === 77 && loc.off === false && loc.updatedAt, 'location: the report lands in locations/steve as the helper (rules allow it)')
+postTo({ loc: key }, { ...report, lat: 28.61, tst: report.tst + 60 })
+loc = (await admin.doc('locations/steve').get()).data()
+check(loc.lat === 28.61 && loc.trail.length === 1 && loc.trail[0].lat === 28.6, 'location: the next report moves the previous point onto the trail')
+check(postTo({ loc: 'steve.' + '0'.repeat(32) }, report).ok === false, 'location: a forged key is refused')
+check(postTo({ loc: key.replace('steve', 'wife') }, report).ok === false, "location: one person's key can't post for another")
+await admin.doc('locations/steve').update({ off: true })
+postTo({ loc: key }, { ...report, lat: 30, tst: report.tst + 120 })
+check((await admin.doc('locations/steve').get()).data().lat === 28.61, 'location: nothing is written while paused')
 console.log('Calendar sync works against the emulator.')
 process.exit(0)

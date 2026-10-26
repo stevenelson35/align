@@ -22,6 +22,7 @@ export type HelpTopicId =
   | 'texting'
   | 'goals'
   | 'photos'
+  | 'map'
   | 'voting'
   | 'blog'
   | 'calendar'
@@ -270,6 +271,17 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Each day shows where you stand: “4 to go”, Done, “+3 extra”, or for lower-is-better goals like weight “1.2 lb to go” / “0.8 lb ahead”. Count-up goals (reps, minutes) have “+ more” to add to the day and Reset to clear it.',
       'Each goal has “who can view” and “who can log” (only you, by default). The Goals page groups them: yours, shared ones (with who else logs them), and other people’s.',
       'Turn on “Show a timer” for number goals: time a walk, then “Add” puts the minutes on that day (time several walks and they add up). Each day can also have a note, links and pictures; the goal page has a chart, a table and comments.',
+    ],
+  },
+  {
+    id: 'map',
+    title: 'Family Map',
+    tip: 'Where everyone who shares their location is, from the free OwnTracks app on their phone. Only members of the household see it.',
+    body: [
+      'Menu → Family map shows a pin for each person sharing (faded when the last report is more than 2 hours old), how long ago it was, battery, and how accurate it is. Show centers on them, Trail draws their last day, Directions opens Google Maps.',
+      '• To share: under Your location, tap Set up my phone, install OwnTracks (iPhone or Android), tap Set up OwnTracks on the phone, and allow location Always. It reports in the background and saves battery by only reporting real moves.',
+      '• Your link is yours alone: it can only post your location. Pause sharing stops updates (everyone sees “paused”); Delete my location removes your position and trail. Only the last day’s trail is kept.',
+      '• Viewers (like grandparents) don’t see the map. Nothing here costs money: the reports go through the family’s Google Apps Script into Align.',
     ],
   },
   {

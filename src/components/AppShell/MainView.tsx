@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import { TimelineView } from '../Dependencies/TimelineView'
@@ -17,6 +18,9 @@ import { PhotosView } from '../Photos/PhotosView'
 import { HelpView } from '../Help/HelpView'
 import { BoardsView } from '../Voting/BoardsView'
 import { BoardView } from '../Voting/BoardView'
+
+// The map library (Leaflet) loads only when the map is opened.
+const FamilyMap = lazy(() => import('../Map/FamilyMap'))
 
 export function MainView() {
   const { route, uid } = useApp()
@@ -68,6 +72,12 @@ export function MainView() {
       return <PhotosView />
     case 'wall':
       return null // drawn by AppShell on its own
+    case 'map':
+      return (
+        <Suspense fallback={<p className="muted">Opening the map…</p>}>
+          <FamilyMap />
+        </Suspense>
+      )
     case 'help':
       return <HelpView topic={route.topic} />
     case 'goal': {

@@ -21,6 +21,8 @@ export type Route =
   | { view: 'photos' }
   /** The read-only wall display (a kitchen screen such as an Echo Show). */
   | { view: 'wall' }
+  /** The family map (OwnTracks locations). */
+  | { view: 'map' }
   /** Help & about; `topic` scrolls to one section. */
   | { view: 'help'; topic?: HelpTopicId }
   | { view: 'goal'; goalId: string }
@@ -41,6 +43,7 @@ export function parseRoute(hash: string): Route {
     case 'blog':
     case 'photos':
     case 'wall':
+    case 'map':
       return { view: parts[0] }
     case 'help':
       return HELP_TOPICS.some((t) => t.id === parts[1]) ? { view: 'help', topic: parts[1] as HelpTopicId } : { view: 'help' }

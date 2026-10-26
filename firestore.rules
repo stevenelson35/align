@@ -355,6 +355,35 @@ service cloud.firestore {
       allow delete: if isMember() && resource.data.createdBy == request.auth.uid;
     }
 
+    // Family map (scripts/location): locations/{uid} is one person's latest position and a day's trail. Members
+    // see everyone's (viewers don't). The household's helper account (bot: true; the Apps Script relaying each
+    // phone's OwnTracks reports) writes it, but never while the person has paused (off) and never to pause it; the
+    // person can pause, resume (off: false keeps the old point) or delete theirs.
+    function isBot() {
+      return signedIn() && get(/databases/$(database)/documents/household/main).data.members.get(request.auth.uid, {}).get('bot', false) == true;
+    }
+
+    function validLocation(d) {
+      return d.keys().hasOnly(['lat', 'lon', 'acc', 'batt', 'tst', 'trail', 'off', 'updatedAt'])
+        && d.off is bool
+        && (!('lat' in d) || (d.lat is number && d.lat >= -90 && d.lat <= 90))
+        && (!('lon' in d) || (d.lon is number && d.lon >= -180 && d.lon <= 180))
+        && (!('acc' in d) || d.acc is number)
+        && (!('batt' in d) || d.batt is number)
+        && (!('tst' in d) || d.tst is number)
+        && (!('trail' in d) || (d.trail is list && d.trail.size() <= 100));
+    }
+
+    match /locations/{uid} {
+      allow read: if isMember();
+      allow create: if validLocation(request.resource.data) && roleOf(uid) == 'member'
+        && ((isMember() && request.auth.uid == uid) || (isBot() && request.resource.data.off == false));
+      allow update: if validLocation(request.resource.data)
+        && ((isMember() && request.auth.uid == uid)
+            || (isBot() && resource.data.off == false && request.resource.data.off == false));
+      allow delete: if isMember() && request.auth.uid == uid;
+    }
+
     // Members compute their token balance with a collection-group query over their own votes.
     match /{path=**}/votes/{voterId} {
       allow read: if isMember();

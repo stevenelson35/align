@@ -79,7 +79,9 @@ function doPost(e) {
   var result
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}')
-    result = body.voice ? voice_(body) : manualSync_(body.idToken)
+    if (e && e.parameter && e.parameter.loc) result = location_(e.parameter.loc, body)
+    else if (body.action === 'locationKey') result = locationKey_(body.idToken)
+    else result = body.voice ? voice_(body) : manualSync_(body.idToken)
   } catch (err) {
     result = { ok: false, error: String((err && err.message) || err) }
   }
@@ -144,6 +146,104 @@ function voice_(body) {
     return { ok: true, speech: voiceSummary_(all) }
   }
   return { ok: false, speech: 'You can say: add buy milk, add milk to groceries, or what’s on today.' }
+}
+
+// ---- Location (the family map: OwnTracks on each phone posts here; scripts/location/README.md) ----
+
+// Keep this much of each person's trail (the map draws the last day).
+var TRAIL_HOURS = 24
+var TRAIL_POINTS = 100
+
+/** The signing secret for personal location links: LOCATION_SECRET, or else VOICE_SECRET. */
+function locationSecret_(props) {
+  return props.getProperty('LOCATION_SECRET') || props.getProperty('VOICE_SECRET') || ''
+}
+
+/** "uid.signature": a personal key only this script can make (an HMAC of the uid), so a phone can't post for anyone else. */
+function locationKeyFor_(uid, secret) {
+  var sig = Utilities.computeHmacSha256Signature('location:' + uid, secret)
+    .map(function (b) {
+      return ('0' + (b & 255).toString(16)).slice(-2)
+    })
+    .join('')
+  return uid + '.' + sig.slice(0, 32)
+}
+
+/** The uid in a personal key, or null when the signature doesn't match. */
+function locationUid_(key, secret) {
+  var uid = String(key || '').split('.')[0]
+  return uid && secret && locationKeyFor_(uid, secret) === key ? uid : null
+}
+
+/** Align asks for the signed-in member's personal key (for their OwnTracks link). */
+function locationKey_(idToken) {
+  if (!idToken) return { ok: false, error: 'Not signed in.' }
+  var props = PropertiesService.getScriptProperties()
+  var cfg = config_(props.getProperties())
+  var secret = locationSecret_(props)
+  if (!secret) return { ok: false, error: 'Location sharing isn’t set up in the Apps Script (add VOICE_SECRET or LOCATION_SECRET).' }
+  var uid = verifyIdToken_(cfg, idToken)
+  if (!uid) return { ok: false, error: 'Your sign-in could not be checked. Reload Align and try again.' }
+  var household = firestoreApi_(cfg, signIn_(cfg)).get('household/main')
+  var me = ((household && household.fields.members) || {})[uid]
+  if (!me || me.role !== 'member' || me.bot) return { ok: false, error: 'Only household members can share their location.' }
+  return { ok: true, key: locationKeyFor_(uid, secret) }
+}
+
+/**
+ * One OwnTracks report ({_type: "location", lat, lon, acc, batt, tst, …}) for the person in the key: becomes their
+ * locations/{uid} document (latest point plus a day's trail). Paused people (off) aren't updated. OwnTracks expects
+ * a JSON array back.
+ */
+function location_(key, body) {
+  var props = PropertiesService.getScriptProperties()
+  var uid = locationUid_(key, locationSecret_(props))
+  if (!uid) return { ok: false, error: 'Unknown location link.' }
+  var point = locationPoint_(body)
+  if (!point) return []
+  var cfg = config_(props.getProperties())
+  var api = firestoreApi_(cfg, signIn_(cfg))
+  var before = api.get('locations/' + uid)
+  if (before && before.fields.off) return []
+  api.commit([{ update: { name: api.docName('locations/' + uid), fields: toFields_(locationDoc_(before && before.fields, point)) }, updateTransforms: [{ fieldPath: 'updatedAt', setToServerValue: 'REQUEST_TIME' }] }])
+  return []
+}
+
+/** The parts of an OwnTracks location message Align keeps, or null for anything else (waypoints, status…). */
+function locationPoint_(m) {
+  if (!m || m._type !== 'location' || typeof m.lat !== 'number' || typeof m.lon !== 'number') return null
+  if (Math.abs(m.lat) > 90 || Math.abs(m.lon) > 180) return null
+  var p = { lat: Math.round(m.lat * 1e6) / 1e6, lon: Math.round(m.lon * 1e6) / 1e6, tst: (typeof m.tst === 'number' ? m.tst : Math.floor(Date.now() / 1000)) * 1000 }
+  if (typeof m.acc === 'number') p.acc = Math.round(m.acc)
+  if (typeof m.batt === 'number') p.batt = Math.round(m.batt)
+  return p
+}
+
+/** The new document: the newest point on top, the previous one added to the trail (last TRAIL_HOURS, TRAIL_POINTS). */
+function locationDoc_(prev, p) {
+  var trail = ((prev && prev.trail) || []).slice()
+  if (prev && typeof prev.lat === 'number') {
+    if (p.tst < prev.tst) return locationDocKeep_(prev) // an older report arriving late: keep the newer one
+    trail.push({ lat: prev.lat, lon: prev.lon, tst: prev.tst })
+  }
+  var since = p.tst - TRAIL_HOURS * 3600000
+  trail = trail
+    .filter(function (t) {
+      return t.tst >= since
+    })
+    .slice(-TRAIL_POINTS)
+  var doc = { lat: p.lat, lon: p.lon, tst: p.tst, trail: trail, off: false }
+  if (p.acc !== undefined) doc.acc = p.acc
+  if (p.batt !== undefined) doc.batt = p.batt
+  return doc
+}
+
+/** A stored document as it was (so a late, older report changes nothing). */
+function locationDocKeep_(prev) {
+  var doc = { lat: prev.lat, lon: prev.lon, tst: prev.tst, trail: prev.trail || [], off: false }
+  if (prev.acc !== undefined) doc.acc = prev.acc
+  if (prev.batt !== undefined) doc.batt = prev.batt
+  return doc
 }
 
 /** "buy milk" → "Buy milk": trimmed, a little tidy, at most 200 characters. */
