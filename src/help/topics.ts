@@ -283,6 +283,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     tip: 'Ideas for one person. Everyone sees the ideas; everyone except that person also sees secret ideas and quietly marks what they’re getting.',
     body: [
       'Make one with “+ New list” → Gift list, and choose who it’s for: a family member (yourself, for a wish list) or anyone else by name.',
+      '• Two ways to use it: someone makes their own wish list (the family sees it and quietly claims ideas), or you make a list for someone else, which starts hidden from them (shared with everyone else) so the whole list is a surprise. Add them under Who can see it to show it to them.',
       '• Add an idea with how many, color, size and details. Tap it → Edit to add links (where to buy), pictures, and Related notes: link a note you already keep (sizes, brands) instead of retyping it.',
       '• I’ll get it quietly claims an idea (or what’s left of a quantity). Tap Mark bought when you have it. Your claim note (where, price, wrapped) is for the family only.',
       '• The person a list is for never sees claims or secret ideas: the database refuses to show them. Ideas they wrote themselves, and comments, they can see, so keep surprises in secret ideas and claim notes.',

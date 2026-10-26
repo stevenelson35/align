@@ -6,6 +6,7 @@ import { audienceOf, parentsOf, privacyFields, viewCoveringEditors, type Audienc
 import { people } from '../../utils/tasks'
 import { AudiencePicker } from '../UI/AudiencePicker'
 import { PICK_KINDS } from '../../utils/picks'
+import { secretSharedWith } from '../../utils/gifts'
 
 /** Create or edit a list/project. Visibility changes rewrite the copied fields on its tasks in the same batch. */
 export function ListEditor({ list, onClose }: { list: List | null; onClose: () => void }) {
@@ -131,7 +132,18 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
                 For
                 <select
                   value={form.recipientId ?? (form.recipientName !== undefined ? '__name' : '')}
-                  onChange={(e) => set(e.target.value === '__name' ? { recipientId: undefined, recipientName: '' } : { recipientId: e.target.value || undefined, recipientName: undefined })}
+                  onChange={(e) => {
+                    const id = e.target.value
+                    if (id === '__name') return set({ recipientId: undefined, recipientName: '' })
+                    set({ recipientId: id || undefined, recipientName: undefined })
+                    // A list made for someone else starts hidden from them: shared with everyone else.
+                    if (id && id !== app.uid) {
+                      setAudience('shared')
+                      const others = secretSharedWith(app.household, id, app.uid)
+                      set({ recipientId: id, recipientName: undefined, sharedWith: others })
+                      setEditChosen(others.filter((x) => x !== app.uid)) // shown under Who can edit (anyone who can see it may)
+                    } else if (id === app.uid && audience === 'shared') setAudience(app.member.defaultVisibility ?? 'everyone')
+                  }}
                   required
                 >
                   <option value="">Who is it for?</option>
@@ -145,6 +157,13 @@ export function ListEditor({ list, onClose }: { list: List | null; onClose: () =
                 </select>
               </label>
             ))}
+          {form.kind === 'gifts' && form.recipientId && form.recipientId !== app.uid && (
+            <p className="muted small gift-hidden-note">
+              {audience === 'shared' && !chosen.has(form.recipientId)
+                ? `Hidden from ${app.household.members[form.recipientId]?.displayName ?? 'them'}: everyone else can see it, add ideas and claim them. To show them the list (they still won’t see claims or secret ideas), add them under Who can see it.`
+                : `${app.household.members[form.recipientId]?.displayName ?? 'They'} can see this list and its ideas (not claims or secret ideas).`}
+            </p>
+          )}
           {form.kind === 'gifts' && !list && form.recipientName !== undefined && (
             <label>
               Their name

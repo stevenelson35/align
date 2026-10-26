@@ -25,6 +25,8 @@ export function GiftsView({ list }: { list: List }) {
   const { claims, error: claimError } = useGiftClaims(mine || !app.isMember ? [] : [recipientKey(list)])
   const items = listItems.filter((t) => t.listId === list.id || (secret && t.listId === secret.id)).sort((a, b) => added(a) - added(b))
   const outside = !list.recipientId
+  // A list someone else made and kept from the recipient: everything on it is already a surprise.
+  const hidden = !mine && !!list.recipientId && (list.visibility === 'private' ? list.ownerId !== list.recipientId : list.visibility === 'shared' && !list.sharedWith?.includes(list.recipientId))
 
   return (
     <section className="gifts-view">
@@ -35,9 +37,11 @@ export function GiftsView({ list }: { list: List }) {
           ? 'Your list: the family sees it and quietly marks what they’re getting. You won’t see who, or their secret ideas.'
           : outside
             ? `For ${name}, who isn’t in Align: everyone here sees what’s been claimed.`
+            : hidden
+              ? `For ${name}, and hidden from ${name}: the whole list is a surprise.`
             : `For ${name}. ${name} sees the ideas on this list, but not who’s getting what, or the secret ideas.`}
       </p>
-      {app.isMember && <AddGift list={list} secretAllowed={!mine && !outside} name={name} />}
+      {app.isMember && <AddGift list={list} secretAllowed={!mine && !outside && !hidden} name={name} />}
       {claimError && <p className="error small">{claimError}</p>}
       <ul className="gift-list">
         {items.map((t) => (

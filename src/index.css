@@ -3028,3 +3028,7 @@ a.nav-link {
   margin: 0;
   padding: 0;
 }
+.gift-hidden-note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
