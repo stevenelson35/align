@@ -32,10 +32,11 @@ service cloud.firestore {
         || ((isMember() || isViewer()) && request.auth.uid in d.get('sharedWith', []));
     }
 
-    // Visibility 'shared' if and only if there's a sharedWith list of 1-20 people that includes the owner.
+    // Visibility 'shared' if and only if there's a sharedWith list of 1-50 people that includes the owner (50 leaves
+    // room for an extended family of view-only accounts, e.g. on a gift list).
     function sharedOk(d) {
       return (d.visibility == 'shared') == ('sharedWith' in d)
-        && (!('sharedWith' in d) || (d.sharedWith is list && d.sharedWith.size() >= 1 && d.sharedWith.size() <= 20
+        && (!('sharedWith' in d) || (d.sharedWith is list && d.sharedWith.size() >= 1 && d.sharedWith.size() <= 50
                                      && d.ownerId in d.sharedWith));
     }
 
@@ -394,7 +395,8 @@ service cloud.firestore {
       allow delete: if isMember() && request.auth.uid == uid;
     }
 
-    // Gift claims: who is getting what. Never readable by the person the gift is for (recipientId is their uid, or
+    // Gift claims: who is getting what. Any household account may claim, view-only ones too (extended family
+    // coordinating gifts); claims are their own documents, so this gives viewers no other writes. Never readable by the person the gift is for (recipientId is their uid, or
     // "name:…" for someone outside the household), so the app queries them with recipientId == the list's
     // recipient. You add, change and remove only your own claim (id <item>_<you>), on an item of that list, with the
     // list's real recipient, and never on a gift meant for you.
@@ -417,12 +419,12 @@ service cloud.firestore {
     }
 
     match /giftClaims/{claimId} {
-      allow read: if isMember() && resource.data.recipientId != request.auth.uid;
-      allow create: if isMember() && validClaim(claimId, request.resource.data)
+      allow read: if (isMember() || isViewer()) && resource.data.recipientId != request.auth.uid;
+      allow create: if (isMember() || isViewer()) && validClaim(claimId, request.resource.data)
         && get(/databases/$(database)/documents/tasks/$(request.resource.data.itemId)).data.listId == request.resource.data.listId;
-      allow update: if isMember() && resource.data.claimedBy == request.auth.uid && validClaim(claimId, request.resource.data)
+      allow update: if (isMember() || isViewer()) && resource.data.claimedBy == request.auth.uid && validClaim(claimId, request.resource.data)
         && request.resource.data.itemId == resource.data.itemId && request.resource.data.listId == resource.data.listId;
-      allow delete: if isMember() && resource.data.claimedBy == request.auth.uid;
+      allow delete: if (isMember() || isViewer()) && resource.data.claimedBy == request.auth.uid;
     }
 
     // Members compute their token balance with a collection-group query over their own votes.

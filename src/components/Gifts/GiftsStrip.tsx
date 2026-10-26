@@ -1,7 +1,7 @@
 import { saveClaim, useGiftClaims } from '../../firebase/gifts'
 import { useApp, useData } from '../../hooks/useApp'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
-import { claimState, isRecipient, recipientKey, recipientLabel, secretListFor } from '../../utils/gifts'
+import { canClaim, claimState, isRecipient, recipientKey, recipientLabel, secretListFor } from '../../utils/gifts'
 import { Icon } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
 
@@ -15,7 +15,7 @@ export function GiftsStrip() {
   const [open, setOpen] = useStoredFlag('align-today-gifts', false)
   const giftLists = lists.filter((l) => l.kind === 'gifts' && !l.giftSecret).sort((a, b) => a.name.localeCompare(b.name))
   const others = giftLists.filter((l) => !isRecipient(l, app.uid))
-  const { claims } = useGiftClaims(app.isMember ? others.map(recipientKey) : [])
+  const { claims } = useGiftClaims(canClaim(app.member.role) ? others.map(recipientKey) : [])
   if (!giftLists.length) return null
   const shopping = claims.filter((c) => c.claimedBy === app.uid).sort((a, b) => Number(a.bought) - Number(b.bought) || a.title.localeCompare(b.title))
   const toBuy = shopping.filter((c) => !c.bought).length

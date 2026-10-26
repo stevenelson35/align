@@ -619,7 +619,26 @@ describe('gift lists, secret ideas and claims', () => {
     await assertFails(getDoc(doc(db('daughter'), 'giftClaims/g1_steve')))
     await assertFails(getDocs(query(collection(db('daughter'), 'giftClaims'), where('recipientId', '==', 'daughter'))))
     await assertFails(getDocs(collection(db('daughter'), 'giftClaims')))
-    await assertFails(getDoc(doc(db('grandma'), 'giftClaims/g1_steve')))
+    await assertFails(getDoc(doc(db(), 'giftClaims/g1_steve')))
+  })
+  it('lets view-only accounts (extended family) claim and see claims, still never their own gifts', async () => {
+    await assertSucceeds(setDoc(doc(db('grandma'), 'giftClaims/g1_grandma'), claim('grandma')))
+    await assertSucceeds(getDocs(query(collection(db('grandma'), 'giftClaims'), where('recipientId', '==', 'daughter'))))
+    await assertFails(getDoc(doc(db('daughter'), 'giftClaims/g1_grandma')))
+    await assertFails(setDoc(doc(db('grandma'), 'tasks/x'), item('gifts1', giftList, { createdBy: 'grandma' })))
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const admin = ctx.firestore() as unknown as Firestore
+      await setDoc(doc(admin, 'lists/forGrandma'), { ...giftList, recipientId: 'grandma', ownerId: 'steve' })
+      await setDoc(doc(admin, 'tasks/gg'), item('forGrandma', { ...giftList, ownerId: 'steve' }))
+    })
+    await assertSucceeds(setDoc(doc(db('wife'), 'giftClaims/gg_wife'), { ...claim('wife'), listId: 'forGrandma', itemId: 'gg', recipientId: 'grandma' }))
+    await assertFails(getDocs(query(collection(db('grandma'), 'giftClaims'), where('recipientId', '==', 'grandma'))))
+    await assertFails(setDoc(doc(db('grandma'), 'giftClaims/gg_grandma'), { ...claim('grandma'), listId: 'forGrandma', itemId: 'gg', recipientId: 'grandma' }))
+  })
+  it('allows sharing a list with up to 50 people', async () => {
+    const many = ['steve', ...Array.from({ length: 49 }, (_, i) => `cousin${i}`)]
+    await assertSucceeds(setDoc(doc(db('steve'), 'lists/big'), { ...lists.parentsOnly, sharedWith: many }))
+    await assertFails(setDoc(doc(db('steve'), 'lists/toobig'), { ...lists.parentsOnly, sharedWith: [...many, 'one-more'] }))
   })
   it('checks claims: your own, the real recipient, the right item; the recipient can’t claim', async () => {
     await assertFails(setDoc(doc(db('daughter'), 'giftClaims/g1_daughter'), claim('daughter')))

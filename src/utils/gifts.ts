@@ -10,13 +10,19 @@ export function recipientLabel(list: Pick<List, 'recipientId' | 'recipientName'>
   return (list.recipientId ? household.members[list.recipientId]?.displayName : list.recipientName) || 'someone'
 }
 
+/** Whether this account can claim gifts: any household account, view-only ones included. */
+export const canClaim = (role: string) => role === 'member' || role === 'viewer'
+
 /** Whether you're the person a gift list is for (then claims and secret ideas are hidden from you). */
 export const isRecipient = (list: Pick<List, 'recipientId'>, uid: string) => !!list.recipientId && list.recipientId === uid
 
-/** Everyone a secret companion list is shared with: the household's members (not the helper account) except the recipient. */
+/**
+ * Everyone a secret companion (or a list hidden from its recipient) is shared with: every household account, view-only
+ * ones too (they can claim), except the recipient and the helper account.
+ */
 export function secretSharedWith(household: Household, recipientId: string, ownerId: string): string[] {
   const ids = Object.entries(household.members)
-    .filter(([id, m]) => !m.bot && m.role === 'member' && id !== recipientId)
+    .filter(([id, m]) => !m.bot && (m.role === 'member' || m.role === 'viewer') && id !== recipientId)
     .map(([id]) => id)
   return [...new Set([ownerId, ...ids])]
 }

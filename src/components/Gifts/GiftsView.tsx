@@ -3,7 +3,7 @@ import { addTaskNow } from '../../firebase/db'
 import { ensureSecretList, removeClaim, saveClaim, useGiftClaims } from '../../firebase/gifts'
 import { useApp, useData } from '../../hooks/useApp'
 import type { GiftClaim, List, Task } from '../../types'
-import { claimState, cleanGift, giftSummary, isRecipient, recipientKey, recipientLabel, secretListFor } from '../../utils/gifts'
+import { canClaim, claimState, cleanGift, giftSummary, isRecipient, recipientKey, recipientLabel, secretListFor } from '../../utils/gifts'
 import { targetName } from '../../utils/tasks'
 import { ListHeader } from '../Tasks/ListHeader'
 import { Icon } from '../UI/Icon'
@@ -22,7 +22,7 @@ export function GiftsView({ list }: { list: List }) {
   const mine = isRecipient(list, app.uid)
   const name = recipientLabel(list, app.household)
   const secret = mine ? undefined : secretListFor(list, lists)
-  const { claims, error: claimError } = useGiftClaims(mine || !app.isMember ? [] : [recipientKey(list)])
+  const { claims, error: claimError } = useGiftClaims(mine || !canClaim(app.member.role) ? [] : [recipientKey(list)])
   const items = listItems.filter((t) => t.listId === list.id || (secret && t.listId === secret.id)).sort((a, b) => added(a) - added(b))
   const outside = !list.recipientId
   // A list someone else made and kept from the recipient: everything on it is already a surprise.
@@ -91,7 +91,7 @@ export function ClaimControls({ item, list, claims, full = false }: { item: Task
           {c.bought ? ' · bought' : ''}
         </span>
       ))}
-      {app.isMember &&
+      {canClaim(app.member.role) &&
         (own ? (
           <>
             <button type="button" className={`small ${own.bought ? '' : 'secondary'}`} onClick={() => save({ bought: !own.bought })} aria-pressed={own.bought} title={own.bought ? 'Bought (tap to undo)' : 'Mark bought'}>

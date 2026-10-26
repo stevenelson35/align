@@ -22,9 +22,9 @@ describe('gift helpers', () => {
     expect(isRecipient({ recipientId: 'daughter' }, 'daughter')).toBe(true)
     expect(isRecipient({}, 'daughter')).toBe(false)
   })
-  it('shares secret ideas with every member except the recipient (never the helper account)', () => {
-    expect(secretSharedWith(household, 'daughter', 'steve').sort()).toEqual(['steve', 'wife'])
-    expect(secretSharedWith(household, 'steve', 'wife').sort()).toEqual(['daughter', 'wife'])
+  it('shares secret ideas with every household account except the recipient (viewers too; never the helper account)', () => {
+    expect(secretSharedWith(household, 'daughter', 'steve').sort()).toEqual(['grandma', 'steve', 'wife'])
+    expect(secretSharedWith(household, 'grandma', 'wife').sort()).toEqual(['daughter', 'steve', 'wife'])
   })
   it('finds a list’s own secret companion', () => {
     const lists = [{ id: 'a', kind: 'gifts' }, { id: 's', kind: 'gifts', giftSecret: true, secretOf: 'a' }, { id: 't', kind: 'gifts', giftSecret: true, secretOf: 'b' }] as List[]
