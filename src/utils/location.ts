@@ -17,7 +17,73 @@ export interface FamilyLocation {
   tst?: number
   trail?: TrailPoint[]
   off: boolean
+  /** Places they're in now (ids), and their latest arrivals / departures (newest last). */
+  inside?: string[]
+  events?: PlaceEvent[]
 }
+
+/** places/{id}: a geofence on the family map. */
+export interface Place {
+  id: string
+  name: string
+  lat: number
+  lon: number
+  /** Meters. */
+  radius: number
+}
+
+export interface PlaceEvent {
+  place: string
+  name: string
+  kind: 'enter' | 'leave'
+  tst: number
+}
+
+/** One alert: whose (a uid, or '*' anyone) arrivals / departures at which place (an id, or '*' any). */
+export interface AlertRule {
+  person: string
+  place: string
+  enter: boolean
+  leave: boolean
+}
+
+/** alertPrefs/{uid}: your alert rules, your devices' push tokens, and optional email alerts. */
+export interface AlertPrefs {
+  rules: AlertRule[]
+  push: string[]
+  email?: string
+  emailOn?: boolean
+}
+
+export const RADIUS = { min: 50, max: 2000, default: 150 }
+
+/** Meters between two points (haversine). */
+export function distanceM(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const rad = Math.PI / 180
+  const a = Math.sin(((lat2 - lat1) * rad) / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(((lon2 - lon1) * rad) / 2) ** 2
+  return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(a)))
+}
+
+/** "28.6, -81.35" (or with a space, or from a Google Maps address bar "@28.6,-81.35,15z") → a point, else null. */
+export function parseLatLon(text: string): { lat: number; lon: number } | null {
+  const m = text.match(/(-?\d{1,2}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)/)
+  if (!m) return null
+  const lat = Number(m[1])
+  const lon = Number(m[2])
+  return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && /[.,]/.test(text) ? { lat, lon } : null
+}
+
+/** "350 m" / "1.2 km". */
+export const metersText = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`)
+
+/** "Arrived at School 3:05 PM" for someone's latest event. */
+export function eventText(e: PlaceEvent): string {
+  const time = new Date(e.tst).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return `${e.kind === 'enter' ? 'Arrived at' : 'Left'} ${e.name} ${time}`
+}
+
+/** Whether a rule fires for this person, place and kind (the Apps Script's alertTargets_ does the same). */
+export const ruleMatches = (r: AlertRule, person: string, place: string, kind: 'enter' | 'leave') => (r.person === '*' || r.person === person) && (r.place === '*' || r.place === place) && r[kind]
 
 /** Older than this, a position shows faded ("last seen"). */
 export const STALE_MS = 2 * 3600000

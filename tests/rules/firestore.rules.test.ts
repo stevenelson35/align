@@ -713,3 +713,38 @@ describe('pictures from view-only accounts', () => {
     await assertSucceeds(deleteDoc(doc(db('grandma'), 'images/p1')))
   })
 })
+
+describe('places and alerts', () => {
+  const place = { name: 'School', lat: 28.65, lon: -81.35, radius: 150, createdBy: 'steve' }
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore() as unknown as Firestore, 'household/main'), { 'members.bot': { role: 'member', displayName: 'Calendar', color: '#57606a', bot: true } })
+    })
+  })
+  it('lets members (not viewers) see and manage places, with a sane shape', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'places/school'), place))
+    await assertSucceeds(getDocs(collection(db('bot'), 'places')))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'places/school'), { radius: 300 }))
+    await assertFails(getDoc(doc(db('grandma'), 'places/school')))
+    await assertFails(setDoc(doc(db('grandma'), 'places/park'), place))
+    await assertFails(setDoc(doc(db('steve'), 'places/bad1'), { ...place, radius: 10 }))
+    await assertFails(setDoc(doc(db('steve'), 'places/bad2'), { ...place, lat: 100 }))
+    await assertFails(setDoc(doc(db('steve'), 'places/bad3'), { ...place, extra: true }))
+    await assertSucceeds(deleteDoc(doc(db('wife'), 'places/school')))
+  })
+  it('keeps alert settings to their owner, readable by the helper account', async () => {
+    const prefs = { rules: [{ person: 'daughter', place: 'school', enter: true, leave: false }], push: ['tok'], email: 's@example.com', emailOn: true }
+    await assertSucceeds(setDoc(doc(db('steve'), 'alertPrefs/steve'), prefs))
+    await assertFails(getDoc(doc(db('wife'), 'alertPrefs/steve')))
+    await assertFails(setDoc(doc(db('wife'), 'alertPrefs/steve'), prefs))
+    await assertSucceeds(getDocs(collection(db('bot'), 'alertPrefs')))
+    await assertFails(getDocs(collection(db('wife'), 'alertPrefs')))
+    await assertFails(setDoc(doc(db('steve'), 'alertPrefs/steve'), { ...prefs, push: Array(11).fill('t') }))
+    await assertFails(setDoc(doc(db('grandma'), 'alertPrefs/grandma'), prefs))
+  })
+  it('lets the helper account record who is at which place, and recent arrivals', async () => {
+    const loc = { lat: 28.65, lon: -81.35, tst: 1, trail: [], off: false, inside: ['school'], events: [{ place: 'school', name: 'School', kind: 'enter', tst: 1 }] }
+    await assertSucceeds(setDoc(doc(db('bot'), 'locations/daughter'), loc))
+    await assertFails(setDoc(doc(db('bot'), 'locations/daughter'), { ...loc, events: Array(21).fill(loc.events[0]) }))
+  })
+})

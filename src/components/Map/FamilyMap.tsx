@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import { deleteMyLocation, getLocationKey, setSharing, useLocations } from '../../firebase/location'
 import { calendarSyncUrl } from '../../firebase/calendarSync'
 import { useApp } from '../../hooks/useApp'
-import { agoText, directionsUrl, initialsOf, ownTracksSetupLink, reportUrl, STALE_MS, type FamilyLocation } from '../../utils/location'
+import { agoText, directionsUrl, eventText, initialsOf, ownTracksSetupLink, reportUrl, STALE_MS, type FamilyLocation, type Place } from '../../utils/location'
+import { usePlaces } from '../../firebase/places'
+import { AlertsPanel, PlacesPanel, type PlaceDraft } from './MapPlaces'
 import { people } from '../../utils/tasks'
 import { HelpTip } from '../UI/HelpTip'
 import { Icon } from '../UI/Icon'
@@ -19,7 +21,8 @@ const placed = (l?: FamilyLocation): l is FamilyLocation & { lat: number; lon: n
 /**
  * #/map (DESIGN.md §5.11): where everyone sharing is, on an OpenStreetMap map: a colored pin per person (faded when
  * it's old), the accuracy circle, and on request their trail for the last day. Below: each person's last report with
- * Directions, and your own sharing (set up OwnTracks, pause, resume, delete). Members only.
+ * Directions, places (geofences: who's where, + Add place), your alerts, and your own sharing (set up OwnTracks,
+ * pause, resume, delete). Members only.
  */
 export default function FamilyMap() {
   const { isMember } = useApp()
@@ -35,6 +38,23 @@ function MapPage() {
   const layer = useRef<L.LayerGroup | null>(null)
   const fitted = useRef(false)
   const [trailFor, setTrailFor] = useState<string | null>(null)
+  const places = usePlaces()
+  const [draft, setDraft] = useState<PlaceDraft | null>(null)
+  const [picking, setPicking] = useState(false)
+  // The map's click and the draft pin's drag reach the latest state through refs (Leaflet handlers are set once).
+  const pickRef = useRef<(lat: number, lon: number) => void>(() => undefined)
+  useEffect(() => {
+    pickRef.current = (lat, lon) => {
+      if (picking && draft) {
+        setDraft({ ...draft, lat, lon })
+        setPicking(false)
+      }
+    }
+  })
+  const dragRef = useRef<(lat: number, lon: number) => void>(() => undefined)
+  useEffect(() => {
+    dragRef.current = (lat, lon) => draft && setDraft({ ...draft, lat, lon })
+  })
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000)
@@ -50,6 +70,7 @@ function MapPage() {
     map.current = L.map(mapEl.current, { zoomControl: true }).setView(HOME, 11)
     L.tileLayer(TILES, { maxZoom: 19, attribution: ATTRIBUTION }).addTo(map.current)
     layer.current = L.layerGroup().addTo(map.current)
+    map.current.on('click', (e: L.LeafletMouseEvent) => pickRef.current(e.latlng.lat, e.latlng.lng))
     return () => {
       map.current?.remove()
       map.current = null
@@ -63,6 +84,18 @@ function MapPage() {
     if (!m || !g) return
     g.clearLayers()
     const points: L.LatLngTuple[] = []
+    // Places: a dashed circle and their name (the one being edited is drawn from the draft instead).
+    for (const p of places) {
+      if (draft?.id === p.id) continue
+      L.circle([p.lat, p.lon], { radius: p.radius, color: '#57606a', weight: 1.5, dashArray: '4 4', fillOpacity: 0.05, interactive: false })
+        .bindTooltip(p.name, { permanent: true, direction: 'center', className: 'place-label' })
+        .addTo(g)
+    }
+    if (draft) {
+      L.circle([draft.lat, draft.lon], { radius: draft.radius, color: '#1f6feb', weight: 2, fillOpacity: 0.12, interactive: false }).addTo(g)
+      const pin = L.marker([draft.lat, draft.lon], { draggable: true, title: 'Drag to move the place' }).addTo(g)
+      pin.on('dragend', () => dragRef.current(pin.getLatLng().lat, pin.getLatLng().lng))
+    }
     for (const [uid, member] of family) {
       const loc = byUid.get(uid)
       if (!placed(loc)) continue
@@ -90,6 +123,16 @@ function MapPage() {
   })
 
   const center = (loc: FamilyLocation) => placed(loc) && map.current?.setView([loc.lat, loc.lon], 15)
+  const showPlace = (p: Place) => map.current?.fitBounds(L.latLng(p.lat, p.lon).toBounds(p.radius * 2.5))
+  // Keep the place being edited in view as it moves (Here, an address, a tap).
+  useEffect(() => {
+    if (draft) map.current?.fitBounds(L.latLng(draft.lat, draft.lon).toBounds(draft.radius * 2.5), { maxZoom: 17 })
+  }, [draft?.lat, draft?.lon]) // eslint-disable-line react-hooks/exhaustive-deps
+  // "Tap the map" from the editor below: bring the map into view.
+  useEffect(() => {
+    if (picking) mapEl.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [picking])
+  const placeNames = (ids?: string[]) => (ids ?? []).map((id) => places.find((p) => p.id === id)?.name).filter(Boolean)
 
   return (
     <section className="family-map">
@@ -98,7 +141,11 @@ function MapPage() {
         <HelpTip topic="map" label="Family Map" />
       </header>
       {error && <p className="error small">{error}</p>}
-      <div ref={mapEl} className="map-box" role="region" aria-label="Map of where everyone is" />
+      {/* Leaflet adds its own classes to the map element, so React must never re-render its className. */}
+      <div className={picking ? 'map-picking' : undefined}>
+        <div ref={mapEl} className="map-box" role="region" aria-label="Map of where everyone is" />
+      </div>
+      {picking && <p className="small map-pick-hint">Tap the map where the place is.</p>}
 
       <ul className="map-people">
         {family.map(([uid, member]) => {
@@ -111,7 +158,7 @@ function MapPage() {
                 <strong>{member.displayName}</strong>{' '}
                 <span className="muted small">
                   {where
-                    ? [agoText(loc.tst, now), loc.batt !== undefined ? `${loc.batt}% battery` : '', loc.acc ? `±${loc.acc} m` : '', loc.off ? 'paused' : ''].filter(Boolean).join(' · ')
+                    ? [placeNames(loc.inside).length ? `at ${placeNames(loc.inside).join(', ')}` : '', loc.events?.length ? eventText(loc.events[loc.events.length - 1]) : '', agoText(loc.tst, now), loc.batt !== undefined ? `${loc.batt}% battery` : '', loc.acc ? `±${loc.acc} m` : '', loc.off ? 'paused' : ''].filter(Boolean).join(' · ')
                     : loc?.off
                       ? 'paused'
                       : 'not sharing'}
@@ -137,6 +184,20 @@ function MapPage() {
         })}
       </ul>
 
+      <PlacesPanel
+        places={places}
+        locations={locations}
+        draft={draft}
+        setDraft={setDraft}
+        picking={picking}
+        setPicking={setPicking}
+        newCenter={() => {
+          const c = map.current?.getCenter()
+          return c ? { lat: c.lat, lon: c.lng } : { lat: HOME[0], lon: HOME[1] }
+        }}
+        onShow={showPlace}
+      />
+      <AlertsPanel places={places} />
       <MySharing mine={byUid.get(app.uid)} />
     </section>
   )

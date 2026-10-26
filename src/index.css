@@ -3032,3 +3032,42 @@ a.nav-link {
   grid-column: 1 / -1;
   margin: 0;
 }
+.map-picking .map-box {
+  cursor: crosshair;
+  outline: 3px solid var(--tint-blue-border);
+}
+.map-pick-hint {
+  margin: -0.4rem 0 0.6rem;
+  font-weight: 600;
+}
+.place-label {
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  box-shadow: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0 0.3rem;
+}
+.place-label::before {
+  display: none;
+}
+.place-editor {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 0.6rem;
+}
+.place-where {
+  display: grid;
+  gap: 0.35rem;
+}
+.alert-add select {
+  width: auto;
+}
+.alert-channels {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}

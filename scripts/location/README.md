@@ -34,3 +34,27 @@ seconds while travelling.
   writing it or unpausing it. **Delete my location** removes the document.
 - Apps Script answers every POST with a redirect; the report is saved before the redirect, so even if a phone shows a
   connection warning, check the map before troubleshooting.
+
+## Places and alerts (optional)
+**Places** (geofences): Family map → Places → **+ Add place**. Name it, then set the center with **Here** (where the
+device you're holding is), **Tap the map**, dragging the pin, or typing an address (looked up with OpenStreetMap's
+free geocoder) or `lat, lon`. Pick a radius (150 m or more works best: phones report every few hundred meters of
+travel). The Apps Script checks each report against the places: the map shows "at School" and "Arrived at School
+3:05 PM", and leaving needs a margin beyond the radius so a fix wobbling at the edge doesn't flap. No alert on the first
+report, for a place just added, or from a fix worse than 500 m.
+
+**Alerts for me**: "Alert me when Daughter arrives at School" (anyone / one person; arrives / leaves / both; any place
+/ one place). Only you see your alerts; you're never alerted about yourself. They're delivered by:
+- **Email** (works right away): tick "Also email me at …". The Apps Script sends it from the Google account that runs
+  it, so the first time it asks again for permission (to send email). Set the Script Property `ALIGN_URL`
+  (e.g. `https://align.itsallonesong.com/`) to include a link to the map.
+- **Notifications on this device**: Android (Chrome) works in the browser or installed; iPhone needs Align added to the
+  Home Screen first (Share → Add to Home Screen, iOS 16.4+) and opened from there. One-time setup:
+  1. Firebase console → Project settings → **Cloud Messaging** → Web Push certificates → **Generate key pair**. Put the
+     key in `.env.production.local` as `VITE_FIREBASE_VAPID_KEY=…` (public; `VITE_FIREBASE_MESSAGING_SENDER_ID` is
+     already there), then `deploy:web`.
+  2. Firebase console → Project settings → **Service accounts** → **Generate new private key**. Open the downloaded
+     JSON file, copy all of it into a Script Property `FCM_SERVICE_ACCOUNT`, and delete the file. (It's a secret: it
+     stays in the Apps Script's properties, never in the repo or the site.)
+  3. Paste the new `calendar-sync.gs`, deploy a new version. Then on each phone: Family map → Alerts for me →
+     **Turn on here**.

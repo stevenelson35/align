@@ -8,6 +8,9 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_APP_ID: string
   /** Optional: the calendar sync web app (scripts/apps-script/README.md); enables "Refresh calendar". */
   readonly VITE_CALENDAR_SYNC_URL?: string
+  /** Family map alerts: Firebase Cloud Messaging sender id and Web Push (VAPID) public key; both public. */
+  readonly VITE_FIREBASE_MESSAGING_SENDER_ID?: string
+  readonly VITE_FIREBASE_VAPID_KEY?: string
 }
 
 interface ImportMeta {

@@ -1,7 +1,11 @@
 // Runs the real Apps Script calendar sync against the local emulators, with stand-ins for Google's services.
 // Needs `npm run emulators` and `npm run seed` first. Usage: npm run test:calendar
 import { execFileSync } from 'node:child_process'
-import { createHmac } from 'node:crypto'
+import { createHmac, createSign, generateKeyPairSync } from 'node:crypto'
+import { spawn } from 'node:child_process'
+import { existsSync, mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { readFileSync } from 'node:fs'
 import { createContext, runInContext } from 'node:vm'
 import { initializeApp } from 'firebase-admin/app'
@@ -38,6 +42,7 @@ const timed = (id, summary, offset, hour, location) => ({
 })
 const allDay = (id, summary, offset, days) => ({ id, summary, start: { date: dayStr(offset) }, end: { date: dayStr(offset + days) } })
 let events = []
+const mails = []
 
 const cache = new Map()
 let lockHeld = false
@@ -55,6 +60,7 @@ const sandbox = createContext({
     createTextOutput: (text) => ({ text, setMimeType() { return this } }),
   },
   Session: { getScriptTimeZone: () => TZ },
+  MailApp: { sendEmail: (to, subject, body) => mails.push({ to, subject, body }) },
   PropertiesService: {
     getScriptProperties: () => ({ getProperties: () => ({ ...props }), getProperty: (k) => props[k] ?? null, setProperty: (k, v) => (props[k] = v) }),
   },
@@ -64,6 +70,8 @@ const sandbox = createContext({
   },
   Utilities: {
     // Apps Script returns signed bytes.
+    computeRsaSha256Signature: (value, pem) => [...createSign('RSA-SHA256').update(value).sign(pem)].map((b) => (b > 127 ? b - 256 : b)),
+    base64EncodeWebSafe: (v) => Buffer.from(typeof v === 'string' ? v : v.map((b) => b & 255)).toString('base64url') + '=',
     computeHmacSha256Signature: (value, key) => [...createHmac('sha256', key).update(value).digest()].map((b) => (b > 127 ? b - 256 : b)),
     formatDate: (d, tz, pattern) =>
       pattern === 'yyyy-MM-dd'
@@ -72,9 +80,11 @@ const sandbox = createContext({
   },
   UrlFetchApp: {
     fetch: (url, o) => {
-      const args = ['-s', '-X', o.method.toUpperCase(), '-H', 'Content-Type: application/json', '-w', '\n%{http_code}']
-      if (o.headers.Authorization) args.push('-H', `Authorization: ${o.headers.Authorization}`)
-      if (o.payload) args.push('-d', o.payload)
+      // A payload object is a form post (Apps Script sends it form-encoded), as for the FCM sign-in.
+      const form = o.payload && typeof o.payload === 'object'
+      const args = ['-s', '-X', o.method.toUpperCase(), '-H', `Content-Type: ${form ? 'application/x-www-form-urlencoded' : 'application/json'}`, '-w', '\n%{http_code}']
+      if (o.headers?.Authorization) args.push('-H', `Authorization: ${o.headers.Authorization}`)
+      if (o.payload) args.push('-d', form ? new URLSearchParams(o.payload).toString() : o.payload)
       const out = execFileSync('curl', [...args, url], { encoding: 'utf8' })
       const at = out.lastIndexOf('\n')
       return { getResponseCode: () => Number(out.slice(at + 1)), getContentText: () => out.slice(0, at) }
@@ -194,5 +204,47 @@ check(postTo({ loc: key.replace('steve', 'wife') }, report).ok === false, "locat
 await admin.doc('locations/steve').update({ off: true })
 postTo({ loc: key }, { ...report, lat: 30, tst: report.tst + 120 })
 check((await admin.doc('locations/steve').get()).data().lat === 28.61, 'location: nothing is written while paused')
+
+// Places and alerts: a stand-in for Google's token and FCM endpoints runs in its own process (the curl calls above
+// block this one), logging each request to a file.
+const dir = mkdtempSync(join(tmpdir(), 'align-fcm-'))
+const logFile = join(dir, 'requests.jsonl')
+const stub = spawn(process.execPath, ['-e', `
+  const fs = require('fs'); const http = require('http')
+  http.createServer((req, res) => { let b = ''; req.on('data', (c) => (b += c)); req.on('end', () => {
+    fs.appendFileSync(${JSON.stringify(logFile)}, JSON.stringify({ url: req.url, auth: req.headers.authorization || '', body: b }) + '\\n')
+    res.setHeader('Content-Type', 'application/json')
+    res.end(req.url === '/token' ? JSON.stringify({ access_token: 'stub-access', expires_in: 3600 }) : JSON.stringify({ name: 'projects/x/messages/1' }))
+  }) }).listen(5399, () => console.log('ready'))
+`])
+await new Promise((ok) => stub.stdout.once('data', ok))
+const requests = () => (existsSync(logFile) ? readFileSync(logFile, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) : [])
+const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+props.FCM_SERVICE_ACCOUNT = JSON.stringify({ client_email: 'fcm@demo.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }), token_uri: 'http://127.0.0.1:5399/token' })
+props.FCM_URL = 'http://127.0.0.1:5399/v1'
+props.ALIGN_URL = 'https://align.example.com/'
+await admin.doc('locations/steve').update({ off: false })
+await admin.doc('places/home').set({ name: 'Home', lat: 28.6, lon: -81.35, radius: 200, createdBy: 'steve', createdAt: new Date('2026-01-01') })
+await admin.doc('alertPrefs/wife').set({ rules: [{ person: 'steve', place: '*', enter: true, leave: true }], push: ['wife-phone'], email: 'wife@example.com', emailOn: true })
+await admin.doc('alertPrefs/steve').set({ rules: [{ person: '*', place: '*', enter: true, leave: true }], push: ['steve-phone'] })
+postTo({ loc: key }, { ...report, lat: 28.6001, tst: report.tst + 300 })
+loc = (await admin.doc('locations/steve').get()).data()
+check(loc.inside?.[0] === 'home' && loc.events?.at(-1)?.kind === 'enter', `places: arriving home is noticed (${JSON.stringify(loc.inside)}, ${loc.events?.at(-1)?.kind})`)
+let sent = requests().filter((r) => r.url.includes('messages:send'))
+const push = sent.length && JSON.parse(sent[0].body).message
+check(sent.length === 1 && push.token === 'wife-phone' && push.data.title === 'Steve arrived at Home' && sent[0].auth === 'Bearer stub-access', `alerts: one notification, to Linda's phone, signed in through the service account (${sent.length})`)
+const signIn = requests().find((r) => r.url === '/token')
+const assertion = signIn && new URLSearchParams(signIn.body).get('assertion')
+const claim = assertion && JSON.parse(Buffer.from(assertion.split('.')[1], 'base64url').toString())
+check(claim && claim.iss === 'fcm@demo.iam.gserviceaccount.com' && claim.scope.includes('firebase.messaging'), 'alerts: the FCM sign-in is a JWT from the service account')
+check(mails.length === 1 && mails[0].to === 'wife@example.com' && mails[0].subject === 'Steve arrived at Home' && mails[0].body.includes('https://align.example.com/#/map'), 'alerts: and an email, with a link to the map')
+postTo({ loc: key }, { ...report, lat: 28.6002, tst: report.tst + 360 })
+check(requests().filter((r) => r.url.includes('messages:send')).length === 1, 'alerts: staying home sends nothing more')
+postTo({ loc: key }, { ...report, lat: 28.62, tst: report.tst + 420 })
+loc = (await admin.doc('locations/steve').get()).data()
+sent = requests().filter((r) => r.url.includes('messages:send'))
+check(!loc.inside.length && loc.events.at(-1).kind === 'leave' && JSON.parse(sent.at(-1).body).message.data.title === 'Steve left Home', 'places: leaving is noticed and alerted')
+check(sent.every((r) => JSON.parse(r.body).message.token !== 'steve-phone'), "alerts: never about yourself")
+stub.kill()
 console.log('Calendar sync works against the emulator.')
 process.exit(0)

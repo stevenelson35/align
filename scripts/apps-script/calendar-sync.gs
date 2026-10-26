@@ -16,6 +16,7 @@
  *     FIREBASE_PROJECT_ID  align-a32c1
  *     BOT_EMAIL            the bot's Firebase Auth email
  *     BOT_PASSWORD         the bot's Firebase Auth password
+ *   Family map alerts (optional, scripts/location/README.md): FCM_SERVICE_ACCOUNT, ALIGN_URL.
  *   Optional: WEEKS_AHEAD (8), DAYS_BEHIND (7), LIST_NAME ("Family Calendar"), LIST_ID (found or created automatically),
  *   TIME_ZONE (e.g. America/New_York; defaults to the script's zone from appsscript.json)
  *   Then run installTrigger() once.
@@ -33,6 +34,7 @@ var DEFAULTS = {
   LIST_NAME: 'Family Calendar',
   AUTH_URL: 'https://identitytoolkit.googleapis.com/v1',
   FIRESTORE_URL: 'https://firestore.googleapis.com/v1',
+  FCM_URL: 'https://fcm.googleapis.com/v1',
 }
 
 // Fields the sync owns. Everything else on an imported task belongs to the family.
@@ -205,8 +207,145 @@ function location_(key, body) {
   var api = firestoreApi_(cfg, signIn_(cfg))
   var before = api.get('locations/' + uid)
   if (before && before.fields.off) return []
-  api.commit([{ update: { name: api.docName('locations/' + uid), fields: toFields_(locationDoc_(before && before.fields, point)) }, updateTransforms: [{ fieldPath: 'updatedAt', setToServerValue: 'REQUEST_TIME' }] }])
+  var prev = before && before.fields
+  var doc = locationDoc_(prev, point)
+  var places = api.all('places')
+  var late = !!prev && typeof prev.lat === 'number' && point.tst < prev.tst
+  var change = placeChanges_(prev, late ? null : point, places)
+  doc.inside = change.inside
+  doc.events = ((prev && prev.events) || []).concat(change.events).slice(-20)
+  api.commit([{ update: { name: api.docName('locations/' + uid), fields: toFields_(doc) }, updateTransforms: [{ fieldPath: 'updatedAt', setToServerValue: 'REQUEST_TIME' }] }])
+  if (change.events.length) {
+    try {
+      sendAlerts_(cfg, api, uid, change.events)
+    } catch (err) {
+      console.log('Alerts failed: ' + err)
+    }
+  }
   return []
+}
+
+// ---- Places (geofences) and alerts ----
+
+/** Meters between two points (haversine). */
+function distanceM_(lat1, lon1, lat2, lon2) {
+  var r = 6371000
+  var rad = Math.PI / 180
+  var dLat = (lat2 - lat1) * rad
+  var dLon = (lon2 - lon1) * rad
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  return 2 * r * Math.asin(Math.min(1, Math.sqrt(a)))
+}
+
+/**
+ * Which places someone is in after a report, and the arrivals / departures since the last one. Leaving needs a
+ * margin beyond the radius (the GPS accuracy, 30–150 m) so a fix wobbling at the edge doesn't flap. No events on
+ * the first report, for a place added since the last report, or from a fix worse than 500 m (state just carries
+ * on). `point` null (a late, older report): nothing changes.
+ */
+function placeChanges_(prev, point, places) {
+  var was = (prev && prev.inside) || []
+  var known = {}
+  places.forEach(function (p) {
+    known[p.id] = true
+  })
+  if (!point) return { inside: was.filter(function (id) { return known[id] }), events: [] }
+  var first = !prev || typeof prev.lat !== 'number'
+  if (!first && point.acc !== undefined && point.acc > 500) return { inside: was.filter(function (id) { return known[id] }), events: [] }
+  var margin = Math.max(30, Math.min(point.acc || 0, 150))
+  var inside = []
+  var events = []
+  places.forEach(function (p) {
+    var f = p.fields
+    var d = distanceM_(point.lat, point.lon, f.lat, f.lon)
+    var wasIn = was.indexOf(p.id) >= 0
+    var isNew = first || (f.createdAt && Date.parse(f.createdAt) > prev.tst)
+    var nowIn = wasIn && !isNew ? d <= f.radius + margin : d <= f.radius
+    if (nowIn) inside.push(p.id)
+    if (!isNew && nowIn !== wasIn) events.push({ place: p.id, name: f.name, kind: nowIn ? 'enter' : 'leave', tst: point.tst })
+  })
+  return { inside: inside, events: events }
+}
+
+/** Who wants to hear about this: alertPrefs whose rules match the person, place and kind (never yourself). */
+function alertTargets_(prefs, personUid, event) {
+  return prefs.filter(function (p) {
+    if (p.id === personUid) return false
+    return (p.fields.rules || []).some(function (r) {
+      return (r.person === '*' || r.person === personUid) && (r.place === '*' || r.place === event.place) && !!r[event.kind]
+    })
+  })
+}
+
+/** "Daughter arrived at School" / "Daughter left School", with the time in the calendar's zone. */
+function alertText_(name, event, tz) {
+  return {
+    title: name + (event.kind === 'enter' ? ' arrived at ' : ' left ') + event.name,
+    body: Utilities.formatDate(new Date(event.tst), tz, 'h:mm a') + ' · Align family map',
+  }
+}
+
+function sendAlerts_(cfg, api, uid, events) {
+  var prefs = api.all('alertPrefs')
+  if (!prefs.length) return
+  var household = api.get('household/main')
+  var name = (((household && household.fields.members) || {})[uid] || {}).displayName || 'Someone'
+  var tz = cfg.TIME_ZONE || Session.getScriptTimeZone()
+  events.forEach(function (ev) {
+    var text = alertText_(name, ev, tz)
+    alertTargets_(prefs, uid, ev).forEach(function (p) {
+      ;(p.fields.push || []).forEach(function (token) {
+        try {
+          sendPush_(cfg, token, text, ev.place + ':' + uid)
+        } catch (err) {
+          console.log('Push failed: ' + err)
+        }
+      })
+      if (p.fields.emailOn && p.fields.email) {
+        try {
+          MailApp.sendEmail(p.fields.email, text.title, text.body + (cfg.ALIGN_URL ? '\n\n' + cfg.ALIGN_URL.replace(/#.*$/, '') + '#/map' : ''))
+        } catch (err) {
+          console.log('Email failed: ' + err)
+        }
+      }
+    })
+  })
+}
+
+/** One notification through Firebase Cloud Messaging (HTTP v1), as data the app's service worker shows. */
+function sendPush_(cfg, token, text, tag) {
+  var access = fcmAccessToken_(cfg)
+  if (!access) return
+  http_(
+    'post',
+    cfg.FCM_URL + '/projects/' + cfg.FIREBASE_PROJECT_ID + '/messages:send',
+    { message: { token: token, data: { title: text.title, body: text.body, url: '#/map', tag: tag }, webpush: { headers: { Urgency: 'high', TTL: '3600' } } } },
+    access,
+  )
+}
+
+/**
+ * An OAuth token for FCM from the service account in FCM_SERVICE_ACCOUNT (the JSON key from Firebase → Project
+ * settings → Service accounts), cached for 50 minutes. No key, no push (email still works).
+ */
+function fcmAccessToken_(cfg) {
+  var cache = CacheService.getScriptCache()
+  var cached = cache.get('fcmToken')
+  if (cached) return cached
+  if (!cfg.FCM_SERVICE_ACCOUNT) return null
+  var sa = JSON.parse(cfg.FCM_SERVICE_ACCOUNT)
+  var now = Math.floor(Date.now() / 1000)
+  var b64 = function (s) {
+    return Utilities.base64EncodeWebSafe(s).replace(/=+$/, '')
+  }
+  var aud = sa.token_uri || 'https://oauth2.googleapis.com/token'
+  var unsigned = b64(JSON.stringify({ alg: 'RS256', typ: 'JWT' })) + '.' + b64(JSON.stringify({ iss: sa.client_email, scope: 'https://www.googleapis.com/auth/firebase.messaging', aud: aud, iat: now, exp: now + 3600 }))
+  var jwt = unsigned + '.' + Utilities.base64EncodeWebSafe(Utilities.computeRsaSha256Signature(unsigned, sa.private_key)).replace(/=+$/, '')
+  var res = UrlFetchApp.fetch(aud, { method: 'post', payload: { grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt }, muteHttpExceptions: true })
+  if (res.getResponseCode() >= 300) throw new Error('FCM sign-in failed (' + res.getResponseCode() + '): ' + res.getContentText())
+  var token = JSON.parse(res.getContentText()).access_token
+  cache.put('fcmToken', token, 3000)
+  return token
 }
 
 /** The parts of an OwnTracks location message Align keeps, or null for anything else (waypoints, status…). */
@@ -452,6 +591,10 @@ function config_(p) {
   })
   cfg.LIST_ID = p.LIST_ID || ''
   cfg.TIME_ZONE = p.TIME_ZONE || ''
+  // Optional: the family map's alerts. FCM_SERVICE_ACCOUNT (JSON key) for phone notifications; ALIGN_URL for the
+  // link in alert emails.
+  cfg.FCM_SERVICE_ACCOUNT = p.FCM_SERVICE_ACCOUNT || ''
+  cfg.ALIGN_URL = p.ALIGN_URL || ''
   return cfg
 }
 
@@ -683,6 +826,17 @@ function firestoreApi_(cfg, auth) {
         { structuredQuery: { from: [{ collectionId: collection }], where: { compositeFilter: { op: 'AND', filters: filters } } } },
         auth.token,
       )
+      return res
+        .filter(function (r) {
+          return r.document
+        })
+        .map(function (r) {
+          return { id: r.document.name.split('/').pop(), fields: fromFields_(r.document.fields || {}) }
+        })
+    },
+    /** Every document in a collection (small ones: places, alert settings). */
+    all: function (collection) {
+      var res = http_('post', base + ':runQuery', { structuredQuery: { from: [{ collectionId: collection }] } }, auth.token)
       return res
         .filter(function (r) {
           return r.document

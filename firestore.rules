@@ -400,7 +400,10 @@ service cloud.firestore {
     }
 
     function validLocation(d) {
-      return d.keys().hasOnly(['lat', 'lon', 'acc', 'batt', 'tst', 'trail', 'off', 'updatedAt'])
+      return d.keys().hasOnly(['lat', 'lon', 'acc', 'batt', 'tst', 'trail', 'off', 'updatedAt', 'inside', 'events'])
+        // Places they're in now (ids) and their latest arrivals / departures (set by the helper account).
+        && (!('inside' in d) || (d.inside is list && d.inside.size() <= 50))
+        && (!('events' in d) || (d.events is list && d.events.size() <= 20))
         && d.off is bool
         && (!('lat' in d) || (d.lat is number && d.lat >= -90 && d.lat <= 90))
         && (!('lon' in d) || (d.lon is number && d.lon >= -180 && d.lon <= 180))
@@ -450,6 +453,34 @@ service cloud.firestore {
       allow update: if (isMember() || isViewer()) && resource.data.claimedBy == request.auth.uid && validClaim(claimId, request.resource.data)
         && request.resource.data.itemId == resource.data.itemId && request.resource.data.listId == resource.data.listId;
       allow delete: if (isMember() || isViewer()) && resource.data.claimedBy == request.auth.uid;
+    }
+
+    // Places on the family map (geofences): a name, center and radius. Members see and manage them; the helper
+    // account reads them to notice arrivals and departures.
+    match /places/{placeId} {
+      allow read: if isMember();
+      allow create, update: if isMember()
+        && request.resource.data.keys().hasOnly(['name', 'lat', 'lon', 'radius', 'createdBy', 'createdAt', 'updatedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 60
+        && request.resource.data.lat is number && request.resource.data.lat >= -90 && request.resource.data.lat <= 90
+        && request.resource.data.lon is number && request.resource.data.lon >= -180 && request.resource.data.lon <= 180
+        && request.resource.data.radius is number && request.resource.data.radius >= 25 && request.resource.data.radius <= 5000
+        && request.resource.data.createdBy is string;
+      allow delete: if isMember();
+    }
+
+    // Each member's own alerts: rules (whose arrivals / departures at which place), this person's devices for
+    // notifications (push tokens), and an optional email. Only they see or change it; the helper account reads
+    // everyone's to send the alerts.
+    match /alertPrefs/{uid} {
+      allow read: if (isMember() && request.auth.uid == uid) || isBot();
+      allow create, update: if isMember() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['rules', 'push', 'email', 'emailOn', 'updatedAt'])
+        && (!('rules' in request.resource.data) || (request.resource.data.rules is list && request.resource.data.rules.size() <= 50))
+        && (!('push' in request.resource.data) || (request.resource.data.push is list && request.resource.data.push.size() <= 10))
+        && (!('email' in request.resource.data) || (request.resource.data.email is string && request.resource.data.email.size() <= 200))
+        && (!('emailOn' in request.resource.data) || request.resource.data.emailOn is bool);
+      allow delete: if isMember() && request.auth.uid == uid;
     }
 
     // Members compute their token balance with a collection-group query over their own votes.

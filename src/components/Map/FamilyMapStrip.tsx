@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useLocations } from '../../firebase/location'
+import { usePlaces } from '../../firebase/places'
 import { useApp } from '../../hooks/useApp'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
-import { agoText, STALE_MS } from '../../utils/location'
+import { agoText, eventText, STALE_MS } from '../../utils/location'
 import { people } from '../../utils/tasks'
 import { SectionHeader } from '../UI/SectionHeader'
 
@@ -31,21 +32,29 @@ function WhoIsWhere() {
   const app = useApp()
   const { locations, error } = useLocations()
   const [now] = useState(() => Date.now())
+  const places = usePlaces()
+  const at = (ids?: string[]) => (ids ?? []).map((id) => places.find((p) => p.id === id)?.name).filter(Boolean).join(', ')
   const byUid = new Map(locations.map((l) => [l.uid, l]))
   if (error) return <p className="error small">{error}</p>
   return (
     <ul className="map-people small">
       {people(app.household, true).map(([uid, m]) => {
         const loc = byUid.get(uid)
-        const at = loc && typeof loc.tst === 'number' ? loc.tst : undefined
+        const tst = loc && typeof loc.tst === 'number' ? loc.tst : undefined
         return (
-          <li key={uid} className={`map-person${at && now - at > STALE_MS ? ' stale' : ''}`}>
+          <li key={uid} className={`map-person${tst && now - tst > STALE_MS ? ' stale' : ''}`}>
             <span className="map-dot" style={{ background: m.color }} aria-hidden="true" />
             <span className="grow">
               <strong>{m.displayName}</strong>{' '}
-              <span className="muted">{loc?.off ? 'paused' : at ? [agoText(at, now), loc?.batt !== undefined ? `${loc.batt}% battery` : ''].filter(Boolean).join(' · ') : 'not sharing'}</span>
+              <span className="muted">
+                {loc?.off
+                  ? 'paused'
+                  : tst
+                    ? [at(loc?.inside) ? `at ${at(loc?.inside)}` : '', loc?.events?.length ? eventText(loc.events[loc.events.length - 1]) : '', agoText(tst, now), loc?.batt !== undefined ? `${loc.batt}% battery` : ''].filter(Boolean).join(' · ')
+                    : 'not sharing'}
+              </span>
             </span>
-            {at && (
+            {tst && (
               <button type="button" className="link small" onClick={() => app.navigate({ view: 'map' })}>
                 Show
               </button>

@@ -185,3 +185,45 @@ describe('location helpers (family map)', () => {
     expect(docOf(prev, { lat: 0, lon: 0, tst: 9 * day }).lat).toBe(5)
   })
 })
+
+describe('places and alerts (family map)', () => {
+  const changes = gs.placeChanges_ as (prev: object | null, p: object | null, places: object[]) => { inside: string[]; events: { place: string; kind: string }[] }
+  const dist = gs.distanceM_ as (a: number, b: number, c: number, d: number) => number
+  // Home at (28.6, -81.35), radius 200 m; ~0.0018° latitude ≈ 200 m.
+  const home = { id: 'home', fields: { name: 'Home', lat: 28.6, lon: -81.35, radius: 200, createdAt: '2026-01-01T00:00:00Z' } }
+  const school = { id: 'school', fields: { name: 'School', lat: 28.65, lon: -81.35, radius: 150, createdAt: '2026-01-01T00:00:00Z' } }
+  const at = (lat: number, tst: number, acc = 10) => ({ lat, lon: -81.35, tst, acc })
+  const prevAt = (lat: number, tst: number, inside: string[]) => ({ lat, lon: -81.35, tst, inside })
+  const t0 = Date.parse('2026-10-26T12:00:00Z')
+  it('measures distance', () => {
+    expect(Math.round(dist(28.6, -81.35, 28.6018, -81.35))).toBe(200)
+  })
+  it('notices arriving and leaving, but not on the first report', () => {
+    expect(changes(null, at(28.6, t0), [home, school])).toEqual({ inside: ['home'], events: [] })
+    expect(changes(prevAt(28.62, t0, []), at(28.6005, t0 + 60000), [home, school]).events).toEqual([{ place: 'home', name: 'Home', kind: 'enter', tst: t0 + 60000 }])
+    const left = changes(prevAt(28.6, t0, ['home']), at(28.65, t0 + 60000), [home, school])
+    expect(left.inside).toEqual(['school'])
+    expect(left.events.map((e) => `${e.kind}:${e.place}`)).toEqual(['leave:home', 'enter:school'])
+  })
+  it('needs a margin past the edge to count as leaving (no flapping), and ignores poor fixes', () => {
+    expect(changes(prevAt(28.6, t0, ['home']), at(28.6020, t0 + 60000), [home]).events).toEqual([]) // 222 m, within 200 + 30
+    expect(changes(prevAt(28.6, t0, ['home']), at(28.6030, t0 + 60000), [home]).events.map((e) => e.kind)).toEqual(['leave']) // 333 m
+    expect(changes(prevAt(28.6, t0, ['home']), at(28.7, t0 + 60000, 900), [home])).toEqual({ inside: ['home'], events: [] })
+  })
+  it('stays quiet for a place added since the last report, and drops deleted places', () => {
+    const fresh = { ...home, fields: { ...home.fields, createdAt: new Date(t0 + 1000).toISOString() } }
+    expect(changes(prevAt(28.62, t0, []), at(28.6, t0 + 60000), [fresh])).toEqual({ inside: ['home'], events: [] })
+    expect(changes(prevAt(28.6, t0, ['gone']), null, [home]).inside).toEqual([])
+  })
+  it('finds who asked to be told, never the person themselves', () => {
+    const targets = gs.alertTargets_ as (prefs: object[], uid: string, ev: object) => { id: string }[]
+    const prefs = [
+      { id: 'steve', fields: { rules: [{ person: 'daughter', place: 'school', enter: true, leave: false }] } },
+      { id: 'wife', fields: { rules: [{ person: '*', place: '*', enter: true, leave: true }] } },
+      { id: 'daughter', fields: { rules: [{ person: '*', place: '*', enter: true, leave: true }] } },
+    ]
+    expect(targets(prefs, 'daughter', { place: 'school', kind: 'enter' }).map((p) => p.id)).toEqual(['steve', 'wife'])
+    expect(targets(prefs, 'daughter', { place: 'school', kind: 'leave' }).map((p) => p.id)).toEqual(['wife'])
+    expect(targets(prefs, 'steve', { place: 'home', kind: 'enter' }).map((p) => p.id)).toEqual(['wife', 'daughter'])
+  })
+})

@@ -300,6 +300,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Menu → Family map shows a pin for each person sharing (faded when the last report is more than 2 hours old), how long ago it was, battery, and how accurate it is. Show centers on them, Trail draws their last day, Directions opens Google Maps.',
       '• To share: under Your location, tap Set up my phone, install OwnTracks (iPhone or Android), tap Set up OwnTracks on the phone, and allow location Always. It reports in the background and saves battery by only reporting real moves.',
       '• Your link is yours alone: it can only post your location. Pause sharing stops updates (everyone sees “paused”); Delete my location removes your position and trail. Only the last day’s trail is kept.',
+      '• Places (geofences): + Add place, name it, set the center with Here, Tap the map (or drag the pin), or an address or “lat, lon”, and a radius (150 m or more works best). The map then shows who’s “at School” and when they arrived or left.',
+      '• Alerts for me: “Alert me when Daughter arrives at School” (anyone or one person; arrives, leaves or both; any place or one). They come by email, and/or as notifications on the devices where you tap Turn on here (Android in Chrome; iPhone from Align on the Home Screen). Only you see your alerts; they can lag a few minutes behind.',
       '• Viewers (like grandparents) don’t see the map. Nothing here costs money: the reports go through the family’s Google Apps Script into Align.',
     ],
   },
