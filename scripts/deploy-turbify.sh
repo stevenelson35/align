@@ -5,6 +5,7 @@
 #   ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web            # build + upload (asks for the FTP password)
 #   ALIGN_FTP_DIR=/align.itsallonesong.com scripts/deploy-turbify.sh --dry-run
 #   scripts/deploy-turbify.sh --ls [dir]                                 # list folders, to find the docroot
+#   ALIGN_FTP_DEBUG=1 ALIGN_FTP_DIR=… npm run deploy:web                 # show the FTP conversation (password masked)
 #
 # The password is never stored: lftp prompts for it. Only the assets/ folder is mirrored with --delete,
 # so a wrong ALIGN_FTP_DIR can't wipe anything outside the app.
@@ -57,11 +58,23 @@ else
 fi
 
 # Assets are content-hashed: upload new ones first, then index.html, then prune old assets.
-lftp --env-password -u "$USER_NAME" "$HOST" <<EOF
+# A stalled connection gives up after 20 s (lftp's default waits minutes and looks frozen); it retries twice, 5 s apart.
+# ALIGN_FTP_DEBUG=1 shows lftp's conversation; lftp prints the password on its PASS line, so that line is masked.
+run_lftp() {
+  if [[ -n "${ALIGN_FTP_DEBUG:-}" ]]; then
+    lftp -d --env-password -u "$USER_NAME" "$HOST" 2>&1 | sed -E 's/^(---> PASS ).*/\1********/'
+  else
+    lftp --env-password -u "$USER_NAME" "$HOST"
+  fi
+}
+run_lftp <<EOF
 set ftp:ssl-force true
 set ftp:ssl-protect-data true
 set ssl:verify-certificate true
+set net:timeout 20
 set net:max-retries 2
+set net:reconnect-interval-base 5
+set net:reconnect-interval-max 15
 $WRITE_CMDS
 mirror -R $DRY --verbose --no-perms --exclude-glob index.html dist/ "$DIR"
 ${PUT_INDEX:-}
