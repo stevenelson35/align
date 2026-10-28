@@ -155,6 +155,13 @@ function voice_(body) {
 // Keep this much of each person's trail (the map draws the last day).
 var TRAIL_HOURS = 24
 var TRAIL_POINTS = 100
+// Bad fixes (scripts/location/README.md): a fix less accurate than this many meters is ignored, unless the last good
+// one is older than LOCATION_STALE_MS (a rough position beats a stale one); a jump faster than this many meters per
+// second (after allowing for both fixes' accuracy) is held until the next report confirms it. Script Properties
+// LOCATION_MAX_ACCURACY and LOCATION_MAX_SPEED override them.
+var LOCATION_MAX_ACCURACY = 250
+var LOCATION_MAX_SPEED = 70 // m/s, about 155 mph
+var LOCATION_STALE_MS = 30 * 60000
 
 /** The signing secret for personal location links: LOCATION_SECRET, or else VOICE_SECRET. */
 function locationSecret_(props) {
@@ -208,7 +215,15 @@ function location_(key, body) {
   var before = api.get('locations/' + uid)
   if (before && before.fields.off) return []
   var prev = before && before.fields
-  var doc = locationDoc_(prev, point)
+  var verdict = locationVerdict_(prev, point, Number(props.getProperty('LOCATION_MAX_ACCURACY')) || LOCATION_MAX_ACCURACY,
+    Number(props.getProperty('LOCATION_MAX_SPEED')) || LOCATION_MAX_SPEED)
+  if (verdict === 'reject') return []
+  if (verdict === 'hold') {
+    // Keep it aside (nothing on the map moves); the next report decides whether it was real.
+    api.commit([{ update: { name: api.docName('locations/' + uid), fields: toFields_({ pending: point }) }, updateMask: { fieldPaths: ['pending'] } }])
+    return []
+  }
+  var doc = locationDoc_(verdict === 'confirm' ? locationWithPending_(prev) : prev, point)
   var places = api.all('places')
   var late = !!prev && typeof prev.lat === 'number' && point.tst < prev.tst
   var change = placeChanges_(prev, late ? null : point, places)
@@ -352,6 +367,7 @@ function fcmAccessToken_(cfg) {
 function locationPoint_(m) {
   if (!m || m._type !== 'location' || typeof m.lat !== 'number' || typeof m.lon !== 'number') return null
   if (Math.abs(m.lat) > 90 || Math.abs(m.lon) > 180) return null
+  if (m.lat === 0 && m.lon === 0) return null // "null island": a phone with no fix
   var p = { lat: Math.round(m.lat * 1e6) / 1e6, lon: Math.round(m.lon * 1e6) / 1e6, tst: (typeof m.tst === 'number' ? m.tst : Math.floor(Date.now() / 1000)) * 1000 }
   if (typeof m.acc === 'number') p.acc = Math.round(m.acc)
   if (typeof m.batt === 'number') p.batt = Math.round(m.batt)
@@ -363,7 +379,9 @@ function locationDoc_(prev, p) {
   var trail = ((prev && prev.trail) || []).slice()
   if (prev && typeof prev.lat === 'number') {
     if (p.tst < prev.tst) return locationDocKeep_(prev) // an older report arriving late: keep the newer one
-    trail.push({ lat: prev.lat, lon: prev.lon, tst: prev.tst })
+    var t = { lat: prev.lat, lon: prev.lon, tst: prev.tst }
+    if (prev.acc !== undefined) t.acc = prev.acc
+    trail.push(t)
   }
   var since = p.tst - TRAIL_HOURS * 3600000
   trail = trail
@@ -375,6 +393,43 @@ function locationDoc_(prev, p) {
   if (p.acc !== undefined) doc.acc = p.acc
   if (p.batt !== undefined) doc.batt = p.batt
   return doc
+}
+
+/**
+ * Whether to use a report, given the last good position:
+ * - 'accept': fine (also the first report, and a late one, which locationDoc_ handles).
+ * - 'reject': less accurate than maxAcc meters while the last good fix is still recent.
+ * - 'hold': it implies moving faster than maxSpeed (after allowing for both fixes' accuracy), a typical glitch;
+ *   kept aside as `pending`.
+ * - 'confirm': it's consistent with the held one, so that jump was real (a flight, a phone off for a while);
+ *   both join the trail.
+ */
+function locationVerdict_(prev, p, maxAcc, maxSpeed) {
+  if (!prev || typeof prev.lat !== 'number' || p.tst < prev.tst) return 'accept'
+  var dt = (p.tst - prev.tst) / 1000
+  if (p.acc !== undefined && p.acc > maxAcc && p.tst - prev.tst < LOCATION_STALE_MS) return 'reject'
+  if (locationSpeed_(prev, p) <= maxSpeed || dt <= 0) return 'accept'
+  var held = prev.pending
+  if (held && typeof held.lat === 'number' && p.tst >= held.tst && locationSpeed_(held, p) <= maxSpeed) return 'confirm'
+  return 'hold'
+}
+
+/** Meters per second between two fixes, after taking off both accuracy radii (so wobble isn't speed). */
+function locationSpeed_(a, b) {
+  var gap = distanceM_(a.lat, a.lon, b.lat, b.lon) - (a.acc || 0) - (b.acc || 0)
+  return Math.max(0, gap) / Math.max(1, Math.abs(b.tst - a.tst) / 1000)
+}
+
+/** The previous document as if the held point had been accepted (so it joins the trail before the new one). */
+function locationWithPending_(prev) {
+  var held = prev.pending
+  var trail = (prev.trail || []).slice()
+  var t = { lat: prev.lat, lon: prev.lon, tst: prev.tst }
+  if (prev.acc !== undefined) t.acc = prev.acc
+  trail.push(t)
+  var out = { lat: held.lat, lon: held.lon, tst: held.tst, trail: trail, off: false, inside: prev.inside, events: prev.events }
+  if (held.acc !== undefined) out.acc = held.acc
+  return out
 }
 
 /** A stored document as it was (so a late, older report changes nothing). */

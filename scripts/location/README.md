@@ -58,3 +58,15 @@ report, for a place just added, or from a fix worse than 500 m.
      stays in the Apps Script's properties, never in the repo or the site.)
   3. Paste the new `calendar-sync.gs`, deploy a new version. Then on each phone: Family map → Alerts for me →
      **Turn on here**.
+
+## Bad fixes (filtered for every phone)
+Phones sometimes report a cell-tower or Wi-Fi position kilometers off, or a one-off jump. The Apps Script checks each
+report before saving it (`locationVerdict_`), so Android, iPhone and the web all see the same clean data:
+- **Poor accuracy:** a fix accurate only to more than 250 m is ignored while the last good fix is under 30 minutes
+  old (after that, a rough position beats a stale one; the map shows it faded with a dashed circle, "rough position").
+- **Impossible jumps:** a fix implying more than 70 m/s (~155 mph), after allowing for both fixes' accuracy, is held
+  aside (`pending`; nothing on the map moves). If the next fix agrees with it, the jump was real (a flight, a phone off
+  for a while) and both are kept; otherwise it's dropped.
+- **(0, 0)** fixes are dropped.
+- The map also tidies trails saved before this (`cleanTrail`): poor-accuracy points and one-point spikes are hidden.
+- Script Properties `LOCATION_MAX_ACCURACY` (meters) and `LOCATION_MAX_SPEED` (m/s) change the limits.

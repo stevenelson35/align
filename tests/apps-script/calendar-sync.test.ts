@@ -227,3 +227,35 @@ describe('places and alerts (family map)', () => {
     expect(targets(prefs, 'steve', { place: 'home', kind: 'enter' }).map((p) => p.id)).toEqual(['wife', 'daughter'])
   })
 })
+
+describe('filtering bad location fixes', () => {
+  const verdict = gs.locationVerdict_ as (prev: object | null, p: object, maxAcc: number, maxSpeed: number) => string
+  const t0 = Date.parse('2026-10-28T12:00:00Z')
+  const home = { lat: 28.6, lon: -81.35, tst: t0, acc: 10 }
+  const at = (lat: number, lon: number, secs: number, acc = 10) => ({ lat, lon, tst: t0 + secs * 1000, acc })
+  const v = (prev: object | null, p: object) => verdict(prev, p, 250, 70)
+  it('accepts the first fix, normal movement, and highway speed', () => {
+    expect(v(null, at(28.6, -81.35, 0))).toBe('accept')
+    expect(v(home, at(28.601, -81.35, 60))).toBe('accept') // ~110 m in a minute
+    expect(v(home, at(28.62, -81.35, 60))).toBe('accept') // ~2.2 km in a minute ≈ 37 m/s
+  })
+  it('rejects an inaccurate fix while the last good one is recent, but takes it when that is stale', () => {
+    expect(v(home, at(28.61, -81.35, 120, 1500))).toBe('reject')
+    expect(v(home, at(28.61, -81.35, 45 * 60, 1500))).toBe('accept')
+  })
+  it('holds an impossible jump, and confirms it only when the next fix agrees', () => {
+    const glitch = at(28.9, -81.35, 60) // ~33 km in a minute
+    expect(v(home, glitch)).toBe('hold')
+    const held = { ...home, pending: glitch }
+    expect(v(held, at(28.6005, -81.35, 120))).toBe('accept') // back near home: the glitch is just replaced
+    expect(v(held, at(28.901, -81.35, 120))).toBe('confirm') // a second fix out there: it was real
+    expect(v(held, at(29.3, -81.35, 120))).toBe('hold') // somewhere else impossible again
+  })
+  it("doesn't treat wobble within the accuracy circles as speed, and allows a long gap", () => {
+    expect(v({ ...home, acc: 600 }, at(28.605, -81.35, 5, 50))).toBe('accept') // 550 m apart, inside the error
+    expect(v(home, at(29.5, -81.35, 3 * 3600))).toBe('accept') // 100 km in 3 hours
+  })
+  it('drops "null island" (0, 0) fixes', () => {
+    expect((gs.locationPoint_ as (m: object) => object | null)({ _type: 'location', lat: 0, lon: 0, tst: 1 })).toBeNull()
+  })
+})

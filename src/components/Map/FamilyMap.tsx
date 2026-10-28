@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { deleteMyLocation, getLocationKey, setSharing, useLocations } from '../../firebase/location'
 import { calendarSyncUrl } from '../../firebase/calendarSync'
 import { useApp } from '../../hooks/useApp'
-import { agoText, directionsUrl, eventText, initialsOf, ownTracksSetupLink, reportUrl, STALE_MS, type FamilyLocation, type Place } from '../../utils/location'
+import { agoText, cleanTrail, directionsUrl, eventText, initialsOf, MAX_ACCURACY, metersText, ownTracksSetupLink, reportUrl, STALE_MS, type FamilyLocation, type Place } from '../../utils/location'
 import { usePlaces } from '../../firebase/places'
 import { AlertsPanel, PlacesPanel, type PlaceDraft } from './MapPlaces'
 import { people } from '../../utils/tasks'
@@ -102,17 +102,20 @@ function MapPage() {
       const at: L.LatLngTuple = [loc.lat, loc.lon]
       points.push(at)
       const stale = now - loc.tst > STALE_MS
-      if (loc.acc && loc.acc < 2000) L.circle(at, { radius: loc.acc, color: member.color, weight: 1, fillOpacity: 0.08 }).addTo(g)
+      // A rough fix (cell tower / Wi-Fi) keeps its pin but shows it plainly: faded, with a dashed accuracy circle.
+      const rough = !!loc.acc && loc.acc > MAX_ACCURACY
+      if (loc.acc && loc.acc < 5000) L.circle(at, { radius: loc.acc, color: member.color, weight: 1, fillOpacity: rough ? 0.04 : 0.08, dashArray: rough ? '6 6' : undefined }).addTo(g)
       if (trailFor === uid && loc.trail?.length) {
-        L.polyline([...loc.trail.map((t): L.LatLngTuple => [t.lat, t.lon]), at], { color: member.color, weight: 3, opacity: 0.7 }).addTo(g)
+        const path = cleanTrail([...loc.trail, { lat: loc.lat, lon: loc.lon, tst: loc.tst, acc: loc.acc }])
+        L.polyline(path.map((t): L.LatLngTuple => [t.lat, t.lon]), { color: member.color, weight: 3, opacity: 0.7 }).addTo(g)
       }
       const icon = L.divIcon({
         className: '',
-        html: `<span class="map-pin${stale ? ' stale' : ''}" style="background:${member.color}">${initialsOf(member.displayName).slice(0, 1)}</span>`,
+        html: `<span class="map-pin${stale || rough ? ' stale' : ''}" style="background:${member.color}">${initialsOf(member.displayName).slice(0, 1)}</span>`,
         iconSize: [30, 30],
         iconAnchor: [15, 15],
       })
-      const text = [member.displayName, agoText(loc.tst, now), loc.batt !== undefined ? `battery ${loc.batt}%` : '', loc.off ? 'paused' : ''].filter(Boolean).join(' · ')
+      const text = [member.displayName, agoText(loc.tst, now), rough ? `rough position ±${metersText(loc.acc!)}` : '', loc.batt !== undefined ? `battery ${loc.batt}%` : '', loc.off ? 'paused' : ''].filter(Boolean).join(' · ')
       L.marker(at, { icon, title: member.displayName }).bindTooltip(text).addTo(g)
     }
     // Frame everyone the first time there's anyone to show.
@@ -158,7 +161,7 @@ function MapPage() {
                 <strong>{member.displayName}</strong>{' '}
                 <span className="muted small">
                   {where
-                    ? [placeNames(loc.inside).length ? `at ${placeNames(loc.inside).join(', ')}` : '', loc.events?.length ? eventText(loc.events[loc.events.length - 1]) : '', agoText(loc.tst, now), loc.batt !== undefined ? `${loc.batt}% battery` : '', loc.acc ? `±${loc.acc} m` : '', loc.off ? 'paused' : ''].filter(Boolean).join(' · ')
+                    ? [placeNames(loc.inside).length ? `at ${placeNames(loc.inside).join(', ')}` : '', loc.events?.length ? eventText(loc.events[loc.events.length - 1]) : '', agoText(loc.tst, now), loc.batt !== undefined ? `${loc.batt}% battery` : '', loc.acc ? (loc.acc > MAX_ACCURACY ? `rough position ±${metersText(loc.acc)}` : `±${loc.acc} m`) : '', loc.off ? 'paused' : ''].filter(Boolean).join(' · ')
                     : loc?.off
                       ? 'paused'
                       : 'not sharing'}

@@ -5,6 +5,38 @@ export interface TrailPoint {
   lat: number
   lon: number
   tst: number
+  /** Meters (newer trail points carry it). */
+  acc?: number
+}
+
+/**
+ * Bad fixes, the same limits as the Apps Script (locationVerdict_): a fix less accurate than this many meters, and a
+ * jump faster than this many meters per second after allowing for both fixes' accuracy.
+ */
+export const MAX_ACCURACY = 250
+export const MAX_SPEED = 70
+
+/** Meters per second between two fixes, after taking off both accuracy radii (so wobble isn't speed). */
+export function speedBetween(a: TrailPoint, b: TrailPoint): number {
+  const gap = distanceM(a.lat, a.lon, b.lat, b.lon) - (a.acc ?? 0) - (b.acc ?? 0)
+  return Math.max(0, gap) / Math.max(1, Math.abs(b.tst - a.tst) / 1000)
+}
+
+/**
+ * A trail fit to draw: points less accurate than MAX_ACCURACY dropped, and spikes removed (a point the path jumps
+ * out to and straight back from, impossibly fast both ways, while its neighbors are close). The Apps Script already
+ * filters new reports; this tidies trails saved before it did.
+ */
+export function cleanTrail(points: TrailPoint[]): TrailPoint[] {
+  const ok = points.filter((p) => !(p.acc !== undefined && p.acc > MAX_ACCURACY))
+  const out: TrailPoint[] = []
+  for (let i = 0; i < ok.length; i++) {
+    const prev = out[out.length - 1]
+    const next = ok[i + 1]
+    if (prev && next && speedBetween(prev, ok[i]) > MAX_SPEED && speedBetween(ok[i], next) > MAX_SPEED && speedBetween(prev, next) <= MAX_SPEED) continue
+    out.push(ok[i])
+  }
+  return out
 }
 
 /** locations/{uid}: the latest point (tst in ms), accuracy (m), battery (%), the day's trail, and paused (off). */

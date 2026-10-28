@@ -746,5 +746,8 @@ describe('places and alerts', () => {
     const loc = { lat: 28.65, lon: -81.35, tst: 1, trail: [], off: false, inside: ['school'], events: [{ place: 'school', name: 'School', kind: 'enter', tst: 1 }] }
     await assertSucceeds(setDoc(doc(db('bot'), 'locations/daughter'), loc))
     await assertFails(setDoc(doc(db('bot'), 'locations/daughter'), { ...loc, events: Array(21).fill(loc.events[0]) }))
+    // A suspicious jump held aside until the next report (the helper writes just that field).
+    await assertSucceeds(updateDoc(doc(db('bot'), 'locations/daughter'), { pending: { lat: 29.2, lon: -81.35, tst: 2 } }))
+    await assertFails(updateDoc(doc(db('bot'), 'locations/daughter'), { pending: 'not a point' }))
   })
 })

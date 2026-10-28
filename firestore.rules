@@ -400,7 +400,9 @@ service cloud.firestore {
     }
 
     function validLocation(d) {
-      return d.keys().hasOnly(['lat', 'lon', 'acc', 'batt', 'tst', 'trail', 'off', 'updatedAt', 'inside', 'events'])
+      return d.keys().hasOnly(['lat', 'lon', 'acc', 'batt', 'tst', 'trail', 'off', 'updatedAt', 'inside', 'events', 'pending'])
+        // A suspicious jump held until the next report confirms or replaces it (not shown on the map).
+        && (!('pending' in d) || d.pending is map)
         // Places they're in now (ids) and their latest arrivals / departures (set by the helper account).
         && (!('inside' in d) || (d.inside is list && d.inside.size() <= 50))
         && (!('events' in d) || (d.events is list && d.events.size() <= 20))

@@ -46,3 +46,15 @@ describe('places', () => {
     expect(ruleMatches(r, 'wife', 'school', 'enter')).toBe(false)
   })
 })
+
+describe('cleaning trails', () => {
+  it('drops inaccurate points and one-point spikes, keeping real movement', async () => {
+    const { cleanTrail } = await import('./location')
+    const t = (lat: number, secs: number, acc?: number) => ({ lat, lon: -81.35, tst: secs * 1000, acc })
+    const trail = [t(28.6, 0, 10), t(28.601, 60, 10), t(28.9, 120, 10), t(28.602, 180, 10), t(28.603, 240, 1500), t(28.604, 300, 10)]
+    expect(cleanTrail(trail).map((p) => p.lat)).toEqual([28.6, 28.601, 28.602, 28.604])
+    // A drive at highway speed stays.
+    const drive = [t(28.6, 0), t(28.62, 60), t(28.64, 120), t(28.66, 180)]
+    expect(cleanTrail(drive)).toHaveLength(4)
+  })
+})
