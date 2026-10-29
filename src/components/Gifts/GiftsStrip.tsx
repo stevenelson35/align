@@ -25,8 +25,8 @@ export function GiftsStrip() {
     <div className="day-section gifts-strip">
       <SectionHeader icon="gift" title="Gifts" count={toBuy ? `${toBuy} to buy` : giftLists.length} onTitleClick={() => setOpen(!open)} expanded={open} help="gifts">
         {app.isMember && (
-          <button type="button" className="link small" onClick={() => app.editList(null, 'gifts')} title="New gift list" aria-label="New gift list">
-            <Icon name="plus" /> Add
+          <button type="button" className="link small header-add" onClick={() => app.editList(null, 'gifts')} title="New gift list" aria-label="New gift list">
+            <Icon name="plus" />
           </button>
         )}
         <button type="button" className="link small" onClick={() => setOpen(!open)} aria-expanded={open}>
@@ -66,7 +66,7 @@ export function GiftsStrip() {
               </ul>
             </>
           )}
-          {!giftLists.length && <p className="muted small">No gift lists yet: + Add makes one (for someone in the family, yourself, or anyone).</p>}
+          {!giftLists.length && <p className="muted small">No gift lists yet: + makes one (for someone in the family, yourself, or anyone).</p>}
           <ul className="gift-lists small">
             {giftLists.map((l) => {
               const mine = isRecipient(l, app.uid)

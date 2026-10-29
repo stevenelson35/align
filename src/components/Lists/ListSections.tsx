@@ -30,7 +30,7 @@ const KIND: Record<List['kind'], { icon: IconName; label: string }> = {
  * kind, who sees it and how much is open; cards show the same as tiles. ☆ pins a list to the top (for you, on every
  * device).
  */
-function ListCollection({ id, title, icon, kinds, whose = false, help, addKind, addTitle }: { id: string; title: string; icon: IconName; kinds: List['kind'][]; whose?: boolean; help?: Parameters<typeof CollectionSection>[0]['help']; /** What + Add makes. */ addKind: List['kind']; addTitle: string }) {
+function ListCollection({ id, title, icon, kinds, whose = false, help, addKind, addTitle }: { id: string; title: string; icon: IconName; kinds: List['kind'][]; whose?: boolean; help?: Parameters<typeof CollectionSection>[0]['help']; /** What + makes. */ addKind: List['kind']; addTitle: string }) {
   const app = useApp()
   const { lists, tasks, listItems } = useData()
   const pins = usePinned()

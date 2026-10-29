@@ -233,6 +233,11 @@ export function setTodayItem(uid: string, current: string[] | undefined, id: str
   return updateDoc(householdRef, { [`members.${uid}.todayItems`]: next.length ? next.slice(-30) : deleteField() })
 }
 
+/** Your Shortcuts in a new order (Reorder in the Shortcuts panel). */
+export function setTodayItems(uid: string, ids: string[]) {
+  return updateDoc(householdRef, { [`members.${uid}.todayItems`]: ids.length ? ids.slice(-30) : deleteField() })
+}
+
 /** Who the "Parents" sharing shortcut picks. */
 export function setParents(uids: string[]) {
   return updateDoc(householdRef, { 'groups.parents': uids })

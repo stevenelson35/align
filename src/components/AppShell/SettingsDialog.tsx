@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { getIntegrations, setDefaultVisibility, setIntegration, setNewTaskDue, setParents, setPhone } from '../../firebase/db'
 import { changePassword, signOut } from '../../firebase/auth'
 import { auth } from '../../firebase/config'
@@ -8,6 +8,7 @@ import { useApp } from '../../hooks/useApp'
 import type { HouseholdMember } from '../../types'
 import { AUDIENCE_ICON, AUDIENCES } from '../../utils/audience'
 import { loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
+import { ACCENTS, customAccent, loadAccent, saveAccent, type Accent } from '../../utils/accent'
 import { ICON_STYLES, saveIconStyle, useIconStyle } from '../../utils/iconStyle'
 import { CHART_STYLES, saveChartStyle, useChartStyle } from '../../utils/chartStyle'
 import { DAILY_ITEMS, setDailyGrade, setDailyItemShown, useDailySettings } from '../../daily/settings'
@@ -69,6 +70,11 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   }
   const [visibility, setVisibility] = useState<DefaultAudience>(member.defaultVisibility ?? 'everyone')
   const [theme, setTheme] = useState<ThemeChoice>(loadTheme)
+  const [accent, setAccent] = useState<Accent>(loadAccent)
+  const pickAccent = (a: Accent) => {
+    saveAccent(a)
+    setAccent(a)
+  }
   const iconStyle = useIconStyle()
   const chartStyle = useChartStyle()
   const [error, setError] = useState<string | null>(null)
@@ -273,6 +279,28 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               <Icon name={t === 'system' ? 'auto' : t === 'light' ? 'sun' : 'moon'} /> {t === 'system' ? 'Match device' : t === 'light' ? 'Light' : 'Dark'}
             </label>
           ))}
+        </fieldset>
+        <fieldset className="setting">
+          <legend>Accent color (this device)</legend>
+          <p className="muted small">Buttons, your chat messages and what's selected. List colors (blue Just me, purple Family, teal Shared) stay the same.</p>
+          <div className="accent-swatches" role="radiogroup" aria-label="Accent color">
+            {ACCENTS.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                role="radio"
+                aria-checked={accent.id === a.id}
+                className={`accent-swatch${accent.id === a.id ? ' on' : ''}`}
+                style={{ '--swatch-light': a.light, '--swatch-dark': a.dark } as CSSProperties}
+                title={a.label}
+                aria-label={a.label}
+                onClick={() => pickAccent(a)}
+              />
+            ))}
+            <label className={`accent-swatch accent-custom${accent.id === 'custom' ? ' on' : ''}`} title="Pick your own color">
+              <input type="color" value={accent.light} onChange={(e) => pickAccent(customAccent(e.target.value))} aria-label="Custom accent color" />
+            </label>
+          </div>
         </fieldset>
         {error && <p className="error">{error}</p>}
       </div>

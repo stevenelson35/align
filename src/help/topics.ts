@@ -65,8 +65,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Gifts: what you’re getting for others (tick when bought) and each gift list.',
       '• To Do filters by All / Mine / Family / Shared, like the Tasks page and Goals (remembered on this device); picking one opens the list. Folded, it shows “Show 28”.',
       '• The footer at the bottom of Today has More… and Shortcuts…. More… holds the sections you use less (Gifts, Lists, Links, Projects and Flashcards to start); Arrange Today, inside it, moves any section between the main page and More… (for you, on every device).',
-      '• Shortcuts… holds the people and links you use most: open one and tap “Add to Shortcuts”. A person gets call / text / email; a link opens in one tap.',
-      '• Gifts, Lists, Links, Projects, Flashcards and Contacts each have + Add: a new list, project, set or gift list, or a new link or person (pick which list it goes in).',
+      '• Shortcuts… holds the people and links you use most: open one and tap “Add to Shortcuts”. A person gets call / text / email; a link opens in one tap. Reorder… moves them up or down (or ✕ removes one).',
+      '• Gifts, Lists, Links, Projects, Flashcards and Contacts each have + in the heading: a new list, project, set or gift list, or a new link or person (pick which list it goes in).',
       '• Contacts, Lists, Links, Projects and Flashcards all open the same way: what you pinned (☆) first, then a search box (with filters: contact lists and tags; Mine / Family / Shared for lists), then Show all to scroll through everything right here. Lists, Projects and Flashcards show as rows or cards. “All contacts” opens the contacts page (import, export, editing).',
       '• On This Day / Archive Pics: favorite family photos from this date in earlier years (see Archive Pics).',
       '• The Daily: a word, joke, puzzles, pictures and more, with answers to reveal. Folded each morning.',
@@ -77,10 +77,10 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'todo',
     title: 'To Do',
-    tip: 'Tasks for this day, ones overdue, and ones in progress. “+ Add” adds one; ⏭ “Push rest” moves what’s left to tomorrow. The swatch explains the card colors.',
+    tip: 'Tasks for this day, ones overdue, and ones in progress. “+” adds one; ⏭ “Push rest” moves what’s left to tomorrow. The swatch explains the card colors.',
     body: [
       'To Do lists the day’s tasks: scheduled or due that day, overdue ones, and ones marked Doing. On a past day it’s called Not Done.',
-      '• + Add: type a task for this day (it goes to your Inbox list); “Title: note” puts what follows the colon in the note. The box stays open for several adds; Esc closes it.',
+      '• +: type a task for this day (it goes to your Inbox list); “Title: note” puts what follows the colon in the note. The box stays open for several adds; Esc closes it.',
       '• On each card: ⏭ moves it to the next day, ✕ marks it won’t do, the message icon texts someone about it. Tap the card to see it; Edit to change it.',
       '• ⏭ Push rest: the end-of-day sweep of everything left to tomorrow.',
       '• The swatch next to the count shows what the card colors mean (who can see each task); showing it also opens the list.',

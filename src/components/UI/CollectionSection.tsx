@@ -48,7 +48,7 @@ export function CollectionSection<T>({
   allowCards?: boolean
   /** Shown when there's nothing at all. */
   empty?: ReactNode
-  /** "+ Add" in the header: a new list / project / set, or a new link / person (the same place in every section). */
+  /** "+" in the header: a new list / project / set, or a new link / person (the same place in every section). */
   onAdd?: () => void
   addTitle?: string
 }) {
@@ -65,8 +65,8 @@ export function CollectionSection<T>({
     <div className={`day-section collection-section collection-${id}`}>
       <SectionHeader icon={icon} title={title} count={count} onTitleClick={() => setOpen(!open)} expanded={open} help={help}>
         {onAdd && (
-          <button type="button" className="link small" onClick={onAdd} title={addTitle} aria-label={addTitle}>
-            <Icon name="plus" /> Add
+          <button type="button" className="link small header-add" onClick={onAdd} title={addTitle} aria-label={addTitle}>
+            <Icon name="plus" />
           </button>
         )}
         {actions}

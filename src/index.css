@@ -6,6 +6,9 @@
   --color-project: #1a7f37;
   --color-done: #8c959f;
 
+  /* The accent (buttons, your chat bubbles, selection): Settings → Accent color sets --brand-light / --brand-dark. */
+  --brand: var(--brand-light, #8250df);
+
   --bg: #f6f8fa;
   --surface: #ffffff;
   --text: #1f2328;
@@ -45,6 +48,8 @@
   --color-shared: #39c5cf;
   --color-project: #3fb950;
   --color-done: #6e7681;
+
+  --brand: var(--brand-dark, #a371f7);
 
   --bg: #0d1117;
   --surface: #161b22;
@@ -88,7 +93,7 @@ button {
   padding: 0.5rem 1rem;
   border: none;
   border-radius: var(--radius);
-  background: var(--color-family);
+  background: var(--brand);
   color: white;
   cursor: pointer;
 }
@@ -657,7 +662,7 @@ table.moves td {
 }
 
 .board-card:hover {
-  border-color: var(--color-family);
+  border-color: var(--brand);
 }
 
 .item-row {
@@ -742,7 +747,7 @@ table.moves td {
 
 .msg.me {
   align-self: flex-end;
-  background: var(--color-family);
+  background: var(--brand);
   color: white;
 }
 
@@ -910,7 +915,7 @@ table.moves td {
   border: 1px solid var(--border);
 }
 .check-item.selected {
-  box-shadow: 0 0 0 2px var(--color-family);
+  box-shadow: 0 0 0 2px var(--brand);
 }
 .check-item input[type='checkbox'] {
   width: 1.15rem;
@@ -948,7 +953,7 @@ table.moves td {
   align-content: start;
 }
 .note-card.selected {
-  box-shadow: 0 0 0 2px var(--color-family);
+  box-shadow: 0 0 0 2px var(--brand);
 }
 .note-preview {
   white-space: pre-wrap;
@@ -1037,8 +1042,8 @@ a.button-link:hover {
   font-family: inherit;
 }
 a.button-link.primary-link {
-  background: var(--color-family);
-  border-color: var(--color-family);
+  background: var(--brand);
+  border-color: var(--brand);
   color: white;
 }
 
@@ -1544,7 +1549,7 @@ a.row-action {
 }
 button:not(.secondary):not(.link):not(.row-action):not(.star):not(.nav-link):not(.nav-heading) .icon,
 .primary-link .icon {
-  --icon-cut: var(--color-family);
+  --icon-cut: var(--brand);
 }
 
 /* Settings → Icons: each style with a preview row */
@@ -3169,11 +3174,35 @@ a.collection-card-main {
 }
 
 /* Today's footer (More… and Shortcuts…), always at the bottom, with a panel that opens above it. */
+/* Today fills at least the screen, so on a short day the footer still sits at the bottom (margin-top: auto), and on
+   a long one it sticks to the bottom while you scroll. */
+.main-panel:has(> .day-view > .today-dock) {
+  display: flex;
+  flex-direction: column;
+}
+.day-view:has(> .today-dock) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+/* In a flex column, a section's first / last child margins no longer merge into the section's own; drop them so the
+   spacing matches every other page. */
+.day-view:has(> .today-dock) > * > :first-child {
+  margin-top: 0;
+}
+.day-view:has(> .today-dock) > * > :last-child {
+  margin-bottom: 0;
+}
 .today-dock {
   position: sticky;
   bottom: 0;
   z-index: 6;
-  margin: 1rem -0.25rem 0;
+  margin: auto -0.25rem 0;
+  padding-top: 0.5rem;
+  pointer-events: none;
+}
+.today-dock > * {
+  pointer-events: auto;
 }
 .today-footer {
   display: flex;
@@ -3186,6 +3215,8 @@ a.collection-card-main {
 }
 .today-footer button {
   flex: 1;
+  white-space: nowrap;
+  padding-inline: 0.5rem;
   background: none;
   color: var(--text);
   border: 1px solid transparent;
@@ -3250,7 +3281,61 @@ a.collection-card-main {
   display: grid;
   min-width: 0;
 }
-.section-header .section-actions {
+/* Narrow phones (a Z Fold's cover screen): the actions stay on one line, moving below the title only if they must. */
+.section-header {
   flex-wrap: wrap;
+  row-gap: 0.25rem;
+}
+.section-header .section-actions {
+  flex-shrink: 0;
+  gap: 0.15rem;
   justify-content: flex-end;
+}
+
+/* Settings → Accent color */
+.accent-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.accent-swatch {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+  background-color: var(--swatch-light);
+  cursor: pointer;
+}
+:root[data-theme='dark'] .accent-swatch {
+  background-color: var(--swatch-dark);
+}
+.accent-swatch.on {
+  box-shadow: 0 0 0 2px var(--text);
+}
+.accent-custom {
+  position: relative;
+  overflow: hidden;
+  background-image: conic-gradient(#cf222e, #bc4c00, #d4a72c, #1a7f37, #0f7b7d, #0969da, #8250df, #bf3989, #cf222e);
+}
+.accent-custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+span.shortcut-main {
+  cursor: default;
+}
+.header-add .icon {
+  font-size: 1.15em;
+}
+.section-header .section-actions .link {
+  padding: 0.25rem 0.4rem;
+}
+@media (max-width: 400px) {
+  .section-header {
+    column-gap: 0.35rem;
+  }
 }

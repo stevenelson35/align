@@ -19,6 +19,13 @@
         var t = localStorage.getItem('align-theme')
         var dark = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
         document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+        // The accent color (src/utils/accent.ts applies it the same way).
+        var a = JSON.parse(localStorage.getItem('align-accent') || 'null')
+        if (a && /^#[0-9a-f]{6}$/i.test(a.light) && /^#[0-9a-f]{6}$/i.test(a.dark)) {
+          document.documentElement.style.setProperty('--brand-light', a.light)
+          document.documentElement.style.setProperty('--brand-dark', a.dark)
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', a.light)
+        }
       } catch (e) {}
     </script>
     <style>

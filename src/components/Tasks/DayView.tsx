@@ -131,7 +131,7 @@ export function DayView({ day }: { day: string }) {
   const mainSections = day === now ? forThisDay.filter((id) => !more.has(id)) : forThisDay
   const moreSections = day === now ? forThisDay.filter((id) => more.has(id)) : []
 
-  // The add box opens from "+ Add" (and stays open for several adds).
+  // The add box opens from "+" (and stays open for several adds).
   const [adding, setAdding] = useState(false)
   // The color key starts shown; hiding (or showing) it is remembered on this device.
   const [showKey, setShowKey] = useStoredFlag('align-color-key-shown', true)
@@ -226,8 +226,8 @@ export function DayView({ day }: { day: string }) {
             All tasks
           </button>
           {app.isMember && (
-            <button type="button" className="link small" onClick={() => setAdding(!adding)} aria-expanded={adding} title="Add a to do" aria-label="Add a to do">
-              <Icon name="plus" /> Add
+            <button type="button" className="link small header-add" onClick={() => setAdding(!adding)} aria-expanded={adding} title="Add a to do" aria-label="Add a to do">
+              <Icon name="plus" />
             </button>
           )}
           {b.todo.length > 0 && day <= now && app.isMember && (
