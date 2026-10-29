@@ -1,4 +1,3 @@
-import { useApp } from '../../hooks/useApp'
 import type { HouseholdMember } from '../../types'
 import { ThemeToggle } from './ThemeToggle'
 import { Icon } from '../UI/Icon'
@@ -13,7 +12,6 @@ interface Props {
 
 // The household's name isn't shown (it can identify the family on a shared or borrowed screen).
 export function TopBar({ member, onMenu, onChat, onSettings, onSearch }: Props) {
-  const { isMember, openChat } = useApp()
   return (
     <header className="top-bar">
       <div className="brand">
@@ -23,12 +21,7 @@ export function TopBar({ member, onMenu, onChat, onSettings, onSearch }: Props) 
         <strong>Align</strong>
       </div>
       <div className="user">
-        {isMember && (
-          <button type="button" className="link search-button" onClick={() => openChat('add task ')} title="Quick add in chat (n)" aria-label="Quick add">
-            <Icon name="quickAdd" />
-          </button>
-        )}
-        <button type="button" className="link search-button" onClick={onChat} title="Chat" aria-label="Chat">
+        <button type="button" className="link search-button" onClick={onChat} title="Chat: ask, or add a task (n opens it ready to add)" aria-label="Chat">
           <Icon name="message" />
         </button>
         <button type="button" className="link search-button" onClick={onSearch} title="Search (/)" aria-label="Search">

@@ -54,7 +54,7 @@ export function CollectionSection<T>({
   const mode = allowCards && cards ? 'card' : 'row'
   const q = query.trim()
   const found = q ? items.filter((i) => matches(i, q)) : []
-  const list = (rows: T[]) => <div className={mode === 'card' ? 'collection-cards' : 'collection-rows'}>{rows.map((i) => <div key={itemKey(i)}>{render(i, mode)}</div>)}</div>
+  const list = (rows: T[]) => <div className={mode === 'card' ? 'collection-grid-cards' : 'collection-grid-rows'}>{rows.map((i) => <div key={itemKey(i)}>{render(i, mode)}</div>)}</div>
 
   return (
     <div className={`day-section collection-section collection-${id}`}>

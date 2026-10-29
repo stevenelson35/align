@@ -4,7 +4,6 @@ import type { List, Task } from '../../types'
 import { safeUrl } from '../../utils/links'
 import type { Route } from '../../utils/routes'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
-import { goalGroups } from '../../utils/goals'
 import { BLOG_URL } from '../../blog/post'
 import { isFinished, isItemList } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
@@ -44,7 +43,7 @@ function Section({ title, count, active, isOpen, onToggle, children }: { title: 
 }
 
 export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () => void }) {
-  const { uid, member, household, isMember, editList, route } = useApp()
+  const { uid, member, isMember, editList, route } = useApp()
   const [openSection, setOpenSection] = useState<string | null>(() => localStorage.getItem(OPEN_KEY))
   // Opened from the breadcrumb ("Menu › Links"): scroll that section to the top of the menu.
   useEffect(() => {
@@ -60,8 +59,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
     setOpenSection(next)
   }
   const activeListId = route.view === 'list' ? route.listId : null
-  const { lists, boards, tasks, listItems, goals } = useData()
-  const groups = goalGroups(goals, uid, member.role, household)
+  const { lists, boards, tasks, listItems } = useData()
   // Your pinned links (Pin to my menu), in the order you pinned them; ones you can no longer see drop out.
   const pinned = (member.pinnedLinks ?? []).map((id) => listItems.find((t) => t.id === id)).filter((t): t is Task => !!t && !!safeUrl(t.url))
   // Unfinished tasks or unchecked items; for notes, how many there are.
@@ -87,6 +85,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
     <nav className={`sidebar${open ? ' open' : ''}`}>
       <NavLink route={{ view: 'today' }} label="Today" />
       <NavLink route={{ view: 'home' }} label={<><Icon name="todo" /> Tasks</>} also={['mine', 'family', 'work']} />
+      <NavLink route={{ view: 'goals' }} label={<><Icon name="goal" /> Goals</>} also={['goal']} />
       {isMember && <NavLink route={{ view: 'blog' }} label={<><Icon name="compose" /> New blog post</>} />}
       <NavLink route={{ view: 'photos' }} label={<><Icon name="photo" /> Photos</>} />
       <a className="nav-link" href={BLOG_URL} target="_blank" rel="noopener noreferrer">
@@ -104,23 +103,6 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
         </a>
       ))}
 
-      <Section
-        title="Goals"
-        count={groups.reduce((n, g) => n + g.goals.length, 0)}
-        active={route.view === 'goals' || route.view === 'goal'}
-        isOpen={openSection === 'Goals'}
-        onToggle={() => toggle('Goals')}
-      >
-        <NavLink route={{ view: 'goals' }} label={<><Icon name="goal" /> All goals</>} />
-        {groups.map((g) => (
-          <div key={g.key} className="nav-group">
-            <p className="nav-group-title muted small">{g.title}</p>
-            {g.goals.map((goal) => (
-              <NavLink key={goal.id} route={{ view: 'goal', goalId: goal.id }} label={goal.name} />
-            ))}
-          </div>
-        ))}
-      </Section>
 
       {sections.map((s) => (
         <Section

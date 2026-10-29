@@ -1,46 +1,25 @@
 import { useState } from 'react'
 import { useApp, useData } from '../../hooks/useApp'
+import { whoseMatches, type Whose } from '../../utils/whose'
+import { WhoseChips } from '../UI/WhoseChips'
 import { CombinedView } from './CombinedView'
 
-type Whose = 'all' | 'mine' | 'family' | 'shared' | 'work'
+type Choice = Whose | 'work'
 
 /**
- * Tasks: every task you can see, across all lists, with the combined view's filters, plus whose: All, Mine (your
- * private lists), Family, Shared, and Work only when something is marked work. The old Everything / My tasks /
- * Family tasks / Work pages open here with that choice.
+ * Tasks: every task you can see, across all lists and dates, with the combined view's filters, plus whose (the same
+ * chips as Today's To Do, which shows just today's): All, Mine, Family, Shared, and Work only when something is
+ * marked work. The old Everything / My tasks / Family tasks / Work pages open here with that choice.
  */
-export function TasksView({ initial }: { initial: Whose }) {
+export function TasksView({ initial }: { initial: Choice }) {
   const { uid } = useApp()
   const { tasks, lists } = useData()
-  const [whose, setWhose] = useState<Whose>(initial)
+  const [whose, setWhose] = useState<Choice>(initial)
   const hasWork = tasks.some((t) => t.context === 'work') || lists.some((l) => l.defaultContext === 'work')
-  const choices: { value: Whose; label: string }[] = [
-    { value: 'all', label: 'All' },
-    { value: 'mine', label: 'Mine' },
-    { value: 'family', label: 'Family' },
-    { value: 'shared', label: 'Shared' },
-    ...(hasWork ? [{ value: 'work' as const, label: 'Work' }] : []),
-  ]
-  const shown = tasks.filter((t) =>
-    whose === 'mine'
-      ? t.visibility === 'private' && t.ownerId === uid
-      : whose === 'family'
-        ? t.visibility === 'family'
-        : whose === 'shared'
-          ? t.visibility === 'shared'
-          : whose === 'work'
-            ? t.context === 'work'
-            : true,
-  )
+  const shown = tasks.filter((t) => (whose === 'work' ? t.context === 'work' : whoseMatches(t, whose, uid)))
   return (
     <>
-      <div className="chip-filter small tasks-whose" role="group" aria-label="Whose tasks">
-        {choices.map((c) => (
-          <button key={c.value} type="button" className={`chip-toggle${whose === c.value ? ' on' : ''}`} onClick={() => setWhose(c.value)} aria-pressed={whose === c.value}>
-            {c.label}
-          </button>
-        ))}
-      </div>
+      <WhoseChips<Choice> value={whose} onChange={setWhose} extra={hasWork ? [{ value: 'work', label: 'Work' }] : []} label="Whose tasks" />
       <CombinedView key={whose} title="Tasks" tasks={shown} showContext={hasWork} />
     </>
   )

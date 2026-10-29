@@ -19,10 +19,13 @@ import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { useStoredSet } from '../../hooks/useStoredSet'
 import { splitTitleNote } from '../../utils/quickAdd'
 import { TheDaily } from '../Daily/TheDaily'
+import { WhoseChips } from '../UI/WhoseChips'
+import { useStoredChoice } from '../../hooks/useStoredChoice'
+import { WHOSE_VALUES, whoseMatches, type Whose } from '../../utils/whose'
 import { ContactsStrip } from '../Contacts/ContactsStrip'
 import { FamilyMapStrip } from '../Map/FamilyMapStrip'
 import { GiftsStrip } from '../Gifts/GiftsStrip'
-import { FlashcardsSection, ListsSection, ProjectsSection } from '../Lists/ListSections'
+import { FlashcardsSection, LinksSection, ListsSection, ProjectsSection } from '../Lists/ListSections'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -54,7 +57,9 @@ export function DayView({ day }: { day: string }) {
   const whose = (t: Task) => t.assigneeId ?? t.ownerId
   const filtering = app.member.role === 'member'
   const shown = (t: Task) => !filtering || app.canEdit(t) || also.has('everyone') || also.has(whose(t))
-  const b = dayBuckets(tasks.filter(shown), day, now)
+  // The same All / Mine / Family / Shared as the Tasks page (remembered on this device).
+  const [todoWhose, setTodoWhose] = useStoredChoice<Whose>('align-todo-whose', WHOSE_VALUES, 'all')
+  const b = dayBuckets(tasks.filter(shown).filter((t) => whoseMatches(t, todoWhose, app.uid)), day, now)
   const viewOnlyToday = filtering ? Object.values(dayBuckets(tasks.filter((t) => !app.canEdit(t)), day, now)).flat() : []
   // Everyone else in the household is listed, even with nothing extra today (0), so ticking them is never a mystery.
   const viewOnlyPeople = filtering ? people(app.household, true).map(([id]) => id).filter((id) => id !== app.uid) : []
@@ -154,6 +159,7 @@ export function DayView({ day }: { day: string }) {
       {day === now && <ContactsStrip />}
       {day === now && <GiftsStrip />}
       {day === now && <ListsSection />}
+      {day === now && <LinksSection />}
       {day === now && <ProjectsSection />}
       {day === now && <FlashcardsSection />}
       <OnThisDay day={day} />
@@ -184,6 +190,9 @@ export function DayView({ day }: { day: string }) {
             </button>
           }
         >
+          <button type="button" className="link small" onClick={() => app.navigate({ view: 'home' })} title="Every task, any date (the Tasks page)">
+            All tasks
+          </button>
           {app.isMember && (
             <button type="button" className="link small" onClick={() => setAdding(!adding)} aria-expanded={adding} title="Add a to do" aria-label="Add a to do">
               <Icon name="plus" /> Add
@@ -195,6 +204,7 @@ export function DayView({ day }: { day: string }) {
             </button>
           )}
         </SectionHeader>
+        <WhoseChips value={todoWhose} onChange={setTodoWhose} label="Whose to-dos" />
         {showKey && <ColorKey />}
         {viewOnlyPeople.length > 0 && (
           <div className="also-show small" role="group" aria-label="Also show tasks you can only view">

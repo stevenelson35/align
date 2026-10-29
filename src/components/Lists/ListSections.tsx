@@ -1,10 +1,13 @@
 import { useApp, useData } from '../../hooks/useApp'
 import { usePinned } from '../../hooks/usePinned'
 import { useStoredChoice } from '../../hooks/useStoredChoice'
-import type { List } from '../../types'
+import type { List, Task } from '../../types'
+import { defaultName, safeUrl } from '../../utils/links'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 import { isFinished, isItemList } from '../../utils/tasks'
 import { CollectionSection, PinButton } from '../UI/CollectionSection'
+import { WhoseChips } from '../UI/WhoseChips'
+import { WHOSE_VALUES, whoseMatches, type Whose } from '../../utils/whose'
 import { Icon, type IconName } from '../UI/Icon'
 
 const KIND: Record<List['kind'], { icon: IconName; label: string }> = {
@@ -19,16 +22,6 @@ const KIND: Record<List['kind'], { icon: IconName; label: string }> = {
   gifts: { icon: 'gift', label: 'Gift list' },
 }
 
-type Whose = 'all' | 'mine' | 'family' | 'shared'
-const WHOSE: { value: Whose; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'mine', label: 'Mine' },
-  { value: 'family', label: 'Family' },
-  { value: 'shared', label: 'Shared' },
-]
-
-/** Who a list is for, in the three menu groups it used to be split into. */
-const whoseOf = (l: List, uid: string): Whose => (l.visibility === 'private' && l.ownerId === uid ? 'mine' : l.visibility === 'family' ? 'family' : 'shared')
 
 /**
  * A Today section of lists in the shared shape (pinned, search, all): Lists, Projects or Flashcards. Rows show the
@@ -39,11 +32,11 @@ function ListCollection({ id, title, icon, kinds, whose = false, help }: { id: s
   const app = useApp()
   const { lists, tasks, listItems } = useData()
   const pins = usePinned()
-  const [filter, setFilter] = useStoredChoice<Whose>(`align-today-${id}-whose`, ['all', 'mine', 'family', 'shared'], 'all')
+  const [filter, setFilter] = useStoredChoice<Whose>(`align-today-${id}-whose`, WHOSE_VALUES, 'all')
   const visible = lists
     .filter((l) => kinds.includes(l.kind) && !l.giftSecret && (l.visibility !== 'private' || l.ownerId === app.uid))
     .sort((a, b) => a.name.localeCompare(b.name))
-  const items = whose && filter !== 'all' ? visible.filter((l) => whoseOf(l, app.uid) === filter) : visible
+  const items = whose ? visible.filter((l) => whoseMatches(l, filter, app.uid)) : visible
   const pinned = visible.filter((l) => pins.isPinned(l.id)).sort((a, b) => pins.order(a.id) - pins.order(b.id))
   const open = (l: List) =>
     (isItemList(l) ? listItems : tasks).filter((t) => t.listId === l.id && (l.kind === 'notes' || l.kind === 'links' || l.kind === 'cards' || l.kind === 'contacts' || !isFinished(t))).length
@@ -102,17 +95,7 @@ function ListCollection({ id, title, icon, kinds, whose = false, help }: { id: s
       render={render}
       searchHint={`Find a ${title === 'Lists' ? 'list' : title === 'Projects' ? 'project' : 'set'}…`}
       allowCards
-      filters={
-        whose && (
-          <div className="chip-filter small" role="group" aria-label="Whose lists">
-            {WHOSE.map((w) => (
-              <button key={w.value} type="button" className={`chip-toggle${filter === w.value ? ' on' : ''}`} onClick={() => setFilter(w.value)} aria-pressed={filter === w.value}>
-                {w.label}
-              </button>
-            ))}
-          </div>
-        )
-      }
+      filters={whose && <WhoseChips value={filter} onChange={setFilter} label="Whose lists" />}
     />
   )
 }
@@ -121,3 +104,74 @@ function ListCollection({ id, title, icon, kinds, whose = false, help }: { id: s
 export const ListsSection = () => <ListCollection id="lists" title="Lists" icon="list" kinds={['list', 'checklist', 'notes', 'links', 'picks']} whose help="tasks" />
 export const ProjectsSection = () => <ListCollection id="projects" title="Projects" icon="chain" kinds={['project']} help="projects" />
 export const FlashcardsSection = () => <ListCollection id="cards" title="Flashcards" icon="book" kinds={['cards']} help="cards" />
+
+/**
+ * Links (bookmarks) on Today, in the shared shape: your pinned links, search (name, address, category), then every
+ * link, by category. A link opens in a new tab; ⓘ shows its details; ☆ pins it.
+ */
+export function LinksSection() {
+  const app = useApp()
+  const { lists, listItems } = useData()
+  const pins = usePinned()
+  const linkLists = new Map(lists.filter((l) => l.kind === 'links' && (l.visibility !== 'private' || l.ownerId === app.uid)).map((l) => [l.id, l]))
+  const links = listItems
+    .filter((t) => linkLists.has(t.listId) && safeUrl(t.url))
+    .sort((a, b) => (a.category ?? '').localeCompare(b.category ?? '') || a.title.localeCompare(b.title))
+  if (!links.length) return null
+  const pinned = links.filter((t) => pins.isPinned(t.id)).sort((a, b) => pins.order(a.id) - pins.order(b.id))
+  const sub = (t: Task) => [t.category, linkLists.get(t.listId)?.name].filter(Boolean).join(' · ')
+
+  const render = (t: Task, mode: 'row' | 'card') => {
+    const href = safeUrl(t.url)!
+    const pin = <PinButton pinned={pins.isPinned(t.id)} onToggle={() => void pins.toggle(t.id)} label={t.title} />
+    const info = (
+      <button type="button" className="link small" onClick={() => app.selectTask(t.id)} title="Details" aria-label={`Details for ${t.title}`}>
+        ⓘ
+      </button>
+    )
+    if (mode === 'card')
+      return (
+        <div className="collection-card">
+          <a className="collection-card-main" href={href} target="_blank" rel="noopener noreferrer">
+            <Icon name="link" />
+            <strong>{t.title}</strong>
+            <span className="muted small">{sub(t) || defaultName(href)}</span>
+          </a>
+          {info}
+          {pin}
+        </div>
+      )
+    return (
+      <div className="collection-row">
+        <a className="collection-row-main" href={href} target="_blank" rel="noopener noreferrer" title={href}>
+          <Icon name="link" />
+          <span className="grow">{t.title}</span>
+          <span className="muted small">{sub(t)}</span>
+          <Icon name="external" />
+        </a>
+        {info}
+        {pin}
+      </div>
+    )
+  }
+
+  return (
+    <CollectionSection<Task>
+      id="links"
+      title="Links"
+      icon="link"
+      help="links"
+      count={links.length}
+      items={links}
+      pinned={pinned}
+      itemKey={(t) => t.id}
+      matches={(t, q) => {
+        const hay = [t.title, t.url, t.category, linkLists.get(t.listId)?.name].filter(Boolean).join(' ').toLowerCase()
+        return q.toLowerCase().split(/\s+/).every((w) => hay.includes(w))
+      }}
+      render={render}
+      searchHint="Find a link (name, address, category)…"
+      allowCards
+    />
+  )
+}

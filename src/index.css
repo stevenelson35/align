@@ -3085,7 +3085,7 @@ a.nav-link {
 .collection-all {
   margin: 0.2rem 0;
 }
-.collection-rows {
+.collection-grid-rows {
   display: grid;
   gap: 0.3rem;
 }
@@ -3124,7 +3124,7 @@ a.nav-link {
   cursor: pointer;
   min-width: 0;
 }
-.collection-cards {
+.collection-grid-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
   gap: 0.5rem;
@@ -3162,4 +3162,8 @@ button.chip-toggle.on {
   align-items: center;
   gap: 0.5rem;
   margin: 0.25rem 0 0.5rem;
+}
+a.collection-row-main,
+a.collection-card-main {
+  text-decoration: none;
 }

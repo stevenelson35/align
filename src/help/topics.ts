@@ -63,7 +63,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Goals: a summary of the goals you log: where each stands (“4 to go”, Done) and a small trend chart. The pencil beside a goal opens logging for just that one; Log all shows every goal ready to log (remembered on this device). Goals that don’t run that day (a weekdays-only walk on Saturday) show greyed as “Not today”. Folded each morning.',
       '• Family Map: where everyone sharing their location was last seen; tap a name to open the map on them.',
       '• Gifts: what you’re getting for others (tick when bought) and each gift list.',
-      '• Contacts, Lists, Projects and Flashcards all open the same way: what you pinned (☆) first, then a search box (with filters: contact lists and tags; Mine / Family / Shared for lists), then Show all to scroll through everything right here. Lists, Projects and Flashcards show as rows or cards. “All contacts” opens the contacts page (import, export, editing).',
+      '• To Do filters by All / Mine / Family / Shared, like the Tasks page and Goals (each remembered on this device).',
+      '• Contacts, Lists, Links, Projects and Flashcards all open the same way: what you pinned (☆) first, then a search box (with filters: contact lists and tags; Mine / Family / Shared for lists), then Show all to scroll through everything right here. Lists, Projects and Flashcards show as rows or cards. “All contacts” opens the contacts page (import, export, editing).',
       '• On This Day / Archive Pics: favorite family photos from this date in earlier years (see Archive Pics).',
       '• The Daily: a word, joke, puzzles, pictures and more, with answers to reveal. Folded each morning.',
       '• To Do: the day’s tasks (see To Do), then Done, Won’t Do and Pushed to a Later Day.',
@@ -117,7 +118,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: 'Tasks',
     tip: 'Tasks from every list in one place. All / Mine / Family / Shared, then filter by list, who it’s for, who’s doing it, priority and status; sort by date, priority or dependency order.',
     body: [
-      'Menu → Tasks gathers tasks from all the lists you can see (checklist items, notes and links stay in their own lists):',
+      'Menu → Tasks gathers tasks from all the lists you can see, any date (Today’s To Do is just today’s, with the same chips; “All tasks” there opens this page):',
       '• All, Mine (your private lists), Family (Family and Everyone lists) or Shared (lists shared with chosen people). Work appears only if something is marked work.',
       '• Filters: one list, family or work, who it’s for, who’s doing it, priority, and To do / Doing / Done / Canceled (Not done hides finished ones).',
       '• Sort by date, by priority, or in dependency order (what has to happen first). The color key shows who can see each task.',

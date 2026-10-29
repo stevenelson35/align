@@ -7,6 +7,9 @@ import { Icon } from '../UI/Icon'
 import { GoalControl } from './GoalControl'
 import { GoalEditor } from './GoalEditor'
 import { HelpTip } from '../UI/HelpTip'
+import { WhoseChips } from '../UI/WhoseChips'
+import { useStoredChoice } from '../../hooks/useStoredChoice'
+import { WHOSE_VALUES, whoseMatches, type Whose } from '../../utils/whose'
 
 /** Every goal: log today's from here, open one for its chart, or add a new one. */
 export function GoalsView() {
@@ -15,9 +18,11 @@ export function GoalsView() {
   const [creating, setCreating] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const day = today()
-  const active = goals.filter((g) => !g.archived)
-  const archived = goals.filter((g) => g.archived)
-  const groups = goalGroups(goals, uid, member.role, household)
+  const [whose, setWhose] = useStoredChoice<Whose>('align-goals-whose', WHOSE_VALUES, 'all')
+  const filtered = goals.filter((g) => whoseMatches(g, whose, uid))
+  const active = filtered.filter((g) => !g.archived)
+  const archived = filtered.filter((g) => g.archived)
+  const groups = goalGroups(filtered, uid, member.role, household)
   return (
     <section>
       <header className="view-header">
@@ -33,6 +38,7 @@ export function GoalsView() {
           </button>
         )}
       </header>
+      <WhoseChips value={whose} onChange={setWhose} label="Whose goals" />
       <p className="muted small">Goals you log show on each day they apply. Tap a name for its chart, history and notes.</p>
       {groups.map((group) => (
         <div key={group.key} className="goal-group">
@@ -58,7 +64,8 @@ export function GoalsView() {
           </div>
         </div>
       ))}
-      {active.length === 0 && <p className="muted">No goals yet. Try "Walk the dogs" (check) or "Water" (tally, 8 a day).</p>}
+      {active.length === 0 && whose !== 'all' && <p className="muted">No goals here; choose All to see every goal.</p>}
+      {active.length === 0 && whose === 'all' && <p className="muted">No goals yet. Try "Walk the dogs" (check) or "Water" (tally, 8 a day).</p>}
       {archived.length > 0 && (
         <>
           <button type="button" className="link small" onClick={() => setShowArchived(!showArchived)}>
