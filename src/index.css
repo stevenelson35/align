@@ -3167,3 +3167,57 @@ a.collection-row-main,
 a.collection-card-main {
   text-decoration: none;
 }
+
+/* Today: contacts and links shown at the top; More… and Arrange Today at the bottom. */
+.today-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.4rem 0 0.6rem;
+}
+.shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.15rem 0.3rem 0.15rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+.shortcut-name {
+  padding: 0;
+  color: var(--text);
+  font-weight: 500;
+}
+.shortcut-link {
+  padding: 0.35rem 0.7rem;
+  color: var(--text);
+  text-decoration: none;
+  gap: 0.35rem;
+}
+.today-more > .section-header .section-title {
+  font-style: italic;
+}
+.today-more-body {
+  padding-left: 0.5rem;
+  border-left: 3px solid var(--border);
+}
+.arrange-today {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.5rem 0;
+}
+.arrange-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.collection-row-text {
+  display: grid;
+  min-width: 0;
+}
+.section-header .section-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

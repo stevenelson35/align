@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { Fragment, useState, type FormEvent } from 'react'
 import { addDays, formatDay, today } from '../../engine/dates'
 import { shiftForward } from '../../engine/scheduling'
 import { addTaskNow, inboxFor, updateTask, withStatus } from '../../firebase/db'
@@ -26,6 +26,9 @@ import { ContactsStrip } from '../Contacts/ContactsStrip'
 import { FamilyMapStrip } from '../Map/FamilyMapStrip'
 import { GiftsStrip } from '../Gifts/GiftsStrip'
 import { FlashcardsSection, LinksSection, ListsSection, ProjectsSection } from '../Lists/ListSections'
+import { moreOf, TODAY_SECTIONS, type TodaySection } from '../../utils/today'
+import { TodayShortcuts } from './TodayShortcuts'
+import { ArrangeToday } from './ArrangeToday'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -97,6 +100,38 @@ export function DayView({ day }: { day: string }) {
     )
   }
 
+  // Today's sections: on the main page, or folded into More… (your arrangement; Arrange Today at the bottom). Other
+  // days show only what belongs to a day (goals, archive pictures, The Daily).
+  const more = moreOf(app.member)
+  const [moreOpen, setMoreOpen] = useStoredFlag('align-today-more-open', false)
+  const sectionFor = (id: TodaySection) => {
+    switch (id) {
+      case 'goals':
+        return <GoalsStrip day={day} />
+      case 'map':
+        return <FamilyMapStrip />
+      case 'contacts':
+        return <ContactsStrip />
+      case 'gifts':
+        return <GiftsStrip />
+      case 'lists':
+        return <ListsSection />
+      case 'links':
+        return <LinksSection />
+      case 'projects':
+        return <ProjectsSection />
+      case 'cards':
+        return <FlashcardsSection />
+      case 'photos':
+        return <OnThisDay day={day} />
+      case 'daily':
+        return <TheDaily day={day} />
+    }
+  }
+  const forThisDay = TODAY_SECTIONS.map((s) => s.id).filter((id) => day === now || id === 'goals' || id === 'photos' || id === 'daily')
+  const mainSections = day === now ? forThisDay.filter((id) => !more.has(id)) : forThisDay
+  const moreSections = day === now ? forThisDay.filter((id) => more.has(id)) : []
+
   // The add box opens from "+ Add" (and stays open for several adds).
   const [adding, setAdding] = useState(false)
   // The color key starts shown; hiding (or showing) it is remembered on this device.
@@ -154,16 +189,10 @@ export function DayView({ day }: { day: string }) {
         {day === now && <CalendarActions />}
       </header>
 
-      <GoalsStrip day={day} />
-      {day === now && <FamilyMapStrip />}
-      {day === now && <ContactsStrip />}
-      {day === now && <GiftsStrip />}
-      {day === now && <ListsSection />}
-      {day === now && <LinksSection />}
-      {day === now && <ProjectsSection />}
-      {day === now && <FlashcardsSection />}
-      <OnThisDay day={day} />
-      <TheDaily day={day} />
+      {day === now && <TodayShortcuts />}
+      {mainSections.map((id) => (
+        <Fragment key={id}>{sectionFor(id)}</Fragment>
+      ))}
 
       <div className="day-section">
         <SectionHeader
@@ -190,6 +219,11 @@ export function DayView({ day }: { day: string }) {
             </button>
           }
         >
+          {hide.todo && b.todo.length > 0 && (
+            <button type="button" className="link small" onClick={() => setHide({ ...hide, todo: false })} aria-expanded={false}>
+              Show {b.todo.length}
+            </button>
+          )}
           <button type="button" className="link small" onClick={() => app.navigate({ view: 'home' })} title="Every task, any date (the Tasks page)">
             All tasks
           </button>
@@ -204,7 +238,15 @@ export function DayView({ day }: { day: string }) {
             </button>
           )}
         </SectionHeader>
-        <WhoseChips value={todoWhose} onChange={setTodoWhose} label="Whose to-dos" />
+        {/* Picking whose also opens the list: you want to see what the filter shows. */}
+        <WhoseChips
+          value={todoWhose}
+          onChange={(w) => {
+            setTodoWhose(w)
+            if (hide.todo) setHide({ ...hide, todo: false })
+          }}
+          label="Whose to-dos"
+        />
         {showKey && <ColorKey />}
         {viewOnlyPeople.length > 0 && (
           <div className="also-show small" role="group" aria-label="Also show tasks you can only view">
@@ -260,6 +302,23 @@ export function DayView({ day }: { day: string }) {
           {!hide.pushed && <div className="task-list">{byDate(b.pushed).map((t) => card(t, { note: movedTo(t), dayActions: undefined }))}</div>}
         </div>
       )}
+      {moreSections.length > 0 && (
+        <div className="day-section today-more">
+          <SectionHeader icon="list" title="More…" count={moreSections.length} onTitleClick={() => setMoreOpen(!moreOpen)} expanded={moreOpen}>
+            <button type="button" className="link small" onClick={() => setMoreOpen(!moreOpen)} aria-expanded={moreOpen}>
+              {moreOpen ? 'Hide' : moreSections.map((id) => TODAY_SECTIONS.find((s) => s.id === id)?.label).join(', ')}
+            </button>
+          </SectionHeader>
+          {moreOpen && (
+            <div className="today-more-body">
+              {moreSections.map((id) => (
+                <Fragment key={id}>{sectionFor(id)}</Fragment>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {day === now && app.isMember && <ArrangeToday />}
     </section>
   )
 }

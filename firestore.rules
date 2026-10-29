@@ -64,7 +64,10 @@ service cloud.firestore {
       let uid = request.auth.uid;
       return after.diff(before).affectedKeys().hasOnly([uid])
         && after[uid].role == before[uid].role
-        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'newTaskDue', 'pinned'])
+        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'newTaskDue', 'pinned', 'todayMore', 'todayItems'])
+        // How they arranged Today: sections moved into More…, and contacts / links shown at its top (ids).
+        && (!('todayMore' in after[uid]) || (after[uid].todayMore is list && after[uid].todayMore.size() <= 30))
+        && (!('todayItems' in after[uid]) || (after[uid].todayItems is list && after[uid].todayItems.size() <= 30))
         // Lists and contacts they pinned to the top of their Today sections (ids).
         && (!('pinned' in after[uid]) || (after[uid].pinned is list && after[uid].pinned.size() <= 200))
         // Whether tasks added without a date are due the day they're added (Settings).

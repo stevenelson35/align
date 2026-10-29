@@ -18,6 +18,7 @@ import { StarRating } from '../Picks/StarRating'
 import { AutoTextarea } from '../UI/AutoTextarea'
 import { ContactDetails } from '../Contacts/ContactDetails'
 import { GiftClaimPanel } from '../Gifts/GiftDetails'
+import { useTodayItems } from '../../hooks/useTodayItems'
 import { cleanGift, giftSummary, isRecipient, ownGiftIdea, recipientLabel } from '../../utils/gifts'
 
 /**
@@ -28,6 +29,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
   const app = useApp()
   const { lists } = useData()
   const [editing, setEditing] = useState(false)
+  const onToday = useTodayItems()
   if (list.kind === 'contacts') return <ContactDetails item={item} list={list} />
   if (editing) return <ItemEditForm item={item} list={list} onDone={() => setEditing(false)} />
   const isNote = list.kind === 'notes'
@@ -52,6 +54,13 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
                 Open {defaultName(href)}
               </a>
               {item.category && <span className="muted"> · {item.category}</span>}
+            </EntryFact>
+          )}
+          {isLink && href && app.isMember && (
+            <EntryFact icon="star">
+              <button type="button" className="link small inline-link" onClick={() => void onToday.toggle(item.id)}>
+                {onToday.isOn(item.id) ? '✓ On Today (take off)' : '+ Show on Today'}
+              </button>
             </EntryFact>
           )}
           {isLink && href && app.isMember && (

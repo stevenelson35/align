@@ -11,6 +11,7 @@ import { EntryExtras, EntryFact, EntryPanel } from '../UI/EntryExtras'
 import { Icon } from '../UI/Icon'
 import { TagPicker } from './ContactTags'
 import { usePinned } from '../../hooks/usePinned'
+import { useTodayItems } from '../../hooks/useTodayItems'
 
 type Contact = NonNullable<Task['contact']>
 
@@ -28,6 +29,7 @@ export function ContactDetails({ item, list }: { item: Task; list: List }) {
   const app = useApp()
   const [editing, setEditing] = useState(false)
   const pins = usePinned()
+  const onToday = useTodayItems()
   if (editing) return <ContactForm item={item} onDone={() => setEditing(false)} />
   const c = item.contact ?? {}
   const label = (l: ContactLabel) => l[0].toUpperCase() + l.slice(1)
@@ -75,8 +77,12 @@ export function ContactDetails({ item, list }: { item: Task; list: List }) {
           ) : null}
           <EntryFact icon="list">{list.name}</EntryFact>
           <EntryFact icon="star">
+            <button type="button" className="link small inline-link" onClick={() => void onToday.toggle(item.id)}>
+              {onToday.isOn(item.id) ? '✓ On Today (take off)' : '+ Show on Today'}
+            </button>{' '}
+            ·{' '}
             <button type="button" className="link small inline-link" onClick={() => void pins.toggle(item.id)}>
-              {pins.isPinned(item.id) ? '★ Pinned to Today (unpin)' : '☆ Pin to Today'}
+              {pins.isPinned(item.id) ? '★ Pinned in Contacts (unpin)' : '☆ Pin in Contacts'}
             </button>
           </EntryFact>
         </>

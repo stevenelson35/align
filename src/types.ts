@@ -22,6 +22,10 @@ export interface HouseholdMember {
   pinnedLinks?: string[]
   /** Lists and contacts this person pinned to the top of their Today sections (list ids and item ids). */
   pinned?: string[]
+  /** Today sections this person moved into More… (section ids; absent = the defaults: gifts, lists, links…). */
+  todayMore?: string[]
+  /** Contacts and links this person put on the top of Today (item ids), with their call / text / email or open. */
+  todayItems?: string[]
   /** The calendar-sync account: a member for the rules, hidden from people pickers. Set in the console. */
   bot?: boolean
 }

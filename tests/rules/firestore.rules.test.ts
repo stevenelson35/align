@@ -207,6 +207,12 @@ describe('household', () => {
     await assertFails(updateDoc(doc(db('daughter'), 'household/main'), { 'members.steve.defaultVisibility': 'family' }))
   })
 
+  it('lets a member arrange their own Today (More… and contacts / links on it), and no one else’s', async () => {
+    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayMore': ['gifts', 'links'], 'members.wife.todayItems': ['contact1'] }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.steve.todayMore': [] }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayItems': 'contact1' }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayMore': Array.from({ length: 31 }, (_, i) => `s${i}`) }))
+  })
   it('lets a member pin lists and contacts to their own Today sections, and no one else’s', async () => {
     await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.pinned': ['familyVisible', 'contact1'] }))
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.steve.pinned': ['familyVisible'] }))

@@ -126,7 +126,7 @@ export function LinksSection() {
     const pin = <PinButton pinned={pins.isPinned(t.id)} onToggle={() => void pins.toggle(t.id)} label={t.title} />
     const info = (
       <button type="button" className="link small" onClick={() => app.selectTask(t.id)} title="Details" aria-label={`Details for ${t.title}`}>
-        ⓘ
+        <Icon name="help" />
       </button>
     )
     if (mode === 'card')
@@ -145,8 +145,10 @@ export function LinksSection() {
       <div className="collection-row">
         <a className="collection-row-main" href={href} target="_blank" rel="noopener noreferrer" title={href}>
           <Icon name="link" />
-          <span className="grow">{t.title}</span>
-          <span className="muted small">{sub(t)}</span>
+          <span className="grow collection-row-text">
+            {t.title}
+            {sub(t) && <span className="muted small">{sub(t)}</span>}
+          </span>
           <Icon name="external" />
         </a>
         {info}

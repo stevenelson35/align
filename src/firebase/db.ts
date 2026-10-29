@@ -224,6 +224,15 @@ export function setPinned(uid: string, current: string[] | undefined, id: string
   return updateDoc(householdRef, { [`members.${uid}.pinned`]: next.length ? next.slice(-200) : deleteField() })
 }
 
+/** Which Today sections sit in More… (your arrangement, for every device). */
+export const setTodayMore = (uid: string, ids: string[]) => updateDoc(householdRef, { [`members.${uid}.todayMore`]: ids })
+
+/** Put a contact or link on the top of Today, or take it off. */
+export function setTodayItem(uid: string, current: string[] | undefined, id: string, on: boolean) {
+  const next = on ? [...new Set([...(current ?? []), id])] : (current ?? []).filter((x) => x !== id)
+  return updateDoc(householdRef, { [`members.${uid}.todayItems`]: next.length ? next.slice(-30) : deleteField() })
+}
+
 /** Who the "Parents" sharing shortcut picks. */
 export function setParents(uids: string[]) {
   return updateDoc(householdRef, { 'groups.parents': uids })
