@@ -3168,39 +3168,72 @@ a.collection-card-main {
   text-decoration: none;
 }
 
-/* Today: contacts and links shown at the top; More… and Arrange Today at the bottom. */
-.today-shortcuts {
+/* Today's footer (More… and Shortcuts…), always at the bottom, with a panel that opens above it. */
+.today-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  margin: 1rem -0.25rem 0;
+}
+.today-footer {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin: 0.4rem 0 0.6rem;
-}
-.shortcut {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.15rem;
-  padding: 0.15rem 0.3rem 0.15rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
+  gap: 0.5rem;
+  padding: 0.4rem;
   background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 -2px 10px rgb(0 0 0 / 0.08);
 }
-.shortcut-name {
+.today-footer button {
+  flex: 1;
+  background: none;
+  color: var(--text);
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+.today-footer button.on {
+  border-color: var(--border);
+  background: var(--bg);
+}
+.today-sheet {
+  max-height: 65vh;
+  overflow-y: auto;
+  margin-bottom: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 0.12);
+}
+.shortcut-list {
+  list-style: none;
+  margin: 0.3rem 0;
   padding: 0;
-  color: var(--text);
-  font-weight: 500;
-}
-.shortcut-link {
-  padding: 0.35rem 0.7rem;
-  color: var(--text);
-  text-decoration: none;
+  display: grid;
   gap: 0.35rem;
 }
-.today-more > .section-header .section-title {
-  font-style: italic;
+.shortcut {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
 }
-.today-more-body {
-  padding-left: 0.5rem;
-  border-left: 3px solid var(--border);
+.shortcut-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
 }
 .arrange-today {
   display: grid;

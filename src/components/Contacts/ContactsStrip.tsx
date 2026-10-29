@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useApp, useData } from '../../hooks/useApp'
+import { AddItemDialog } from '../Lists/AddItemDialog'
 import { usePinned } from '../../hooks/usePinned'
 import { useStoredSet } from '../../hooks/useStoredSet'
 import type { Task } from '../../types'
@@ -14,7 +16,8 @@ import { ContactFilters, ExportContacts } from './ContactTags'
  * (import, export, editing).
  */
 export function ContactsStrip() {
-  const { navigate, uid } = useApp()
+  const { navigate, uid, isMember } = useApp()
+  const [adding, setAdding] = useState(false)
   const { lists, listItems } = useData()
   const pins = usePinned()
   const [chosenLists, toggleList, allLists] = useStoredSet('align-contacts-lists')
@@ -35,6 +38,7 @@ export function ContactsStrip() {
   const filtering = tagFilter.size > 0 || chosenLists.size > 0
 
   return (
+    <>
     <CollectionSection<Task>
       id="contacts"
       title="Contacts"
@@ -77,6 +81,10 @@ export function ContactsStrip() {
         </>
       }
       empty={<p className="muted small">No contacts{filtering ? ' in this filter' : ' yet'}.</p>}
+      onAdd={isMember ? () => setAdding(true) : undefined}
+      addTitle="Add a person"
     />
+    {adding && <AddItemDialog kind="contacts" onClose={() => setAdding(false)} />}
+    </>
   )
 }

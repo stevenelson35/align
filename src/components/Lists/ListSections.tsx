@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useApp, useData } from '../../hooks/useApp'
+import { AddItemDialog } from './AddItemDialog'
 import { usePinned } from '../../hooks/usePinned'
 import { useStoredChoice } from '../../hooks/useStoredChoice'
 import type { List, Task } from '../../types'
@@ -28,7 +30,7 @@ const KIND: Record<List['kind'], { icon: IconName; label: string }> = {
  * kind, who sees it and how much is open; cards show the same as tiles. ☆ pins a list to the top (for you, on every
  * device).
  */
-function ListCollection({ id, title, icon, kinds, whose = false, help }: { id: string; title: string; icon: IconName; kinds: List['kind'][]; whose?: boolean; help?: Parameters<typeof CollectionSection>[0]['help'] }) {
+function ListCollection({ id, title, icon, kinds, whose = false, help, addKind, addTitle }: { id: string; title: string; icon: IconName; kinds: List['kind'][]; whose?: boolean; help?: Parameters<typeof CollectionSection>[0]['help']; /** What + Add makes. */ addKind: List['kind']; addTitle: string }) {
   const app = useApp()
   const { lists, tasks, listItems } = useData()
   const pins = usePinned()
@@ -80,7 +82,7 @@ function ListCollection({ id, title, icon, kinds, whose = false, help }: { id: s
     )
   }
 
-  if (!visible.length) return null
+  if (!visible.length && !app.isMember) return null
   return (
     <CollectionSection
       id={id}
@@ -95,15 +97,19 @@ function ListCollection({ id, title, icon, kinds, whose = false, help }: { id: s
       render={render}
       searchHint={`Find a ${title === 'Lists' ? 'list' : title === 'Projects' ? 'project' : 'set'}…`}
       allowCards
+      onAdd={app.isMember ? () => app.editList(null, addKind) : undefined}
+      addTitle={addTitle}
       filters={whose && <WhoseChips value={filter} onChange={setFilter} label="Whose lists" />}
     />
   )
 }
 
 /** Task lists and the other everyday lists (checklists, notes, links, pick lists), with Mine / Family / Shared. */
-export const ListsSection = () => <ListCollection id="lists" title="Lists" icon="list" kinds={['list', 'checklist', 'notes', 'links', 'picks']} whose help="tasks" />
-export const ProjectsSection = () => <ListCollection id="projects" title="Projects" icon="chain" kinds={['project']} help="projects" />
-export const FlashcardsSection = () => <ListCollection id="cards" title="Flashcards" icon="book" kinds={['cards']} help="cards" />
+export const ListsSection = () => (
+  <ListCollection id="lists" title="Lists" icon="list" kinds={['list', 'checklist', 'notes', 'links', 'picks']} whose help="tasks" addKind="list" addTitle="New list (task list, checklist, notes…)" />
+)
+export const ProjectsSection = () => <ListCollection id="projects" title="Projects" icon="chain" kinds={['project']} help="projects" addKind="project" addTitle="New project" />
+export const FlashcardsSection = () => <ListCollection id="cards" title="Flashcards" icon="book" kinds={['cards']} help="cards" addKind="cards" addTitle="New set of flashcards" />
 
 /**
  * Links (bookmarks) on Today, in the shared shape: your pinned links, search (name, address, category), then every
@@ -113,11 +119,12 @@ export function LinksSection() {
   const app = useApp()
   const { lists, listItems } = useData()
   const pins = usePinned()
+  const [adding, setAdding] = useState(false)
   const linkLists = new Map(lists.filter((l) => l.kind === 'links' && (l.visibility !== 'private' || l.ownerId === app.uid)).map((l) => [l.id, l]))
   const links = listItems
     .filter((t) => linkLists.has(t.listId) && safeUrl(t.url))
     .sort((a, b) => (a.category ?? '').localeCompare(b.category ?? '') || a.title.localeCompare(b.title))
-  if (!links.length) return null
+  if (!linkLists.size) return null
   const pinned = links.filter((t) => pins.isPinned(t.id)).sort((a, b) => pins.order(a.id) - pins.order(b.id))
   const sub = (t: Task) => [t.category, linkLists.get(t.listId)?.name].filter(Boolean).join(' · ')
 
@@ -158,6 +165,7 @@ export function LinksSection() {
   }
 
   return (
+    <>
     <CollectionSection<Task>
       id="links"
       title="Links"
@@ -174,6 +182,10 @@ export function LinksSection() {
       render={render}
       searchHint="Find a link (name, address, category)…"
       allowCards
+      onAdd={app.isMember ? () => setAdding(true) : undefined}
+      addTitle="Add a link"
     />
+    {adding && <AddItemDialog kind="links" onClose={() => setAdding(false)} />}
+    </>
   )
 }

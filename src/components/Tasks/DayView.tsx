@@ -21,14 +21,13 @@ import { splitTitleNote } from '../../utils/quickAdd'
 import { TheDaily } from '../Daily/TheDaily'
 import { WhoseChips } from '../UI/WhoseChips'
 import { useStoredChoice } from '../../hooks/useStoredChoice'
-import { WHOSE_VALUES, whoseMatches, type Whose } from '../../utils/whose'
+import { WHOSE, WHOSE_VALUES, whoseMatches, type Whose } from '../../utils/whose'
 import { ContactsStrip } from '../Contacts/ContactsStrip'
 import { FamilyMapStrip } from '../Map/FamilyMapStrip'
 import { GiftsStrip } from '../Gifts/GiftsStrip'
 import { FlashcardsSection, LinksSection, ListsSection, ProjectsSection } from '../Lists/ListSections'
 import { moreOf, TODAY_SECTIONS, type TodaySection } from '../../utils/today'
-import { TodayShortcuts } from './TodayShortcuts'
-import { ArrangeToday } from './ArrangeToday'
+import { TodayDock } from './TodayDock'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -63,6 +62,7 @@ export function DayView({ day }: { day: string }) {
   // The same All / Mine / Family / Shared as the Tasks page (remembered on this device).
   const [todoWhose, setTodoWhose] = useStoredChoice<Whose>('align-todo-whose', WHOSE_VALUES, 'all')
   const b = dayBuckets(tasks.filter(shown).filter((t) => whoseMatches(t, todoWhose, app.uid)), day, now)
+  const allToday = todoWhose === 'all' ? b.todo.length : dayBuckets(tasks.filter(shown), day, now).todo.length
   const viewOnlyToday = filtering ? Object.values(dayBuckets(tasks.filter((t) => !app.canEdit(t)), day, now)).flat() : []
   // Everyone else in the household is listed, even with nothing extra today (0), so ticking them is never a mystery.
   const viewOnlyPeople = filtering ? people(app.household, true).map(([id]) => id).filter((id) => id !== app.uid) : []
@@ -103,7 +103,6 @@ export function DayView({ day }: { day: string }) {
   // Today's sections: on the main page, or folded into More… (your arrangement; Arrange Today at the bottom). Other
   // days show only what belongs to a day (goals, archive pictures, The Daily).
   const more = moreOf(app.member)
-  const [moreOpen, setMoreOpen] = useStoredFlag('align-today-more-open', false)
   const sectionFor = (id: TodaySection) => {
     switch (id) {
       case 'goals':
@@ -189,7 +188,6 @@ export function DayView({ day }: { day: string }) {
         {day === now && <CalendarActions />}
       </header>
 
-      {day === now && <TodayShortcuts />}
       {mainSections.map((id) => (
         <Fragment key={id}>{sectionFor(id)}</Fragment>
       ))}
@@ -219,9 +217,9 @@ export function DayView({ day }: { day: string }) {
             </button>
           }
         >
-          {hide.todo && b.todo.length > 0 && (
+          {hide.todo && (
             <button type="button" className="link small" onClick={() => setHide({ ...hide, todo: false })} aria-expanded={false}>
-              Show {b.todo.length}
+              {b.todo.length ? `Show ${b.todo.length}` : 'Show'}
             </button>
           )}
           <button type="button" className="link small" onClick={() => app.navigate({ view: 'home' })} title="Every task, any date (the Tasks page)">
@@ -238,17 +236,10 @@ export function DayView({ day }: { day: string }) {
             </button>
           )}
         </SectionHeader>
-        {/* Picking whose also opens the list: you want to see what the filter shows. */}
-        <WhoseChips
-          value={todoWhose}
-          onChange={(w) => {
-            setTodoWhose(w)
-            if (hide.todo) setHide({ ...hide, todo: false })
-          }}
-          label="Whose to-dos"
-        />
+        {/* Folded, To Do is just its header (with Show); open, its filters, key and tasks. */}
+        {!hide.todo && <WhoseChips value={todoWhose} onChange={setTodoWhose} label="Whose to-dos" />}
         {showKey && <ColorKey />}
-        {viewOnlyPeople.length > 0 && (
+        {!hide.todo && viewOnlyPeople.length > 0 && (
           <div className="also-show small" role="group" aria-label="Also show tasks you can only view">
             <span className="muted">Also show:</span>
             {viewOnlyPeople.map((id) => (
@@ -282,7 +273,15 @@ export function DayView({ day }: { day: string }) {
         {error && <p className="error">{error}</p>}
         {note && <p className="muted small">{note}</p>}
         {!hide.todo && <div className="task-list">{byDate(b.todo).map((t) => card(t))}</div>}
-        {!hide.todo && b.todo.length === 0 && <p className="muted small">{day < now ? 'Nothing was left undone.' : 'Nothing left to do.'}</p>}
+        {!hide.todo && b.todo.length === 0 && todoWhose !== 'all' && allToday > 0 && (
+          <p className="muted small">
+            Nothing for {WHOSE.find((w) => w.value === todoWhose)?.label} {day === now ? 'today' : 'that day'}.{' '}
+            <button type="button" className="link small" onClick={() => setTodoWhose('all')}>
+              All has {allToday}
+            </button>
+          </p>
+        )}
+        {!hide.todo && b.todo.length === 0 && (todoWhose === 'all' || allToday === 0) && <p className="muted small">{day < now ? 'Nothing was left undone.' : 'Nothing left to do.'}</p>}
       </div>
       {b.done.length > 0 && (
         <div className="day-section">
@@ -302,23 +301,14 @@ export function DayView({ day }: { day: string }) {
           {!hide.pushed && <div className="task-list">{byDate(b.pushed).map((t) => card(t, { note: movedTo(t), dayActions: undefined }))}</div>}
         </div>
       )}
-      {moreSections.length > 0 && (
-        <div className="day-section today-more">
-          <SectionHeader icon="list" title="More…" count={moreSections.length} onTitleClick={() => setMoreOpen(!moreOpen)} expanded={moreOpen}>
-            <button type="button" className="link small" onClick={() => setMoreOpen(!moreOpen)} aria-expanded={moreOpen}>
-              {moreOpen ? 'Hide' : moreSections.map((id) => TODAY_SECTIONS.find((s) => s.id === id)?.label).join(', ')}
-            </button>
-          </SectionHeader>
-          {moreOpen && (
-            <div className="today-more-body">
-              {moreSections.map((id) => (
-                <Fragment key={id}>{sectionFor(id)}</Fragment>
-              ))}
-            </div>
-          )}
-        </div>
+      {day === now && (
+        <TodayDock
+          more={moreSections.map((id) => (
+            <Fragment key={id}>{sectionFor(id)}</Fragment>
+          ))}
+          moreCount={moreSections.length}
+        />
       )}
-      {day === now && app.isMember && <ArrangeToday />}
     </section>
   )
 }

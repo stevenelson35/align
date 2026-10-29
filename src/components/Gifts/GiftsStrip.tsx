@@ -16,7 +16,7 @@ export function GiftsStrip() {
   const giftLists = lists.filter((l) => l.kind === 'gifts' && !l.giftSecret).sort((a, b) => a.name.localeCompare(b.name))
   const others = giftLists.filter((l) => !isRecipient(l, app.uid))
   const { claims } = useGiftClaims(canClaim(app.member.role) ? others.map(recipientKey) : [])
-  if (!giftLists.length) return null
+  if (!giftLists.length && !app.isMember) return null
   const shopping = claims.filter((c) => c.claimedBy === app.uid).sort((a, b) => Number(a.bought) - Number(b.bought) || a.title.localeCompare(b.title))
   const toBuy = shopping.filter((c) => !c.bought).length
   const listOf = (id: string) => lists.find((l) => l.id === id)
@@ -24,6 +24,11 @@ export function GiftsStrip() {
   return (
     <div className="day-section gifts-strip">
       <SectionHeader icon="gift" title="Gifts" count={toBuy ? `${toBuy} to buy` : giftLists.length} onTitleClick={() => setOpen(!open)} expanded={open} help="gifts">
+        {app.isMember && (
+          <button type="button" className="link small" onClick={() => app.editList(null, 'gifts')} title="New gift list" aria-label="New gift list">
+            <Icon name="plus" /> Add
+          </button>
+        )}
         <button type="button" className="link small" onClick={() => setOpen(!open)} aria-expanded={open}>
           {open ? 'Hide' : 'Show'}
         </button>
@@ -61,6 +66,7 @@ export function GiftsStrip() {
               </ul>
             </>
           )}
+          {!giftLists.length && <p className="muted small">No gift lists yet: + Add makes one (for someone in the family, yourself, or anyone).</p>}
           <ul className="gift-lists small">
             {giftLists.map((l) => {
               const mine = isRecipient(l, app.uid)

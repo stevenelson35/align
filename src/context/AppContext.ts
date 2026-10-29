@@ -35,7 +35,8 @@ export interface AppState {
   /** Show a shift preview; nothing is written until the user applies it (DESIGN.md §6.3). */
   proposeShift: (shift: PendingShift) => void
   /** Open the list editor (null = new list). */
-  editList: (list: List | null) => void
+  /** Edit a list, or (null) make a new one, optionally of a kind (a Today section's + New). */
+  editList: (list: List | null, kind?: List['kind']) => void
   // Works for lists too: both carry visibility and ownerId.
   canEdit: (item: Shareable) => boolean
   openChat: (text?: string) => void

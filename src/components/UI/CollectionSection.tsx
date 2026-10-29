@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { HelpTopicId } from '../../help/topics'
-import type { IconName } from './Icon'
 import { SectionHeader } from './SectionHeader'
+import { Icon, type IconName } from './Icon'
 
 /**
  * One Today section in the shared shape: your pinned items first, then a search box (with any filters), then Show
@@ -25,6 +25,8 @@ export function CollectionSection<T>({
   searchHint,
   allowCards = false,
   empty,
+  onAdd,
+  addTitle,
 }: {
   /** For remembering open / rows-or-cards on this device. */
   id: string
@@ -46,6 +48,9 @@ export function CollectionSection<T>({
   allowCards?: boolean
   /** Shown when there's nothing at all. */
   empty?: ReactNode
+  /** "+ Add" in the header: a new list / project / set, or a new link / person (the same place in every section). */
+  onAdd?: () => void
+  addTitle?: string
 }) {
   const [open, setOpen] = useStoredFlag(`align-today-${id}`, false)
   const [cards, setCards] = useStoredFlag(`align-today-${id}-cards`, false)
@@ -59,6 +64,11 @@ export function CollectionSection<T>({
   return (
     <div className={`day-section collection-section collection-${id}`}>
       <SectionHeader icon={icon} title={title} count={count} onTitleClick={() => setOpen(!open)} expanded={open} help={help}>
+        {onAdd && (
+          <button type="button" className="link small" onClick={onAdd} title={addTitle} aria-label={addTitle}>
+            <Icon name="plus" /> Add
+          </button>
+        )}
         {actions}
         <button type="button" className="link small" onClick={() => setOpen(!open)} aria-expanded={open}>
           {open ? 'Hide' : 'Show'}

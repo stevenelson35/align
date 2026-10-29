@@ -9,14 +9,14 @@ import { PICK_KINDS } from '../../utils/picks'
 import { secretSharedWith } from '../../utils/gifts'
 
 /** Create or edit a list/project. Visibility changes rewrite the copied fields on its tasks in the same batch. */
-export function ListEditor({ list, onClose }: { list: List | null; onClose: () => void }) {
+export function ListEditor({ list, kind, onClose }: { list: List | null; /** For a new list: its kind to start with. */ kind?: List['kind']; onClose: () => void }) {
   const app = useApp()
   // A list's contents are tasks, or checklist items / notes: the batch updates must cover both.
   const { tasks: taskDocs, listItems } = useData()
   const tasks = [...taskDocs, ...listItems]
   const [form, setForm] = useState<ListInput>(
     // New lists start with your own default privacy (Settings).
-    list ?? { name: '', kind: 'list', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' },
+    list ?? { name: '', kind: kind ?? 'list', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' },
   )
   // New lists start with your own default (Settings), which is Everyone unless you changed it.
   const [audience, setAudience] = useState<Audience>(list ? audienceOf(list) : (app.member.defaultVisibility ?? 'everyone'))

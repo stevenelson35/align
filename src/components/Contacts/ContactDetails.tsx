@@ -78,7 +78,7 @@ export function ContactDetails({ item, list }: { item: Task; list: List }) {
           <EntryFact icon="list">{list.name}</EntryFact>
           <EntryFact icon="star">
             <button type="button" className="link small inline-link" onClick={() => void onToday.toggle(item.id)}>
-              {onToday.isOn(item.id) ? '✓ On Today (take off)' : '+ Show on Today'}
+              {onToday.isOn(item.id) ? '✓ In Shortcuts (remove)' : '+ Add to Shortcuts'}
             </button>{' '}
             ·{' '}
             <button type="button" className="link small inline-link" onClick={() => void pins.toggle(item.id)}>

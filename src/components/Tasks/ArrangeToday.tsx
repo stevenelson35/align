@@ -5,7 +5,7 @@ import { DEFAULT_MORE, moreOf, TODAY_SECTIONS } from '../../utils/today'
 
 /**
  * Arrange Today: each section on the main page or in More… (one tap moves it), saved for you on every device. To Do
- * always stays on the main page. Contacts and links get onto Today itself with "Show on Today" in their details.
+ * always stays on the main page. People and links go in Shortcuts ("Add to Shortcuts" in their details).
  */
 export function ArrangeToday() {
   const { uid, member } = useApp()
@@ -32,7 +32,7 @@ export function ArrangeToday() {
           Done
         </button>
       </h3>
-      <p className="muted small">Move what you use most to the main page and the rest into More…. To Do always stays. To put a person or a link on Today itself, open it and tap “Show on Today”.</p>
+      <p className="muted small">Move what you use most to the main page and the rest into More…. To Do always stays. To keep a person or a link one tap away, open it and tap “Add to Shortcuts”.</p>
       {TODAY_SECTIONS.map((s) => {
         const inMore = more.has(s.id)
         return (

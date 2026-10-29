@@ -59,7 +59,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
           {isLink && href && app.isMember && (
             <EntryFact icon="star">
               <button type="button" className="link small inline-link" onClick={() => void onToday.toggle(item.id)}>
-                {onToday.isOn(item.id) ? '✓ On Today (take off)' : '+ Show on Today'}
+                {onToday.isOn(item.id) ? '✓ In Shortcuts (remove)' : '+ Add to Shortcuts'}
               </button>
             </EntryFact>
           )}
