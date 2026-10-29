@@ -8,7 +8,7 @@ import { useApp } from '../../hooks/useApp'
 import type { HouseholdMember } from '../../types'
 import { AUDIENCE_ICON, AUDIENCES } from '../../utils/audience'
 import { loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
-import { ACCENTS, customAccent, loadAccent, saveAccent, type Accent } from '../../utils/accent'
+import { ACCENTS, customAccent, loadAccent, loadAccentAll, saveAccent, saveAccentAll, type Accent } from '../../utils/accent'
 import { ICON_STYLES, saveIconStyle, useIconStyle } from '../../utils/iconStyle'
 import { CHART_STYLES, saveChartStyle, useChartStyle } from '../../utils/chartStyle'
 import { DAILY_ITEMS, setDailyGrade, setDailyItemShown, useDailySettings } from '../../daily/settings'
@@ -71,6 +71,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const [visibility, setVisibility] = useState<DefaultAudience>(member.defaultVisibility ?? 'everyone')
   const [theme, setTheme] = useState<ThemeChoice>(loadTheme)
   const [accent, setAccent] = useState<Accent>(loadAccent)
+  const [accentAll, setAccentAll] = useState(loadAccentAll)
   const pickAccent = (a: Accent) => {
     saveAccent(a)
     setAccent(a)
@@ -301,6 +302,17 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               <input type="color" value={accent.light} onChange={(e) => pickAccent(customAccent(e.target.value))} aria-label="Custom accent color" />
             </label>
           </div>
+          <label className="inline">
+            <input
+              type="checkbox"
+              checked={accentAll}
+              onChange={(e) => {
+                saveAccentAll(e.target.checked)
+                setAccentAll(e.target.checked)
+              }}
+            />{' '}
+            Highlights too: section icons, selected chips and rows (blue otherwise)
+          </label>
         </fieldset>
         {error && <p className="error">{error}</p>}
       </div>

@@ -51,3 +51,15 @@ export function saveAccent(a: Accent) {
 
 /** A custom color, used as is in both modes. */
 export const customAccent = (hex: string): Accent => ({ id: 'custom', label: 'Custom', light: hex, dark: hex })
+
+const ALL_KEY = 'align-accent-all'
+
+/** Whether highlights (section icons, selected chips and rows) use the accent too, instead of blue. */
+export const loadAccentAll = () => localStorage.getItem(ALL_KEY) === '1'
+
+export function saveAccentAll(on: boolean) {
+  if (on) localStorage.setItem(ALL_KEY, '1')
+  else localStorage.removeItem(ALL_KEY)
+  if (on) document.documentElement.dataset.accentAll = ''
+  else delete document.documentElement.dataset.accentAll
+}

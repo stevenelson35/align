@@ -26,6 +26,7 @@
           document.documentElement.style.setProperty('--brand-dark', a.dark)
           document.querySelector('meta[name="theme-color"]').setAttribute('content', a.light)
         }
+        if (localStorage.getItem('align-accent-all') === '1') document.documentElement.dataset.accentAll = ''
       } catch (e) {}
     </script>
     <style>

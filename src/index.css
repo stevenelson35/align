@@ -8,6 +8,10 @@
 
   /* The accent (buttons, your chat bubbles, selection): Settings → Accent color sets --brand-light / --brand-dark. */
   --brand: var(--brand-light, #8250df);
+  /* Highlights (section icons, selected chips and rows): blue, or the accent when Settings says so (data-accent-all). */
+  --highlight: var(--color-private);
+  --highlight-bg: var(--tint-blue-bg);
+  --highlight-border: var(--tint-blue-border);
 
   --bg: #f6f8fa;
   --surface: #ffffff;
@@ -39,6 +43,12 @@
   line-height: 1.5;
   color: var(--text);
   background: var(--bg);
+}
+
+:root[data-accent-all] {
+  --highlight: var(--brand);
+  --highlight-bg: color-mix(in srgb, var(--brand) 14%, transparent);
+  --highlight-border: color-mix(in srgb, var(--brand) 60%, transparent);
 }
 
 /* Dark mode: set on <html> from the saved choice, or the device setting (see index.html and ThemeToggle). */
@@ -559,8 +569,8 @@ input.narrow {
 }
 
 .chip-toggle.on {
-  background: var(--tint-blue-bg);
-  border-color: var(--tint-blue-border);
+  background: var(--highlight-bg);
+  border-color: var(--highlight-border);
 }
 
 .add-task {
@@ -1815,8 +1825,8 @@ a.nav-link {
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 8px;
-  background: var(--tint-blue-bg);
-  color: var(--color-private);
+  background: var(--highlight-bg);
+  color: var(--highlight);
   font-size: 1rem;
   flex: none;
 }
@@ -2071,7 +2081,7 @@ a.nav-link {
   cursor: pointer;
 }
 .help-tip-button[aria-expanded='true'] {
-  color: var(--color-private);
+  color: var(--highlight);
 }
 .help-tip-box {
   position: fixed;
@@ -2128,9 +2138,9 @@ a.nav-link {
   font-size: 0.85rem;
 }
 .chip-link.on {
-  border-color: var(--color-private);
-  background: var(--tint-blue-bg);
-  color: var(--color-private);
+  border-color: var(--highlight);
+  background: var(--highlight-bg);
+  color: var(--highlight);
   font-weight: 600;
 }
 .help-topic {
@@ -2239,7 +2249,7 @@ a.nav-link {
   padding: 0.45rem 0.6rem;
 }
 .pick-row.selected {
-  border-color: var(--color-private);
+  border-color: var(--highlight);
 }
 .pick-row.resting {
   opacity: 0.65;
@@ -2482,7 +2492,7 @@ a.nav-link {
   padding: 0.45rem 0.6rem;
 }
 .card-row.selected {
-  border-color: var(--color-private);
+  border-color: var(--highlight);
 }
 .card-front.link {
   text-align: left;
@@ -2622,7 +2632,7 @@ a.nav-link {
   padding: 0.35rem 0.5rem;
 }
 .contact-row.selected {
-  border-color: var(--color-private);
+  border-color: var(--highlight);
 }
 .contact-main {
   flex: 1;
@@ -2645,8 +2655,8 @@ a.nav-link {
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: var(--tint-blue-bg);
-  color: var(--color-private);
+  background: var(--highlight-bg);
+  color: var(--highlight);
   font-weight: 700;
   font-size: 0.85rem;
 }
@@ -2764,7 +2774,7 @@ a.nav-link {
   flex: none;
   min-width: 5.5em;
   font-variant-numeric: tabular-nums;
-  color: var(--color-private);
+  color: var(--highlight);
   font-weight: 600;
 }
 .wall-sub {
@@ -2853,7 +2863,7 @@ a.nav-link {
   font-size: 0.85rem;
 }
 .tag-chips .chip-toggle.on {
-  background: var(--tint-blue-bg);
+  background: var(--highlight-bg);
 }
 .contact-filters {
   display: grid;
@@ -2972,7 +2982,7 @@ a.nav-link {
   background: var(--surface, transparent);
 }
 .gift-row.selected {
-  border-color: var(--tint-blue-border);
+  border-color: var(--highlight-border);
 }
 .gift-main {
   flex: 1 1 12rem;
@@ -3161,7 +3171,7 @@ button.chip-toggle {
   font: inherit;
 }
 button.chip-toggle.on {
-  background: var(--tint-blue-bg);
+  background: var(--highlight-bg);
 }
 .settings-account {
   align-items: center;
