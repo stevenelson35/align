@@ -28,6 +28,27 @@ export function ChatPanel({ initialDraft, onClose }: { initialDraft: string; onC
 
   useEffect(() => inputRef.current?.focus(), [])
 
+  // On a phone the keyboard covers the bottom of the screen without shrinking the page (iPhone), so the panel would
+  // be pushed up and the conversation scrolled out of sight. Fit the panel to the visible area instead, and keep the
+  // latest messages in view above the input.
+  const [fit, setFit] = useState<{ top: number; height: number } | null>(null)
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const update = () => {
+      const covered = window.innerHeight - vv.height > 80 // a keyboard, not just the address bar
+      setFit(covered ? { top: vv.offsetTop, height: vv.height } : null)
+      endRef.current?.scrollIntoView({ block: 'end' })
+    }
+    update()
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+    }
+  }, [])
+
   const push = (m: Message) => setMessages((ms) => [...ms, m])
 
   async function send(e: FormEvent) {
@@ -49,7 +70,7 @@ export function ChatPanel({ initialDraft, onClose }: { initialDraft: string; onC
   }
 
   return (
-    <aside className="chat-panel">
+    <aside className="chat-panel" style={fit ? { top: fit.top, height: fit.height, bottom: 'auto' } : undefined}>
       <header className="row">
         <strong>Chat</strong>
         <HelpTip topic="chat" />

@@ -22,6 +22,7 @@ import { TheDaily } from '../Daily/TheDaily'
 import { ContactsStrip } from '../Contacts/ContactsStrip'
 import { FamilyMapStrip } from '../Map/FamilyMapStrip'
 import { GiftsStrip } from '../Gifts/GiftsStrip'
+import { FlashcardsSection, ListsSection, ProjectsSection } from '../Lists/ListSections'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -152,6 +153,9 @@ export function DayView({ day }: { day: string }) {
       {day === now && <FamilyMapStrip />}
       {day === now && <ContactsStrip />}
       {day === now && <GiftsStrip />}
+      {day === now && <ListsSection />}
+      {day === now && <ProjectsSection />}
+      {day === now && <FlashcardsSection />}
       <OnThisDay day={day} />
       <TheDaily day={day} />
 

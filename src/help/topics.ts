@@ -57,13 +57,13 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'today',
     title: 'Today',
-    tip: 'One day at a time: your Goals, Family Map, Contacts, Gifts, Archive Pics, The Daily, and To Do. ‹ › go to other days; tap a section’s title to fold it away or open it.',
+    tip: 'The place to start: Goals, Family Map, Contacts, Gifts, Lists, Projects, Flashcards, Archive Pics, The Daily and To Do. Every other page has Today ✕ at the top right to come back.',
     body: [
       'Today shows one day; ‹ and › go to other days (past days show what was done, skipped or pushed then). From top to bottom:',
       '• Goals: a summary of the goals you log: where each stands (“4 to go”, Done) and a small trend chart. The pencil beside a goal opens logging for just that one; Log all shows every goal ready to log (remembered on this device). Goals that don’t run that day (a weekdays-only walk on Saturday) show greyed as “Not today”. Folded each morning.',
-      '• Family Map: where everyone sharing their location was last seen (open it for each person; Open map for the map).',
+      '• Family Map: where everyone sharing their location was last seen; tap a name to open the map on them.',
       '• Gifts: what you’re getting for others (tick when bought) and each gift list.',
-      '• Contacts: a quick look-up: choose which contact lists and tags to include (All by default), type a name or number, then call, text or email. Choosing a tag alone lists everyone with it, and Export saves them to a file (today only).',
+      '• Contacts, Lists, Projects and Flashcards all open the same way: what you pinned (☆) first, then a search box (with filters: contact lists and tags; Mine / Family / Shared for lists), then Show all to scroll through everything right here. Lists, Projects and Flashcards show as rows or cards. “All contacts” opens the contacts page (import, export, editing).',
       '• On This Day / Archive Pics: favorite family photos from this date in earlier years (see Archive Pics).',
       '• The Daily: a word, joke, puzzles, pictures and more, with answers to reveal. Folded each morning.',
       '• To Do: the day’s tasks (see To Do), then Done, Won’t Do and Pushed to a Later Day.',
@@ -114,11 +114,11 @@ export const HELP_TOPICS: HelpTopic[] = [
   },
   {
     id: 'taskViews',
-    title: 'My tasks, Family tasks, Work, Everything',
-    tip: 'Tasks from every list in one place. Filter by list, family or work, who it’s for, who’s doing it, priority and status; sort by date, priority or dependency order.',
+    title: 'Tasks',
+    tip: 'Tasks from every list in one place. All / Mine / Family / Shared, then filter by list, who it’s for, who’s doing it, priority and status; sort by date, priority or dependency order.',
     body: [
-      'These pages gather tasks from all the lists you can see (checklist items, notes and links stay in their own lists):',
-      '• My tasks: your private tasks. Family tasks: tasks on Family and Everyone lists. Work: tasks with the Work context. Everything: all of them.',
+      'Menu → Tasks gathers tasks from all the lists you can see (checklist items, notes and links stay in their own lists):',
+      '• All, Mine (your private lists), Family (Family and Everyone lists) or Shared (lists shared with chosen people). Work appears only if something is marked work.',
       '• Filters: one list, family or work, who it’s for, who’s doing it, priority, and To do / Doing / Done / Canceled (Not done hides finished ones).',
       '• Sort by date, by priority, or in dependency order (what has to happen first). The color key shows who can see each task.',
     ],
@@ -359,7 +359,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'settings',
     title: 'Settings',
-    tip: 'Your own settings: who sees new things by default, your phone number, the Parents group, your password, the blog token, icons and theme.',
+    tip: 'Your own settings (tap your initial at the top right): sign out, who sees new things by default, your phone number, the Parents group, your password, the blog token, icons and theme.',
     body: [
       'Tap your initial (top right) for Settings.',
       '• Who can see new things: your default for new lists and quick adds.',

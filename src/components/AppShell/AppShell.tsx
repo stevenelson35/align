@@ -10,10 +10,10 @@ import { ListEditor } from '../Tasks/ListEditor'
 import { ItemDetails } from '../Tasks/ItemDetails'
 import { TaskDetails } from '../Tasks/TaskDetails'
 import { AppSkeleton } from './AppSkeleton'
-import { BottomNav } from './BottomNav'
 import { SearchDialog } from './SearchDialog'
 import { SettingsDialog } from './SettingsDialog'
 import { MainView } from './MainView'
+import { PageBar } from '../UI/PageBar'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { routeHash } from '../../utils/routes'
@@ -176,6 +176,8 @@ export function AppShell({ uid, household, member }: Props) {
                 </button>
               </p>
             )}
+            {/* Every page but Today gets a way back to Today (list pages put it beside their breadcrumb). */}
+            {data.loaded && !['today', 'list', 'task'].includes(route.view) && <PageBar />}
             {data.loaded ? <MainView /> : <AppSkeleton note="Loading your lists…" />}
           </main>
           {selectedTask && (
@@ -190,7 +192,6 @@ export function AppShell({ uid, household, member }: Props) {
             </aside>
           )}
         </div>
-        <BottomNav onChat={() => setChat((c) => ({ ...c, open: !c.open }))} />
         {chat.open && <ChatPanel key={chat.key} initialDraft={chat.draft} onClose={() => setChat((c) => ({ ...c, open: false }))} />}
         {shift && <ShiftDialog shift={shift} onClose={() => proposeShift(null)} />}
         {listEditor && <ListEditor list={listEditor.list} onClose={() => setListEditor(null)} />}

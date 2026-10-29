@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { addTaskNow } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
@@ -76,13 +76,14 @@ export function ContactsView({ list }: { list: List }) {
 }
 
 /** One person: picture or initials, name and company (tap for the details panel), then call / text / email. */
-export function ContactRow({ person: p, note }: { person: Task; note?: string }) {
+export function ContactRow({ person: p, note, pin, block = false }: { person: Task; note?: string; /** A ☆ pin button at the end. */ pin?: ReactNode; /** A plain block instead of a list item. */ block?: boolean }) {
   const app = useApp()
   const phone = p.contact?.phones?.[0]
   const email = p.contact?.emails?.[0]
+  const Row = block ? 'div' : 'li'
   const sub = [[p.contact?.jobTitle, p.contact?.org].filter(Boolean).join(', '), note, (p.contact?.tags ?? []).join(', ')].filter(Boolean).join(' · ')
   return (
-    <li className={`contact-row${app.selectedTaskId === p.id ? ' selected' : ''}`}>
+    <Row className={`contact-row${app.selectedTaskId === p.id ? ' selected' : ''}`}>
       <button type="button" className="contact-main" onClick={() => app.selectTask(p.id)}>
         <span className="avatar contact-avatar" aria-hidden="true">
           {p.images?.[0] ? <Picture src={p.images[0]} alt="" /> : initials(p.title)}
@@ -107,6 +108,7 @@ export function ContactRow({ person: p, note }: { person: Task; note?: string })
           <Icon name="mail" />
         </a>
       )}
-    </li>
+      {pin}
+    </Row>
   )
 }

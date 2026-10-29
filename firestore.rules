@@ -64,7 +64,9 @@ service cloud.firestore {
       let uid = request.auth.uid;
       return after.diff(before).affectedKeys().hasOnly([uid])
         && after[uid].role == before[uid].role
-        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'newTaskDue'])
+        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'newTaskDue', 'pinned'])
+        // Lists and contacts they pinned to the top of their Today sections (ids).
+        && (!('pinned' in after[uid]) || (after[uid].pinned is list && after[uid].pinned.size() <= 200))
         // Whether tasks added without a date are due the day they're added (Settings).
         && (!('newTaskDue' in after[uid]) || after[uid].newTaskDue in ['today', 'none'])
         // Their own default for new lists and quick adds, and their mobile number for "text …" (Settings).

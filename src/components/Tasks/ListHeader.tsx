@@ -8,6 +8,7 @@ import { HelpTip } from '../UI/HelpTip'
 import type { HelpTopicId } from '../../help/topics'
 import { menuSectionOf } from '../../utils/menu'
 import { ListTransfer } from './ListTransfer'
+import { PageBar } from '../UI/PageBar'
 
 const HELP_FOR_KIND: Record<List['kind'], HelpTopicId> = {
   list: 'tasks',
@@ -49,17 +50,17 @@ export function ListHeader({ list, children, tools = true }: { list: List; child
   const app = useApp()
   return (
     <>
-      <nav className="breadcrumb small" aria-label="Where you are">
-        <button type="button" className="link" onClick={() => app.openMenu()}>
-          <Icon name="menu" /> Menu
-        </button>
-        <span aria-hidden="true">›</span>
-        <button type="button" className="link" onClick={() => app.openMenu(menuSectionOf(list))}>
-          {menuSectionOf(list)}
-        </button>
-        <span aria-hidden="true">›</span>
-        <span aria-current="page">{list.name}</span>
-      </nav>
+      <PageBar
+        crumbs={
+          <>
+            <button type="button" className="link" onClick={() => app.openMenu(menuSectionOf(list))} title="Show this section of the menu">
+              {menuSectionOf(list)}
+            </button>
+            <span aria-hidden="true">›</span>
+            <span aria-current="page">{list.name}</span>
+          </>
+        }
+      />
       <header className="view-header">
         <h2>{list.name}</h2>
         <HelpTip topic={HELP_FOR_KIND[list.kind]} label={KIND_NAME[list.kind]} />

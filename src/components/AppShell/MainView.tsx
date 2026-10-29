@@ -3,7 +3,7 @@ import { today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import { TimelineView } from '../Dependencies/TimelineView'
 import { ChecklistView } from '../Tasks/ChecklistView'
-import { CombinedView } from '../Tasks/CombinedView'
+import { TasksView } from '../Tasks/TasksView'
 import { DayView } from '../Tasks/DayView'
 import { BlogPostView } from '../Blog/BlogPostView'
 import { GoalDetail } from '../Goals/GoalDetail'
@@ -24,18 +24,15 @@ import { BoardView } from '../Voting/BoardView'
 const FamilyMap = lazy(() => import('../Map/FamilyMap'))
 
 export function MainView() {
-  const { route, uid } = useApp()
+  const { route } = useApp()
   const { lists, boards, tasks, listItems, goals, loaded } = useData()
 
   switch (route.view) {
     case 'home':
-      return <CombinedView key="home" title="Everything" tasks={tasks} />
     case 'mine':
-      return <CombinedView key="mine" title="My tasks" tasks={tasks.filter((t) => t.visibility === 'private' && t.ownerId === uid)} />
     case 'family':
-      return <CombinedView key="family" title="Family tasks" tasks={tasks.filter((t) => t.visibility === 'family')} />
     case 'work':
-      return <CombinedView key="work" title="Work" tasks={tasks.filter((t) => t.context === 'work')} />
+      return <TasksView key={route.view} initial={route.view === 'home' ? 'all' : route.view} />
     case 'today':
       return <DayView key="today" day={today()} />
     case 'day':

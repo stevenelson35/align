@@ -10,6 +10,7 @@ import { LinksAndPictures } from '../UI/Details'
 import { EntryExtras, EntryFact, EntryPanel } from '../UI/EntryExtras'
 import { Icon } from '../UI/Icon'
 import { TagPicker } from './ContactTags'
+import { usePinned } from '../../hooks/usePinned'
 
 type Contact = NonNullable<Task['contact']>
 
@@ -26,6 +27,7 @@ function birthdayText(b: string): string {
 export function ContactDetails({ item, list }: { item: Task; list: List }) {
   const app = useApp()
   const [editing, setEditing] = useState(false)
+  const pins = usePinned()
   if (editing) return <ContactForm item={item} onDone={() => setEditing(false)} />
   const c = item.contact ?? {}
   const label = (l: ContactLabel) => l[0].toUpperCase() + l.slice(1)
@@ -72,6 +74,11 @@ export function ContactDetails({ item, list }: { item: Task; list: List }) {
             </EntryFact>
           ) : null}
           <EntryFact icon="list">{list.name}</EntryFact>
+          <EntryFact icon="star">
+            <button type="button" className="link small inline-link" onClick={() => void pins.toggle(item.id)}>
+              {pins.isPinned(item.id) ? '★ Pinned to Today (unpin)' : '☆ Pin to Today'}
+            </button>
+          </EntryFact>
         </>
       }
     >

@@ -20,6 +20,8 @@ export interface HouseholdMember {
   newTaskDue?: 'today' | 'none'
   /** Links (links-list item ids) this person pinned to their own Align menu, in order. */
   pinnedLinks?: string[]
+  /** Lists and contacts this person pinned to the top of their Today sections (list ids and item ids). */
+  pinned?: string[]
   /** The calendar-sync account: a member for the rules, hidden from people pickers. Set in the console. */
   bot?: boolean
 }

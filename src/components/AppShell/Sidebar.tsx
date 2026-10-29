@@ -10,9 +10,11 @@ import { isFinished, isItemList } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
 import { MENU_OPEN_KEY, MENU_SCROLL_KEY, menuSectionOf } from '../../utils/menu'
 
-function NavLink({ route, label, color, count }: { route: Route; label: ReactNode; color?: string; count?: number }) {
+function NavLink({ route, label, color, count, also = [] }: { route: Route; label: ReactNode; color?: string; count?: number; /** Other views it stands for (Tasks: its filtered variants). */ also?: Route['view'][] }) {
   const app = useApp()
-  const active = JSON.stringify({ ...app.route, timeline: undefined }) === JSON.stringify({ ...route, timeline: undefined })
+  const active =
+    also.includes(app.route.view) ||
+    JSON.stringify({ ...app.route, timeline: undefined, person: undefined }) === JSON.stringify({ ...route, timeline: undefined, person: undefined })
   return (
     <button type="button" className={`nav-link${active ? ' active' : ''}`} onClick={() => app.navigate(route)}>
       {color && <span className="dot" style={{ background: color }} />}
@@ -70,9 +72,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
   // A gift list's secret companion shows inside the gift list, not on its own.
   const inSection = (title: string) => lists.filter((l) => menuSectionOf(l) === title && !l.giftSecret && (l.visibility !== 'private' || l.ownerId === uid))
   const sections: { title: string; lists: List[]; color: string }[] = [
-    { title: 'My lists', lists: inSection('My lists'), color: 'var(--color-private)' },
-    { title: 'Family lists', lists: inSection('Family lists'), color: 'var(--color-family)' },
-    { title: 'Shared lists', lists: inSection('Shared lists'), color: 'var(--color-shared)' },
+    { title: 'Lists', lists: inSection('Lists'), color: '' },
     { title: 'Projects', lists: inSection('Projects'), color: 'var(--color-project)' },
     { title: 'Checklists', lists: inSection('Checklists'), color: '' },
     { title: 'Notes', lists: inSection('Notes'), color: '' },
@@ -86,10 +86,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
   return (
     <nav className={`sidebar${open ? ' open' : ''}`}>
       <NavLink route={{ view: 'today' }} label="Today" />
-      <NavLink route={{ view: 'home' }} label="Everything" />
-      {isMember && <NavLink route={{ view: 'mine' }} label="My tasks" />}
-      <NavLink route={{ view: 'family' }} label="Family tasks" />
-      <NavLink route={{ view: 'work' }} label="Work" />
+      <NavLink route={{ view: 'home' }} label={<><Icon name="todo" /> Tasks</>} also={['mine', 'family', 'work']} />
       {isMember && <NavLink route={{ view: 'blog' }} label={<><Icon name="compose" /> New blog post</>} />}
       <NavLink route={{ view: 'photos' }} label={<><Icon name="photo" /> Photos</>} />
       <a className="nav-link" href={BLOG_URL} target="_blank" rel="noopener noreferrer">

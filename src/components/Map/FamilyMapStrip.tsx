@@ -45,7 +45,13 @@ function WhoIsWhere() {
           <li key={uid} className={`map-person${tst && now - tst > STALE_MS ? ' stale' : ''}`}>
             <span className="map-dot" style={{ background: m.color }} aria-hidden="true" />
             <span className="grow">
-              <strong>{m.displayName}</strong>{' '}
+              {tst ? (
+                <button type="button" className="link map-person-name" onClick={() => app.navigate({ view: 'map', person: uid })} title={`Show ${m.displayName} on the map`}>
+                  <strong>{m.displayName}</strong>
+                </button>
+              ) : (
+                <strong>{m.displayName}</strong>
+              )}{' '}
               <span className="muted">
                 {loc?.off
                   ? 'paused'
@@ -55,7 +61,7 @@ function WhoIsWhere() {
               </span>
             </span>
             {tst && (
-              <button type="button" className="link small" onClick={() => app.navigate({ view: 'map' })}>
+              <button type="button" className="link small" onClick={() => app.navigate({ view: 'map', person: uid })}>
                 Show
               </button>
             )}

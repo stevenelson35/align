@@ -126,6 +126,16 @@ function MapPage() {
   })
 
   const center = (loc: FamilyLocation) => placed(loc) && map.current?.setView([loc.lat, loc.lon], 15)
+  // Opened for one person (#/map/<uid>, e.g. tapping their name on Today): center on them once their position loads.
+  const focusFor = app.route.view === 'map' ? app.route.person : undefined
+  const focused = useRef<string | null>(null)
+  useEffect(() => {
+    const loc = focusFor ? byUid.get(focusFor) : undefined
+    if (!focusFor || focused.current === focusFor || !placed(loc) || !map.current) return
+    focused.current = focusFor
+    fitted.current = true // don't then reframe on everyone
+    map.current.setView([loc.lat, loc.lon], 15)
+  })
   const showPlace = (p: Place) => map.current?.fitBounds(L.latLng(p.lat, p.lon).toBounds(p.radius * 2.5))
   // Keep the place being edited in view as it moves (Here, an address, a tap).
   useEffect(() => {
@@ -155,7 +165,7 @@ function MapPage() {
           const loc = byUid.get(uid)
           const where = placed(loc)
           return (
-            <li key={uid} className={`map-person${where && now - loc.tst > STALE_MS ? ' stale' : ''}`}>
+            <li key={uid} className={`map-person${where && now - loc.tst > STALE_MS ? ' stale' : ''}${focusFor === uid ? ' focused' : ''}`}>
               <span className="map-dot" style={{ background: member.color }} aria-hidden="true" />
               <span className="grow">
                 <strong>{member.displayName}</strong>{' '}

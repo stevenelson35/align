@@ -21,8 +21,8 @@ export type Route =
   | { view: 'photos' }
   /** The read-only wall display (a kitchen screen such as an Echo Show). */
   | { view: 'wall' }
-  /** The family map (OwnTracks locations). */
-  | { view: 'map' }
+  /** The family map (OwnTracks locations); `person` (a uid) centers it on them. */
+  | { view: 'map'; person?: string }
   /** Help & about; `topic` scrolls to one section. */
   | { view: 'help'; topic?: HelpTopicId }
   | { view: 'goal'; goalId: string }
@@ -43,8 +43,9 @@ export function parseRoute(hash: string): Route {
     case 'blog':
     case 'photos':
     case 'wall':
-    case 'map':
       return { view: parts[0] }
+    case 'map':
+      return parts[1] ? { view: 'map', person: parts[1] } : { view: 'map' }
     case 'help':
       return HELP_TOPICS.some((t) => t.id === parts[1]) ? { view: 'help', topic: parts[1] as HelpTopicId } : { view: 'help' }
     case 'list':
@@ -83,6 +84,8 @@ export function routeHash(route: Route): string {
       return `#/goal/${encodeURIComponent(route.goalId)}`
     case 'help':
       return route.topic ? `#/help/${route.topic}` : '#/help'
+    case 'map':
+      return route.person ? `#/map/${encodeURIComponent(route.person)}` : '#/map'
     default:
       return `#/${route.view}`
   }

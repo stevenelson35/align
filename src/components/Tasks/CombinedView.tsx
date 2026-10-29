@@ -12,10 +12,12 @@ interface Props {
   defaultSort?: SortKey
   /** Extra buttons for the header (e.g. Today's "Refresh calendar"). */
   actions?: ReactNode
+  /** Offer the Family / Work filter (only when something is marked work). */
+  showContext?: boolean
 }
 
 /** Combined view (DESIGN.md §8): color-coded, with filters and sorting. */
-export function CombinedView({ title, tasks, defaultSort = 'date', actions }: Props) {
+export function CombinedView({ title, tasks, defaultSort = 'date', actions, showContext = true }: Props) {
   const { household } = useApp()
   const { lists, taskById } = useData()
   const [filter, setFilter] = useState<TaskFilter>({ status: 'open' })
@@ -63,11 +65,13 @@ export function CombinedView({ title, tasks, defaultSort = 'date', actions }: Pr
             </option>
           ))}
         </select>
-        <select value={filter.context ?? ''} onChange={(e) => set({ context: (e.target.value || undefined) as Context | undefined })}>
-          <option value="">Family & work</option>
-          <option value="family">Family</option>
-          <option value="work">Work</option>
-        </select>
+        {showContext && (
+          <select value={filter.context ?? ''} onChange={(e) => set({ context: (e.target.value || undefined) as Context | undefined })}>
+            <option value="">Family & work</option>
+            <option value="family">Family</option>
+            <option value="work">Work</option>
+          </select>
+        )}
         <select value={filter.forId ?? ''} onChange={(e) => set({ forId: e.target.value || undefined })}>
           <option value="">For anyone</option>
           {targets.map((t) => (

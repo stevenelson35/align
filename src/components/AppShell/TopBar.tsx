@@ -1,4 +1,3 @@
-import { signOut } from '../../firebase/auth'
 import { useApp } from '../../hooks/useApp'
 import type { HouseholdMember } from '../../types'
 import { ThemeToggle } from './ThemeToggle'
@@ -29,21 +28,18 @@ export function TopBar({ member, onMenu, onChat, onSettings, onSearch }: Props) 
             <Icon name="quickAdd" />
           </button>
         )}
-        <button type="button" className="link hide-mobile" onClick={onChat}>
-          Chat
+        <button type="button" className="link search-button" onClick={onChat} title="Chat" aria-label="Chat">
+          <Icon name="message" />
         </button>
         <button type="button" className="link search-button" onClick={onSearch} title="Search (/)" aria-label="Search">
           <Icon name="search" />
         </button>
         <ThemeToggle />
         {member.role === 'viewer' && <span className="badge">View only</span>}
-        <button type="button" className="avatar" style={{ background: member.color }} onClick={onSettings} title="Settings" aria-label="Settings">
+        <button type="button" className="avatar" style={{ background: member.color }} onClick={onSettings} title="Settings and sign out" aria-label="Settings and sign out">
           {member.displayName.charAt(0).toUpperCase()}
         </button>
         <span className="hide-mobile">{member.displayName}</span>
-        <button type="button" className="link" onClick={() => signOut()}>
-          Sign out
-        </button>
       </div>
     </header>
   )

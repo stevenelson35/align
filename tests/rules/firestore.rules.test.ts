@@ -207,6 +207,12 @@ describe('household', () => {
     await assertFails(updateDoc(doc(db('daughter'), 'household/main'), { 'members.steve.defaultVisibility': 'family' }))
   })
 
+  it('lets a member pin lists and contacts to their own Today sections, and no one else’s', async () => {
+    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.pinned': ['familyVisible', 'contact1'] }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.steve.pinned': ['familyVisible'] }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.pinned': 'familyVisible' }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.pinned': Array.from({ length: 201 }, (_, i) => `l${i}`) }))
+  })
   it('lets a member set their own mobile number and the Parents group', async () => {
     await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.phone': '+1 555 010 0100' }))
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.phone': 'x'.repeat(40) }))

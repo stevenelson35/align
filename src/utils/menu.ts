@@ -1,5 +1,5 @@
-// Which ☰ menu section a list sits in (the menu and the list pages' breadcrumb use the same rule). Task lists go by
-// who can see them; every other kind has its own section.
+// Which ☰ menu section a list sits in (the menu and the list pages' breadcrumb use the same rule). Task lists are all
+// under Lists (each shows who can see it); every other kind has its own section.
 import type { List } from '../types'
 
 export const MENU_OPEN_KEY = 'align-menu-open'
@@ -25,6 +25,6 @@ export function menuSectionOf(list: Pick<List, 'kind' | 'visibility'>): string {
     case 'gifts':
       return 'Gifts'
     default:
-      return list.visibility === 'private' ? 'My lists' : list.visibility === 'family' ? 'Family lists' : 'Shared lists'
+      return 'Lists'
   }
 }

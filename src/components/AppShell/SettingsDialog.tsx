@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getIntegrations, setDefaultVisibility, setIntegration, setNewTaskDue, setParents, setPhone } from '../../firebase/db'
-import { changePassword } from '../../firebase/auth'
+import { changePassword, signOut } from '../../firebase/auth'
+import { auth } from '../../firebase/config'
 import { people } from '../../utils/tasks'
 import { githubToken, setGithubToken, testToken } from '../../blog/github'
 import { useApp } from '../../hooks/useApp'
@@ -98,6 +99,15 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             ✕
           </button>
         </header>
+        <div className="row settings-account">
+          <span className="grow small">
+            Signed in as <strong>{member.displayName}</strong>
+            {auth.currentUser?.email && <span className="muted"> ({auth.currentUser.email})</span>}
+          </span>
+          <button type="button" className="secondary small" onClick={() => signOut()}>
+            Sign out
+          </button>
+        </div>
         {isMember && (
           <fieldset className="setting">
             <legend>
