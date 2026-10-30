@@ -15,6 +15,8 @@ import { DAILY_ITEMS, setDailyGrade, setDailyItemShown, useDailySettings } from 
 import '@fontsource-variable/datatype/wght.css'
 import { Icon, type IconName } from '../UI/Icon'
 import { HelpTip } from '../UI/HelpTip'
+import { loadWeatherSettings, saveWeatherSettings } from '../../hooks/useWeather'
+import { DEFAULT_PLACE, FORECAST_SITES, forecastLink, geocodeUrl, parsePlaces, type WeatherPlace, type WeatherSettings } from '../../utils/weather'
 
 type DefaultAudience = NonNullable<HouseholdMember['defaultVisibility']>
 
@@ -315,6 +317,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             Highlights too: section icons, selected chips and rows (blue otherwise)
           </label>
         </fieldset>
+        <WeatherSetting />
         <PhoneBarsSetting />
         <ListColorsSetting />
         {error && <p className="error">{error}</p>}
@@ -360,6 +363,100 @@ function YourColorSetting() {
           <input type="color" value={current && /^#[0-9a-f]{6}$/.test(current) ? current : '#1f6feb'} onChange={(e) => drag(e.target.value)} aria-label="Custom color" />
         </label>
       </div>
+      {error && <p className="error small">{error}</p>}
+    </fieldset>
+  )
+}
+
+/**
+ * Today's weather (this device): where (automatic = your family-map location while you share it, else Orlando; or a
+ * place you search for) and which site the place's link opens (a few, or your own address with {lat} {lon} {name}).
+ */
+function WeatherSetting() {
+  const [s, setS] = useState<WeatherSettings>(loadWeatherSettings)
+  const [query, setQuery] = useState('')
+  const [found, setFound] = useState<WeatherPlace[] | null>(null)
+  const [searching, setSearching] = useState(false)
+  const [custom, setCustom] = useState(s.custom ?? '')
+  const [error, setError] = useState<string | null>(null)
+  const save = (next: WeatherSettings) => {
+    saveWeatherSettings(next)
+    setS(next)
+  }
+  async function search(e: FormEvent) {
+    e.preventDefault()
+    if (!query.trim()) return
+    setSearching(true)
+    setError(null)
+    try {
+      const res = await fetch(geocodeUrl(query))
+      setFound(res.ok ? parsePlaces(await res.json()) : [])
+    } catch {
+      setError('The place search isn’t available right now.')
+    } finally {
+      setSearching(false)
+    }
+  }
+  const customOk = !!forecastLink(custom, DEFAULT_PLACE)
+  return (
+    <fieldset className="setting">
+      <legend>Weather (this device)</legend>
+      <p className="muted small">The weather beside Today’s date.</p>
+      <label className="inline">
+        <input type="radio" name="weather-place" checked={s.place === 'auto'} onChange={() => save({ ...s, place: 'auto' })} /> Automatic: where you are while you share your location on the family map, otherwise {DEFAULT_PLACE.name}
+      </label>
+      <label className="inline">
+        <input type="radio" name="weather-place" checked={s.place !== 'auto'} onChange={() => s.place === 'auto' && save({ ...s, place: DEFAULT_PLACE })} /> A place: <strong>{s.place === 'auto' ? '(search below)' : s.place.name}</strong>
+      </label>
+      <form className="row" onSubmit={search}>
+        <input type="search" className="grow" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a city or town…" aria-label="Find a place for the weather" />
+        <button type="submit" className="secondary small" disabled={searching || !query.trim()}>
+          {searching ? 'Finding…' : 'Find'}
+        </button>
+      </form>
+      {found && (found.length ? (
+        <div className="weather-places">
+          {found.map((p) => (
+            <button
+              key={`${p.lat},${p.lon}`}
+              type="button"
+              className="link small"
+              onClick={() => {
+                save({ ...s, place: p })
+                setFound(null)
+                setQuery('')
+              }}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="muted small">No place by that name.</p>
+      ))}
+      <p className="small">The place’s link opens:</p>
+      {FORECAST_SITES.map((f) => (
+        <label key={f.id} className="inline">
+          <input type="radio" name="weather-site" checked={s.site === f.id} onChange={() => save({ ...s, site: f.id })} /> {f.label}
+        </label>
+      ))}
+      <label className="inline">
+        <input type="radio" name="weather-site" checked={s.site === 'custom'} onChange={() => customOk && save({ ...s, site: 'custom', custom })} disabled={!customOk} /> My own address:
+      </label>
+      <div className="row">
+        <input
+          className="grow"
+          value={custom}
+          onChange={(e) => setCustom(e.target.value)}
+          placeholder="https://example.com/forecast?lat={lat}&lon={lon}"
+          aria-label="Your own forecast address"
+          inputMode="url"
+        />
+        <button type="button" className="secondary small" disabled={!customOk || (s.site === 'custom' && s.custom === custom.trim())} onClick={() => save({ ...s, site: 'custom', custom: custom.trim() })}>
+          Use it
+        </button>
+      </div>
+      <p className="muted small">{'{lat}'}, {'{lon}'} and {'{name}'} are filled in with the place. Weather data and place search by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a> (CC BY 4.0).</p>
       {error && <p className="error small">{error}</p>}
     </fieldset>
   )

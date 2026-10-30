@@ -1,6 +1,6 @@
 // The family map's data: everyone's locations/{uid} (members only, by the rules), your own pause / resume /
 // delete, and your personal OwnTracks key from the Apps Script (it signs it; Align can't make one).
-import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import type { FamilyLocation } from '../utils/location'
 import { calendarSyncUrl } from './calendarSync'
@@ -26,6 +26,16 @@ export function useLocations(): { locations: FamilyLocation[]; error: string | n
     [],
   )
   return { locations, error }
+}
+
+/** Your own latest position, read once (Today's weather uses it while you share). Null if none or not allowed. */
+export async function getMyLocation(uid: string): Promise<Partial<FamilyLocation> | null> {
+  try {
+    const snap = await getDoc(doc(db, 'locations', uid))
+    return snap.exists() ? (snap.data() as Partial<FamilyLocation>) : null
+  } catch {
+    return null
+  }
 }
 
 /** Pause (off: true) or resume sharing. The Apps Script skips reports while paused; the last point stays. */

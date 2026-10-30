@@ -138,7 +138,7 @@ export function DayView({ day }: { day: string }) {
   // The color key starts shown; hiding (or showing) it is remembered on this device.
   const [showKey, setShowKey] = useStoredFlag('align-color-key-shown', true)
   const [weatherOpen, setWeatherOpen] = useStoredFlag('align-weather-open', false)
-  const { weather, error: weatherError } = useWeather(day === now)
+  const { weather, error: weatherError, place: weatherPlace, settings: weatherSettings } = useWeather(day === now)
 
   async function add(e: FormEvent) {
     e.preventDefault()
@@ -183,7 +183,7 @@ export function DayView({ day }: { day: string }) {
         <button type="button" className="secondary small" onClick={() => go(addDays(day, 1))} aria-label="Next day" title="Next day">
           ›
         </button>
-        {day === now && <WeatherButton weather={weather} open={weatherOpen} onToggle={() => setWeatherOpen(!weatherOpen)} />}
+        {day === now && <WeatherButton weather={weather} place={weatherPlace} open={weatherOpen} onToggle={() => setWeatherOpen(!weatherOpen)} />}
         {day !== now && (
           <button type="button" className="link small" onClick={() => go(now)}>
             Today
@@ -192,7 +192,7 @@ export function DayView({ day }: { day: string }) {
         <span className="grow" />
         {day === now && <CalendarActions />}
       </header>
-      {day === now && weatherOpen && <WeatherRow weather={weather} error={weatherError} />}
+      {day === now && weatherOpen && <WeatherRow weather={weather} error={weatherError} place={weatherPlace} settings={weatherSettings} />}
 
       {mainSections.map((id) => (
         <Fragment key={id}>{sectionFor(id)}</Fragment>

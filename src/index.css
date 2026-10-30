@@ -3409,3 +3409,8 @@ input[type='color'].color-input {
 .weather-credit {
   font-size: 0.7rem;
 }
+.weather-places {
+  display: grid;
+  justify-items: start;
+  gap: 0.15rem;
+}

@@ -64,7 +64,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Family Map: where everyone sharing their location was last seen; tap a name to open the map on them.',
       '• Gifts: what you’re getting for others (tick when bought) and each gift list.',
       '• To Do filters by All / Mine / Family / Shared, like the Tasks page and Goals (remembered on this device); picking one opens the list. Folded, it shows “Show 28”.',
-      '• The weather icon beside the date (Today only) shows Orlando now; tap it for the high / low, chance of rain and a link to the full forecast (data from Open-Meteo, refreshed every 30 minutes).',
+      '• The weather icon beside the date (Today only) shows the weather now; tap it for the high / low, chance of rain and a link to the full forecast. Settings → Weather picks the place (automatic: where you are while you share your location on the family map, otherwise Orlando) and the forecast site. Data from Open-Meteo (©), refreshed every 30 minutes.',
       '• The footer at the bottom of Today has More… and Shortcuts…. More… holds the sections you use less (Gifts, Lists, Links, Projects and Flashcards to start); Arrange Today, inside it, moves any section between the main page and More… (for you, on every device).',
       '• Shortcuts… holds the people and links you use most: open one and tap “Add to Shortcuts”. A person gets call / text / email; a link opens in one tap. Reorder… moves them up or down (or ✕ removes one).',
       '• Gifts, Lists, Links, Projects, Flashcards and Contacts each have + in the heading: a new list, project, set or gift list, or a new link or person (pick which list it goes in).',
