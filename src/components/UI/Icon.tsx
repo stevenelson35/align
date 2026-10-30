@@ -100,6 +100,17 @@ const ICONS = {
     fill: 'M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8z',
     line: 'M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8',
   },
+  // Weather (Today's header): clear, partly cloudy, cloudy, rain, storm, fog, snow.
+  cloud: { emoji: '☁️', fill: 'M7 18h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 11.1A3.5 3.5 0 0 0 7 18z' },
+  partly: {
+    emoji: '⛅',
+    fill: 'M9 20h9a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 9 13.8A3.1 3.1 0 0 0 9 20z',
+    line: 'M8 4v1.5M3.8 5.8l1 1M2 10h1.5M12.2 5.8l-1 1M5.3 12.2A3.5 3.5 0 1 1 11.6 9',
+  },
+  rain: { emoji: '🌧️', fill: 'M7 15h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 8.1A3.5 3.5 0 0 0 7 15z', line: 'M8 18l-1 3M12 18l-1 3M16 18l-1 3' },
+  storm: { emoji: '⛈️', fill: 'M7 14h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 7.1A3.5 3.5 0 0 0 7 14z', line: 'M12.5 15l-2.5 3.5h3L10.5 22' },
+  fog: { emoji: '🌫️', fill: 'M7 13h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 6.1A3.5 3.5 0 0 0 7 13z', line: 'M4 16.5h16M6 20h12' },
+  snow: { emoji: '🌨️', fill: 'M7 14h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 7.1A3.5 3.5 0 0 0 7 14z', line: 'M8 17.5v0.5M12 19.5v0.5M16 17.5v0.5M10 21.5v0.5M14 21.5v0.5' },
   moon: { emoji: '🌙', fill: 'M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z' },
   auto: { emoji: '◐', fill: 'M12 3.5a8.5 8.5 0 0 0 0 17z', line: 'M12 3.5a8.5 8.5 0 1 1 0 17a8.5 8.5 0 1 1 0-17z' },
 } satisfies Record<string, { emoji: string; fill?: string; line?: string; detail?: string }>

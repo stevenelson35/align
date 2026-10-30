@@ -3381,3 +3381,31 @@ input[type='color'].color-input {
   border-radius: 4px;
   background: none;
 }
+
+/* Today's weather: icon and °F in the header, one row of more under it. */
+.weather-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--text);
+  font-size: 1.15rem;
+}
+.weather-row {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+  margin: -0.25rem 0 0.75rem;
+}
+.weather-row > * {
+  white-space: nowrap;
+}
+.weather-row a:not(.weather-credit) {
+  color: var(--text);
+  text-decoration: none;
+}
+.weather-credit {
+  font-size: 0.7rem;
+}
