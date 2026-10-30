@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { canSwap, newGame, play, type Game, type Gem } from '../../utils/match3'
 import { celebrate } from '../../utils/celebrate'
+import { IcePicture } from './IcePicture'
 
 const COLORS = 5
 const STORE = 'align-reveal-board'
@@ -50,23 +51,33 @@ function GemShape({ gem }: { gem: Gem }) {
 }
 
 /**
- * The reveal's match-3 board. Swipe a gem toward a neighbor (or tap one, then a neighbor) to swap them; lines of 3+
- * burst, the gems above fall with a little bounce and new ones drop in, and chains keep going. Cells with ice still
- * over the picture show frosted (deeper for thicker ice, cracked once hit); each burst there takes a layer (`onHits`,
- * as it happens). One move per swap (`onMoveDone` with every burst).
+ * The reveal's match-3 board, laid on the hidden photo. Swipe a gem toward a neighbor (or tap one, then a neighbor)
+ * to swap them; lines of 3+ burst, the gems above fall with a little bounce and new ones drop in, and chains keep
+ * going. The squares under the gems are the photo's ice (deeper frost for thicker ice, cracked once hit); each burst
+ * on one takes a layer (`onHits`, as it happens), and a broken square stays clear, showing that bit of the photo
+ * around the gems that fall onto it. One move per swap (`onMoveDone` with every burst).
  */
 export function RevealBoard({
   boardKey,
   cols,
   rows,
+  photoId,
   left,
   thick,
+  breaking,
+  peek,
   movesLeft,
   onHits,
   onMoveDone,
 }: {
   /** The reveal this board belongs to (a new reveal deals a new board). */
   boardKey: string
+  /** The hidden photo: the board sits on it. */
+  photoId: string
+  /** Cells a move is hitting right now (their ice flashes or shatters). */
+  breaking: Set<number>
+  /** Fade the gems to look at the picture. */
+  peek: boolean
   cols: number
   rows: number
   /** Hits each cell's ice still needs (0 = clear), and how thick it started. */
@@ -189,16 +200,14 @@ export function RevealBoard({
   return (
     <div
       ref={boardEl}
-      className={`reveal-board${movesLeft <= 0 ? ' out' : ''}`}
+      className={`reveal-board${movesLeft <= 0 ? ' out' : ''}${peek ? ' peek' : ''}`}
       style={{ aspectRatio: `${cols} / ${rows}`, '--cols': cols, '--rows': rows } as CSSProperties}
       onPointerMove={onMove}
       onPointerLeave={() => (drag.current = null)}
       role="grid"
       aria-label="Game board: swipe a gem toward a neighbor to swap them"
     >
-      {Array.from({ length: cols * rows }, (_, i) => (
-        <span key={`t${i}`} className={`board-tile${left[i] > 0 ? ` iced l${Math.min(4, left[i])}` : ''}${left[i] > 0 && left[i] < thick ? ' cracked' : ''}`} style={{ '--c': i % cols, '--r': Math.floor(i / cols) } as CSSProperties} />
-      ))}
+      <IcePicture photoId={photoId} cols={cols} rows={rows} left={left} thick={thick} breaking={breaking} className="board-picture" />
       {cells.map((gem, i) =>
         gem ? (
           <button

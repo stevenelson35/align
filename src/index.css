@@ -3519,37 +3519,52 @@ input[type='color'].color-input {
   outline-offset: 2px;
 }
 
-/* Goal rewards: the hidden picture under frosted ice (IcePicture). */
+/* Goal rewards: the hidden photo under frosted ice (IcePicture). No backdrop-filter (not every phone applies it):
+   a blurred copy underneath, the sharp photo masked to the clear cells, frost on top of the rest. */
 .ice-picture {
   position: relative;
   width: 100%;
   overflow: hidden;
   border-radius: var(--radius);
+  background-color: var(--border);
+}
+.ice-blur,
+.ice-clear {
+  position: absolute;
+  inset: 0;
   background-size: cover;
   background-position: center;
-  background-color: var(--border);
+}
+.ice-blur {
+  /* Only colors survive this; scaled up so the blurred edges stay outside. */
+  filter: blur(18px) saturate(1.15);
+  transform: scale(1.2);
+}
+.ice-clear {
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
 }
 .ice {
   position: absolute;
-  backdrop-filter: blur(10px) saturate(1.15);
-  -webkit-backdrop-filter: blur(10px) saturate(1.15);
-  background: rgb(232 242 252 / 0.45);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
+  background-color: rgb(236 244 252 / 0.5);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.45), inset 0 -3px 6px rgb(120 160 200 / 0.18);
 }
 :root[data-theme='dark'] .ice {
-  background: rgb(150 170 200 / 0.3);
+  background-color: rgb(170 192 220 / 0.32);
 }
 /* More layers left, more frost; cracked once partly broken. */
 .ice.l1 {
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  background-color: rgb(232 242 252 / 0.28);
+  background-color: rgb(236 244 252 / 0.3);
 }
 .ice.l3,
 .ice.l4 {
-  backdrop-filter: blur(14px) saturate(1.1);
-  -webkit-backdrop-filter: blur(14px) saturate(1.1);
-  background-color: rgb(232 242 252 / 0.6);
+  background-color: rgb(228 238 250 / 0.68);
+}
+:root[data-theme='dark'] .ice.l3,
+:root[data-theme='dark'] .ice.l4 {
+  background-color: rgb(170 192 220 / 0.5);
 }
 .ice.cracked {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 0l-3 12 6 5-8 9 4 14M17 12l-11 4M23 17l13-3M15 26l-15 2' fill='none' stroke='white' stroke-width='1.3' opacity='.85'/%3E%3C/svg%3E");
@@ -3570,7 +3585,7 @@ input[type='color'].color-input {
 @keyframes ice-break {
   30% {
     transform: scale(1.12) rotate(-3deg);
-    background: rgb(255 255 255 / 0.85);
+    background-color: rgb(255 255 255 / 0.85);
   }
   100% {
     transform: scale(1.35) rotate(6deg);
@@ -3601,11 +3616,10 @@ input[type='color'].color-input {
   -webkit-user-select: none;
   overflow: hidden;
 }
-.reveal-board.out {
-  filter: saturate(0.5);
-  opacity: 0.75;
+.reveal-board.out .gem {
+  /* Out of moves: the gems step back so the picture shows. */
+  opacity: 0.35;
 }
-.board-tile,
 .gem {
   position: absolute;
   left: 0;
@@ -3614,26 +3628,17 @@ input[type='color'].color-input {
   height: calc(100% / var(--rows));
   transform: translate(calc(var(--c) * 100%), calc(var(--r) * 100%));
 }
-.board-tile.iced {
-  /* Ice still over this spot of the picture: match here to break it. */
-  background: linear-gradient(135deg, rgb(214 232 250 / 0.9), rgb(186 214 242 / 0.75));
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.6), inset 0 -2px 4px rgb(80 120 170 / 0.18);
-  border-radius: 6px;
-  scale: 0.94;
+/* The photo (and its ice) fills the board under the gems. */
+.reveal-board .board-picture {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+  height: 100%;
+  border-radius: 0;
 }
-:root[data-theme='dark'] .board-tile.iced {
-  background: linear-gradient(135deg, rgb(90 120 160 / 0.55), rgb(60 90 130 / 0.45));
-}
-/* Thicker ice, deeper blue; cracked once partly broken (the same marks as the picture). */
-.board-tile.iced.l3,
-.board-tile.iced.l4 {
-  background: linear-gradient(135deg, rgb(178 208 240 / 0.95), rgb(140 182 228 / 0.85));
-}
-.board-tile.iced.cracked {
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 0l-3 12 6 5-8 9 4 14M17 12l-11 4M23 17l13-3M15 26l-15 2' fill='none' stroke='white' stroke-width='1.6' opacity='.9'/%3E%3C/svg%3E"),
-    linear-gradient(135deg, rgb(214 232 250 / 0.75), rgb(186 214 242 / 0.6));
-  background-size: 100% 100%;
+.reveal-board.peek .gem {
+  opacity: 0.06;
+  transition: opacity 0.2s;
 }
 .gem {
   padding: 0;
@@ -3644,15 +3649,16 @@ input[type='color'].color-input {
   z-index: 1;
 }
 .gem svg {
-  /* Absolutely placed: a percentage height doesn't resolve inside a button. */
+  /* Absolutely placed: a percentage height doesn't resolve inside a button. A little smaller than the square, so
+     the photo shows around it. */
   position: absolute;
-  left: 8%;
-  top: 8%;
-  width: 84%;
-  height: 84%;
+  left: 15%;
+  top: 15%;
+  width: 70%;
+  height: 70%;
   display: block;
   overflow: visible;
-  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.25));
+  filter: drop-shadow(0 0 1.5px rgb(255 255 255 / 0.9)) drop-shadow(0 2px 3px rgb(0 0 0 / 0.45));
 }
 .gem:disabled {
   cursor: default;

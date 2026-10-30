@@ -11,8 +11,8 @@ import { IcePicture } from './IcePicture'
 import { RevealBoard } from './RevealBoard'
 
 /**
- * The reveal (#/reveal): the family photo under ice, your moves (one per spark), the match-3 board that breaks the
- * ice, who has helped, and the reward ladder the family's sparks unlock.
+ * The reveal (#/reveal): the match-3 board laid on the family photo's ice, your moves (one per spark), Peek (hold
+ * to fade the gems and look), who has helped, and the reward ladder the family's sparks unlock.
  */
 export default function RevealView() {
   const app = useApp()
@@ -22,6 +22,7 @@ export default function RevealView() {
   const [breaking, setBreaking] = useState<Set<number>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
+  const [peek, setPeek] = useState(false)
   const reveal = r.reveal
   const boardKey = reveal ? `${reveal.photoId}|${reveal.startedAt}` : ''
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function RevealView() {
 
       {!reveal ? (
         <div className="card">
-          <p>Uncover a family photo together. Every goal anyone meets is a spark, and each spark is a move in a match game that breaks the ice over the picture.</p>
+          <p>Uncover a family photo together: each goal you meet is a move in a match game that breaks the ice over it.</p>
           <button type="button" onClick={start} disabled={starting}>
             {starting ? 'Picking a photo…' : 'Start a reveal'}
           </button>
@@ -65,20 +66,42 @@ export default function RevealView() {
       ) : (
         <>
           <div className="reveal-stage">
-            <IcePicture photoId={reveal.photoId} cols={reveal.cols} rows={reveal.rows} left={left} thick={reveal.thick} breaking={breaking} className="reveal-picture" />
-            <p className="reveal-status">
-              <strong>{done ? 'Uncovered!' : `${pct}% uncovered`}</strong>
+            <div className="reveal-status row">
+              <span className="grow">
+                <strong>{done ? 'Uncovered!' : `${pct}% uncovered`}</strong>
+                {!done && (
+                  <span>
+                    {' '}
+                    · <strong>{r.moves}</strong> {r.moves === 1 ? 'move' : 'moves'} left
+                  </span>
+                )}
+              </span>
               {!done && (
-                <span>
-                  {' '}
-                  · <strong>{r.moves}</strong> {r.moves === 1 ? 'move' : 'moves'} left
-                </span>
+                <button
+                  type="button"
+                  className="secondary small reveal-peek"
+                  onPointerDown={() => setPeek(true)}
+                  onPointerUp={() => setPeek(false)}
+                  onPointerLeave={() => setPeek(false)}
+                  onPointerCancel={() => setPeek(false)}
+                  onKeyDown={(e) => (e.key === ' ' || e.key === 'Enter') && setPeek(true)}
+                  onKeyUp={() => setPeek(false)}
+                  onContextMenu={(e) => e.preventDefault()}
+                  aria-pressed={peek}
+                  title="Hold to see the picture without the gems"
+                >
+                  <Icon name="search" /> Peek
+                </button>
               )}
-            </p>
+            </div>
+            {done && <IcePicture photoId={reveal.photoId} cols={reveal.cols} rows={reveal.rows} left={left} thick={reveal.thick} className="reveal-picture" />}
             {!done && (
               <>
                 <RevealBoard
                   boardKey={boardKey}
+                  photoId={reveal.photoId}
+                  breaking={breaking}
+                  peek={peek}
                   cols={reveal.cols}
                   rows={reveal.rows}
                   left={left}
@@ -106,8 +129,8 @@ export default function RevealView() {
                 />
                 <p className="muted small reveal-hint">
                   {r.moves > 0
-                    ? 'Swipe a gem toward a neighbor to line up 3 or more. Bursts on frosted squares break the ice over the photo.'
-                    : 'Out of moves for now. Each goal anyone meets is a spark: one more move for them.'}
+                    ? 'Swipe a gem to line up 3 or more. Bursts break the frost under them, uncovering that bit of the photo for good.'
+                    : 'Out of moves: each goal you meet is one more.'}
                 </p>
               </>
             )}

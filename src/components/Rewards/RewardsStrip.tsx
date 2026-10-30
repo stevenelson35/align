@@ -12,7 +12,7 @@ import { IcePicture } from './IcePicture'
 export function RewardsStrip() {
   const app = useApp()
   const r = useRewards()
-  const [open, setOpen] = useStoredFlag('align-today-rewards', true)
+  const [open, setOpen] = useStoredFlag('align-today-rewards', false)
   const [error, setError] = useState<string | null>(null)
   if (!app.isMember) return null
   const play = () => app.navigate({ view: 'reveal' })
@@ -31,7 +31,7 @@ export function RewardsStrip() {
       {open &&
         (r.reveal === undefined ? null : r.reveal === null ? (
           <div className="rewards-start">
-            <p className="muted small">Uncover a family photo together. Every goal anyone meets is a spark, and each spark is a move in a little match game that breaks the ice over the picture.</p>
+            <p className="muted small">Uncover a family photo together: each goal you meet is a move.</p>
             <button type="button" className="small" onClick={() => r.startNext().then(play).catch((err) => setError(err instanceof Error ? err.message : String(err)))}>
               Start a reveal
             </button>
@@ -42,29 +42,14 @@ export function RewardsStrip() {
             <button type="button" className="rewards-thumb" onClick={play} aria-label="Open the reveal">
               <IcePicture photoId={r.reveal.photoId} cols={r.reveal.cols} rows={r.reveal.rows} left={r.left} thick={r.reveal.thick} size={640} />
             </button>
-            <div className="rewards-facts small">
-              <p>
-                <strong>{r.done ? 'Uncovered!' : `${r.pct}% uncovered`}</strong>
-              </p>
-              {!r.done && (
-                <p>
-                  {r.moves ? (
-                    <>
-                      <strong>{r.moves}</strong> {r.moves === 1 ? 'move' : 'moves'} for you ·{' '}
-                      <button type="button" className="link small" onClick={play}>
-                        Play
-                      </button>
-                    </>
-                  ) : (
-                    <span className="muted">No moves yet: meet a goal for more.</span>
-                  )}
-                </p>
-              )}
-              <p className="muted">
-                {r.total} family sparks
-                {r.status.next ? ` · ${r.status.next.title} in ${r.status.next.toGo}` : ''}
-              </p>
-            </div>
+            <p className="rewards-facts small">
+              <strong>{r.done ? 'Uncovered!' : `${r.pct}%`}</strong>
+              {!r.done && (r.moves ? ` · ${r.moves} ${r.moves === 1 ? 'move' : 'moves'}` : ' · no moves yet')}
+              <br />
+              <button type="button" className="link small" onClick={play}>
+                {r.done ? 'See it' : 'Play'}
+              </button>
+            </p>
           </div>
         ))}
     </div>
