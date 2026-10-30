@@ -3,7 +3,7 @@ import { addDays, formatDay, today } from '../../engine/dates'
 import { commentThread, deleteRemovedImages, logGoal, updateGoal } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
 import type { Goal } from '../../types'
-import { appliesOn, goalDaysText, goalHint, history, totalTo } from '../../utils/goals'
+import { appliesOn, goalDaysText, goalHint, goodWeeks, history, totalTo } from '../../utils/goals'
 import { canLogGoal, privacyText, sharedNames } from '../../utils/tasks'
 import { cleanDetails, detailsOf, hasDetails, storedDetails } from '../../utils/details'
 import { DetailsFields, DetailsView } from '../UI/Details'
@@ -31,6 +31,7 @@ export function GoalDetail({ goal }: { goal: Goal }) {
   const editable = app.isMember && goal.ownerId === app.uid
   const canLog = canLogGoal(goal, app.uid, app.member.role)
   const rows = history(goal, addDays(today(), -(days - 1)), today()).reverse()
+  const weeks = goodWeeks(goal, today())
   const value = (r: (typeof rows)[number]) =>
     goal.kind === 'check' ? (r.entry?.done ? '✓' : '') : goal.kind === 'tally' ? String(r.entry?.count ?? '') : String(r.entry?.value ?? '')
   const owner = goal.ownerId === app.uid ? 'you' : (app.household.members[goal.ownerId]?.displayName ?? 'the owner')
@@ -71,6 +72,17 @@ export function GoalDetail({ goal }: { goal: Goal }) {
         {privacyText(goal, 'goal', app.household, app.uid)}
         {loggers && ` Who can log it: ${loggers}.`}
       </p>
+      {weeks && (
+        <p className="goal-weeks small" title="A good week: met on 5 of its days (or all of them, if it's on fewer). Good weeks only add up; a missed day never takes one away.">
+          <span className="goal-weeks-count">
+            🏅 {weeks.good} good {weeks.good === 1 ? 'week' : 'weeks'}
+          </span>
+          <span className="muted">
+            This week: {Math.min(weeks.thisWeek.met, 7)} of {weeks.thisWeek.need} days{weeks.thisWeek.met >= weeks.thisWeek.need ? ' ✓' : ''}
+          </span>
+          {weeks.best > 0 && <span className="muted">Best week: {weeks.best} {weeks.best === 1 ? 'day' : 'days'}</span>}
+        </p>
+      )}
 
       {!goal.archived && canLog && (
         <div className="goal-log card">

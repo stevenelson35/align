@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Goal } from '../types'
-import { appliesOn, goalHint, history, met, suggested, weekday } from './goals'
+import { appliesOn, celebrationSize, goalHint, goodWeeks, history, met, suggested, weekday } from './goals'
 
 const g = (over: Partial<Goal>): Goal => ({
   id: 'g', name: 'G', kind: 'check', visibility: 'private', ownerId: 'o', viewerVisible: false, createdBy: 'o', ...over,
@@ -139,5 +139,48 @@ describe('defaultDirection', () => {
     expect(defaultDirection('$')).toBe('down')
     expect(defaultDirection('Minutes')).toBe('up')
     expect(defaultDirection(undefined)).toBe('up')
+  })
+})
+
+describe('good weeks', () => {
+  // 2026-10-04 is a Sunday.
+  const days = (from: string, n: number) => Array.from({ length: n }, (_, i) => {
+    const d = new Date(`${from}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + i)
+    return d.toISOString().slice(0, 10)
+  })
+  const log = (ds: string[]) => Object.fromEntries(ds.map((d) => [d, { done: true }]))
+
+  it('counts weeks with 5 days met, and never takes one back', () => {
+    const goal = g({ kind: 'check', log: { ...log(days('2026-10-04', 5)), ...log(days('2026-10-11', 3)), ...log(days('2026-10-18', 7)) } })
+    expect(goodWeeks(goal, '2026-10-24')).toEqual({ good: 2, best: 7, thisWeek: { met: 7, need: 5 } })
+    // A missed week later doesn't reset anything.
+    expect(goodWeeks(goal, '2026-10-31')?.good).toBe(2)
+  })
+
+  it('needs every day for a goal on fewer than 5 days a week', () => {
+    const goal = g({ kind: 'check', weekdays: [1, 3, 5], log: log(['2026-10-05', '2026-10-07', '2026-10-09', '2026-10-12', '2026-10-14']) })
+    expect(goodWeeks(goal, '2026-10-17')).toEqual({ good: 1, best: 3, thisWeek: { met: 2, need: 3 } })
+  })
+
+  it('counts this week once it is good, and has none for running totals', () => {
+    const goal = g({ kind: 'check', log: log(days('2026-10-25', 4)) })
+    expect(goodWeeks(goal, '2026-10-28')?.good).toBe(0)
+    expect(goodWeeks(g({ kind: 'total', target: 100 }), '2026-10-28')).toBeNull()
+  })
+})
+
+describe('celebration size', () => {
+  it('grows with each goal done and bursts when the day is done', () => {
+    const first = celebrationSize(1, 5)
+    const fourth = celebrationSize(4, 5)
+    const last = celebrationSize(5, 5)
+    expect(first.final).toBe(false)
+    expect(fourth.particles).toBeGreaterThan(first.particles)
+    expect(fourth.ms).toBeGreaterThan(first.ms)
+    expect(fourth.colors).toBeGreaterThan(first.colors)
+    expect(last).toMatchObject({ final: true, colors: 5 })
+    expect(last.particles).toBeGreaterThan(fourth.particles)
+    expect(celebrationSize(1, 1).final).toBe(true)
   })
 })

@@ -15,6 +15,7 @@ export type Route =
   /** A board; `itemId` opens one item's details (links in texts). */
   | { view: 'board'; boardId: string; itemId?: string }
   | { view: 'goals' }
+  | { view: 'reveal' }
   /** ✍ New blog post. */
   | { view: 'blog' }
   /** Favorite photos (psort). */
@@ -40,6 +41,7 @@ export function parseRoute(hash: string): Route {
     case 'work':
     case 'boards':
     case 'goals':
+    case 'reveal':
     case 'blog':
     case 'photos':
     case 'wall':

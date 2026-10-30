@@ -22,6 +22,7 @@ import { BoardView } from '../Voting/BoardView'
 
 // The map library (Leaflet) loads only when the map is opened.
 const FamilyMap = lazy(() => import('../Map/FamilyMap'))
+const RevealView = lazy(() => import('../Rewards/RevealView'))
 
 export function MainView() {
   const { route } = useApp()
@@ -83,6 +84,12 @@ export function MainView() {
       return (
         <Suspense fallback={<p className="muted">Opening the map…</p>}>
           <FamilyMap />
+        </Suspense>
+      )
+    case 'reveal':
+      return (
+        <Suspense fallback={<p className="muted">Opening the reveal…</p>}>
+          <RevealView />
         </Suspense>
       )
     case 'help':

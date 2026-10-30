@@ -18,6 +18,7 @@ import { HelpTip } from '../UI/HelpTip'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { useWeather } from '../../hooks/useWeather'
 import { WeatherButton, WeatherRow } from './TodayWeather'
+import { RewardsStrip } from '../Rewards/RewardsStrip'
 import { useStoredSet } from '../../hooks/useStoredSet'
 import { splitTitleNote } from '../../utils/quickAdd'
 import { TheDaily } from '../Daily/TheDaily'
@@ -109,6 +110,8 @@ export function DayView({ day }: { day: string }) {
     switch (id) {
       case 'goals':
         return <GoalsStrip day={day} />
+      case 'rewards':
+        return <RewardsStrip />
       case 'map':
         return <FamilyMapStrip />
       case 'contacts':

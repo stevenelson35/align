@@ -100,6 +100,7 @@ const ICONS = {
     fill: 'M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8z',
     line: 'M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8',
   },
+  sparkle: { emoji: '✨', fill: 'M10 2.5l1.9 5.6 5.6 1.9-5.6 1.9L10 17.5l-1.9-5.6L2.5 10l5.6-1.9zM18 14l.9 2.6 2.6.9-2.6.9L18 21l-.9-2.6-2.6-.9 2.6-.9z' },
   // Weather (Today's header): clear, partly cloudy, cloudy, rain, storm, fog, snow.
   cloud: { emoji: '☁️', fill: 'M7 18h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 11.1A3.5 3.5 0 0 0 7 18z' },
   partly: {

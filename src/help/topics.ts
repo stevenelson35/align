@@ -22,6 +22,7 @@ export type HelpTopicId =
   | 'details'
   | 'texting'
   | 'goals'
+  | 'rewards'
   | 'photos'
   | 'map'
   | 'voting'
@@ -192,12 +193,12 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'cards',
     title: 'Flashcards',
-    tip: 'A set of cards to learn: think of the answer, Show answer, then “Got it” or “Not yet”. Study in order, shuffled, or only the ones you haven’t got yet.',
+    tip: 'A set of cards to learn: think of the answer, tap the card to show it, then “Got it” or “Not yet”. Study in order, shuffled, or only the ones you haven’t got yet.',
     body: [
       'Make a set with “+ New list” → Flashcards (spelling words, times tables, state capitals…).',
       '• The set opens ready to study. Tap Cards (the number of cards) to list them with your ✓ / ✗, and Edit there to add cards, import a set, export, or change the list.',
       '• Add a card with its front (the question) and back (the answer), or “Import a set of cards…”: paste lines like “Paris | Capital of France” (or Q: / A: lines), or choose a YAML file with front: / back: for each card.',
-      '• Study: pick In order, Shuffled, or Only ones not known yet, then Start. Think, tap Show answer, and say Got it or Not yet; at the end you can go over the ones you missed.',
+      '• Study: pick In order, Shuffled, or Only ones not known yet, then Start. Think, tap anywhere on the card to see the answer, and say Got it or Not yet. Got it sparkles, a little more for each one right in a row; every card right ends with a burst. At the end you can go over the ones you missed.',
       '• Results are kept for each person (the ✓ / ✗ beside each card is yours). Start over forgets yours; anyone who can see the set can study it.',
     ],
   },
@@ -280,6 +281,20 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Each day shows where you stand: “4 to go”, Done, “+3 extra”, or for lower-is-better goals like weight “1.2 lb to go” / “0.8 lb ahead”. Count-up goals (reps, minutes) have “+ more” to add to the day and Reset to clear it.',
       'Each goal has “who can view” and “who can log” (only you, by default). The Goals page groups them: yours, shared ones (with who else logs them), and other people’s.',
       'Turn on “Show a timer” for number goals: time a walk, then “Add” puts the minutes on that day (time several walks and they add up). Each day can also have a note, links and pictures; the goal page has a chart, a table and comments.',
+      'Meeting a goal today sparkles in your color, more with each one done; finishing all of today’s goals bursts with “All done today” and the Goals heading glows gold for the rest of the day.',
+      'Good weeks, not streaks: a week is good when the goal is met on 5 of its days (or all of them, if it’s on fewer). Good weeks only add up; a missed day never takes one away. The goal page shows the count, this week so far and your best week.',
+    ],
+  },
+  {
+    id: 'rewards',
+    title: 'Reveal and rewards',
+    tip: 'Every goal you meet is a spark. Sparks are moves in a match game that uncovers a family photo together, and the family’s total unlocks rewards.',
+    body: [
+      'Sparks: each goal you meet earns one (up to 5 a day), and finishing all of your day’s goals earns 2 more. They’re banked: never spent and never lost.',
+      'Reveal: a family photo, picked by chance, sits under frosted ice. Each spark is one move: swipe a gem toward a neighbor (or tap one, then the other) to line up 3 or more of a color. They burst, the gems above fall, and chains keep going. Wherever gems burst on a frosted square, the ice over that part of the photo breaks. Everyone gets 3 moves when a new reveal starts.',
+      '• 4 in a row makes a gem with stripes that clears its whole row or column; an L or T makes a bomb that clears around it; 5 in a row makes a rainbow wheel that clears every gem of the color you swap it with.',
+      'The photo is shared: whatever anyone breaks stays broken, and two people can play at the same time. When the last ice breaks, everyone sees the photo uncovered, with who helped.',
+      'Rewards: the family’s sparks, all time, unlock the ladder (Ice cream night, Movie night…). Nothing is spent, so each one stays unlocked. Edit the ladder on the Reveal page.',
     ],
   },
   {

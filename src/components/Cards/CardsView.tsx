@@ -7,6 +7,7 @@ import { ListHeader } from '../Tasks/ListHeader'
 import { Icon } from '../UI/Icon'
 import { RevealCard } from '../UI/RevealCard'
 import { SectionHeader } from '../UI/SectionHeader'
+import { celebrate } from '../../utils/celebrate'
 
 /** When a card was added, so "In order" follows the order they were added (or imported). */
 const added = (t: Task) => (t.createdAt ? t.createdAt.seconds + t.createdAt.nanoseconds / 1e9 : Infinity)
@@ -33,6 +34,7 @@ export function CardsView({ list }: { list: List }) {
   const [mode, setMode] = useState<StudyMode>('shuffle')
   const [session, setSession] = useState<Session | null>(null)
   const [revealed, setRevealed] = useState(false)
+  const [run, setRun] = useState(0)
   const [shuffling, setShuffling] = useState(false)
   const [showBacks, setShowBacks] = useState(false)
   // The page opens on Study alone; "Cards (50)" lists them, and Edit there adds, imports and edits the list. A new,
@@ -49,6 +51,7 @@ export function CardsView({ list }: { list: List }) {
     if (!order.length) return setError(m === 'unknown' ? 'You’ve got them all. Try Shuffled, or Start over.' : 'Add some cards first.')
     setError(null)
     setRevealed(false)
+    setRun(0)
     const begin = () => setSession({ ids: order.map((c) => c.id), at: 0, right: 0, wrong: 0, mode: m })
     if (m === 'order') return begin()
     // A short shuffle so it's clear the deck was mixed.
@@ -63,7 +66,12 @@ export function CardsView({ list }: { list: List }) {
     if (!session) return
     if (app.isMember) recordCard(card.id, app.uid, resultFor(card, app.uid), gotIt).catch(fail)
     setRevealed(false)
-    setSession({ ...session, at: session.at + 1, right: session.right + (gotIt ? 1 : 0), wrong: session.wrong + (gotIt ? 0 : 1) })
+    // Right answers in a row make the sparkle a little bigger; a miss just starts the count again, quietly.
+    setRun(gotIt ? run + 1 : 0)
+    const next = { ...session, at: session.at + 1, right: session.right + (gotIt ? 1 : 0), wrong: session.wrong + (gotIt ? 0 : 1) }
+    setSession(next)
+    // Every card right (3 or more): the big burst.
+    if (next.at >= next.ids.length && next.wrong === 0 && next.right >= 3) setTimeout(() => celebrate({ done: next.right, total: next.right, message: `All ${next.right} right!` }), 450)
   }
 
   const current = session && session.at < session.ids.length ? cards.find((c) => c.id === session.ids[session.at]) : undefined
@@ -114,10 +122,20 @@ export function CardsView({ list }: { list: List }) {
               back={<span className="flash-back">{current.notes || '(no answer written)'}</span>}
               open={revealed}
               onOpen={() => setRevealed(true)}
+              tapAnywhere
+              revealLabel="Tap to show the answer"
               footer={
                 revealed && (
                   <div className="row flash-answer">
-                    <button type="button" className="small" onClick={() => answer(current, true)}>
+                    <button
+                      type="button"
+                      className="small"
+                      onClick={(e) => {
+                        const r = e.currentTarget.getBoundingClientRect()
+                        celebrate({ done: 0, total: 0, x: r.left + r.width / 2, y: r.top + r.height / 2, small: { run: run + 1 } })
+                        answer(current, true)
+                      }}
+                    >
                       <Icon name="check" /> Got it
                     </button>
                     <button type="button" className="secondary small" onClick={() => answer(current, false)}>

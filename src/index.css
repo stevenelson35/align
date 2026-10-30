@@ -3414,3 +3414,504 @@ input[type='color'].color-input {
   justify-items: start;
   gap: 0.15rem;
 }
+
+/* Goal celebrations (Celebrations.tsx): sparkles over everything, taps go through. */
+.celebrate-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 60;
+}
+.celebrate-banner {
+  position: fixed;
+  top: 22%;
+  left: 50%;
+  z-index: 61;
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid #f2c94c;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.18);
+  font-weight: 700;
+  font-size: 1.15rem;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: celebrate-banner 3.2s ease forwards;
+}
+@keyframes celebrate-banner {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.85);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.05);
+  }
+  20% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+}
+/* Every goal done today: a warm glow on the Goals heading for the rest of the day. */
+.goals-strip.all-done .section-icon {
+  background: #f2c94c;
+  color: #3d2e00;
+  animation: goals-glow 2.4s ease-in-out 2;
+}
+.goals-strip.all-done .section-count {
+  border-color: #f2c94c;
+  color: var(--text);
+}
+@keyframes goals-glow {
+  50% {
+    box-shadow: 0 0 0 6px rgb(242 201 76 / 0.35);
+  }
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .celebrate-banner,
+  .goals-strip.all-done .section-icon {
+    animation: none;
+  }
+}
+.goal-weeks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.9rem;
+  align-items: baseline;
+}
+.goal-weeks-count {
+  font-weight: 600;
+}
+
+/* A flashcard waiting for its answer: tap anywhere on it (the button stretches over the card). */
+.reveal-card.tap-anywhere {
+  position: relative;
+  cursor: pointer;
+}
+.reveal-card.tap-anywhere .reveal-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+}
+.reveal-card.tap-anywhere:hover {
+  border-color: var(--brand);
+}
+.reveal-card.tap-anywhere .reveal-button:focus-visible::after {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Goal rewards: the hidden picture under frosted ice (IcePicture). */
+.ice-picture {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background-size: cover;
+  background-position: center;
+  background-color: var(--border);
+}
+.ice {
+  position: absolute;
+  backdrop-filter: blur(10px) saturate(1.15);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+  background: rgb(232 242 252 / 0.45);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
+}
+:root[data-theme='dark'] .ice {
+  background: rgb(150 170 200 / 0.3);
+}
+/* More layers left, more frost; cracked once partly broken. */
+.ice.l1 {
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  background-color: rgb(232 242 252 / 0.28);
+}
+.ice.l3,
+.ice.l4 {
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  background-color: rgb(232 242 252 / 0.6);
+}
+.ice.cracked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 0l-3 12 6 5-8 9 4 14M17 12l-11 4M23 17l13-3M15 26l-15 2' fill='none' stroke='white' stroke-width='1.3' opacity='.85'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+}
+.ice.hit {
+  animation: ice-hit 0.35s ease-out;
+}
+@keyframes ice-hit {
+  40% {
+    background-color: rgb(255 255 255 / 0.85);
+    transform: scale(1.06);
+  }
+}
+.ice.breaking {
+  animation: ice-break 0.55s ease-out forwards;
+}
+@keyframes ice-break {
+  30% {
+    transform: scale(1.12) rotate(-3deg);
+    background: rgb(255 255 255 / 0.85);
+  }
+  100% {
+    transform: scale(1.35) rotate(6deg);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ice.breaking {
+    animation: none;
+    opacity: 0;
+  }
+  .ice.hit {
+    animation: none;
+  }
+}
+
+/* The reveal's match-3 board (RevealBoard): gems placed by --c / --r, so moves and falls animate themselves. */
+.reveal-board {
+  position: relative;
+  width: 100%;
+  max-width: 30rem;
+  margin: 0 auto;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text) 6%, var(--surface));
+  border: 1px solid var(--border);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+}
+.reveal-board.out {
+  filter: saturate(0.5);
+  opacity: 0.75;
+}
+.board-tile,
+.gem {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(100% / var(--cols));
+  height: calc(100% / var(--rows));
+  transform: translate(calc(var(--c) * 100%), calc(var(--r) * 100%));
+}
+.board-tile.iced {
+  /* Ice still over this spot of the picture: match here to break it. */
+  background: linear-gradient(135deg, rgb(214 232 250 / 0.9), rgb(186 214 242 / 0.75));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.6), inset 0 -2px 4px rgb(80 120 170 / 0.18);
+  border-radius: 6px;
+  scale: 0.94;
+}
+:root[data-theme='dark'] .board-tile.iced {
+  background: linear-gradient(135deg, rgb(90 120 160 / 0.55), rgb(60 90 130 / 0.45));
+}
+/* Thicker ice, deeper blue; cracked once partly broken (the same marks as the picture). */
+.board-tile.iced.l3,
+.board-tile.iced.l4 {
+  background: linear-gradient(135deg, rgb(178 208 240 / 0.95), rgb(140 182 228 / 0.85));
+}
+.board-tile.iced.cracked {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 0l-3 12 6 5-8 9 4 14M17 12l-11 4M23 17l13-3M15 26l-15 2' fill='none' stroke='white' stroke-width='1.6' opacity='.9'/%3E%3C/svg%3E"),
+    linear-gradient(135deg, rgb(214 232 250 / 0.75), rgb(186 214 242 / 0.6));
+  background-size: 100% 100%;
+}
+.gem {
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.3, 1.45, 0.6, 1);
+  z-index: 1;
+}
+.gem svg {
+  /* Absolutely placed: a percentage height doesn't resolve inside a button. */
+  position: absolute;
+  left: 8%;
+  top: 8%;
+  width: 84%;
+  height: 84%;
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.25));
+}
+.gem:disabled {
+  cursor: default;
+}
+.gem-fill.c0 {
+  fill: #e5484d;
+}
+.gem-fill.c1 {
+  fill: #3e8ef7;
+}
+.gem-fill.c2 {
+  fill: #30a46c;
+}
+.gem-fill.c3 {
+  fill: #f5b301;
+}
+.gem-fill.c4 {
+  fill: #8e4ec6;
+}
+.gem-stripe {
+  stroke: white;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+.gem-ring {
+  fill: none;
+  stroke: #1f2328;
+  stroke-width: 1.6;
+  stroke-dasharray: 3 2;
+}
+.gem-wheel.c0 {
+  stroke: #e5484d;
+}
+.gem-wheel.c1 {
+  stroke: #3e8ef7;
+}
+.gem-wheel.c2 {
+  stroke: #30a46c;
+}
+.gem-wheel.c3 {
+  stroke: #f5b301;
+}
+.gem-wheel.c4 {
+  stroke: #8e4ec6;
+}
+.gem.selected svg {
+  animation: gem-pick 0.8s ease-in-out infinite;
+}
+@keyframes gem-pick {
+  50% {
+    transform: scale(1.12);
+  }
+}
+.gem.popping svg {
+  animation: gem-pop 0.23s ease-in forwards;
+}
+@keyframes gem-pop {
+  40% {
+    transform: scale(1.25);
+    filter: brightness(1.6) drop-shadow(0 0 6px white);
+  }
+  100% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+}
+.gem.dropping {
+  animation: gem-drop 0.36s cubic-bezier(0.3, 1.45, 0.6, 1);
+}
+@keyframes gem-drop {
+  from {
+    transform: translate(calc(var(--c) * 100%), calc((var(--r) - var(--from)) * 100%));
+  }
+}
+.gem.made svg {
+  animation: gem-made 0.5s ease-out;
+}
+@keyframes gem-made {
+  0% {
+    transform: scale(0.3) rotate(-30deg);
+  }
+  70% {
+    transform: scale(1.2) rotate(8deg);
+  }
+}
+.gem.nope svg {
+  animation: gem-nope 0.3s ease-in-out;
+}
+@keyframes gem-nope {
+  25% {
+    transform: translateX(-12%);
+  }
+  75% {
+    transform: translateX(12%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gem {
+    transition: none;
+  }
+  .gem.popping svg,
+  .gem.dropping,
+  .gem.made svg,
+  .gem.nope svg,
+  .gem.selected svg {
+    animation: none;
+  }
+}
+
+/* Reveal on Today, the reveal page and the finale. */
+.rewards-today {
+  display: grid;
+  grid-template-columns: minmax(7rem, 40%) 1fr;
+  gap: 0.75rem;
+  align-items: center;
+}
+.rewards-thumb {
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.rewards-facts p {
+  margin: 0 0 0.25rem;
+}
+.rewards-start {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+.reveal-view .view-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.reveal-stage {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: center;
+  max-width: 30rem;
+  margin: 0 auto 1rem;
+}
+.reveal-picture {
+  max-width: 22rem;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+}
+.reveal-status {
+  margin: 0;
+}
+.reveal-hint {
+  margin: 0;
+  text-align: center;
+}
+.reveal-share {
+  display: flex;
+  height: 0.6rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--border);
+}
+.reveal-share span {
+  flex-basis: 0;
+}
+.ladder {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+.ladder li {
+  display: grid;
+  grid-template-columns: 1.2rem 1fr auto;
+  align-items: center;
+  gap: 0.15rem 0.4rem;
+}
+.ladder-mark {
+  color: #b58400;
+  font-weight: 700;
+}
+.ladder li.unlocked .grow {
+  font-weight: 600;
+}
+.ladder-bar {
+  grid-column: 2 / -1;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+.ladder-bar span {
+  display: block;
+  height: 100%;
+  background: #f2c94c;
+}
+.ladder-edit {
+  display: grid;
+  gap: 0.4rem;
+}
+input.ladder-sparks {
+  width: 5.5rem;
+}
+.reveal-finale {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 0.6);
+  animation: finale-in 0.5s ease-out;
+}
+.reveal-finale-card {
+  width: min(34rem, 100%);
+  max-height: 100%;
+  overflow: auto;
+  display: grid;
+  gap: 0.5rem;
+  justify-items: center;
+  text-align: center;
+  padding: 1rem;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.35);
+}
+.reveal-finale-card h2,
+.reveal-finale-card p {
+  margin: 0;
+}
+.reveal-finale-card .reveal-share {
+  width: 100%;
+}
+.reveal-finale-photo {
+  width: 100%;
+  border-radius: 10px;
+  /* From frosted to clear, then settling in slowly. */
+  animation:
+    finale-clear 1.6s ease-out,
+    finale-settle 7s ease-out;
+}
+@keyframes finale-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes finale-clear {
+  from {
+    filter: blur(14px) brightness(1.3);
+  }
+}
+@keyframes finale-settle {
+  from {
+    transform: scale(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-finale,
+  .reveal-finale-photo {
+    animation: none;
+  }
+}

@@ -44,7 +44,7 @@ export function GoalControl({ goal, day, showName = true, who }: { goal: Goal; d
   )
 
   return (
-    <div className={`goal-control kind-${goal.kind}${done ? ' met' : ''}`}>
+    <div className={`goal-control kind-${goal.kind}${done ? ' met' : ''}`} data-goal-id={goal.id}>
       {goal.kind === 'check' ? (
         <div className="goal-head">
           <label className="inline goal-check">

@@ -492,6 +492,46 @@ service cloud.firestore {
       allow delete: if isMember() && request.auth.uid == uid;
     }
 
+    // ---- Goal rewards (DESIGN.md §5.6) ----
+
+    // Each member's sparks by day ({ days: { 'YYYY-MM-DD': n } }), written by their own app from their goals. Family
+    // members read everyone's (the family total, the reveal's moves). A family app: the counts are trusted.
+    match /sparks/{uid} {
+      allow read: if isMember();
+      allow create, update: if isMember() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['days'])
+        && request.resource.data.days is map && request.resource.data.days.size() <= 1000;
+    }
+
+    // The picture being uncovered (reveals/current): a blog photo under a grid of ice, hits per cell so far (a cell
+    // clears at `thick`), moves played and ice broken per person. Any member plays or starts the next one.
+    match /reveals/{id} {
+      allow read: if isMember();
+      allow create, update: if isMember() && validReveal(request.resource.data);
+    }
+
+    function validReveal(d) {
+      return d.keys().hasOnly(['photoId', 'startedAt', 'startedBy', 'cols', 'rows', 'thick', 'hits', 'by', 'spent', 'doneAt', 'past'])
+        && d.photoId is string && d.photoId.size() > 0 && d.photoId.size() <= 100
+        && d.startedAt is string && d.startedAt.size() == 10
+        && d.startedBy is string
+        && d.cols is int && d.cols >= 4 && d.cols <= 10
+        && d.rows is int && d.rows >= 4 && d.rows <= 10
+        && d.thick is int && d.thick >= 1 && d.thick <= 4
+        && d.hits is map && d.hits.size() <= d.cols * d.rows
+        && d.by is map && d.spent is map
+        && (!('doneAt' in d) || d.doneAt is timestamp)
+        && (!('past' in d) || (d.past is list && d.past.size() <= 300));
+    }
+
+    // The reward ladder ({ items: [{ title, sparks }] }): unlocked by the family's lifetime sparks. Members edit it.
+    match /rewards/{id} {
+      allow read: if isMember();
+      allow create, update: if isMember()
+        && request.resource.data.keys().hasOnly(['items', 'updatedBy'])
+        && request.resource.data.items is list && request.resource.data.items.size() <= 20;
+    }
+
     // Members compute their token balance with a collection-group query over their own votes.
     match /{path=**}/votes/{voterId} {
       allow read: if isMember();

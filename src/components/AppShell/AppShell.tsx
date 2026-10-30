@@ -5,6 +5,10 @@ import { useHashRoute } from '../../hooks/useHashRoute'
 import type { Household, HouseholdMember, List } from '../../types'
 import { canEditTask, type Shareable } from '../../utils/tasks'
 import { ChatPanel } from '../Chat/ChatPanel'
+import { GoalCelebrations } from '../Goals/GoalCelebrations'
+import { SparksKeeper } from '../Goals/SparksKeeper'
+import { RevealFinale } from '../Rewards/RevealFinale'
+import { Celebrations } from '../UI/Celebrations'
 import { ShiftDialog } from '../Dependencies/ShiftDialog'
 import { ListEditor } from '../Tasks/ListEditor'
 import { ItemDetails } from '../Tasks/ItemDetails'
@@ -197,6 +201,10 @@ export function AppShell({ uid, household, member }: Props) {
         {listEditor && <ListEditor list={listEditor.list} kind={listEditor.kind} onClose={() => setListEditor(null)} />}
         {settingsOpen === routeHash(route) && <SettingsDialog onClose={() => setSettingsOpen(null)} />}
         {searchOpen && <SearchDialog onClose={() => setSearchOpen(false)} />}
+        {data.loaded && <GoalCelebrations />}
+        {data.loaded && app.isMember && <SparksKeeper />}
+        {data.loaded && app.isMember && <RevealFinale />}
+        <Celebrations />
       </div>
     </AppContext.Provider>
   )

@@ -1,5 +1,5 @@
 // Daily goals (DESIGN.md §5.6): which days they apply, the suggested amount for progressive goals, and progress.
-import { diffDays } from '../engine/dates'
+import { addDays, diffDays } from '../engine/dates'
 import type { Goal, GoalEntry, Household, Role } from '../types'
 import { canLogGoal } from './tasks'
 
@@ -204,4 +204,55 @@ export function goalStatus(goal: Goal, entry: GoalEntry | undefined, day: string
 /** Lower is better for weight, money and calories (lb, kg, $, cal…); higher for minutes, steps, miles and the rest. */
 export function defaultDirection(unit: string | undefined): 'down' | 'up' {
   return /^(lbs?|pounds?|kgs?|kilos?|kilograms?|\$|€|£|cal|calories|kcal)$/i.test((unit ?? '').trim()) ? 'down' : 'up'
+}
+
+/**
+ * The goals you log on a day (Today's Goals and its celebrations): yours and shared ones you can log, not archived;
+ * the ones on that day, and the ones that skip it (shown greyed).
+ */
+export function loggableGoals(goals: Goal[], uid: string, role: Role, household: Household, day: string): { forDay: Goal[]; offDay: Goal[] } {
+  const yours = goalGroups(goals, uid, role, household)
+    .filter((group) => group.key === 'mine' || group.key === 'shared')
+    .flatMap((group) => group.goals)
+    .filter((g) => !g.archived && canLogGoal(g, uid, role))
+  return { forDay: yours.filter((g) => appliesOn(g, day)), offDay: yours.filter((g) => !appliesOn(g, day)) }
+}
+
+/**
+ * Good weeks instead of a streak that breaks: a week (Sunday–Saturday) is good when the goal was met on 5 of its
+ * days, or on all of them if it's on fewer. The count only ever goes up; a missed day just doesn't add. This week
+ * counts once it's good. Running totals have no daily target, so they have no good weeks.
+ */
+export function goodWeeks(goal: Goal, day: string): { good: number; best: number; thisWeek: { met: number; need: number } } | null {
+  if (goal.kind === 'total') return null
+  const logged = Object.keys(goal.log ?? {}).filter((d) => d <= day).sort()
+  const thisStart = addDays(day, -weekday(day))
+  const need = Math.min(5, goal.weekdays?.length || 7)
+  const metIn = (start: string) => [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(start, i)).filter((d) => d <= day && met(goal, goal.log?.[d], d)).length
+  let good = 0
+  let best = 0
+  if (logged.length) {
+    for (let start = addDays(logged[0], -weekday(logged[0])); start <= thisStart; start = addDays(start, 7)) {
+      const n = metIn(start)
+      best = Math.max(best, n)
+      if (n >= need) good++
+    }
+  }
+  return { good, best, thisWeek: { met: metIn(thisStart), need } }
+}
+
+/**
+ * How big a celebration is when you finish `done` of today's `total` goals: a small sparkle for the first of
+ * several, growing with each, and a full burst when the day is done.
+ */
+export function celebrationSize(done: number, total: number): { particles: number; ms: number; final: boolean; colors: number } {
+  const t = Math.max(1, total)
+  const frac = Math.min(1, Math.max(0, done) / t)
+  const final = done >= t
+  return {
+    particles: final ? 160 : Math.round(12 + 60 * frac),
+    ms: final ? 2800 : Math.round(700 + 1100 * frac),
+    final,
+    colors: final ? 5 : frac >= 0.5 ? 2 : 1,
+  }
 }

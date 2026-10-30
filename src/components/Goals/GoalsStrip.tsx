@@ -4,8 +4,7 @@ import { useApp, useData } from '../../hooks/useApp'
 import { useDailyFlag } from '../../hooks/useDailyFlag'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { Goal } from '../../types'
-import { appliesOn, goalDaysText, goalGroups, goalHint, goalStatus, met, otherLoggers } from '../../utils/goals'
-import { canLogGoal } from '../../utils/tasks'
+import { goalDaysText, goalHint, goalStatus, loggableGoals, met, otherLoggers } from '../../utils/goals'
 import { GoalControl } from './GoalControl'
 import { SectionHeader } from '../UI/SectionHeader'
 import { Icon } from '../UI/Icon'
@@ -28,19 +27,14 @@ export function GoalsStrip({ day }: { day: string }) {
     else next.add(id)
     setLogging(next)
   }
-  // Only the goals you log; ones you can just view are on the Goals page.
-  // Your own goals first, then shared ones (with who else logs them), like the Goals page.
-  const yours = goalGroups(goals, uid, member.role, household)
-    .filter((group) => group.key === 'mine' || group.key === 'shared')
-    .flatMap((group) => group.goals)
-    .filter((g) => !g.archived && canLogGoal(g, uid, member.role))
-  const forDay = yours.filter((g) => appliesOn(g, day))
-  // Goals that skip this day (Walking on weekdays only) stay listed, greyed, so they don't seem to have vanished.
-  const offDay = yours.filter((g) => !appliesOn(g, day))
-  if (!yours.length) return null
+  // Only the goals you log (yours first, then shared ones); ones you can just view are on the Goals page. Goals that
+  // skip this day (Walking on weekdays only) stay listed, greyed, so they don't seem to have vanished.
+  const { forDay, offDay } = loggableGoals(goals, uid, member.role, household, day)
+  if (!forDay.length && !offDay.length) return null
   const metCount = forDay.filter((g) => met(g, g.log?.[day], day)).length
+  const allDone = forDay.length > 0 && metCount === forDay.length
   return (
-    <div className="day-section goals-strip">
+    <div className={`day-section goals-strip${allDone && day === today() ? ' all-done' : ''}`}>
       <SectionHeader icon="goal" title="Goals" count={`${metCount}/${forDay.length}`} onTitleClick={() => setHidden(!hidden)} expanded={!hidden} help="goals">
         {!hidden && forDay.length > 0 && (
           <button type="button" className="link small" onClick={() => setLogAll(!logAll)} aria-pressed={logAll} aria-label={logAll ? 'Summary' : 'Log all'} title={logAll ? 'Back to the summary' : 'Show every goal ready to log'}>
@@ -97,7 +91,7 @@ function GoalSummary({ goal, day, open, onToggle, who }: { goal: Goal; day: stri
       </div>
     )
   return (
-    <div className={`goal-summary${status.state === 'met' || status.state === 'exceeded' ? ' met' : ''}`}>
+    <div className={`goal-summary${status.state === 'met' || status.state === 'exceeded' ? ' met' : ''}`} data-goal-id={goal.id}>
       <button type="button" className="goal-name link" onClick={() => navigate({ view: 'goal', goalId: goal.id })} title="See this goal's history">
         {goal.name}
         {who && <span className="muted small goal-who"> ({who})</span>}

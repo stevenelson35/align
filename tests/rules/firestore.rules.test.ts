@@ -14,6 +14,7 @@ import {
   getDocs,
   query,
   setDoc,
+  increment,
   updateDoc,
   where,
   writeBatch,
@@ -433,6 +434,35 @@ describe('pinned links', () => {
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.pinnedLinks': 'link1' }))
     await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.newTaskDue': 'none' }))
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.newTaskDue': 'someday' }))
+  })
+})
+
+describe('goal rewards', () => {
+  const reveal = { photoId: '20260703_145634', startedAt: '2026-10-30', startedBy: 'steve', cols: 8, rows: 7, thick: 2, hits: {}, by: {}, spent: {} }
+
+  it('lets each member write only their own sparks, and members read them', async () => {
+    await assertSucceeds(setDoc(doc(db('wife'), 'sparks/wife'), { days: { '2026-10-30': 7 } }))
+    await assertFails(setDoc(doc(db('wife'), 'sparks/steve'), { days: { '2026-10-30': 7 } }))
+    await assertFails(setDoc(doc(db('wife'), 'sparks/wife'), { days: { '2026-10-30': 7 }, extra: 1 }))
+    await assertSucceeds(getDoc(doc(db('steve'), 'sparks/wife')))
+    await assertFails(getDoc(doc(db('grandma'), 'sparks/wife')))
+  })
+
+  it('lets members start and play a reveal, within its grid', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'reveals/current'), reveal))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'reveals/current'), { 'hits.1': increment(1), 'hits.2': increment(2), 'spent.wife': increment(1), 'by.wife': increment(3) }))
+    await assertFails(updateDoc(doc(db('wife'), 'reveals/current'), { hits: Object.fromEntries(Array.from({ length: 57 }, (_, i) => [i, 1])) }))
+    await assertFails(setDoc(doc(db('steve'), 'reveals/current'), { ...reveal, thick: 9 }))
+    await assertFails(setDoc(doc(db('steve'), 'reveals/current'), { ...reveal, cols: 40 }))
+    await assertFails(setDoc(doc(db('steve'), 'reveals/current'), { ...reveal, secret: true }))
+    await assertFails(setDoc(doc(db('grandma'), 'reveals/current'), reveal))
+    await assertFails(getDoc(doc(db('grandma'), 'reveals/current')))
+  })
+
+  it('lets members edit the reward ladder', async () => {
+    await assertSucceeds(setDoc(doc(db('wife'), 'rewards/ladder'), { items: [{ title: 'Pizza night', sparks: 60 }], updatedBy: 'wife' }))
+    await assertFails(setDoc(doc(db('wife'), 'rewards/ladder'), { items: 'pizza' }))
+    await assertFails(setDoc(doc(db('grandma'), 'rewards/ladder'), { items: [] }))
   })
 })
 
