@@ -113,13 +113,13 @@ export function Icon({ name, label, style }: { name: IconName; label?: string; s
   const a11y = label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true as const }
   if (s === 'emoji' || s === 'mono') {
     return (
-      <span className={`icon icon-emoji${s === 'mono' ? ' mono' : ''}`} {...a11y}>
+      <span className={`icon icon-emoji i-${name}${s === 'mono' ? ' mono' : ''}`} {...a11y}>
         {icon.emoji}
       </span>
     )
   }
   return (
-    <span className={`icon icon-${s}`} {...a11y}>
+    <span className={`icon icon-${s} i-${name}`} {...a11y}>
       <svg viewBox="0 0 24 24" width="1em" height="1em" focusable="false">
         {icon.fill && <path className="i-fill" d={icon.fill} />}
         {icon.line && <path className="i-line" d={icon.line} />}

@@ -363,7 +363,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'settings',
     title: 'Settings',
-    tip: 'Your own settings (tap your initial at the top right): sign out, who sees new things by default, your phone number, the Parents group, your password, the blog token, icons and theme.',
+    tip: 'Your own settings (tap your initial at the top right): sign out, who sees new things by default, your phone number, the Parents group, your password, the blog token, icons, theme and colors.',
     body: [
       'Tap your initial (top right) for Settings.',
       '• Who can see new things: your default for new lists and quick adds.',
@@ -371,7 +371,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Your mobile number: so others can text you from Align.',
       '• Parents: who “Parents” means. Once set, only a parent can change it.',
       '• Password: change it here; forgot it? Use “Forgot password?” on the sign-in screen.',
-      '• Blog posting, Icons and Theme are saved on this device only.',
+      '• Your color (the circle with your initial, your map dot) is saved for everyone to see. Blog posting, Icons, Theme, Accent color, Phone bars and Color key colors are saved on this device only.',
     ],
   },
   {

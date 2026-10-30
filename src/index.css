@@ -9,7 +9,7 @@
   /* The accent (buttons, your chat bubbles, selection): Settings → Accent color sets --brand-light / --brand-dark. */
   --brand: var(--brand-light, #8250df);
   /* Highlights (section icons, selected chips and rows): blue, or the accent when Settings says so (data-accent-all). */
-  --highlight: var(--color-private);
+  --highlight: #1f6feb;
   --highlight-bg: var(--tint-blue-bg);
   --highlight-border: var(--tint-blue-border);
 
@@ -45,7 +45,7 @@
   background: var(--bg);
 }
 
-:root[data-accent-all] {
+html:root[data-accent-all] {
   --highlight: var(--brand);
   --highlight-bg: color-mix(in srgb, var(--brand) 14%, transparent);
   --highlight-border: color-mix(in srgb, var(--brand) 60%, transparent);
@@ -60,6 +60,7 @@
   --color-done: #6e7681;
 
   --brand: var(--brand-dark, #a371f7);
+  --highlight: #4493f8;
 
   --bg: #0d1117;
   --surface: #161b22;
@@ -3348,4 +3349,35 @@ span.shortcut-main {
   .section-header {
     column-gap: 0.35rem;
   }
+}
+
+/* "Opens another site" ↗: a quiet hint, as light as a row's call / text icons (the emoji is a bright blue box). */
+.icon.i-external {
+  color: var(--muted);
+  opacity: 0.7;
+}
+.icon-emoji.i-external {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+button:not(.secondary):not(.link) .icon.i-external,
+.primary-link .icon.i-external {
+  color: inherit;
+}
+.list-color-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.list-color-row .key {
+  border-left: 4px solid var(--accent);
+  padding-left: 0.35rem;
+}
+input[type='color'].color-input {
+  width: 2rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
 }

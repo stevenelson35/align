@@ -70,6 +70,8 @@ service cloud.firestore {
         && (!('todayItems' in after[uid]) || (after[uid].todayItems is list && after[uid].todayItems.size() <= 30))
         // Lists and contacts they pinned to the top of their Today sections (ids).
         && (!('pinned' in after[uid]) || (after[uid].pinned is list && after[uid].pinned.size() <= 200))
+        // Their color (Settings → Your color): a changed one must be a plain #rrggbb (it's drawn as a background).
+        && (after[uid].get('color', null) == before[uid].get('color', null) || (after[uid].color is string && after[uid].color.matches('^#[0-9a-fA-F]{6}$')))
         // Whether tasks added without a date are due the day they're added (Settings).
         && (!('newTaskDue' in after[uid]) || after[uid].newTaskDue in ['today', 'none'])
         // Their own default for new lists and quick adds, and their mobile number for "text …" (Settings).

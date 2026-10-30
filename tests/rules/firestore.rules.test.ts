@@ -436,6 +436,17 @@ describe('pinned links', () => {
   })
 })
 
+describe('your color', () => {
+  it('lets a member change their own color to a plain #rrggbb only', async () => {
+    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.color': '#bf3989' }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.color': 'red; background: url(x)' }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.steve.color': '#bf3989' }))
+    await assertFails(updateDoc(doc(db('grandma'), 'household/main'), { 'members.grandma.color': '#0f7b7d' })) // viewers can't change the household
+    // Other settings still save while the color is left as it was.
+    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.newTaskDue': 'none' }))
+  })
+})
+
 describe('household config', () => {
   it('lets members set shared integration keys that only the household can read', async () => {
     await assertSucceeds(setDoc(doc(db('wife'), 'config/integrations'), { rescueGroupsKey: 'abc123' }))

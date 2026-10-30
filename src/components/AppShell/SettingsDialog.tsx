@@ -1,5 +1,5 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
-import { getIntegrations, setDefaultVisibility, setIntegration, setNewTaskDue, setParents, setPhone } from '../../firebase/db'
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
+import { getIntegrations, setDefaultVisibility, setIntegration, setMemberColor, setNewTaskDue, setParents, setPhone } from '../../firebase/db'
 import { changePassword, signOut } from '../../firebase/auth'
 import { auth } from '../../firebase/config'
 import { people } from '../../utils/tasks'
@@ -8,7 +8,7 @@ import { useApp } from '../../hooks/useApp'
 import type { HouseholdMember } from '../../types'
 import { AUDIENCE_ICON, AUDIENCES } from '../../utils/audience'
 import { loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
-import { ACCENTS, customAccent, loadAccent, loadAccentAll, saveAccent, saveAccentAll, type Accent } from '../../utils/accent'
+import { ACCENTS, barsColor, customAccent, LIST_COLORS, loadAccent, loadAccentAll, loadBars, loadListColors, saveAccent, saveAccentAll, saveBars, saveListColors, type Accent, type Bars, type ListColorId } from '../../utils/accent'
 import { ICON_STYLES, saveIconStyle, useIconStyle } from '../../utils/iconStyle'
 import { CHART_STYLES, saveChartStyle, useChartStyle } from '../../utils/chartStyle'
 import { DAILY_ITEMS, setDailyGrade, setDailyItemShown, useDailySettings } from '../../daily/settings'
@@ -115,6 +115,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             Sign out
           </button>
         </div>
+        {isMember && <YourColorSetting />}
         {isMember && (
           <fieldset className="setting">
             <legend>
@@ -283,7 +284,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </fieldset>
         <fieldset className="setting">
           <legend>Accent color (this device)</legend>
-          <p className="muted small">Buttons, your chat messages and what's selected. List colors (blue Just me, purple Family, teal Shared) stay the same.</p>
+          <p className="muted small">Buttons, your chat messages and what's selected. The color key's colors (blue Just me, purple Family…) are separate: change them below.</p>
           <div className="accent-swatches" role="radiogroup" aria-label="Accent color">
             {ACCENTS.map((a) => (
               <button
@@ -314,6 +315,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             Highlights too: section icons, selected chips and rows (blue otherwise)
           </label>
         </fieldset>
+        <PhoneBarsSetting />
+        <ListColorsSetting />
         {error && <p className="error">{error}</p>}
       </div>
     </div>
@@ -321,6 +324,121 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
 }
 
 /** Change your password: the current one (checked first), then the new one twice. */
+/** White on these stays readable (the initial in your circle). */
+const PERSON_COLORS = ['#1f6feb', '#bf3989', '#bc4c00', '#1a7f37', '#57606a', '#8250df', '#0f7b7d', '#cf222e', '#9a6700']
+
+/** Your color, saved with your household entry (every device): your circle at the top right, your map dot. */
+function YourColorSetting() {
+  const { uid, member } = useApp()
+  const [error, setError] = useState<string | null>(null)
+  const [shown, setShown] = useState<string | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const pick = (color: string) => {
+    setError(null)
+    setMemberColor(uid, color).catch((err) => setError(err instanceof Error ? err.message : String(err)))
+  }
+  // Dragging in the color picker changes it many times a second: save once it settles.
+  const drag = (color: string) => {
+    setShown(color)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => pick(color), 600)
+  }
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const current = (shown ?? member.color)?.toLowerCase()
+  return (
+    <fieldset className="setting">
+      <legend>Your color</legend>
+      <p className="muted small">The circle with your initial (top right), your dot on the family map and your name tags, for everyone.</p>
+      <div className="accent-swatches" role="radiogroup" aria-label="Your color">
+        {PERSON_COLORS.map((c) => (
+          <button key={c} type="button" role="radio" aria-checked={current === c} className={`accent-swatch${current === c ? ' on' : ''}`} style={{ '--swatch-light': c, '--swatch-dark': c } as CSSProperties} aria-label={c} title={c} onClick={() => {
+              setShown(null)
+              pick(c)
+            }} />
+        ))}
+        <label className={`accent-swatch accent-custom${current && !PERSON_COLORS.includes(current) ? ' on' : ''}`} title="Pick your own color">
+          <input type="color" value={current && /^#[0-9a-f]{6}$/.test(current) ? current : '#1f6feb'} onChange={(e) => drag(e.target.value)} aria-label="Custom color" />
+        </label>
+      </div>
+      {error && <p className="error small">{error}</p>}
+    </fieldset>
+  )
+}
+
+/** The phone's status / navigation bars while Align is open: the accent, plain, or your own color (this device). */
+function PhoneBarsSetting() {
+  const [bars, setBars] = useState<Bars>(loadBars)
+  const choose = (b: Bars) => {
+    saveBars(b)
+    setBars(b)
+  }
+  const custom = bars !== 'accent' && bars !== 'plain'
+  const dark = document.documentElement.dataset.theme === 'dark'
+  return (
+    <fieldset className="setting">
+      <legend>Phone bars (this device)</legend>
+      <p className="muted small">The bar across the top of the screen (and the bottom one on Android) while Align is open from your home screen.</p>
+      <label className="inline">
+        <input type="radio" name="bars" checked={bars === 'accent'} onChange={() => choose('accent')} /> Accent color
+      </label>
+      <label className="inline">
+        <input type="radio" name="bars" checked={bars === 'plain'} onChange={() => choose('plain')} /> Plain (white, or dark in Dark)
+      </label>
+      <label className="inline">
+        <input type="radio" name="bars" checked={custom} onChange={() => choose(barsColor(bars, dark))} /> My own:{' '}
+        <input type="color" className="color-input" value={custom ? bars : barsColor(bars, dark)} onChange={(e) => choose(e.target.value)} aria-label="Phone bar color" />
+      </label>
+      <p className="muted small">A web page opened from Align (a link) has its own bar, in the color Align had when it was added to the home screen.</p>
+    </fieldset>
+  )
+}
+
+/** The color key's colors (Only me, Family, Parents · Chosen people, Project, Finished), this device only. */
+function ListColorsSetting() {
+  const [colors, setColors] = useState(loadListColors)
+  const dark = document.documentElement.dataset.theme === 'dark'
+  const set = (next: Partial<Record<ListColorId, string>>) => {
+    saveListColors(next)
+    setColors(next)
+  }
+  return (
+    <fieldset className="setting">
+      <legend>Color key colors (this device)</legend>
+      <p className="muted small">The stripe on each task and list, and the colors in the color key.</p>
+      {LIST_COLORS.map((c) => (
+        <label key={c.id} className="inline list-color-row">
+          <input
+            type="color"
+            className="color-input"
+            value={colors[c.id] ?? (dark ? c.dark : c.light)}
+            onChange={(e) => set({ ...colors, [c.id]: e.target.value })}
+            aria-label={`${c.label} color`}
+          />{' '}
+          <span className={`key color-${c.id}`}>{c.label}</span>
+          {colors[c.id] && (
+            <button
+              type="button"
+              className="link small"
+              onClick={() => {
+                const next = { ...colors }
+                delete next[c.id]
+                set(next)
+              }}
+            >
+              Reset
+            </button>
+          )}
+        </label>
+      ))}
+      {Object.keys(colors).length > 0 && (
+        <button type="button" className="link small" onClick={() => set({})}>
+          Back to the usual colors
+        </button>
+      )}
+    </fieldset>
+  )
+}
+
 function PasswordSetting() {
   const [open, setOpen] = useState(false)
   const [current, setCurrent] = useState('')

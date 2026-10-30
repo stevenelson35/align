@@ -24,9 +24,15 @@
         if (a && /^#[0-9a-f]{6}$/i.test(a.light) && /^#[0-9a-f]{6}$/i.test(a.dark)) {
           document.documentElement.style.setProperty('--brand-light', a.light)
           document.documentElement.style.setProperty('--brand-dark', a.dark)
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', a.light)
         }
         if (localStorage.getItem('align-accent-all') === '1') document.documentElement.dataset.accentAll = ''
+        // Phone bars: the accent, plain, or a color of your own.
+        var bars = localStorage.getItem('align-bars')
+        var barColor = bars === 'plain' ? (dark ? '#161b22' : '#ffffff') : bars && /^#[0-9a-f]{6}$/i.test(bars) ? bars : a && a.light ? (dark ? a.dark : a.light) : dark ? '#a371f7' : '#8250df'
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', barColor)
+        // Changed color-key colors.
+        var lc = JSON.parse(localStorage.getItem('align-list-colors') || '{}')
+        for (var k in lc) if (/^(private|family|shared|project|done)$/.test(k) && /^#[0-9a-f]{6}$/i.test(lc[k])) document.documentElement.style.setProperty('--color-' + k, lc[k])
       } catch (e) {}
     </script>
     <style>

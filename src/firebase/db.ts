@@ -202,6 +202,11 @@ export function setDefaultVisibility(uid: string, visibility: NonNullable<Househ
   return updateDoc(householdRef, { [`members.${uid}.defaultVisibility`]: visibility })
 }
 
+/** Your color (Settings): the circle with your initial, your dot on the family map, your name tags. */
+export function setMemberColor(uid: string, color: string) {
+  return updateDoc(householdRef, { [`members.${uid}.color`]: color })
+}
+
 /** Your mobile number for "text <name> …" (Settings); empty removes it. */
 export function setPhone(uid: string, phone: string) {
   return updateDoc(householdRef, { [`members.${uid}.phone`]: phone.trim() || deleteField() })
