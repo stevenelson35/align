@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { cardsFromData, parseCards, parseSimpleCards, studyOrder } from './flashcards'
+import { cardsFromData, choicesFor, parseCards, parseSimpleCards, studyOrder } from './flashcards'
+import { seeded } from './match3'
 
 describe('flashcards', () => {
   it('reads plain lines in several forms', () => {
@@ -29,5 +30,20 @@ describe('flashcards', () => {
     expect(s1).toEqual(studyOrder(cards, 'shuffle', 'me', 42).map((c) => c.id))
     expect([...s1].sort()).toEqual(['a', 'b', 'c', 'd', 'e'])
     expect(studyOrder(cards, 'unknown', 'me', 7).map((c) => c.id).sort()).toEqual(['a', 'c', 'e'])
+  })
+})
+
+describe('multiple choice', () => {
+  it('mixes the answer with three other answers from the set', () => {
+    const c = choicesFor('Paris', ['Paris', 'Madrid', 'Rome', 'Berlin', 'Lisbon', 'madrid '], [], seeded(1))
+    expect(c).toHaveLength(4)
+    expect(c).toContain('Paris')
+    expect(new Set(c.map((x) => x.toLowerCase())).size).toBe(4)
+  })
+
+  it('tops up from extras when the set is small, and gives none with nothing to choose from', () => {
+    const c = choicesFor('Lima', ['Quito'], ['Bogotá', 'Lima', 'Santiago'], seeded(2))
+    expect(c.sort()).toEqual(['Bogotá', 'Lima', 'Quito', 'Santiago'])
+    expect(choicesFor('Lima', ['Lima'], [], seeded(3))).toEqual([])
   })
 })

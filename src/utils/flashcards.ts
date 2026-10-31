@@ -131,3 +131,28 @@ export function studyOrder<T extends Pick<Task, 'id' | 'results'>>(cards: T[], m
   }
   return pool
 }
+
+/**
+ * Multiple choice: the right answer and up to `count - 1` others (different words, from `pool` first, then `extra`),
+ * in random order. Fewer than two choices in all means none (a set needs other answers to choose from).
+ */
+export function choicesFor(answer: string, pool: string[], extra: string[], rand: () => number, count = 4): string[] {
+  const key = (s: string) => s.trim().toLowerCase()
+  const seen = new Set([key(answer)])
+  const others: string[] = []
+  const take = (list: string[]) => {
+    const mixed = list.map((s) => [rand(), s] as const).sort((a, b) => a[0] - b[0]).map(([, s]) => s)
+    for (const s of mixed) {
+      if (others.length >= count - 1) return
+      if (!s.trim() || seen.has(key(s))) continue
+      seen.add(key(s))
+      others.push(s.trim())
+    }
+  }
+  take(pool)
+  take(extra)
+  if (!others.length) return []
+  const out = [...others]
+  out.splice(Math.floor(rand() * (out.length + 1)), 0, answer.trim())
+  return out
+}

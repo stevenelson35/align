@@ -3921,3 +3921,168 @@ input.ladder-sparks {
     animation: none;
   }
 }
+
+/* Flashcard maps (PlaceMap): a hint on the front, a labeled map on the back. */
+.flash-extra {
+  /* Above the card's tap-to-turn area, so the map link and map don't turn the card. */
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.4rem;
+  justify-items: center;
+  margin-top: 0.4rem;
+}
+.flash-ask {
+  font-weight: 600;
+}
+.flash-back-wrap {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: center;
+}
+.flash-map {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  width: 100%;
+  text-align: left;
+}
+.place-map {
+  display: block;
+  width: 100%;
+  max-width: 26rem;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.place-map.loading {
+  background: var(--bg);
+}
+.map-sea {
+  fill: #d6e7f5;
+}
+.map-land {
+  fill: #f2eee6;
+  stroke: #b8b0a2;
+  stroke-width: 0.6;
+}
+.map-neighbor {
+  fill: #e8dfcf;
+  stroke: #7d7465;
+  stroke-width: 1;
+}
+.map-target {
+  fill: var(--brand);
+  fill-opacity: 0.78;
+  stroke: color-mix(in srgb, var(--brand) 70%, black);
+  stroke-width: 1.4;
+}
+.map-ring {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 2.5;
+}
+.map-capital circle {
+  fill: white;
+  stroke: #1f2328;
+  stroke-width: 1.5;
+}
+.map-capital .map-capital-dot {
+  fill: #1f2328;
+  stroke: none;
+}
+.place-map text {
+  paint-order: stroke;
+  stroke: rgb(255 255 255 / 0.9);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  font-family: inherit;
+}
+.map-label-place {
+  font-weight: 700;
+  fill: #1f2328;
+}
+.map-label-capital {
+  font-weight: 600;
+  fill: #1f2328;
+}
+.map-label-near {
+  fill: #5f574b;
+  font-style: italic;
+}
+:root[data-theme='dark'] .map-sea {
+  fill: #16263a;
+}
+:root[data-theme='dark'] .map-land {
+  fill: #2b3138;
+  stroke: #49515b;
+}
+:root[data-theme='dark'] .map-neighbor {
+  fill: #39414b;
+  stroke: #8b949e;
+}
+:root[data-theme='dark'] .place-map text {
+  stroke: rgb(13 17 23 / 0.9);
+}
+:root[data-theme='dark'] .map-label-place,
+:root[data-theme='dark'] .map-label-capital {
+  fill: #e6edf3;
+}
+:root[data-theme='dark'] .map-label-near {
+  fill: #b1bac4;
+}
+.map-borders {
+  margin: 0;
+  max-width: 26rem;
+}
+.learn-more-text {
+  max-width: 26rem;
+}
+.learn-more-text p {
+  margin: 0 0 0.3rem;
+}
+/* Flashcard help: Show map / Choices, and the four answers. */
+.flash-help {
+  justify-content: center;
+  gap: 1rem;
+}
+.flash-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 26rem;
+}
+.flash-choice {
+  white-space: normal;
+  text-align: center;
+}
+.flash-choice.right {
+  border-color: #1a7f37;
+  background: color-mix(in srgb, #1a7f37 16%, var(--surface));
+  color: var(--text);
+  font-weight: 600;
+}
+.flash-choice.wrong {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  color: var(--text);
+}
+.flash-choice.faded {
+  opacity: 0.5;
+}
+.flash-choice:disabled {
+  cursor: default;
+}
+.flash-right {
+  color: #1a7f37;
+  font-weight: 600;
+}
+.flash-wrong {
+  color: var(--danger);
+  font-weight: 600;
+}
+.flash-choice.right:disabled,
+.flash-choice.wrong:disabled {
+  opacity: 1;
+}

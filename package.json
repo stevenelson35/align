@@ -25,7 +25,9 @@
     "js-yaml": "^5.5.0",
     "leaflet": "^1.9.4",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "us-atlas": "^3.0.1",
+    "world-atlas": "^2.0.2"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",

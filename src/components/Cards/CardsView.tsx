@@ -1,13 +1,18 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { addTaskNow, recordCard, resetCards } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
-import { parseCards, resultFor, STUDY_MODES, studyOrder, type Card, type StudyMode } from '../../utils/flashcards'
+import { choicesFor, parseCards, resultFor, STUDY_MODES, studyOrder, type Card, type StudyMode } from '../../utils/flashcards'
 import { ListHeader } from '../Tasks/ListHeader'
 import { Icon } from '../UI/Icon'
 import { RevealCard } from '../UI/RevealCard'
 import { SectionHeader } from '../UI/SectionHeader'
 import { celebrate } from '../../utils/celebrate'
+import { useGeoIndex } from '../../hooks/useGeo'
+import { useStoredFlag } from '../../hooks/useStoredFlag'
+import { matchCard, nearbyAnswers, setPrefers, type Place } from '../../utils/geo'
+import { LearnMore } from './LearnMore'
+import { Neighbors, PlaceMap } from './PlaceMap'
 
 /** When a card was added, so "In order" follows the order they were added (or imported). */
 const added = (t: Task) => (t.createdAt ? t.createdAt.seconds + t.createdAt.nanoseconds / 1e9 : Infinity)
@@ -45,6 +50,28 @@ export function CardsView({ list }: { list: List }) {
   const listing = showCards || editing
   const [error, setError] = useState<string | null>(null)
   const fail = (err: unknown) => setError(err instanceof Error ? err.message : String(err))
+  // Geography cards (a country or US state on either side) get maps: a hint on the front, a labeled map on the back.
+  const geo = useGeoIndex(cards.length > 0)
+  const cardKey = cards.map((c) => `${c.id}:${c.title}:${c.notes ?? ''}`).join('|')
+  const places = useMemo(() => {
+    const out = new Map<string, Place>()
+    if (!geo) return out
+    const prefer = setPrefers(cards.map((c) => ({ front: c.title, back: c.notes ?? '' })), geo)
+    for (const c of cards) {
+      const p = matchCard(c.title, c.notes ?? '', geo, prefer)
+      if (p) out.set(c.id, p)
+    }
+    return out
+    // cardKey stands for the cards' words
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo, cardKey])
+  const [hintOpen, setHintOpen] = useState(false)
+  const [mapFirst, setMapFirst] = useStoredFlag(`align-cards-map-first-${list.id}`, false)
+  const canMapFirst = places.size >= 3
+  // Multiple choice: always (per set, on this device), or on a card you're stuck on (Choices).
+  const [choicesAlways, setChoicesAlways] = useStoredFlag(`align-cards-choices-${list.id}`, false)
+  const [choicesOpen, setChoicesOpen] = useState(false)
+  const [picked, setPicked] = useState<{ choice: string; right: boolean } | null>(null)
 
   function start(m: StudyMode) {
     const order = studyOrder(cards, m, app.uid, crypto.getRandomValues(new Uint32Array(1))[0])
@@ -52,6 +79,8 @@ export function CardsView({ list }: { list: List }) {
     setError(null)
     setRevealed(false)
     setRun(0)
+    setChoicesOpen(false)
+    setPicked(null)
     const begin = () => setSession({ ids: order.map((c) => c.id), at: 0, right: 0, wrong: 0, mode: m })
     if (m === 'order') return begin()
     // A short shuffle so it's clear the deck was mixed.
@@ -66,6 +95,8 @@ export function CardsView({ list }: { list: List }) {
     if (!session) return
     if (app.isMember) recordCard(card.id, app.uid, resultFor(card, app.uid), gotIt).catch(fail)
     setRevealed(false)
+    setChoicesOpen(false)
+    setPicked(null)
     // Right answers in a row make the sparkle a little bigger; a miss just starts the count again, quietly.
     setRun(gotIt ? run + 1 : 0)
     const next = { ...session, at: session.at + 1, right: session.right + (gotIt ? 1 : 0), wrong: session.wrong + (gotIt ? 0 : 1) }
@@ -76,6 +107,25 @@ export function CardsView({ list }: { list: List }) {
 
   const current = session && session.at < session.ids.length ? cards.find((c) => c.id === session.ids[session.at]) : undefined
   const finished = session && session.at >= session.ids.length
+  const currentPlace = current && geo ? places.get(current.id) : undefined
+  const mapFirstHere = mapFirst && canMapFirst && !!currentPlace
+  // In Map first the answer is the front's words (the place); otherwise the back.
+  const answerText = current ? (mapFirstHere ? current.title : (current.notes ?? '')).trim() : ''
+  const choices = useMemo(() => {
+    if (!current || !answerText) return []
+    const pool = cards.filter((c) => c.id !== current.id).map((c) => (mapFirstHere ? c.title : (c.notes ?? '')))
+    return choicesFor(answerText, pool, currentPlace && geo ? nearbyAnswers(currentPlace, geo.meta, answerText) : [], Math.random)
+    // A new card (or a new turn of the same one) deals new choices.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id, session?.at, mapFirstHere, answerText])
+  const showChoices = choices.length > 1 && (choicesAlways || choicesOpen)
+  function pick(choice: string, at: DOMRect) {
+    if (picked || !current) return
+    const right = choice.toLowerCase() === answerText.toLowerCase()
+    setPicked({ choice, right })
+    if (right) celebrate({ done: 0, total: 0, x: at.left + at.width / 2, y: at.top + at.height / 2, small: { run: run + 1 } })
+    setTimeout(() => setRevealed(true), right ? 450 : 900)
+  }
 
   return (
     <section className="cards-view">
@@ -95,6 +145,16 @@ export function CardsView({ list }: { list: List }) {
             <button type="button" className="small" onClick={() => start(mode)} disabled={!cards.length}>
               <Icon name="play" /> Start
             </button>
+            {cards.length >= 2 && (
+              <label className="inline small" title="Every card offers four answers to pick from">
+                <input type="checkbox" checked={choicesAlways} onChange={(e) => setChoicesAlways(e.target.checked)} /> Multiple choice
+              </label>
+            )}
+            {canMapFirst && (
+              <label className="inline small" title="Each card starts as a map with the place filled in: name it, then check">
+                <input type="checkbox" checked={mapFirst} onChange={(e) => setMapFirst(e.target.checked)} /> Map first
+              </label>
+            )}
             {known > 0 && app.isMember && (
               <button type="button" className="link small" onClick={() => window.confirm('Forget which cards you know, and start over?') && resetCards(cards.map((c) => c.id), app.uid).catch(fail)}>
                 Start over
@@ -118,14 +178,37 @@ export function CardsView({ list }: { list: List }) {
             <RevealCard
               key={current.id}
               className="flashcard"
-              front={<span className="flash-front">{current.title}</span>}
-              back={<span className="flash-back">{current.notes || '(no answer written)'}</span>}
+              front={
+                <FlashFront
+                  title={current.title}
+                  place={geo ? places.get(current.id) : undefined}
+                  geo={geo}
+                  mapFirst={mapFirst && canMapFirst}
+                  hintOpen={hintOpen}
+                  onHint={() => setHintOpen(!hintOpen)}
+                  choices={showChoices ? choices : undefined}
+                  canChoose={!revealed && !showChoices && choices.length > 1}
+                  onChoices={() => setChoicesOpen(true)}
+                  answer={answerText}
+                  picked={picked}
+                  onPick={pick}
+                />
+              }
+              back={<FlashBack title={current.title} notes={current.notes} place={geo ? places.get(current.id) : undefined} geo={geo} mapFirst={mapFirst && canMapFirst} />}
               open={revealed}
               onOpen={() => setRevealed(true)}
               tapAnywhere
               revealLabel="Tap to show the answer"
               footer={
-                revealed && (
+                revealed &&
+                (picked ? (
+                  <div className="row flash-answer">
+                    <span className={picked.right ? 'flash-right' : 'flash-wrong'}>{picked.right ? '✓ Right!' : 'Not quite'}</span>
+                    <button type="button" className="small" onClick={() => answer(current, picked.right)}>
+                      Next
+                    </button>
+                  </div>
+                ) : (
                   <div className="row flash-answer">
                     <button
                       type="button"
@@ -142,7 +225,7 @@ export function CardsView({ list }: { list: List }) {
                       <Icon name="close" /> Not yet
                     </button>
                   </div>
-                )
+                ))
               }
             />
             <div className="row">
@@ -297,6 +380,108 @@ function AddCards({ list, onError }: { list: List; onError: (e: unknown) => void
               )}
             </p>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** The four answers to pick from; after a pick, the right one goes green (and a wrong pick red). */
+function Choices({ choices, answer, picked, onPick }: { choices: string[]; answer: string; picked: { choice: string; right: boolean } | null; onPick: (choice: string, at: DOMRect) => void }) {
+  return (
+    <div className="flash-choices" role="group" aria-label="Pick the answer">
+      {choices.map((c) => {
+        const state = picked ? (c.toLowerCase() === answer.toLowerCase() ? ' right' : c === picked.choice ? ' wrong' : ' faded') : ''
+        return (
+          <button key={c} type="button" className={`secondary flash-choice${state}`} disabled={!!picked} onClick={(e) => onPick(c, e.currentTarget.getBoundingClientRect())}>
+            {c}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * A card's front: its words, and the help you can ask for: "Show map" for a place (the region with the place filled
+ * in, no names) and "Choices" (four answers to pick from) when you're stuck, or always if the set is set to multiple
+ * choice. In Map first, the map stands in for the words. The help sits above the card's tap-to-turn area.
+ */
+function FlashFront({
+  title,
+  place,
+  geo,
+  mapFirst,
+  hintOpen,
+  onHint,
+  choices,
+  canChoose,
+  onChoices,
+  answer,
+  picked,
+  onPick,
+}: {
+  title: string
+  place?: Place
+  geo: ReturnType<typeof useGeoIndex>
+  mapFirst: boolean
+  hintOpen: boolean
+  onHint: () => void
+  choices?: string[]
+  canChoose: boolean
+  onChoices: () => void
+  answer: string
+  picked: { choice: string; right: boolean } | null
+  onPick: (choice: string, at: DOMRect) => void
+}) {
+  const help = (
+    <>
+      {(canChoose || (place && geo && !mapFirst)) && (
+        <span className="row flash-help">
+          {place && geo && !mapFirst && (
+            <button type="button" className="link small" onClick={onHint} aria-expanded={hintOpen}>
+              <Icon name="map" /> {hintOpen ? 'Hide map' : 'Show map'}
+            </button>
+          )}
+          {canChoose && (
+            <button type="button" className="link small" onClick={onChoices}>
+              <Icon name="list" /> Choices
+            </button>
+          )}
+        </span>
+      )}
+      {place && geo && !mapFirst && hintOpen && <PlaceMap place={place} mode="hint" index={geo} />}
+      {choices && <Choices choices={choices} answer={answer} picked={picked} onPick={onPick} />}
+    </>
+  )
+  if (place && geo && mapFirst)
+    return (
+      <div className="flash-extra">
+        <span className="flash-ask">Where is this?</span>
+        <PlaceMap place={place} mode="hint" index={geo} />
+        {help}
+      </div>
+    )
+  return (
+    <>
+      <span className="flash-front">{title}</span>
+      <div className="flash-extra">{help}</div>
+    </>
+  )
+}
+
+/** A card's back: the answer, and for a place a labeled map (capital marked, neighbors named), its borders, and
+ *  Learn more. In Map first the front's words show too, since the front was only a map. */
+function FlashBack({ title, notes, place, geo, mapFirst }: { title: string; notes?: string; place?: Place; geo: ReturnType<typeof useGeoIndex>; mapFirst: boolean }) {
+  return (
+    <div className="flash-back-wrap">
+      {mapFirst && place && <span className="flash-front">{title}</span>}
+      <span className="flash-back">{notes || '(no answer written)'}</span>
+      {place && geo && (
+        <div className="flash-map">
+          <PlaceMap place={place} mode="answer" index={geo} />
+          <Neighbors place={place} index={geo} />
+          <LearnMore place={place} index={geo} />
         </div>
       )}
     </div>

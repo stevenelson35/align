@@ -199,6 +199,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• The set opens ready to study. Tap Cards (the number of cards) to list them with your ✓ / ✗, and Edit there to add cards, import a set, export, or change the list.',
       '• Add a card with its front (the question) and back (the answer), or “Import a set of cards…”: paste lines like “Paris | Capital of France” (or Q: / A: lines), or choose a YAML file with front: / back: for each card.',
       '• Study: pick In order, Shuffled, or Only ones not known yet, then Start. Think, tap anywhere on the card to see the answer, and say Got it or Not yet. Got it sparkles, a little more for each one right in a row; every card right ends with a burst. At the end you can go over the ones you missed.',
+      '• Stuck? Choices offers four answers to pick from (Multiple choice, by Start, offers them on every card). A right pick sparkles; a wrong one shows the right answer and counts as not yet.',
+      '• Geography: cards that name a country or US state (or its capital) get maps. On the front, Show map shows the region with the place filled in and its neighbors outlined, no names. The back shows it labeled, with the capital marked and the neighbors named, the countries or states it borders, and Learn more (a few lines from Wikipedia). Map first, by Start, shows only the map: name the place.',
       '• Results are kept for each person (the ✓ / ✗ beside each card is yours). Start over forgets yours; anyone who can see the set can study it.',
     ],
   },
