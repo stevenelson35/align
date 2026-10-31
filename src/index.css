@@ -4148,3 +4148,22 @@ input.ladder-sparks {
   border-radius: 50%;
   flex: none;
 }
+
+/* Goals on a narrow phone (Safari keeps a button's text on one line unless told, which pushed the row's right side
+   off screen): names wrap, and nothing in a goal row or the list is wider than the screen. */
+.goal-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+.goal-list > *,
+.goal-summary > *,
+.goal-head > * {
+  min-width: 0;
+}
+.goal-name.link {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.goal-summary .goal-name {
+  flex: 1 1 8rem;
+}

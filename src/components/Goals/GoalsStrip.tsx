@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { today } from '../../engine/dates'
+import { addDays, today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import { useDailyFlag } from '../../hooks/useDailyFlag'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { Goal } from '../../types'
-import { goalDaysText, goalHint, goalStatus, loggableGoals, met, otherLoggers } from '../../utils/goals'
+import { appliesOn, goalDaysText, goalHint, goalStatus, loggableGoals, met, otherLoggers } from '../../utils/goals'
 import { GoalControl } from './GoalControl'
 import { SectionHeader } from '../UI/SectionHeader'
 import { Icon } from '../UI/Icon'
@@ -35,7 +35,7 @@ export function GoalsStrip({ day }: { day: string }) {
   const allDone = forDay.length > 0 && metCount === forDay.length
   return (
     <div className={`day-section goals-strip${allDone && day === today() ? ' all-done' : ''}`}>
-      <SectionHeader icon="goal" title="Goals" count={`${metCount}/${forDay.length}`} onTitleClick={() => setHidden(!hidden)} expanded={!hidden} help="goals">
+      <SectionHeader icon="goal" title="Goals" count={forDay.length ? `${metCount}/${forDay.length}` : 'none today'} onTitleClick={() => setHidden(!hidden)} expanded={!hidden} help="goals">
         {!hidden && forDay.length > 0 && (
           <button type="button" className="link small" onClick={() => setLogAll(!logAll)} aria-pressed={logAll} aria-label={logAll ? 'Summary' : 'Log all'} title={logAll ? 'Back to the summary' : 'Show every goal ready to log'}>
             <Icon name={logAll ? 'list' : 'edit'} /> <span className="hide-mobile">{logAll ? 'Summary' : 'Log all'}</span>
@@ -48,7 +48,7 @@ export function GoalsStrip({ day }: { day: string }) {
           {hidden ? 'Show' : 'Hide'}
         </button>
       </SectionHeader>
-      {!hidden && (
+      {(!hidden || !forDay.length) && (
         <>
           {day > today() && <p className="muted small">Log goals on the day.</p>}
           <div className="goal-list">
@@ -65,7 +65,7 @@ export function GoalsStrip({ day }: { day: string }) {
                   <button type="button" className="goal-name link" onClick={() => navigate({ view: 'goal', goalId: g.id })} title="See this goal's history">
                     {g.name}
                   </button>
-                  <span className="muted small">Not today · {goalDaysText(g)}</span>
+                  <span className="muted small">{nextOn(g, day)}</span>
                 </div>
               </div>
             ))}
@@ -74,6 +74,15 @@ export function GoalsStrip({ day }: { day: string }) {
       )}
     </div>
   )
+}
+
+/** "Next on Monday · Weekdays" for a goal that isn't on this day. */
+function nextOn(goal: Goal, day: string): string {
+  for (let k = 1; k <= 7; k++) {
+    const d = addDays(day, k)
+    if (appliesOn(goal, d)) return `${k === 1 ? 'Tomorrow' : `Next on ${new Date(`${d}T12:00:00`).toLocaleDateString([], { weekday: 'long' })}`} · ${goalDaysText(goal)}`
+  }
+  return `Not today · ${goalDaysText(goal)}`
 }
 
 /** One goal as a summary line: name, where it stands (or what it asks), the trend, and a pencil to log just this one. */
