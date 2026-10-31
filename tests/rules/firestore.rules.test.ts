@@ -437,6 +437,19 @@ describe('pinned links', () => {
   })
 })
 
+describe('flashcard leaderboards', () => {
+  const score = { right: 8, of: 10, ms: 95000, at: '2026-10-31' }
+  it('lets each member write only their own score, within sense', async () => {
+    await assertSucceeds(setDoc(doc(db('wife'), 'cardBoards/set1'), { scores: { wife: score } }, { merge: true }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'cardBoards/set1'), { scores: { steve: { ...score, right: 9 } } }, { merge: true }))
+    await assertFails(setDoc(doc(db('wife'), 'cardBoards/set1'), { scores: { steve: { ...score, right: 10 } } }, { merge: true }))
+    await assertFails(setDoc(doc(db('wife'), 'cardBoards/set1'), { scores: { wife: { ...score, right: 11 } } }, { merge: true }))
+    await assertFails(setDoc(doc(db('wife'), 'cardBoards/set1'), { scores: { wife: { ...score, bonus: 1 } } }, { merge: true }))
+    await assertSucceeds(getDoc(doc(db('steve'), 'cardBoards/set1')))
+    await assertFails(setDoc(doc(db('grandma'), 'cardBoards/set1'), { scores: { grandma: score } }, { merge: true }))
+  })
+})
+
 describe('goal rewards', () => {
   const reveal = { photoId: '20260703_145634', startedAt: '2026-10-30', startedBy: 'steve', cols: 8, rows: 7, thick: 2, hits: {}, by: {}, spent: {} }
 

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { sendPasswordReset, signIn } from '../../firebase/auth'
+import { currentSlot, loadAccounts, switchTo as openAs } from '../../firebase/accounts'
 
 /** Sign in, or (Forgot password?) get a reset link by email. */
 export function SignIn() {
@@ -9,6 +10,8 @@ export function SignIn() {
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // Adding someone on a shared device: the people already signed in here, to go back to instead.
+  const others = loadAccounts().filter((a) => a.slot !== currentSlot())
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -67,6 +70,16 @@ export function SignIn() {
         <button type="button" className="link small" onClick={() => switchTo(mode === 'signIn' ? 'reset' : 'signIn')}>
           {mode === 'signIn' ? 'Forgot password?' : 'Back to sign in'}
         </button>
+        {others.length > 0 && (
+          <p className="small switch-person">
+            <span className="muted">Or go back to:</span>
+            {others.map((a) => (
+              <button key={a.slot} type="button" className="secondary small person-chip" onClick={() => openAs(a.slot)}>
+                <span className="person-dot" style={{ background: a.color }} aria-hidden="true" /> {a.name}
+              </button>
+            ))}
+          </p>
+        )}
       </form>
     </main>
   )

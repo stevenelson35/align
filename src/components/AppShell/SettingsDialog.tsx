@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { getIntegrations, setDefaultVisibility, setIntegration, setMemberColor, setNewTaskDue, setParents, setPhone } from '../../firebase/db'
 import { changePassword, signOut } from '../../firebase/auth'
+import { addPerson, currentSlot, loadAccounts, switchTo } from '../../firebase/accounts'
 import { auth } from '../../firebase/config'
 import { people } from '../../utils/tasks'
 import { githubToken, setGithubToken, testToken } from '../../blog/github'
@@ -117,6 +118,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             Sign out
           </button>
         </div>
+        <SwitchPerson />
         {isMember && <YourColorSetting />}
         {isMember && (
           <fieldset className="setting">
@@ -327,6 +329,27 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
 }
 
 /** Change your password: the current one (checked first), then the new one twice. */
+/**
+ * Someone else on this phone (a child borrowing it): one tap opens Align as them, and everything they do counts as
+ * them. Each person signs in once on this device; after that, switching needs no password.
+ */
+function SwitchPerson() {
+  const others = loadAccounts().filter((a) => a.slot !== currentSlot())
+  return (
+    <div className="switch-person">
+      <span className="small muted">{others.length ? 'Switch to:' : 'Someone else using this device?'}</span>
+      {others.map((a) => (
+        <button key={a.slot} type="button" className="secondary small person-chip" onClick={() => switchTo(a.slot)} title={`Open Align as ${a.name}`}>
+          <span className="person-dot" style={{ background: a.color }} aria-hidden="true" /> {a.name}
+        </button>
+      ))}
+      <button type="button" className="link small" onClick={addPerson} title="They sign in once; after that it's one tap to switch">
+        + Add someone
+      </button>
+    </div>
+  )
+}
+
 /** White on these stays readable (the initial in your circle). */
 const PERSON_COLORS = ['#1f6feb', '#bf3989', '#bc4c00', '#1a7f37', '#57606a', '#8250df', '#0f7b7d', '#cf222e', '#9a6700']
 

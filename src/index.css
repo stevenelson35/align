@@ -4086,3 +4086,65 @@ input.ladder-sparks {
 .flash-choice.wrong:disabled {
   opacity: 1;
 }
+/* Flashcard leaderboard */
+.leaderboard {
+  list-style: none;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+.leaderboard li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.leaderboard li.me {
+  border-color: var(--brand);
+}
+.leader-rank {
+  width: 1.2rem;
+  font-weight: 700;
+  color: #b58400;
+  text-align: center;
+}
+.leader-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  flex: none;
+}
+.leader-best {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.leader-mastered {
+  min-width: 6.5rem;
+  text-align: right;
+}
+.flash-challenge-result {
+  font-size: 1.05rem;
+}
+/* Switching person on a shared device (Settings, sign-in). */
+.switch-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0.75rem;
+}
+.person-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.person-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  flex: none;
+}

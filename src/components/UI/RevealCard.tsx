@@ -17,6 +17,7 @@ export function RevealCard({
   className = '',
   footer,
   tapAnywhere = false,
+  canReveal = true,
 }: {
   label?: ReactNode
   icon?: IconName
@@ -29,11 +30,13 @@ export function RevealCard({
   footer?: ReactNode
   /** The whole card shows the answer when tapped (flashcards), not just the small link. */
   tapAnywhere?: boolean
+  /** False hides the reveal (a flashcard Challenge: pick an answer instead). */
+  canReveal?: boolean
 }) {
   const [shown, setShown] = useState(false)
   const isOpen = open ?? shown
   return (
-    <div className={`reveal-card ${isOpen ? 'revealed' : ''}${tapAnywhere && !isOpen ? ' tap-anywhere' : ''} ${className}`}>
+    <div className={`reveal-card ${isOpen ? 'revealed' : ''}${tapAnywhere && canReveal && !isOpen ? ' tap-anywhere' : ''} ${className}`}>
       {label && (
         <div className="reveal-label">
           {icon && <Icon name={icon} />} {label}
@@ -44,7 +47,7 @@ export function RevealCard({
         <>
           {isOpen ? (
             <div className="reveal-back">{back}</div>
-          ) : (
+          ) : !canReveal ? null : (
             <button
               type="button"
               className="link small reveal-button"

@@ -14,6 +14,8 @@ export interface CardResult {
   wrong?: number
   /** The last day studied, YYYY-MM-DD. */
   last?: string
+  /** Times picked right in multiple choice (checked by the app, unlike Got it): a card counts as mastered. */
+  mc?: number
 }
 
 export type StudyMode = 'order' | 'shuffle' | 'unknown'

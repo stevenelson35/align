@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { addTaskNow, recordCard, resetCards } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
@@ -8,6 +8,9 @@ import { Icon } from '../UI/Icon'
 import { RevealCard } from '../UI/RevealCard'
 import { SectionHeader } from '../UI/SectionHeader'
 import { celebrate } from '../../utils/celebrate'
+import { beats, saveChallengeScore, useCardBoard, type ChallengeScore } from '../../firebase/cardBoards'
+import { today } from '../../engine/dates'
+import { people } from '../../utils/tasks'
 import { useGeoIndex } from '../../hooks/useGeo'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { matchCard, nearbyAnswers, setPrefers, type Place } from '../../utils/geo'
@@ -23,6 +26,17 @@ interface Session {
   right: number
   wrong: number
   mode: StudyMode
+  /** A Challenge round (for the leaderboard): when it began. */
+  challenge?: { startedAt: number }
+}
+
+/** Cards in a Challenge round, and the fewest a set needs for one (four answers to pick from). */
+const CHALLENGE_CARDS = 10
+const CHALLENGE_MIN = 4
+
+const clock = (ms: number) => {
+  const s = Math.round(ms / 1000)
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
 /**
@@ -73,16 +87,23 @@ export function CardsView({ list }: { list: List }) {
   const [choicesOpen, setChoicesOpen] = useState(false)
   const [picked, setPicked] = useState<{ choice: string; right: boolean } | null>(null)
 
-  function start(m: StudyMode) {
-    const order = studyOrder(cards, m, app.uid, crypto.getRandomValues(new Uint32Array(1))[0])
+  const board = useCardBoard(list.id, app.isMember)
+  const answered = cards.filter((c) => (c.notes ?? '').trim())
+  const canChallenge = app.isMember && answered.length >= CHALLENGE_MIN
+  const [lastChallenge, setLastChallenge] = useState<{ score: ChallengeScore; best: boolean; first: boolean } | null>(null)
+
+  function start(m: StudyMode, challenge = false) {
+    const seed = crypto.getRandomValues(new Uint32Array(1))[0]
+    const order = challenge ? studyOrder(answered, 'shuffle', app.uid, seed).slice(0, CHALLENGE_CARDS) : studyOrder(cards, m, app.uid, seed)
     if (!order.length) return setError(m === 'unknown' ? 'You’ve got them all. Try Shuffled, or Start over.' : 'Add some cards first.')
+    setLastChallenge(null)
     setError(null)
     setRevealed(false)
     setRun(0)
     setChoicesOpen(false)
     setPicked(null)
-    const begin = () => setSession({ ids: order.map((c) => c.id), at: 0, right: 0, wrong: 0, mode: m })
-    if (m === 'order') return begin()
+    const begin = () => setSession({ ids: order.map((c) => c.id), at: 0, right: 0, wrong: 0, mode: challenge ? 'shuffle' : m, ...(challenge ? { challenge: { startedAt: Date.now() } } : {}) })
+    if (m === 'order' && !challenge) return begin()
     // A short shuffle so it's clear the deck was mixed.
     setShuffling(true)
     setTimeout(() => {
@@ -91,9 +112,9 @@ export function CardsView({ list }: { list: List }) {
     }, 700)
   }
 
-  function answer(card: Task, gotIt: boolean) {
+  function answer(card: Task, gotIt: boolean, pickedRight = false) {
     if (!session) return
-    if (app.isMember) recordCard(card.id, app.uid, resultFor(card, app.uid), gotIt).catch(fail)
+    if (app.isMember) recordCard(card.id, app.uid, resultFor(card, app.uid), gotIt, pickedRight).catch(fail)
     setRevealed(false)
     setChoicesOpen(false)
     setPicked(null)
@@ -101,6 +122,13 @@ export function CardsView({ list }: { list: List }) {
     setRun(gotIt ? run + 1 : 0)
     const next = { ...session, at: session.at + 1, right: session.right + (gotIt ? 1 : 0), wrong: session.wrong + (gotIt ? 0 : 1) }
     setSession(next)
+    // The end of a Challenge round: a new best goes on the set's leaderboard.
+    if (next.challenge && next.at >= next.ids.length) {
+      const score = { right: next.right, of: next.ids.length, ms: Math.max(1, Date.now() - next.challenge.startedAt), at: today() }
+      const best = beats(score, board[app.uid])
+      setLastChallenge({ score, best, first: !board[app.uid] })
+      if (best) saveChallengeScore(list.id, app.uid, score).catch(fail)
+    }
     // Every card right (3 or more): the big burst.
     if (next.at >= next.ids.length && next.wrong === 0 && next.right >= 3) setTimeout(() => celebrate({ done: next.right, total: next.right, message: `All ${next.right} right!` }), 450)
   }
@@ -108,7 +136,9 @@ export function CardsView({ list }: { list: List }) {
   const current = session && session.at < session.ids.length ? cards.find((c) => c.id === session.ids[session.at]) : undefined
   const finished = session && session.at >= session.ids.length
   const currentPlace = current && geo ? places.get(current.id) : undefined
-  const mapFirstHere = mapFirst && canMapFirst && !!currentPlace
+  const inChallenge = !!session?.challenge
+  // A Challenge is always words first, so every round is the same test.
+  const mapFirstHere = mapFirst && canMapFirst && !!currentPlace && !inChallenge
   // In Map first the answer is the front's words (the place); otherwise the back.
   const answerText = current ? (mapFirstHere ? current.title : (current.notes ?? '')).trim() : ''
   const choices = useMemo(() => {
@@ -118,7 +148,33 @@ export function CardsView({ list }: { list: List }) {
     // A new card (or a new turn of the same one) deals new choices.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, session?.at, mapFirstHere, answerText])
-  const showChoices = choices.length > 1 && (choicesAlways || choicesOpen)
+  const showChoices = choices.length > 1 && (choicesAlways || choicesOpen || inChallenge)
+  // Keep the card in view: a turned card (with its map) can push Got it / Next below the screen, so scroll down to
+  // it; a new card starts back at its top. Checked again once a map has had time to load.
+  const cardEl = useRef<HTMLDivElement>(null)
+  const footerEl = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const card = cardEl.current
+    if (!revealed || !card) return
+    const check = () => {
+      const r = footerEl.current?.getBoundingClientRect()
+      if (r && r.bottom > window.innerHeight - 8) footerEl.current!.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }
+    // Whenever the card grows (the answer, then its map once loaded) for the next few seconds.
+    const watch = new ResizeObserver(check)
+    watch.observe(card)
+    const timer = setTimeout(check, 350)
+    const stop = setTimeout(() => watch.disconnect(), 4000)
+    return () => {
+      watch.disconnect()
+      clearTimeout(timer)
+      clearTimeout(stop)
+    }
+  }, [revealed, current?.id])
+  useEffect(() => {
+    const r = cardEl.current?.getBoundingClientRect()
+    if (r && r.top < 64) window.scrollBy({ top: r.top - 80, behavior: 'smooth' })
+  }, [current?.id])
   function pick(choice: string, at: DOMRect) {
     if (picked || !current) return
     const right = choice.toLowerCase() === answerText.toLowerCase()
@@ -145,6 +201,11 @@ export function CardsView({ list }: { list: List }) {
             <button type="button" className="small" onClick={() => start(mode)} disabled={!cards.length}>
               <Icon name="play" /> Start
             </button>
+            {canChallenge && (
+              <button type="button" className="secondary small" onClick={() => start('shuffle', true)} title={`${Math.min(CHALLENGE_CARDS, answered.length)} cards at random, multiple choice, no skipping: for the leaderboard`}>
+                <Icon name="star" /> Challenge
+              </button>
+            )}
             {cards.length >= 2 && (
               <label className="inline small" title="Every card offers four answers to pick from">
                 <input type="checkbox" checked={choicesAlways} onChange={(e) => setChoicesAlways(e.target.checked)} /> Multiple choice
@@ -173,8 +234,9 @@ export function CardsView({ list }: { list: List }) {
         {current && session && (
           <>
             <p className="muted small">
-              Card {session.at + 1} of {session.ids.length} · ✓ {session.right} · ✗ {session.wrong}
+              {inChallenge && <strong>Challenge · </strong>}Card {session.at + 1} of {session.ids.length} · ✓ {session.right} · ✗ {session.wrong}
             </p>
+            <div ref={cardEl}>
             <RevealCard
               key={current.id}
               className="flashcard"
@@ -187,7 +249,7 @@ export function CardsView({ list }: { list: List }) {
                   hintOpen={hintOpen}
                   onHint={() => setHintOpen(!hintOpen)}
                   choices={showChoices ? choices : undefined}
-                  canChoose={!revealed && !showChoices && choices.length > 1}
+                  canChoose={!revealed && !showChoices && choices.length > 1 && !inChallenge}
                   onChoices={() => setChoicesOpen(true)}
                   answer={answerText}
                   picked={picked}
@@ -197,14 +259,16 @@ export function CardsView({ list }: { list: List }) {
               back={<FlashBack title={current.title} notes={current.notes} place={geo ? places.get(current.id) : undefined} geo={geo} mapFirst={mapFirst && canMapFirst} />}
               open={revealed}
               onOpen={() => setRevealed(true)}
+              canReveal={!inChallenge}
               tapAnywhere
               revealLabel="Tap to show the answer"
               footer={
-                revealed &&
-                (picked ? (
+                revealed && (
+                <div ref={footerEl}>
+                {picked ? (
                   <div className="row flash-answer">
                     <span className={picked.right ? 'flash-right' : 'flash-wrong'}>{picked.right ? '✓ Right!' : 'Not quite'}</span>
-                    <button type="button" className="small" onClick={() => answer(current, picked.right)}>
+                    <button type="button" className="small" onClick={() => answer(current, picked.right, picked.right)}>
                       Next
                     </button>
                   </div>
@@ -225,13 +289,18 @@ export function CardsView({ list }: { list: List }) {
                       <Icon name="close" /> Not yet
                     </button>
                   </div>
-                ))
+                )}
+                </div>
+                )
               }
             />
+            </div>
             <div className="row">
-              <button type="button" className="link small" onClick={() => setSession({ ...session, at: session.at + 1 })}>
-                Skip
-              </button>
+              {!inChallenge && (
+                <button type="button" className="link small" onClick={() => setSession({ ...session, at: session.at + 1 })}>
+                  Skip
+                </button>
+              )}
               <button type="button" className="link small" onClick={() => setSession(null)}>
                 Stop
               </button>
@@ -240,6 +309,14 @@ export function CardsView({ list }: { list: List }) {
         )}
         {finished && session && (
           <div className="flash-summary">
+            {lastChallenge && (
+              <p className="flash-challenge-result">
+                <strong>
+                  Challenge: {lastChallenge.score.right} of {lastChallenge.score.of} in {clock(lastChallenge.score.ms)}
+                </strong>
+                {lastChallenge.first ? ' · On the leaderboard' : lastChallenge.best ? ' · New best! ✨' : board[app.uid] ? ` · Your best: ${board[app.uid].right}/${board[app.uid].of} in ${clock(board[app.uid].ms)}` : ''}
+              </p>
+            )}
             <p>
               <strong>
                 {session.right} of {session.right + session.wrong}
@@ -263,6 +340,8 @@ export function CardsView({ list }: { list: List }) {
         )}
         {error && <p className="error small">{error}</p>}
       </div>
+
+      {app.isMember && <Leaderboard cards={cards} scores={board} canChallenge={canChallenge} onChallenge={() => start('shuffle', true)} busy={!!session || shuffling} />}
 
       <div className="day-section">
         <SectionHeader icon="list" title="Cards" count={cards.length} onTitleClick={() => setShowCards(!listing)} expanded={listing}>
@@ -484,6 +563,52 @@ function FlashBack({ title, notes, place, geo, mapFirst }: { title: string; note
           <LearnMore place={place} index={geo} />
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * The set's leaderboard, comparing like with like: only answers the app can check count. Best Challenge round
+ * (10 cards at random, multiple choice, no skipping; time breaks ties) and cards mastered (picked right in multiple
+ * choice at least once). Self-marked "Got it" stays for practice.
+ */
+function Leaderboard({ cards, scores, canChallenge, onChallenge, busy }: { cards: Task[]; scores: Record<string, ChallengeScore>; canChallenge: boolean; onChallenge: () => void; busy: boolean }) {
+  const { household, uid } = useApp()
+  const rows = people(household, true)
+    .map(([id, m]) => ({ id, m, best: scores[id], mastered: cards.filter((c) => (c.results?.[id]?.mc ?? 0) > 0).length }))
+    .filter((r) => r.best || r.mastered)
+    .sort((a, b) => {
+      // Best rounds first (more right, then faster), then the rest by cards mastered.
+      if (a.best && b.best) return beats(a.best, b.best) ? -1 : beats(b.best, a.best) ? 1 : b.mastered - a.mastered
+      return a.best ? -1 : b.best ? 1 : b.mastered - a.mastered
+    })
+  return (
+    <div className="day-section card-leaderboard">
+      <SectionHeader icon="star" title="Leaderboard" help="cards">
+        {canChallenge && !busy && (
+          <button type="button" className="link small" onClick={onChallenge}>
+            Challenge
+          </button>
+        )}
+      </SectionHeader>
+      {rows.length ? (
+        <ol className="leaderboard">
+          {rows.map((r, i) => (
+            <li key={r.id} className={r.id === uid ? 'me' : ''}>
+              <span className="leader-rank">{r.best ? i + 1 : ''}</span>
+              <span className="leader-dot" style={{ background: r.m.color }} aria-hidden="true" />
+              <span className="grow">{r.m.displayName}</span>
+              <span className="leader-best">{r.best ? `${r.best.right}/${r.best.of} · ${clock(r.best.ms)}` : '–'}</span>
+              <span className="muted small leader-mastered" title="Cards picked right in multiple choice">
+                {r.mastered}/{cards.length} mastered
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="muted small">No scores yet. A Challenge is {CHALLENGE_CARDS} cards at random with four answers to pick from and no skipping; your best round goes here.</p>
+      )}
+      {rows.length > 0 && <p className="muted small">Best Challenge round ({CHALLENGE_CARDS} cards, multiple choice, time breaks ties) and cards mastered in multiple choice.</p>}
     </div>
   )
 }

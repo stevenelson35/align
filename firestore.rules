@@ -492,6 +492,25 @@ service cloud.firestore {
       allow delete: if isMember() && request.auth.uid == uid;
     }
 
+    // Flashcard leaderboards: each set's best Challenge round per person ({ scores: { uid: { right, of, ms, at } } }).
+    // Members read them; each writes only their own score.
+    match /cardBoards/{listId} {
+      allow read: if isMember();
+      allow create, update: if isMember()
+        && request.resource.data.keys().hasOnly(['scores'])
+        && request.resource.data.scores is map
+        && request.resource.data.scores.diff(resource == null ? {} : resource.data.get('scores', {})).affectedKeys().hasOnly([request.auth.uid])
+        && validChallenge(request.resource.data.scores[request.auth.uid]);
+    }
+
+    function validChallenge(s) {
+      return s is map && s.keys().hasOnly(['right', 'of', 'ms', 'at'])
+        && s.of is int && s.of > 0 && s.of <= 50
+        && s.right is int && s.right >= 0 && s.right <= s.of
+        && s.ms is int && s.ms > 0
+        && s.at is string && s.at.size() == 10;
+    }
+
     // ---- Goal rewards (DESIGN.md §5.6) ----
 
     // Each member's sparks by day ({ days: { 'YYYY-MM-DD': n } }), written by their own app from their goals. Family

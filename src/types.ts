@@ -139,7 +139,7 @@ export interface Task {
     tags?: string[]
   }
   /** Flashcards: each person's own results for this card (utils/flashcards.ts CardResult). */
-  results?: Record<string, { known?: boolean; right?: number; wrong?: number; last?: string }>
+  results?: Record<string, { known?: boolean; right?: number; wrong?: number; last?: string; mc?: number }>
   /** Pick-list items: each person's 1–5 stars (uid → stars), and the days it was watched / played / read. */
   ratings?: Record<string, number>
   watched?: string[]

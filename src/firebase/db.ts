@@ -458,9 +458,10 @@ export function ratePick(itemId: string, uid: string, stars: number | undefined)
 }
 
 /** Your flashcard result: "Got it" (known) or "Not yet", counted, with the day. Only your own entry changes. */
-export function recordCard(itemId: string, uid: string, prev: { right?: number; wrong?: number } | undefined, known: boolean) {
+export function recordCard(itemId: string, uid: string, prev: { right?: number; wrong?: number; mc?: number } | undefined, known: boolean, pickedRight = false) {
+  const mc = (prev?.mc ?? 0) + (pickedRight ? 1 : 0)
   return updateDoc(doc(db, 'tasks', itemId), {
-    [`results.${uid}`]: { known, right: (prev?.right ?? 0) + (known ? 1 : 0), wrong: (prev?.wrong ?? 0) + (known ? 0 : 1), last: today() },
+    [`results.${uid}`]: { known, right: (prev?.right ?? 0) + (known ? 1 : 0), wrong: (prev?.wrong ?? 0) + (known ? 0 : 1), last: today(), ...(mc ? { mc } : {}) },
     updatedAt: serverTimestamp(),
   })
 }

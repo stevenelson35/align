@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { onAuthChange } from '../firebase/auth'
 import { subscribeHousehold } from '../firebase/db'
+import { currentSlot, rememberAccount } from '../firebase/accounts'
 import { SessionContext, type SessionState } from './SessionContext'
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -24,6 +25,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             return
           }
           const member = household.members[user.uid]
+          // Remembered for one-tap switching on this device (Settings).
+          if (member) rememberAccount({ slot: currentSlot(), uid: user.uid, name: member.displayName, color: member.color })
           setState(member ? { status: 'ready', user, household, member } : { status: 'unauthorized', user })
         },
         // The rules deny household/main to anyone not listed in it.

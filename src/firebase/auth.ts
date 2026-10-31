@@ -9,6 +9,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { clearIndexedDbPersistence, terminate } from 'firebase/firestore'
+import { forgetCurrent } from './accounts'
 import { auth, db } from './config'
 
 // No sign-up: accounts are created in the Firebase console (DESIGN.md §2).
@@ -41,9 +42,11 @@ export async function changePassword(current: string, next: string) {
   await updatePassword(user, next)
 }
 
-/** Sign out, and remove this device's cached copy of the household's data (a shared phone keeps nothing). */
+/** Sign out, and remove this device's cached copy of the household's data (a shared phone keeps nothing). Anyone
+ *  else remembered on this device stays signed in, and Align opens as them. */
 export async function signOut() {
   await firebaseSignOut(auth)
+  forgetCurrent()
   try {
     await terminate(db)
     await clearIndexedDbPersistence(db)
