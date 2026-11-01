@@ -4164,6 +4164,18 @@ input.ladder-sparks {
   overflow-wrap: anywhere;
   max-width: 100%;
 }
-.goal-summary .goal-name {
-  flex: 1 1 8rem;
+/* A goal's summary line is one row at any width: name (as wide as it needs, wrapping when it must), where it stands
+   (at least 5rem, wrapping inside), then the trend and the pencil, always at the right. */
+.goal-summary {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(5rem, 1fr) auto auto;
+  align-items: center;
+  column-gap: 0.5rem;
+}
+.goal-summary > .grow {
+  display: none;
+}
+.goal-summary > .goal-status,
+.goal-summary > .muted {
+  justify-self: start;
 }
