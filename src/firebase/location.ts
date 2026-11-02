@@ -17,8 +17,10 @@ export function useLocations(): { locations: FamilyLocation[]; error: string | n
         (snap) =>
           setLocations(
             snap.docs.map((d) => {
-              const data = d.data() as Partial<FamilyLocation>
-              return { ...data, uid: d.id, off: data.off === true }
+              const data = d.data() as Partial<FamilyLocation> & { updatedAt?: { toMillis?: () => number } }
+              // updatedAt: when the phone last checked in (a Timestamp), as ms for stuckSince.
+              const checkedIn = typeof data.updatedAt?.toMillis === 'function' ? data.updatedAt.toMillis() : undefined
+              return { ...data, uid: d.id, off: data.off === true, updatedAt: checkedIn }
             }),
           ),
         (err) => setError(err.message),

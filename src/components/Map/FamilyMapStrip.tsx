@@ -3,7 +3,7 @@ import { useLocations } from '../../firebase/location'
 import { usePlaces } from '../../firebase/places'
 import { useApp } from '../../hooks/useApp'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
-import { agoText, eventText, STALE_MS } from '../../utils/location'
+import { agoText, eventText, STALE_MS, stuckSince } from '../../utils/location'
 import { people } from '../../utils/tasks'
 import { SectionHeader } from '../UI/SectionHeader'
 
@@ -59,6 +59,7 @@ function WhoIsWhere() {
                     ? [at(loc?.inside) ? `at ${at(loc?.inside)}` : '', loc?.events?.length ? eventText(loc.events[loc.events.length - 1]) : '', agoText(tst, now), loc?.batt !== undefined ? `${loc.batt}% battery` : ''].filter(Boolean).join(' · ')
                     : 'not sharing'}
               </span>
+              {loc && stuckSince(loc, now) && <span className="map-stuck small">Location not updating: see the map</span>}
             </span>
             {tst && (
               <button type="button" className="link small" onClick={() => app.navigate({ view: 'map', person: uid })}>

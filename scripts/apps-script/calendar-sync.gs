@@ -379,9 +379,13 @@ function locationDoc_(prev, p) {
   var trail = ((prev && prev.trail) || []).slice()
   if (prev && typeof prev.lat === 'number') {
     if (p.tst < prev.tst) return locationDocKeep_(prev) // an older report arriving late: keep the newer one
-    var t = { lat: prev.lat, lon: prev.lon, tst: prev.tst }
-    if (prev.acc !== undefined) t.acc = prev.acc
-    trail.push(t)
+    // The same fix sent again (a phone that isn't getting new locations) adds nothing to the trail; the document is
+    // still saved, so its updatedAt shows the phone checked in and Align can say its location is stuck.
+    if (p.tst > prev.tst) {
+      var t = { lat: prev.lat, lon: prev.lon, tst: prev.tst }
+      if (prev.acc !== undefined) t.acc = prev.acc
+      trail.push(t)
+    }
   }
   var since = p.tst - TRAIL_HOURS * 3600000
   trail = trail

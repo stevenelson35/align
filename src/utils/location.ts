@@ -24,11 +24,12 @@ export function speedBetween(a: TrailPoint, b: TrailPoint): number {
 
 /**
  * A trail fit to draw: points less accurate than MAX_ACCURACY dropped, and spikes removed (a point the path jumps
- * out to and straight back from, impossibly fast both ways, while its neighbors are close). The Apps Script already
- * filters new reports; this tidies trails saved before it did.
+ * out to and straight back from, impossibly fast both ways, while its neighbors are close), and repeats of the same
+ * fix. The Apps Script already filters new reports; this tidies trails saved before it did.
  */
 export function cleanTrail(points: TrailPoint[]): TrailPoint[] {
-  const ok = points.filter((p) => !(p.acc !== undefined && p.acc > MAX_ACCURACY))
+  // Trails saved before the Apps Script stopped it can hold the same fix many times over (a phone resending it).
+  const ok = points.filter((p, i) => !(p.acc !== undefined && p.acc > MAX_ACCURACY) && !(i > 0 && p.tst === points[i - 1].tst))
   const out: TrailPoint[] = []
   for (let i = 0; i < ok.length; i++) {
     const prev = out[out.length - 1]
@@ -49,6 +50,8 @@ export interface FamilyLocation {
   tst?: number
   trail?: TrailPoint[]
   off: boolean
+  /** When the phone last checked in (ms), even if it sent no new location. */
+  updatedAt?: number
   /** Places they're in now (ids), and their latest arrivals / departures (newest last). */
   inside?: string[]
   events?: PlaceEvent[]
@@ -119,6 +122,22 @@ export const ruleMatches = (r: AlertRule, person: string, place: string, kind: '
 
 /** Older than this, a position shows faded ("last seen"). */
 export const STALE_MS = 2 * 3600000
+
+/** A location this much older than the phone's last check-in means the phone isn't getting new locations. */
+export const STUCK_MS = 6 * 3600000
+
+/**
+ * A phone that keeps checking in (recently) but sends the same old location: OwnTracks without location permission
+ * in the background (on an iPhone, Location "Always" and Background App Refresh). Returns the time of the old
+ * location, or null when all is well.
+ */
+export function stuckSince(loc: Pick<FamilyLocation, 'tst' | 'updatedAt' | 'off'>, now = Date.now()): number | null {
+  if (loc.off || typeof loc.tst !== 'number' || typeof loc.updatedAt !== 'number') return null
+  return loc.updatedAt - loc.tst > STUCK_MS && now - loc.updatedAt < 3 * 86400000 ? loc.tst : null
+}
+
+/** What to tell someone about a stuck phone. */
+export const STUCK_HELP = 'On an iPhone: Settings → OwnTracks → Location → Always (Precise on), and Background App Refresh on; Low Power Mode pauses it.'
 
 /** "just now", "5 min ago", "3 h ago", "2 days ago". */
 export function agoText(tst: number, now = Date.now()): string {

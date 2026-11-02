@@ -184,6 +184,12 @@ describe('location helpers (family map)', () => {
     expect(docOf(prev, { lat: 6, lon: 6, tst: 10.2 * day }).trail.map((t) => t.tst)).toEqual([9.5 * day, 10 * day])
     expect(docOf(prev, { lat: 0, lon: 0, tst: 9 * day }).lat).toBe(5)
   })
+  it('adds nothing to the trail when a phone sends the same fix again (but keeps its battery)', () => {
+    const prev = { lat: 5, lon: 5, tst: 1000, trail: [{ lat: 4, lon: 4, tst: 500 }] }
+    const again = docOf(prev, { lat: 5, lon: 5, tst: 1000, batt: 90 })
+    expect(again.trail).toEqual([{ lat: 4, lon: 4, tst: 500 }])
+    expect(again.batt).toBe(90)
+  })
 })
 
 describe('places and alerts (family map)', () => {

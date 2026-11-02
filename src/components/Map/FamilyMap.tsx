@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { deleteMyLocation, getLocationKey, setSharing, useLocations } from '../../firebase/location'
 import { calendarSyncUrl } from '../../firebase/calendarSync'
 import { useApp } from '../../hooks/useApp'
-import { agoText, cleanTrail, directionsUrl, eventText, initialsOf, MAX_ACCURACY, metersText, ownTracksSetupLink, reportUrl, STALE_MS, type FamilyLocation, type Place } from '../../utils/location'
+import { agoText, cleanTrail, directionsUrl, eventText, initialsOf, MAX_ACCURACY, metersText, ownTracksSetupLink, reportUrl, STALE_MS, STUCK_HELP, stuckSince, type FamilyLocation, type Place } from '../../utils/location'
 import { usePlaces } from '../../firebase/places'
 import { AlertsPanel, PlacesPanel, type PlaceDraft } from './MapPlaces'
 import { people } from '../../utils/tasks'
@@ -176,6 +176,7 @@ function MapPage() {
                       ? 'paused'
                       : 'not sharing'}
                 </span>
+                {loc && stuckSince(loc, now) && <StuckNote loc={loc} name={member.displayName} />}
               </span>
               {where && (
                 <>
@@ -245,7 +246,9 @@ function MySharing({ mine }: { mine?: FamilyLocation }) {
       <p className="muted small">
         {mine?.off
           ? 'Paused: your phone’s reports are ignored, and everyone sees your last position as paused.'
-          : placed(mine)
+          : placed(mine) && stuckSince(mine)
+            ? `Your phone checks in, but its location hasn't changed since ${agoText(mine.tst)}: OwnTracks isn't getting new locations. ${STUCK_HELP}`
+            : placed(mine)
             ? `Sharing: last report ${agoText(mine.tst)}.`
             : 'Not sharing yet. The free OwnTracks app on your phone reports where you are (in the background, battery-friendly) to the family only.'}
       </p>
@@ -310,5 +313,14 @@ function MySharing({ mine }: { mine?: FamilyLocation }) {
         </div>
       )}
     </div>
+  )
+}
+
+/** A phone checking in with the same old location: say so (it looks like "hasn't moved" otherwise), and how to fix. */
+function StuckNote({ loc, name }: { loc: FamilyLocation; name: string }) {
+  return (
+    <span className="map-stuck small">
+      <Icon name="warning" /> {name}’s phone checked in {agoText(loc.updatedAt!)} but has no new location since {new Date(loc.tst!).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}. {STUCK_HELP}
+    </span>
   )
 }

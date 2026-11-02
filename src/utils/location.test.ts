@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { agoText, directionsUrl, initialsOf, ownTracksSetupLink, reportUrl } from './location'
+import { agoText, cleanTrail, directionsUrl, initialsOf, ownTracksSetupLink, reportUrl, stuckSince } from './location'
 
 describe('family map helpers', () => {
   it('says how long ago', () => {
@@ -56,5 +56,22 @@ describe('cleaning trails', () => {
     // A drive at highway speed stays.
     const drive = [t(28.6, 0), t(28.62, 60), t(28.64, 120), t(28.66, 180)]
     expect(cleanTrail(drive)).toHaveLength(4)
+  })
+})
+
+describe('a phone that stopped getting locations', () => {
+  const h = 3600000
+  const now = 100 * h
+  it('is stuck when it checks in but its location is hours older', () => {
+    expect(stuckSince({ tst: now - 72 * h, updatedAt: now - 1 * h, off: false }, now)).toBe(now - 72 * h)
+    expect(stuckSince({ tst: now - 2 * h, updatedAt: now - 1 * h, off: false }, now)).toBeNull() // just not moving
+    expect(stuckSince({ tst: now - 72 * h, updatedAt: now - 70 * h, off: false }, now)).toBeNull() // check-in old too: just quiet
+    expect(stuckSince({ tst: now - 72 * h, updatedAt: now - 1 * h, off: true }, now)).toBeNull() // paused
+    expect(stuckSince({ tst: now - 72 * h, off: false }, now)).toBeNull() // no check-in time
+  })
+
+  it('drops repeats of the same fix from a trail', () => {
+    const p = { lat: 1, lon: 1, tst: 1000 }
+    expect(cleanTrail([p, { ...p }, { ...p }, { lat: 1.001, lon: 1, tst: 2000 }]).map((x) => x.tst)).toEqual([1000, 2000])
   })
 })

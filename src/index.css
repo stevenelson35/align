@@ -4179,3 +4179,15 @@ input.ladder-sparks {
 .goal-summary > .muted {
   justify-self: start;
 }
+
+/* Family map: a phone checking in with the same old location. */
+.map-stuck {
+  display: block;
+  color: #9a6700;
+}
+:root[data-theme='dark'] .map-stuck {
+  color: #d29922;
+}
+.map-people .map-stuck {
+  margin-top: 0.15rem;
+}
