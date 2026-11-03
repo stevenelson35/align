@@ -4191,3 +4191,20 @@ input.ladder-sparks {
 .map-people .map-stuck {
   margin-top: 0.15rem;
 }
+
+/* The family's goals under yours on Today (view only: no pencil, so one column fewer). */
+.goal-summary.read-only {
+  grid-template-columns: minmax(0, max-content) minmax(5rem, 1fr) auto;
+}
+.goals-family-toggle {
+  margin-top: 0.5rem;
+  text-align: left;
+}
+.goals-family {
+  margin-top: 0.5rem;
+}
+.goals-family-title {
+  margin: 0 0 0.25rem;
+  color: var(--muted);
+  font-weight: 600;
+}

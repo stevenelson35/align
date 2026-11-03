@@ -4,7 +4,7 @@ import { useApp, useData } from '../../hooks/useApp'
 import { useDailyFlag } from '../../hooks/useDailyFlag'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { Goal } from '../../types'
-import { appliesOn, goalDaysText, goalHint, goalStatus, loggableGoals, met, otherLoggers } from '../../utils/goals'
+import { appliesOn, goalDaysText, goalGroups, goalHint, goalStatus, loggableGoals, met, otherLoggers } from '../../utils/goals'
 import { GoalControl } from './GoalControl'
 import { SectionHeader } from '../UI/SectionHeader'
 import { Icon } from '../UI/Icon'
@@ -20,6 +20,8 @@ export function GoalsStrip({ day }: { day: string }) {
   const { goals } = useData()
   const [hidden, setHidden] = useDailyFlag('align-goals-hidden', true)
   const [logAll, setLogAll] = useStoredFlag('align-goals-log-all', false)
+  // Optionally, everyone else's goals for the day below yours (view only: no pencil).
+  const [showFamily, setShowFamily] = useStoredFlag('align-goals-family', false)
   const [logging, setLogging] = useState<Set<string>>(new Set())
   const toggleOne = (id: string) => {
     const next = new Set(logging)
@@ -33,6 +35,10 @@ export function GoalsStrip({ day }: { day: string }) {
   if (!forDay.length && !offDay.length) return null
   const metCount = forDay.filter((g) => met(g, g.log?.[day], day)).length
   const allDone = forDay.length > 0 && metCount === forDay.length
+  const family = goalGroups(goals, uid, member.role, household)
+    .filter((g) => g.key.startsWith('of:'))
+    .map((g) => ({ ...g, goals: g.goals.filter((x) => appliesOn(x, day)) }))
+    .filter((g) => g.goals.length)
   return (
     <div className={`day-section goals-strip${allDone && day === today() ? ' all-done' : ''}`}>
       <SectionHeader icon="goal" title="Goals" count={forDay.length ? `${metCount}/${forDay.length}` : 'none today'} onTitleClick={() => setHidden(!hidden)} expanded={!hidden} help="goals">
@@ -70,6 +76,24 @@ export function GoalsStrip({ day }: { day: string }) {
               </div>
             ))}
           </div>
+          {family.length > 0 && (
+            <>
+              <button type="button" className="link small goals-family-toggle" onClick={() => setShowFamily(!showFamily)} aria-expanded={showFamily}>
+                {showFamily ? 'Hide the family’s goals' : `Show the family’s goals (${family.map((g) => g.title.replace(/’s goals$|'s goals$/, '')).join(', ')})`}
+              </button>
+              {showFamily &&
+                family.map((g) => (
+                  <div key={g.key} className="goals-family">
+                    <h4 className="goals-family-title small">{g.title}</h4>
+                    <div className="goal-list">
+                      {g.goals.map((x) => (
+                        <GoalSummary key={x.id} goal={x} day={day} open={false} onToggle={() => {}} readOnly />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </>
+          )}
         </>
       )}
     </div>
@@ -86,7 +110,7 @@ function nextOn(goal: Goal, day: string): string {
 }
 
 /** One goal as a summary line: name, where it stands (or what it asks), the trend, and a pencil to log just this one. */
-function GoalSummary({ goal, day, open, onToggle, who }: { goal: Goal; day: string; open: boolean; onToggle: () => void; who?: string }) {
+function GoalSummary({ goal, day, open, onToggle, who, readOnly = false }: { goal: Goal; day: string; open: boolean; onToggle: () => void; who?: string; /** Someone else's goal: no pencil. */ readOnly?: boolean }) {
   const { navigate } = useApp()
   const status = goalStatus(goal, goal.log?.[day], day)
   const hint = goalHint(goal, day)
@@ -100,7 +124,7 @@ function GoalSummary({ goal, day, open, onToggle, who }: { goal: Goal; day: stri
       </div>
     )
   return (
-    <div className={`goal-summary${status.state === 'met' || status.state === 'exceeded' ? ' met' : ''}`} data-goal-id={goal.id}>
+    <div className={`goal-summary${status.state === 'met' || status.state === 'exceeded' ? ' met' : ''}${readOnly ? ' read-only' : ''}`} data-goal-id={readOnly ? undefined : goal.id}>
       <button type="button" className="goal-name link" onClick={() => navigate({ view: 'goal', goalId: goal.id })} title="See this goal's history">
         {goal.name}
         {who && <span className="muted small goal-who"> ({who})</span>}
@@ -116,9 +140,11 @@ function GoalSummary({ goal, day, open, onToggle, who }: { goal: Goal; day: stri
       <button type="button" className="spark-button" onClick={() => navigate({ view: 'goal', goalId: goal.id })} aria-label={`${goal.name}: see the chart`}>
         <GoalSparkline goal={goal} />
       </button>
-      <button type="button" className="icon-button small goal-log-one" onClick={onToggle} title={`Log ${goal.name}`} aria-label={`Log ${goal.name}`}>
-        <Icon name="edit" />
-      </button>
+      {!readOnly && (
+        <button type="button" className="icon-button small goal-log-one" onClick={onToggle} title={`Log ${goal.name}`} aria-label={`Log ${goal.name}`}>
+          <Icon name="edit" />
+        </button>
+      )}
     </div>
   )
 }

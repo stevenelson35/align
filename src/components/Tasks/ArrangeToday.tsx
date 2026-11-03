@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { setTodayMore } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
-import { DEFAULT_MORE, moreOf, TODAY_SECTIONS } from '../../utils/today'
+import { arrangement, DEFAULT_MORE, moreOf, TODAY_SECTIONS } from '../../utils/today'
 
 /**
  * Arrange Today: each section on the main page or in More… (one tap moves it), saved for you on every device. To Do
@@ -13,8 +13,7 @@ export function ArrangeToday() {
   const [error, setError] = useState<string | null>(null)
   const more = moreOf(member)
   const move = (id: string, toMore: boolean) => {
-    const next = TODAY_SECTIONS.map((s) => s.id).filter((s) => (s === id ? toMore : more.has(s)))
-    setTodayMore(uid, next).catch((err) => setError(err instanceof Error ? err.message : String(err)))
+    setTodayMore(uid, arrangement(more, id, toMore)).catch((err) => setError(err instanceof Error ? err.message : String(err)))
   }
   if (!open)
     return (
