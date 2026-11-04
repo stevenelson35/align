@@ -4208,3 +4208,6 @@ input.ladder-sparks {
   color: var(--muted);
   font-weight: 600;
 }
+.board-text {
+  margin: 0.4rem 0 0.75rem;
+}

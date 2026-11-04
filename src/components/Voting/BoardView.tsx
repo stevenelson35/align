@@ -10,6 +10,8 @@ import { SectionHeader } from '../UI/SectionHeader'
 import { ItemDetail } from './ItemDetail'
 import { Icon } from '../UI/Icon'
 import { HelpTip } from '../UI/HelpTip'
+import { TextForm } from '../Tasks/TextAbout'
+import { boardLink } from '../../utils/text'
 
 export function BoardView({ board, openItemId }: { board: Board; openItemId?: string }) {
   const app = useApp()
@@ -100,6 +102,12 @@ export function BoardView({ board, openItemId }: { board: Board; openItemId?: st
             <option value="everyone">Everyone</option>
           </select>
         </label>
+      )}
+      {/* Bring someone to the board: a real text with its name and link (they may not open Align often). */}
+      {app.isMember && (
+        <div className="board-text">
+          <TextForm subject={{ title: `Voting: ${board.name}`, when: '', link: boardLink(board.id) }} startOpen={false} label="Text about this board" />
+        </div>
       )}
 
       <div className="items">

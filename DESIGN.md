@@ -167,6 +167,8 @@ boards/{boardId}/items/{itemId}/votes/{uid}   { uid, tokens: number, updatedAt }
 ```
 
 - Starter boards: **Movies & Shows**, **Restaurants & Meals**, **Weekend Activities**, **Travel Plans**. Members can add more.
+- Found in the menu under **Voting** and on Today in **More… → Voting** (`VotingSection`). A board has **💬 Text about this board** (the same `TextForm` as tasks: pick a person, add a note, Messages opens with "Voting: <board>" and its link, `boardLink`), to bring someone to it who doesn't open Align often; each item has its own Text about this and comments, and the board has a Discussion.
+- **Voting or a pick list?** Voting is for a **decision**: a set of options, everyone spends weekly tokens on the ones they want, the top one is chosen and its tokens are spent (house color, where to go for spring break). A **pick list** (§5.8) is for a **standing collection you choose from again and again**: everyone rates titles 1–5 once, and Tonight ranks them for whoever is there (what to watch tonight, the next family read-aloud).
 - Totals are **computed in the client** from the `votes` subcollection. Nothing stores them.
 
 ### 5.5 Google Calendar import
@@ -340,13 +342,13 @@ The chat panel runs a local, rule-based parser (`src/chat/parser.ts`, dates by `
 ## 10. UI
 
 - **TopBar:** ☰ (phone), Align, **+ Quick add** (opens chat with `add task `), Chat, ◐/☀/☾ theme (Match device → Light → Dark, per device), avatar (opens ⚙ Settings), Sign out.
-- **Sidebar:** Today, Everything, My tasks, Family tasks, Work; sections My lists / Family lists / Shared lists (task lists), Projects, Checklists, Notes (with 🔒/👥 on non-family names and open/unchecked counts); Voting boards; ⚙ Settings. On phones it's a slide-out menu with a backdrop (tap outside or Escape closes it).
+- **Sidebar (☰):** Today, Tasks, Goals, New blog post, Photos, the blog, your pinned links; then collapsible sections Lists, Projects, Checklists, Notes, Links, Pick lists, Flashcards, Contacts, Gifts (open / unchecked counts, an audience icon on non-family lists), + New list, **Voting**; then Settings, Family map, Wall display, Help & about. An empty section shows no count. On phones it's a slide-out menu with a backdrop (tap outside or Escape closes it). Most of it is also on Today (sections, More…, Shortcuts…).
 - **List pages by kind:** task list / project (`ListView`: quick add that doesn't open the panel, finished tasks crossed off at the bottom with a remembered **Hide N finished**; projects add **Timeline** and **Recalculate**), checklist (`ChecklistView`: items in the order added, ticked ones crossed off, **Hide N checked**, **Clear checked**), notes (`NotesView`: alphabetical cards with the first lines). The header (`ListHeader`) shows the privacy badge, "with You and Linda" for shared lists, and **Edit list**.
 - **Right panel:** `TaskDetails` for tasks (Save in a sticky header next to ✕; privacy sentence under the List picker; dependencies with ✓/✕/⏳ links and a **Needed by** section; Finish-by shift), `ItemDetails` for checklist items and notes. Both have **💬 Text about this**. On phones the panel covers the page and closes after Save or when changing views.
 - **Task and checklist rows** have a **💬** at the right end: opens the item with the text form ready.
 - **⚙ Settings** (`SettingsDialog`): Default privacy, your mobile number, Parents (read-only unless you may change it), theme.
-- **List editor:** name, kind, who can see it (🔒 Just me / 👪 Family / 👥 Chosen people with name chips and a **Parents** shortcut), default context, owner, visible to viewers.
-- **Mobile:** BottomNav with Today, My Tasks, Family, Voting, Chat.
+- **List editor:** name, kind, who can see it (🔒 Just me / 👪 Family / 👥 Chosen people with name chips and a **Parents** shortcut), who can edit it, default context, owner, visible to viewers. **Default context** only tags new tasks Family or Work (a Work badge and the Tasks page's Work filter); it doesn't change who sees them or Today. To keep a project visible to the family but off their To Do: who can see it = Family, who can edit it = Only me (it's then under your Mine).
+- **Mobile:** no bottom bar (removed with the Today redesign): Today's own footer (More… / Shortcuts…), the ☰ menu, and Chat in the top bar.
 - **Viewers** see the same screens, but editing controls are hidden.
 - **Links:** hash routes (`src/utils/routes.ts`): `#/today`, `#/all`, `#/mine`, `#/family`, `#/work`, `#/list/<id>[/timeline]`, `#/boards`, `#/board/<id>`, and `#/task/<id>` (opens that task in its list; used in texts).
 

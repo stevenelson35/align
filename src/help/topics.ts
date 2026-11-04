@@ -347,6 +347,8 @@ export const HELP_TOPICS: HelpTopic[] = [
     tip: 'Boards for family decisions. Everyone gets tokens each week to spend on the options they like; the most tokens wins. Unused tokens roll over.',
     body: [
       'Find boards in the menu under Voting, or on Today in More… → Voting (+ makes a new board).',
+      '💬 Text about this board sends someone its name and link from your phone, to bring them to it. Each idea has its own Text about this and comments; the board has a Discussion.',
+      'Voting is for one decision (the house color): spend tokens on the options you want, then mark the winner chosen. For things you choose from again and again (what to watch tonight), use a pick list instead: everyone rates titles once, and Tonight ranks them for whoever is there.',
       'Each board is a decision (movies, restaurants, weekend plans, trips). Anyone in the family can suggest an option.',
       '• Spend tokens with ＋ and −; your balance is at the top. Tokens arrive each week and unused ones roll over, so saving them up counts for more on something you care about.',
       '• Tap an option for its note, links, pictures and comments; the board has its own Discussion.',

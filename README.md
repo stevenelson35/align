@@ -1,11 +1,18 @@
 # Align
 
-Household task manager for the Nelson family, live at https://align.itsallonesong.com. It holds:
-- task lists and projects (dependencies, timeline)
-- checklists and notes
-- the family Google Calendar
-- voting boards
-- texting family members about a task
+Household organizer for the Nelson family, live at https://align.itsallonesong.com. It holds:
+- **Today:** the day's to-dos (Mine / Family / Shared), goals, weather, the family map, The Daily, and More… / Shortcuts… for everything else
+- task lists and projects (dependencies, timeline), checklists, notes and links
+- **goals** with charts, celebrations, good weeks, and sparks that play a family photo-reveal game and unlock a reward ladder
+- **flashcards** with multiple choice, Challenge rounds and a leaderboard, and maps for geography cards
+- **pick lists** (what to watch / read / play tonight, ranked from everyone's ratings) and **voting boards** (weekly tokens for family decisions)
+- contacts, gift lists (with secret ideas), the family Google Calendar, the family map (OwnTracks), the blog and photos
+- texting family members about a task, a board or a photo, and switching people on a shared phone
+
+**Pick list or voting board?** A pick list is a standing collection you choose from again and again: everyone rates
+titles once, and Tonight ranks them for whoever is there ("what should we watch tonight?"). A voting board is for one
+decision: everyone spends weekly tokens on the options they want, and the winner is chosen ("what color should we paint
+the house?").
 
 See [DESIGN.md](DESIGN.md) for the full spec. Its §13 "Status & Handoff" says where things stand, and [CLAUDE.md](CLAUDE.md) has notes for coding agents.
 

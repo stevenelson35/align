@@ -30,6 +30,11 @@ export function goalLink(goalId: string, base = `${window.location.origin}${wind
   return `${base}#/goal/${encodeURIComponent(goalId)}`
 }
 
+/** A link that opens a voting board (its items, votes and discussion). */
+export function boardLink(boardId: string, base = `${window.location.origin}${window.location.pathname}`): string {
+  return `${base}#/board/${encodeURIComponent(boardId)}`
+}
+
 /** A link that opens a voting item (its details and comments) on its board. */
 export function itemLink(boardId: string, itemId: string, base = `${window.location.origin}${window.location.pathname}`): string {
   return `${base}#/board/${encodeURIComponent(boardId)}/${encodeURIComponent(itemId)}`
