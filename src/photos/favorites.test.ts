@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { matchesSearch, onThisDay, photoCaption, photoUrl, yearsAgo, type Favorite } from './favorites'
+import { describe, expect, it, vi } from 'vitest'
+import { FAVORITES_FRESH_MS, loadFavorites, matchesSearch, onThisDay, photoCaption, photoUrl, refreshFavoritesIfStale, yearsAgo, type Favorite } from './favorites'
 
 const photos: Favorite[] = [
   { id: '20121021_101500', taken_at: '2012-10-21T10:15:00', people: ['Alex Lee', 'Steve Lee'], event: null },
@@ -40,5 +40,21 @@ describe('photosForDay', () => {
     // Wraps at New Year: Jan 2 is near Dec 30.
     const ny = [{ id: 'nye', taken_at: '2019-12-30T20:00:00', people: [], event: null }]
     expect(photosForDay(ny, '2026-01-02').kind).toBe('near')
+  })
+})
+
+describe('loading the published list', () => {
+  it('always checks with the server, keeps it for the session, and fetches again after an hour away', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ photos: [], events: [] }) }))
+    vi.stubGlobal('fetch', fetchMock)
+    const t0 = Date.now()
+    await loadFavorites(true)
+    await loadFavorites()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0]).toEqual([expect.stringContaining('browse-manifest.json'), { cache: 'no-cache' }])
+    expect(refreshFavoritesIfStale(t0 + 60000)).toBeNull() // still fresh
+    await refreshFavoritesIfStale(t0 + FAVORITES_FRESH_MS + 60000)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    vi.unstubAllGlobals()
   })
 })

@@ -31,10 +31,20 @@ export function photoUrl(id: string, size: PhotoSize = 1024): string {
 }
 
 let loading: Promise<FavoritesManifest> | null = null
+let loadedAt = 0
 
-/** The manifest, fetched once per session (it's small: about 150 bytes a photo). */
-export function loadFavorites(): Promise<FavoritesManifest> {
-  loading ??= fetch(`${PHOTOS_BASE}browse-manifest.json`)
+/** After this long away, coming back to Align fetches the list again (a new publish shows without reopening). */
+export const FAVORITES_FRESH_MS = 3600000
+
+/**
+ * The manifest (it's small: about 150 bytes a photo), kept for the session. Always checked with the server
+ * (`no-cache`: Turbify sends no caching headers, so a browser could otherwise reuse an old copy for hours after psort
+ * publishes; an unchanged file is just a tiny "not modified"). `force` fetches it again.
+ */
+export function loadFavorites(force = false): Promise<FavoritesManifest> {
+  if (force) loading = null
+  if (!loading) loadedAt = Date.now()
+  loading ??= fetch(`${PHOTOS_BASE}browse-manifest.json`, { cache: 'no-cache' })
     .then((r) => {
       if (!r.ok) throw new Error(`The photo list didn't load (${r.status}).`)
       return r.json() as Promise<FavoritesManifest>
@@ -45,6 +55,11 @@ export function loadFavorites(): Promise<FavoritesManifest> {
       throw err instanceof TypeError ? new Error('Couldn’t reach the photo list. Check the connection and try again.') : err
     })
   return loading
+}
+
+/** Fetches the list again if it's older than FAVORITES_FRESH_MS (once, however many photo sections ask); else null. */
+export function refreshFavoritesIfStale(now = Date.now()): Promise<FavoritesManifest> | null {
+  return loading && now - loadedAt > FAVORITES_FRESH_MS ? loadFavorites(true) : null
 }
 
 /** Favorites taken on the same month and day in earlier years, most recent year first. */
