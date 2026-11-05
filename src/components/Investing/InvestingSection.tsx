@@ -148,8 +148,8 @@ export function InvestingSection() {
               {f.revenueGrowth !== undefined && <>revenue {pct(f.revenueGrowth)} · </>}
               {f.fcfMargin !== undefined && <>FCF margin {f.fcfMargin}% · </>}
               {f.netDebtToEbitda !== undefined && <>net debt/EBITDA {f.netDebtToEbitda} · </>}
-              {f.pe !== undefined && f.peAvg10y !== undefined && <>P/E {f.pe} vs {f.peAvg10y} (10-yr avg) · </>}
-              insider buys {f.insiderBuys90d ?? 0}
+              {f.peTrailing !== undefined && f.peForward !== undefined && <>P/E {f.peTrailing} → {f.peForward} forward · </>}
+              insider buys {f.insiderBuys6m ?? 0} (6 mo)
               {c.recovery !== undefined && c.recovery !== null && <> · recovery estimate {c.recovery}%</>}
             </p>
             {c.report ? <pre className="invest-report">{c.report}</pre> : <p className="muted small">No write-up (add a Gemini key to the scanner for one-page notes).</p>}

@@ -228,20 +228,22 @@ reads):
   today's look at their stocks, with flags (`holdingFlags_`: ±5% day, ±10% week, within 5% of the 52-week ends) and
   Google News headlines. Positions show qty, price paid and change since.
 - **`watchlist`** — the post-earnings dislocation screen, a three-stage funnel over US mid-caps ($2B–$50B, built from
-  the SEC's ticker list + Yahoo market caps, rebuilt weekly): (1) fell 15–40% in 5 trading days on >$10M/day traded
-  with a results filing (10-Q/10-K/8-K) in the last 10 days; (2) fundamentals from SEC EDGAR XBRL (`factsFrom_`):
-  revenue growth (latest quarter YoY), free cash flow, net debt/EBITDA, trailing P/E vs the stock's own 10-year
-  average (forward P/E needs paid data), plus Form 4 open-market insider buys; (3) a 0–100 score (`scoreCandidate_`:
-  growth 25, FCF 20, balance sheet 20, valuation 15, insiders 10, sentiment 10) and, with a free Gemini key, a
-  one-page note (why it fell, did the fundamentals change, historical analogs, bull / bear case, recovery estimate).
-  Candidates scoring ≥ 60 are kept (≤ 10); most passes find none, and the doc says so.
+  Nasdaq Trader's symbol directory + Yahoo market caps, rebuilt weekly): (1) fell 15–40% in 5 trading days on
+  >$10M/day traded with an earnings report in the last 10 days (judged from Yahoo's next scheduled earnings date:
+  right after a report it sits ~a quarter out, `postEarnings_`); (2) fundamentals from Yahoo quoteSummary
+  (`factsFromSummary_`): quarterly YoY revenue growth, free cash flow and margin, net debt/EBITDA, trailing and
+  forward P/E, and Yahoo's 6-month insider purchase count; (3) a 0–100 score (`scoreCandidate_`: growth 25, FCF 20,
+  balance sheet 20, valuation — the forward P/E's discount to trailing — 15, insiders 10, sentiment 10) and, with a
+  free Gemini key, a one-page note (why it fell, did the fundamentals change, historical analogs, bull / bear case,
+  recovery estimate). Candidates scoring ≥ 60 are kept (≤ 10); most passes find none, and the doc says so.
 
 The 6-minute Apps Script limit is handled by scanning in slices (state chunked in Script Properties); a full pass
 takes a day or two, which suits a 5-day-drop screen. Data sources are all free: Yahoo chart endpoint (Stooq fallback),
-SEC EDGAR (requires an `EDGAR_CONTACT` User-Agent), Google News RSS, Gemini free tier. Pure helpers tested in
-`tests/apps-script/market-scanner.test.ts` and `src/utils/investing.test.ts`; the whole pipeline runs against the
-emulators with canned market data in `npm run test:scanner`. Rules + tests: `investing/{uid}` owner-only with bot
-read; `data/{summary,watchlist}` bot-written, owner-read.
+Yahoo quoteSummary (cookie + crumb), Nasdaq Trader symbol files, Google News RSS, Gemini free tier. SEC EDGAR can't be
+used: it requires a contact User-Agent and Apps Script's UrlFetchApp always sends its own fixed one, so the SEC
+answers 403. Pure helpers tested in `tests/apps-script/market-scanner.test.ts` and `src/utils/investing.test.ts`; the
+whole pipeline runs against the emulators with canned market data in `npm run test:scanner`. Rules + tests:
+`investing/{uid}` owner-only with bot read; `data/{summary,watchlist}` bot-written, owner-read.
 
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
@@ -486,6 +488,18 @@ firestore.rules, firestore.indexes.json
 - **Verify a web deploy:** fetch https://align.itsallonesong.com/, read the `assets/index-*.js` name, and grep that bundle for a string from the latest change.
 
 ## 13. Status & Handoff
+
+### 2026-11-05 (scanner off EDGAR): built, tested, NOT yet committed
+- **The SEC blocks Apps Script.** EDGAR requires a contact `User-Agent` and Apps Script's `UrlFetchApp` always sends
+  its own fixed one, so every EDGAR call 403s (found on the user's first real run). The scanner now gets its universe
+  from Nasdaq Trader's symbol directory and its stage-2 facts from Yahoo quoteSummary: quarterly YoY revenue growth,
+  FCF + margin, net debt/EBITDA, trailing **and forward** P/E (an upgrade: real analyst-estimate forward P/E, scored
+  as its discount to trailing), Yahoo's 6-month insider purchase count, and "post-earnings" judged from the next
+  scheduled earnings date (right after a report it sits ~a quarter out). `EDGAR_CONTACT` is no longer needed.
+- Candidate facts renamed: `insiderBuys6m`, `peTrailing`, `peForward` (were `insiderBuys90d`, `pe`, `peAvg10y`);
+  UI and types updated. No rules change — nothing to deploy but the web app (only if the user wants the new fact
+  labels; the scanner itself is just a paste into the Apps Script editor).
+- Tests: 240 unit, 71 rules, `npm run test:scanner` green with canned Yahoo / Nasdaq data.
 
 ### 2026-11-04 (investing + market scanner): built and pushed (`033794c`), rules NOT yet deployed
 - **Investing** (§5.13): a new Today section (in More… to start, even for people who arranged Today) — your own stocks (type symbols or import an E*TRADE portfolio CSV) with today's prices, moves, 52-week range, headlines and flags on big moves, plus a **post-earnings dislocation watchlist**: quality mid-caps that fell 15–40% right after earnings while the fundamentals held up, each with a 0–100 score and (with a free Gemini key) a one-page note. Everything is per member and private; nothing is advice and nothing trades.

@@ -29,83 +29,92 @@ describe('stage 1: the overreaction screen', () => {
   })
 })
 
-describe('EDGAR facts', () => {
-  // A tiny companyfacts shape: quarterly + annual revenue, cash flows, debt instants, EPS.
-  const entry = (start: string, end: string, val: number) => ({ start, end, val })
-  const instant = (end: string, val: number) => ({ end, val })
-  const facts = {
-    facts: {
-      'us-gaap': {
-        Revenues: {
-          units: {
-            USD: [
-              entry('2024-07-01', '2024-09-30', 1000e6),
-              entry('2025-07-01', '2025-09-30', 1180e6),
-              entry('2024-01-01', '2024-12-31', 4000e6),
-              entry('2023-01-01', '2023-12-31', 3500e6),
-            ],
-          },
-        },
-        NetCashProvidedByUsedInOperatingActivities: { units: { USD: [entry('2024-01-01', '2024-12-31', 520e6)] } },
-        PaymentsToAcquirePropertyPlantAndEquipment: { units: { USD: [entry('2024-01-01', '2024-12-31', 160e6)] } },
-        LongTermDebtNoncurrent: { units: { USD: [instant('2024-12-31', 800e6), instant('2025-09-30', 700e6)] } },
-        CashAndCashEquivalentsAtCarryingValue: { units: { USD: [instant('2025-09-30', 450e6)] } },
-        OperatingIncomeLoss: { units: { USD: [entry('2024-01-01', '2024-12-31', 400e6)] } },
-        DepreciationDepletionAndAmortization: { units: { USD: [entry('2024-01-01', '2024-12-31', 100e6)] } },
-        EarningsPerShareDiluted: {
-          units: {
-            'USD/shares': [
-              entry('2024-10-01', '2024-12-31', 0.5),
-              entry('2025-01-01', '2025-03-31', 0.6),
-              entry('2025-04-01', '2025-06-30', 0.7),
-              entry('2025-07-01', '2025-09-30', 0.7),
-              entry('2023-01-01', '2023-12-31', 1.8),
-              entry('2024-01-01', '2024-12-31', 2.2),
-            ],
-          },
-        },
-      },
-    },
-  }
-
-  it('computes growth, free cash flow, leverage and valuation from the filing data', () => {
-    const got = call<Record<string, number | null>>('factsFrom_', facts, 25, { 2023: 36, 2024: 44 })
-    expect(got.revenueGrowth).toBe(18) // 1180 vs 1000, latest quarter YoY
-    expect(got.fcf).toBe(360e6) // 520 − 160
-    expect(got.fcfMargin).toBe(9) // 360 / 4000
-    expect(got.netDebtToEbitda).toBe(0.5) // (700 − 450) / (400 + 100)
-    expect(got.epsTtm).toBeCloseTo(2.5) // last four quarters
-    expect(got.pe).toBe(10) // 25 / 2.5
-    expect(got.peAvg10y).toBeNull() // only two usable years; needs four
-  })
-  it('falls back to annual revenue growth when quarters are missing', () => {
-    const annualOnly = { facts: { 'us-gaap': { Revenues: facts.facts['us-gaap'].Revenues } } }
-    const got = call<Record<string, number | null>>('factsFrom_', { facts: { 'us-gaap': { Revenues: { units: { USD: [entry('2024-01-01', '2024-12-31', 4000e6), entry('2023-01-01', '2023-12-31', 3500e6)] } } } } }, null, null)
-    expect(got.revenueGrowth).toBeCloseTo(14.29, 1)
-    expect(annualOnly).toBeTruthy()
+describe('the universe: Nasdaq Trader symbol files', () => {
+  it('keeps plain common stocks from both file shapes', () => {
+    const nasdaq = [
+      'Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares',
+      'AAAP|Pacer ETF|G|N|N|100|Y|N', // ETF
+      'XYZ|XYZ Corp - Common Stock|Q|N|N|100|N|N',
+      'ZZZT|NASDAQ TEST|G|Y|N|100|N|N', // test issue
+      'TOOLONGG|Units|G|N|N|100|N|N', // not a plain ticker
+    ].join('\n')
+    const other = [
+      'ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol',
+      'BIG|Big Co Common Stock|N|BIG|N|100|N|BIG',
+      'PRF$A|Preferred Series A|N|PRF-A|N|100|N|PRF-A', // preferred
+      'File Creation Time: 1105202603:02||||||',
+    ].join('\n')
+    expect(call('parseListedSymbols_', nasdaq)).toEqual(['XYZ'])
+    expect(call('parseListedSymbols_', other)).toEqual(['BIG'])
+    expect(call('parseListedSymbols_', 'nothing|useful\nA|B')).toEqual([])
   })
 })
 
-describe('insiders, score and flags', () => {
-  it('counts open-market purchases in a Form 4', () => {
-    const xml = `
-      <nonDerivativeTransaction><transactionCoding><transactionCode>P</transactionCode></transactionCoding></nonDerivativeTransaction>
-      <nonDerivativeTransaction><transactionCoding><transactionCode>S</transactionCode></transactionCoding></nonDerivativeTransaction>
-      <nonDerivativeTransaction><transactionCoding><transactionCode>P</transactionCode></transactionCoding></nonDerivativeTransaction>`
-    expect(call('form4Buys_', xml)).toBe(2)
-    expect(call('form4Buys_', '<transactionCode>A</transactionCode>')).toBe(0)
+describe('earnings recency', () => {
+  const day = 86400000
+  const now = Date.now()
+  // Yahoo moves the earnings date to the next quarter (~91 days out) as soon as a company reports.
+  it('passes when the last report was within the window, estimated from the next date', () => {
+    const justReported = (now + 89 * day) / 1000 // reported ~2 days ago
+    const reportedLastMonth = (now + 60 * day) / 1000 // reported ~31 days ago
+    const aboutToReport = (now + 3 * day) / 1000 // last report ~88 days ago
+    expect(call('postEarnings_', justReported, now, 10)).toBe(true)
+    expect(call('postEarnings_', reportedLastMonth, now, 10)).toBe(false)
+    expect(call('postEarnings_', aboutToReport, now, 10)).toBe(false)
+    expect(call('postEarnings_', null, now, 10)).toBe(false) // no scheduled date → fail closed
   })
+})
 
+describe('Yahoo fundamentals', () => {
+  const raw = (v: number) => ({ raw: v })
+  const qs = {
+    financialData: {
+      revenueGrowth: raw(0.18),
+      freeCashflow: raw(360e6),
+      totalRevenue: raw(4000e6),
+      totalDebt: raw(700e6),
+      totalCash: raw(450e6),
+      ebitda: raw(500e6),
+    },
+    defaultKeyStatistics: { trailingEps: raw(1.25), forwardPE: raw(12) },
+    netSharePurchaseActivity: { buyInfoCount: raw(2), period: '6m' },
+  }
+
+  it('maps quoteSummary numbers to the score inputs', () => {
+    expect(call('factsFromSummary_', qs, 25)).toEqual({
+      revenueGrowth: 18,
+      fcf: 360e6,
+      fcfMargin: 9, // 360 / 4000
+      netDebtToEbitda: 0.5, // (700 − 450) / 500
+      peTrailing: 20, // 25 / 1.25
+      peForward: 12,
+      insiderBuys6m: 2,
+    })
+  })
+  it('copes with missing modules (nulls, not crashes)', () => {
+    expect(call('factsFromSummary_', {}, 25)).toEqual({
+      revenueGrowth: null, fcf: null, fcfMargin: null, netDebtToEbitda: null, peTrailing: null, peForward: null, insiderBuys6m: null,
+    })
+    // Cash above debt is a clean balance sheet even with no EBITDA.
+    expect(call<{ netDebtToEbitda: number }>('factsFromSummary_', { financialData: { totalDebt: raw(10e6), totalCash: raw(50e6) } }, 25).netDebtToEbitda).toBe(0)
+  })
+  it('reads the next earnings date', () => {
+    expect(call('nextEarningsSec_', { calendarEvents: { earnings: { earningsDate: [{ raw: 1800000000 }] } } })).toBe(1800000000)
+    expect(call('nextEarningsSec_', {})).toBeNull()
+  })
+})
+
+describe('score and flags', () => {
   it('scores the worked example at 88', () => {
-    // Revenue +18% → 22, FCF margin 9% → 18, net debt/EBITDA 0.5 → 18, P/E 12 vs 20 → 12, 2 buys → 10, sentiment 8 → 8.
+    // Revenue +18% → 22, FCF margin 9% → 18, net debt/EBITDA 0.5 → 18, forward P/E 12 vs trailing 20 → 12, 2 buys → 10, sentiment 8 → 8.
     const got = call<{ score: number; parts: Record<string, number> }>('scoreCandidate_', {
-      revenueGrowth: 18, fcf: 360e6, fcfMargin: 9, netDebtToEbitda: 0.5, pe: 12, peAvg10y: 20, insiderBuys90d: 2, sentiment: 8,
+      revenueGrowth: 18, fcf: 360e6, fcfMargin: 9, netDebtToEbitda: 0.5, peForward: 12, peTrailing: 20, insiderBuys6m: 2, sentiment: 8,
     })
     expect(got.parts).toEqual({ growth: 22, fcf: 18, balance: 18, valuation: 12, insider: 10, sentiment: 8 })
     expect(got.score).toBe(88)
   })
   it('lands missing data mid-scale and shrinking companies at zero growth points', () => {
-    const got = call<{ score: number; parts: Record<string, number> }>('scoreCandidate_', { revenueGrowth: -5, fcf: -10e6, netDebtToEbitda: null, pe: null, peAvg10y: null })
+    const got = call<{ score: number; parts: Record<string, number> }>('scoreCandidate_', { revenueGrowth: -5, fcf: -10e6, netDebtToEbitda: null, peForward: null, peTrailing: null })
     expect(got.parts).toEqual({ growth: 0, fcf: 0, balance: 10, valuation: 7, insider: 0, sentiment: 5 })
   })
 
@@ -117,12 +126,6 @@ describe('insiders, score and flags', () => {
 })
 
 describe('odds and ends', () => {
-  it('averages monthly closes per calendar year', () => {
-    const jan2024 = Date.UTC(2024, 0, 15) / 1000
-    const jul2024 = Date.UTC(2024, 6, 15) / 1000
-    const mar2025 = Date.UTC(2025, 2, 15) / 1000
-    expect(call('yearlyAverages_', { closes: [10, 20, 30], timestamps: [jan2024, jul2024, mar2025] })).toEqual({ 2024: 15, 2025: 30 })
-  })
   it('reads RSS items, CDATA and entities included', () => {
     const xml = `<rss><channel>
       <item><title><![CDATA[Shares fall 27% after Q3 miss]]></title><link>https://example.com/a</link></item>
@@ -133,23 +136,16 @@ describe('odds and ends', () => {
       { title: 'Analysts & insiders react', url: 'https://example.com/b' },
     ])
   })
-  it('pads CIKs and builds a prompt from the verified numbers', () => {
-    expect(call('padCik_', 320193)).toBe('0000320193')
+  it('builds the prompt from the verified numbers', () => {
     const prompt = call<string>('reportPrompt_', {
       symbol: 'XYZ', name: 'XYZ Corp', drop5d: -27, price: 25,
-      facts: { revenueGrowth: 14, fcf: 360e6, fcfMargin: 9, netDebtToEbitda: 0.5, pe: 12, peAvg10y: 20, insiderBuys90d: 2 },
+      facts: { revenueGrowth: 18, fcf: 360e6, fcfMargin: 9, netDebtToEbitda: 0.5, peTrailing: 20, peForward: 12, insiderBuys6m: 2 },
     }, [{ title: 'XYZ tumbles on guidance', url: 'https://example.com' }])
     expect(prompt).toContain('fell 27%')
-    expect(prompt).toContain('Revenue growth (latest quarter, year over year): 14%')
+    expect(prompt).toContain('Revenue growth (latest quarter, year over year): 18%')
+    expect(prompt).toContain('trailing 20, forward 12')
     expect(prompt).toContain('XYZ tumbles on guidance')
     expect(prompt).toContain('"Bull case"')
     expect(prompt).toContain('JSON only')
-  })
-  it('keeps earnings recency honest (a results filing inside the window)', () => {
-    const today = new Date().toISOString().slice(0, 10)
-    const old = '2020-01-01'
-    expect(call('postEarnings_', { form: ['4', '8-K'], filingDate: [today, today] }, 10)).toBe(true)
-    expect(call('postEarnings_', { form: ['8-K'], filingDate: [old] }, 10)).toBe(false)
-    expect(call('postEarnings_', { form: [], filingDate: [] }, 10)).toBe(false)
   })
 })

@@ -9,22 +9,23 @@
  *                flags on anything that moved a lot (a nudge to look closer, never advice).
  *   watchlist  — the post-earnings dislocation screen: quality mid-caps that just fell much more than the business
  *                did. A three-stage funnel: (1) price dropped 15–40% in 5 days on real volume, (2) fundamentals from
- *                SEC EDGAR (revenue still growing, free cash flow positive, manageable debt, insiders buying),
+ *                Yahoo Finance (revenue still growing, free cash flow positive, manageable debt, insiders buying),
  *                (3) a 0–100 score and, with a free Gemini API key, a one-page report (why it fell, bull / bear
  *                case, historical analogs, a recovery estimate).
  *
- * Everything is free: prices from Yahoo Finance's public chart endpoint (Stooq as fallback), fundamentals and insider
- * buying from SEC EDGAR's official APIs, headlines from Google News RSS, and the write-up from the Gemini API's free
- * tier. The 6-minute execution limit is handled by scanning in slices: each run picks up where the last one left off
- * (state in Script Properties), so a full pass over the universe takes a day or two — fine, since the screen looks
- * for drops that happened over the last 5 trading days.
+ * Everything is free: the ticker universe from Nasdaq Trader's symbol directory, prices from Yahoo Finance's public
+ * chart endpoint (Stooq as fallback), fundamentals / insider buying / earnings timing from Yahoo's quoteSummary,
+ * headlines from Google News RSS, and the write-up from the Gemini API's free tier. (SEC EDGAR would be the official
+ * source, but it requires a contact User-Agent header and Apps Script's UrlFetchApp can't change its User-Agent, so
+ * the SEC answers 403.) The 6-minute execution limit is handled by scanning in slices: each run picks up where the
+ * last one left off (state in Script Properties), so a full pass over the universe takes a day or two — fine, since
+ * the screen looks for drops that happened over the last 5 trading days.
  *
  * Setup (see scripts/market-scanner/README.md). Script properties:
  *   FIREBASE_API_KEY     the web app's apiKey
  *   FIREBASE_PROJECT_ID  align-a32c1
  *   BOT_EMAIL            the helper account's Firebase Auth email (the calendar bot works)
  *   BOT_PASSWORD         its password
- *   EDGAR_CONTACT        how the SEC can reach you, e.g. "Align scanner you@example.com" (they require this header)
  *   GEMINI_API_KEY       optional: a free key from https://aistudio.google.com → the AI report and sentiment score
  * Optional tuning (defaults in brackets):
  *   GEMINI_MODEL (gemini-2.5-flash), MIN_CAP_B (2), MAX_CAP_B (50), MIN_DROP (15), MAX_DROP (40),
@@ -36,8 +37,6 @@
 
 var MAX_RUN_MS = 4.5 * 60000 // leave headroom under the 6-minute execution limit
 var UNIVERSE_DAYS = 7 // rebuild the ticker universe (market caps drift) this often
-var INSIDER_DAYS = 90
-var FORM4_FETCH_LIMIT = 5 // how many recent Form 4 filings to read per candidate
 var CANDIDATES_KEPT = 10
 
 var DEFAULTS = {
@@ -140,7 +139,7 @@ function scan_() {
   state.scored = state.scored || []
   var batch = 0
   while (state.cursor < universe.length && batch < cfg.SCAN_BATCH && budget()) {
-    var row = universe[state.cursor] // [symbol, cik, marketCap]
+    var row = universe[state.cursor] // [symbol, marketCap]
     state.cursor++
     batch++
     try {
@@ -148,10 +147,10 @@ function scan_() {
       var check = {
         drop5d: drop5d_(bars.closes),
         dollarVol: avgDollarVol_(bars.closes, bars.volumes),
-        marketCap: row[2],
+        marketCap: row[1],
       }
       if (stage1Pass_(check, cfg)) {
-        state.passers.push({ symbol: row[0], cik: row[1], cap: row[2], drop5d: check.drop5d, price: bars.closes[bars.closes.length - 1] })
+        state.passers.push({ symbol: row[0], cap: row[1], drop5d: check.drop5d, price: bars.closes[bars.closes.length - 1] })
         Logger.log('Stage 1: %s fell %s%% in 5 days.', row[0], Math.round(check.drop5d))
       }
     } catch (e) {
@@ -239,7 +238,7 @@ function symbolsOf_(fields) {
 }
 
 // ---------------------------------------------------------------------------
-// The universe: US mid-caps from EDGAR's ticker list + batch market caps
+// The universe: US common stocks from Nasdaq Trader's symbol directory + batch market caps
 // ---------------------------------------------------------------------------
 
 function universeStale_(state, cfg) {
@@ -248,25 +247,23 @@ function universeStale_(state, cfg) {
   return !(age < UNIVERSE_DAYS)
 }
 
-/** One slice of the rebuild: first the ticker/CIK list, then market caps batch by batch. */
+/** One slice of the rebuild: first the ticker list, then market caps batch by batch. */
 function buildUniverseStep_(state, cfg, budget) {
   if (cfg.CUSTOM_UNIVERSE) {
     // A hand-kept list skips the market-cap screen (caps unknown → every name passes that filter).
     state.universe = cfg.CUSTOM_UNIVERSE.split(',').map(function (s) {
-      return [s.trim().toUpperCase(), null, null]
+      return [s.trim().toUpperCase(), null]
     })
     state.universeAt = new Date().toISOString()
     state.cursor = 0
     return
   }
   if (!state.tickers) {
-    var listed = edgarJson_('https://www.sec.gov/files/company_tickers.json', cfg)
-    var tickers = []
-    Object.keys(listed).forEach(function (k) {
-      var t = listed[k]
-      // Plain common stock only: unit / warrant / preferred tickers carry a dash.
-      if (t.ticker && t.ticker.indexOf('-') < 0) tickers.push([t.ticker, t.cik_str])
-    })
+    // Every US-listed common stock (both files are pipe-delimited; ETFs, test issues, units / warrants / preferred
+    // tickers are dropped). The SEC's own ticker list would be nicer, but it 403s Apps Script's fixed User-Agent.
+    var tickers = parseListedSymbols_(fetchText_('https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt', {})).concat(
+      parseListedSymbols_(fetchText_('https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt', {})),
+    )
     state.tickers = tickers
     state.tickCursor = 0
     state.newUniverse = []
@@ -277,12 +274,10 @@ function buildUniverseStep_(state, cfg, budget) {
     var slice = state.tickers.slice(state.tickCursor, state.tickCursor + 80)
     state.tickCursor += slice.length
     try {
-      var quotes = yahooQuotes_(slice.map(function (t) {
-        return t[0]
-      }))
+      var quotes = yahooQuotes_(slice)
       slice.forEach(function (t) {
-        var cap = quotes[t[0]]
-        if (cap && cap >= cfg.MIN_CAP && cap <= cfg.MAX_CAP) state.newUniverse.push([t[0], t[1], cap])
+        var cap = quotes[t]
+        if (cap && cap >= cfg.MIN_CAP && cap <= cfg.MAX_CAP) state.newUniverse.push([t, cap])
       })
     } catch (e) {
       Logger.log('Quote batch failed (%s); will retry next run.', e && e.message)
@@ -304,39 +299,33 @@ function buildUniverseStep_(state, cfg, budget) {
 }
 
 // ---------------------------------------------------------------------------
-// Stages 2 and 3: EDGAR fundamentals, insiders, score, AI report
+// Stages 2 and 3: Yahoo fundamentals, insiders, score, AI report
 // ---------------------------------------------------------------------------
 
-/** A stage-1 passer → a scored candidate, or null (no recent earnings filing, or numbers missing). */
+/** A stage-1 passer → a scored candidate, or null (earnings weren't recent, or numbers missing). */
 function analyze_(p, cfg) {
-  var cik = p.cik
-  if (!cik) cik = cikFor_(p.symbol, cfg)
-  if (!cik) return null
-  var subs = edgarJson_('https://data.sec.gov/submissions/CIK' + padCik_(cik) + '.json', cfg)
-  var recent = (subs && subs.filings && subs.filings.recent) || {}
-  // Stage 1 asked "did it fall"; here: did it fall *because of earnings* (a results filing in the window)?
-  if (!postEarnings_(recent, cfg.EARNINGS_DAYS)) return null
-  var buys = insiderBuys_(cik, recent, cfg)
-  var facts = null
-  try {
-    var cf = edgarJson_('https://data.sec.gov/api/xbrl/companyfacts/CIK' + padCik_(cik) + '.json', cfg)
-    var years = yearlyAverages_(dailyCloses_(p.symbol, '10y', '1mo'))
-    facts = factsFrom_(cf, p.price, years)
-  } catch (e) {
-    return null // no XBRL facts, no candidate
-  }
-  facts.insiderBuys90d = buys
+  var qs = yahooQuoteSummary_(p.symbol)
+  if (!qs) return null
+  // Stage 1 asked "did it fall"; here: did it fall *because of earnings* (a report in the window)?
+  if (!postEarnings_(nextEarningsSec_(qs), Date.now(), cfg.EARNINGS_DAYS)) return null
+  var facts = factsFromSummary_(qs, p.price)
+  var name = ((qs.price || {}).longName || (qs.price || {}).shortName || p.symbol) + ''
   var headlines = news_(p.symbol).slice(0, 5)
   var ai = { sentiment: 5, recovery: null, report: '' }
-  if (cfg.GEMINI_API_KEY && scoreCandidate_({ revenueGrowth: facts.revenueGrowth, fcf: facts.fcf, fcfMargin: facts.fcfMargin, netDebtToEbitda: facts.netDebtToEbitda, pe: facts.pe, peAvg10y: facts.peAvg10y, insiderBuys90d: buys, sentiment: 10 }).score >= cfg.MIN_SCORE) {
-    ai = gemini_(cfg, reportPrompt_({ symbol: p.symbol, name: subs.name || p.symbol, drop5d: p.drop5d, price: p.price, marketCap: p.cap, facts: facts }, headlines))
+  var provisional = {}
+  Object.keys(facts).forEach(function (k) {
+    provisional[k] = facts[k]
+  })
+  provisional.sentiment = 10
+  if (cfg.GEMINI_API_KEY && scoreCandidate_(provisional).score >= cfg.MIN_SCORE) {
+    ai = gemini_(cfg, reportPrompt_({ symbol: p.symbol, name: name, drop5d: p.drop5d, price: p.price, marketCap: p.cap, facts: facts }, headlines))
   }
   facts.sentiment = ai.sentiment
   var scored = scoreCandidate_(facts)
   if (scored.score < cfg.MIN_SCORE) return null
   return {
     symbol: p.symbol,
-    name: subs.name || p.symbol,
+    name: name,
     score: scored.score,
     parts: scored.parts,
     price: round2_(p.price),
@@ -349,50 +338,22 @@ function analyze_(p, cfg) {
   }
 }
 
-/** A results filing (10-Q, 10-K or 8-K) within the last n days. */
-function postEarnings_(recent, days) {
-  var forms = recent.form || []
-  var dates = recent.filingDate || []
-  var cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10)
-  for (var i = 0; i < forms.length; i++) {
-    if (dates[i] < cutoff) break // newest first
-    if (forms[i] === '10-Q' || forms[i] === '10-K' || forms[i] === '8-K') return true
-  }
-  return false
+/** The next scheduled earnings date (epoch seconds), from quoteSummary's calendarEvents. */
+function nextEarningsSec_(qs) {
+  var dates = (((qs.calendarEvents || {}).earnings || {}).earningsDate || [])
+  return dates.length && dates[0] && dates[0].raw ? dates[0].raw : null
 }
 
-/** Open-market insider purchases in the last 90 days: read the most recent Form 4s and count "P" transactions. */
-function insiderBuys_(cik, recent, cfg) {
-  var forms = recent.form || []
-  var dates = recent.filingDate || []
-  var accession = recent.accessionNumber || []
-  var docs = recent.primaryDocument || []
-  var cutoff = new Date(Date.now() - INSIDER_DAYS * 86400000).toISOString().slice(0, 10)
-  var buys = 0
-  var read = 0
-  for (var i = 0; i < forms.length && read < FORM4_FETCH_LIMIT; i++) {
-    if (dates[i] < cutoff) break
-    if (forms[i] !== '4') continue
-    read++
-    try {
-      var url = 'https://www.sec.gov/Archives/edgar/data/' + Number(cik) + '/' + accession[i].replace(/-/g, '') + '/' + docs[i]
-      buys += form4Buys_(edgarText_(url, cfg))
-      Utilities.sleep(150)
-    } catch (e) {
-      // Skip a filing that won't load.
-    }
-  }
-  return buys
-}
-
-/** The symbol's CIK when a custom universe didn't carry one. */
-function cikFor_(symbol, cfg) {
-  var listed = edgarJson_('https://www.sec.gov/files/company_tickers.json', cfg)
-  var keys = Object.keys(listed)
-  for (var i = 0; i < keys.length; i++) {
-    if (listed[keys[i]].ticker === symbol) return listed[keys[i]].cik_str
-  }
-  return null
+/**
+ * Did earnings land within the last `days` days? Yahoo moves the earnings date to the next quarter as soon as a
+ * company reports, so "the last report" sits about one quarter (91 days) before the next scheduled date. A few days'
+ * slack covers reporting-cycle drift; without a scheduled date there's no way to tell, so it fails closed.
+ */
+function postEarnings_(nextEarningsSec, nowMs, days) {
+  if (!nextEarningsSec) return false
+  var lastApproxMs = nextEarningsSec * 1000 - 91 * 86400000
+  var daysSince = (nowMs - lastApproxMs) / 86400000
+  return daysSince >= -4 && daysSince <= days
 }
 
 function publishWatchlist_(api, users, state, cfg) {
@@ -450,162 +411,76 @@ function stage1Pass_(c, cfg) {
   return true
 }
 
-/** Monthly bars over ten years → the average close per calendar year (for the historical P/E). */
-function yearlyAverages_(bars) {
-  var byYear = {}
-  for (var i = 0; i < bars.closes.length; i++) {
-    if (!bars.closes[i] || !bars.timestamps[i]) continue
-    var year = new Date(bars.timestamps[i] * 1000).getUTCFullYear()
-    ;(byYear[year] = byYear[year] || []).push(bars.closes[i])
+/**
+ * A Nasdaq Trader symbol-directory file (pipe-delimited) → plain common-stock tickers. Both files work: the header
+ * names the symbol column ("Symbol" or "ACT Symbol"), ETFs and test issues are flagged, and units / warrants /
+ * preferred shares carry $ . = or a class suffix worth keeping out of a fundamentals screen.
+ */
+function parseListedSymbols_(text) {
+  var lines = text.trim().split('\n')
+  var header = lines[0].split('|')
+  var symbolCol = header.indexOf('Symbol')
+  if (symbolCol < 0) symbolCol = header.indexOf('ACT Symbol')
+  var etfCol = header.indexOf('ETF')
+  var testCol = header.indexOf('Test Issue')
+  if (symbolCol < 0) return []
+  var out = []
+  for (var i = 1; i < lines.length; i++) {
+    var cells = lines[i].split('|')
+    var symbol = (cells[symbolCol] || '').trim()
+    if (!symbol || symbol.indexOf('File Creation') >= 0) continue
+    if (!/^[A-Z]{1,5}$/.test(symbol)) continue
+    if (etfCol >= 0 && cells[etfCol] === 'Y') continue
+    if (testCol >= 0 && cells[testCol] === 'Y') continue
+    out.push(symbol)
   }
-  var out = {}
-  Object.keys(byYear).forEach(function (y) {
-    out[y] = byYear[y].reduce(function (a, b) {
-      return a + b
-    }, 0) / byYear[y].length
-  })
   return out
 }
 
-function durationDays_(e) {
-  return e.start && e.end ? Math.round((new Date(e.end).getTime() - new Date(e.start).getTime()) / 86400000) : null
+/** A quoteSummary 'raw' number, or null. */
+function qsRaw_(module, key) {
+  var v = (module || {})[key]
+  if (v === null || v === undefined) return null
+  if (typeof v === 'number') return v
+  return typeof v.raw === 'number' ? v.raw : null
 }
-
-/** XBRL entries → one value per quarter end (re-filings overwrite; sorted oldest → newest). */
-function quarterly_(entries) {
-  return dedupeByEnd_(entries, 70, 100)
-}
-
-/** XBRL entries → one value per fiscal year end. */
-function annual_(entries) {
-  return dedupeByEnd_(entries, 340, 380)
-}
-
-function dedupeByEnd_(entries, minDays, maxDays) {
-  var byEnd = {}
-  entries.forEach(function (e) {
-    var d = durationDays_(e)
-    if (d === null || d < minDays || d > maxDays) return
-    byEnd[e.end] = e.val
-  })
-  return Object.keys(byEnd)
-    .sort()
-    .map(function (end) {
-      return { end: end, val: byEnd[end] }
-    })
-}
-
-/** Balance-sheet (instant) entries → the latest value. */
-function latestInstant_(entries) {
-  var best = null
-  entries.forEach(function (e) {
-    if (e.start) return
-    if (!best || e.end > best.end) best = e
-  })
-  return best ? best.val : null
-}
-
-/** The first us-gaap tag that has values in this unit. */
-function seriesFor_(cf, tags, unit) {
-  var gaap = (cf && cf.facts && cf.facts['us-gaap']) || {}
-  for (var i = 0; i < tags.length; i++) {
-    var entries = gaap[tags[i]] && gaap[tags[i]].units && gaap[tags[i]].units[unit]
-    if (entries && entries.length) return entries
-  }
-  return []
-}
-
-/** Latest quarter vs the same quarter a year earlier (within a 20-day tolerance), as a percent. */
-function revenueGrowth_(quarters) {
-  if (quarters.length < 2) return null
-  var last = quarters[quarters.length - 1]
-  var target = new Date(last.end).getTime() - 365 * 86400000
-  var best = null
-  quarters.forEach(function (q) {
-    var gap = Math.abs(new Date(q.end).getTime() - target)
-    if (gap <= 20 * 86400000 && (!best || gap < best.gap)) best = { q: q, gap: gap }
-  })
-  return best && best.q.val ? round2_(pctChange_(best.q.val, last.val)) : null
-}
-
-var REVENUE_TAGS = ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet', 'RevenueFromContractWithCustomerIncludingAssessedTax', 'SalesRevenueGoodsNet']
 
 /**
- * A company's EDGAR XBRL facts + the current price + yearly average prices → what the score needs.
- * Growth prefers the latest quarter year-over-year; cash flow and EBITDA use the latest fiscal year.
+ * A Yahoo quoteSummary result + the current price → what the score needs: quarterly YoY revenue growth, free cash
+ * flow and its margin, net debt / EBITDA, trailing and forward P/E, and the insider purchase count Yahoo reports
+ * for the last 6 months.
  */
-function factsFrom_(cf, price, yearAvgPrices) {
-  var revQ = quarterly_(seriesFor_(cf, REVENUE_TAGS, 'USD'))
-  var revA = annual_(seriesFor_(cf, REVENUE_TAGS, 'USD'))
-  var growth = revenueGrowth_(revQ)
-  if (growth === null && revA.length >= 2) growth = round2_(pctChange_(revA[revA.length - 2].val, revA[revA.length - 1].val))
-
-  var ocfA = annual_(seriesFor_(cf, ['NetCashProvidedByUsedInOperatingActivities', 'NetCashProvidedByUsedInOperatingActivitiesContinuingOperations'], 'USD'))
-  var capexA = annual_(seriesFor_(cf, ['PaymentsToAcquirePropertyPlantAndEquipment', 'PaymentsToAcquireProductiveAssets'], 'USD'))
-  var fcf = null
-  if (ocfA.length) {
-    var ocf = ocfA[ocfA.length - 1]
-    var capex = 0
-    capexA.forEach(function (c) {
-      if (c.end === ocf.end) capex = c.val
-    })
-    if (!capex && capexA.length) capex = capexA[capexA.length - 1].val
-    fcf = ocf.val - capex
-  }
-  var fcfMargin = fcf !== null && revA.length && revA[revA.length - 1].val ? round2_((fcf / revA[revA.length - 1].val) * 100) : null
-
-  var debt = (latestInstant_(seriesFor_(cf, ['LongTermDebtNoncurrent', 'LongTermDebt'], 'USD')) || 0) + (latestInstant_(seriesFor_(cf, ['LongTermDebtCurrent', 'DebtCurrent'], 'USD')) || 0)
-  var cash = (latestInstant_(seriesFor_(cf, ['CashAndCashEquivalentsAtCarryingValue'], 'USD')) || 0) + (latestInstant_(seriesFor_(cf, ['ShortTermInvestments'], 'USD')) || 0)
-  var opIncA = annual_(seriesFor_(cf, ['OperatingIncomeLoss'], 'USD'))
-  var daA = annual_(seriesFor_(cf, ['DepreciationDepletionAndAmortization', 'DepreciationAndAmortization', 'Depreciation'], 'USD'))
+function factsFromSummary_(qs, price) {
+  var fd = qs.financialData || {}
+  var ks = qs.defaultKeyStatistics || {}
+  var growth = qsRaw_(fd, 'revenueGrowth')
+  var fcf = qsRaw_(fd, 'freeCashflow')
+  var revenue = qsRaw_(fd, 'totalRevenue')
+  var debt = qsRaw_(fd, 'totalDebt')
+  var cash = qsRaw_(fd, 'totalCash')
+  var ebitda = qsRaw_(fd, 'ebitda')
   var netDebtToEbitda = null
-  var netDebt = debt - cash
-  if (netDebt <= 0) netDebtToEbitda = 0
-  else if (opIncA.length) {
-    var ebitda = opIncA[opIncA.length - 1].val + (daA.length ? daA[daA.length - 1].val : 0)
-    if (ebitda > 0) netDebtToEbitda = round2_(netDebt / ebitda)
+  if (debt !== null) {
+    var netDebt = debt - (cash || 0)
+    if (netDebt <= 0) netDebtToEbitda = 0
+    else if (ebitda && ebitda > 0) netDebtToEbitda = round2_(netDebt / ebitda)
   }
-
-  var epsEntries = seriesFor_(cf, ['EarningsPerShareDiluted', 'EarningsPerShareBasic'], 'USD/shares')
-  var epsQ = quarterly_(epsEntries)
-  var epsA = annual_(epsEntries)
-  var epsTtm = null
-  if (epsQ.length >= 4) {
-    epsTtm = 0
-    epsQ.slice(-4).forEach(function (q) {
-      epsTtm += q.val
-    })
-  } else if (epsA.length) epsTtm = epsA[epsA.length - 1].val
-  var pe = price && epsTtm > 0 ? round2_(price / epsTtm) : null
-
-  var peAvg10y = null
-  if (yearAvgPrices && epsA.length) {
-    var ratios = []
-    epsA.slice(-10).forEach(function (y) {
-      var avg = yearAvgPrices[new Date(y.end).getUTCFullYear()]
-      if (avg && y.val > 0) ratios.push(avg / y.val)
-    })
-    if (ratios.length >= 4)
-      peAvg10y = round2_(ratios.reduce(function (a, b) {
-        return a + b
-      }, 0) / ratios.length)
+  var eps = qsRaw_(ks, 'trailingEps')
+  return {
+    revenueGrowth: growth === null ? null : round2_(growth * 100),
+    fcf: fcf,
+    fcfMargin: fcf !== null && revenue ? round2_((fcf / revenue) * 100) : null,
+    netDebtToEbitda: netDebtToEbitda,
+    peTrailing: price && eps && eps > 0 ? round2_(price / eps) : null,
+    peForward: qsRaw_(ks, 'forwardPE') !== null ? round2_(qsRaw_(ks, 'forwardPE')) : null,
+    insiderBuys6m: qsRaw_(qs.netSharePurchaseActivity || {}, 'buyInfoCount'),
   }
-
-  return { revenueGrowth: growth, fcf: fcf, fcfMargin: fcfMargin, netDebtToEbitda: netDebtToEbitda, pe: pe, peAvg10y: peAvg10y, epsTtm: epsTtm }
-}
-
-/** A Form 4 document → how many open-market purchases it reports (transaction code P). */
-function form4Buys_(xml) {
-  var buys = 0
-  var re = /<transactionCode>\s*P\s*<\/transactionCode>/g
-  while (re.exec(xml)) buys++
-  return buys
 }
 
 /**
- * The 0–100 score: revenue growth 25, free cash flow 20, balance sheet 20, valuation vs history 15, insider
- * buying 10, sentiment 10 (the AI's read of the news; 5 = neutral without a key). Missing data lands mid-scale
- * rather than failing the stock.
+ * The 0–100 score: revenue growth 25, free cash flow 20, balance sheet 20, valuation (the forward P/E's discount to
+ * trailing — earnings expected to recover) 15, insider buying 10, sentiment 10 (the AI's read of the news; 5 =
+ * neutral without a key). Missing data lands mid-scale rather than failing the stock.
  */
 function scoreCandidate_(f) {
   var parts = {}
@@ -613,8 +488,8 @@ function scoreCandidate_(f) {
   parts.fcf = f.fcf !== null && f.fcf !== undefined && f.fcf > 0 ? Math.max(4, Math.min(20, Math.floor((f.fcfMargin || 0) * 2))) : 0
   var nde = f.netDebtToEbitda
   parts.balance = nde === null || nde === undefined ? 10 : nde <= 0 ? 20 : nde < 1 ? 18 : nde < 2 ? 14 : nde < 3 ? 8 : 2
-  parts.valuation = f.pe && f.peAvg10y ? (f.pe < f.peAvg10y ? Math.min(15, Math.floor((1 - f.pe / f.peAvg10y) * 30)) : 0) : 7
-  var buys = f.insiderBuys90d || 0
+  parts.valuation = f.peForward && f.peTrailing ? (f.peForward < f.peTrailing ? Math.min(15, Math.floor((1 - f.peForward / f.peTrailing) * 30)) : 0) : 7
+  var buys = f.insiderBuys6m || 0
   parts.insider = buys >= 2 ? 10 : buys === 1 ? 7 : 0
   var s = f.sentiment === null || f.sentiment === undefined ? 5 : f.sentiment
   parts.sentiment = Math.max(0, Math.min(10, Math.round(s)))
@@ -645,13 +520,13 @@ function holdingFlags_(h) {
 function reportPrompt_(c, headlines) {
   var f = c.facts
   var lines = [
-    'You are an equity research assistant. ' + c.symbol + ' (' + c.name + ') fell ' + Math.abs(Math.round(c.drop5d)) + '% in the last five trading days, to about $' + Math.round(c.price * 100) / 100 + ', shortly after a results filing.',
-    'Verified figures from SEC filings:',
+    'You are an equity research assistant. ' + c.symbol + ' (' + c.name + ') fell ' + Math.abs(Math.round(c.drop5d)) + '% in the last five trading days, to about $' + Math.round(c.price * 100) / 100 + ', shortly after reporting earnings.',
+    'Verified figures (Yahoo Finance fundamentals):',
     '- Revenue growth (latest quarter, year over year): ' + fmt_(f.revenueGrowth, '%'),
-    '- Free cash flow (latest fiscal year): ' + fmt_(f.fcf && f.fcf / 1e6, 'M USD') + ' (margin ' + fmt_(f.fcfMargin, '%') + ')',
+    '- Free cash flow (trailing): ' + fmt_(f.fcf && f.fcf / 1e6, 'M USD') + ' (margin ' + fmt_(f.fcfMargin, '%') + ')',
     '- Net debt / EBITDA: ' + fmt_(f.netDebtToEbitda, ''),
-    '- P/E now vs its own 10-year average: ' + fmt_(f.pe, '') + ' vs ' + fmt_(f.peAvg10y, ''),
-    '- Insider open-market buys in the last 90 days (Form 4): ' + (f.insiderBuys90d || 0),
+    '- P/E: trailing ' + fmt_(f.peTrailing, '') + ', forward ' + fmt_(f.peForward, ''),
+    '- Insider purchases reported in the last 6 months: ' + (f.insiderBuys6m || 0),
     'Recent headlines:',
   ]
   ;(headlines || []).forEach(function (h) {
@@ -692,12 +567,6 @@ function decodeEntities_(s) {
     .replace(/&#39;/g, "'")
 }
 
-function padCik_(cik) {
-  var s = String(cik)
-  while (s.length < 10) s = '0' + s
-  return s
-}
-
 function round2_(v) {
   return v === null || v === undefined ? v : Math.round(v * 100) / 100
 }
@@ -705,7 +574,7 @@ function round2_(v) {
 /** Facts → what's worth storing on the candidate (no nulls; Firestore maps stay tidy). */
 function cleanFacts_(f) {
   var out = {}
-  ;['revenueGrowth', 'fcf', 'fcfMargin', 'netDebtToEbitda', 'insiderBuys90d', 'pe', 'peAvg10y'].forEach(function (k) {
+  ;['revenueGrowth', 'fcf', 'fcfMargin', 'netDebtToEbitda', 'insiderBuys6m', 'peTrailing', 'peForward'].forEach(function (k) {
     if (f[k] !== null && f[k] !== undefined) out[k] = round2_(f[k])
   })
   return out
@@ -799,6 +668,23 @@ function yahooSession_() {
   return session
 }
 
+/** Fundamentals, insider activity and the next earnings date for one symbol, or null when Yahoo has nothing. */
+function yahooQuoteSummary_(symbol) {
+  var session = yahooSession_()
+  var url =
+    'https://query1.finance.yahoo.com/v10/finance/quoteSummary/' +
+    encodeURIComponent(symbol) +
+    '?modules=financialData,defaultKeyStatistics,netSharePurchaseActivity,calendarEvents,price&crumb=' +
+    encodeURIComponent(session.crumb)
+  try {
+    var data = fetchJson_(url, { Cookie: session.cookie })
+    var result = data.quoteSummary && data.quoteSummary.result && data.quoteSummary.result[0]
+    return result || null
+  } catch (e) {
+    return null
+  }
+}
+
 /** Headlines from Google News RSS. */
 function news_(symbol) {
   try {
@@ -807,18 +693,6 @@ function news_(symbol) {
   } catch (e) {
     return []
   }
-}
-
-/** The SEC requires a contact in the User-Agent header for its free APIs. */
-function edgarJson_(url, cfg) {
-  return JSON.parse(edgarText_(url, cfg))
-}
-
-function edgarText_(url, cfg) {
-  if (!cfg.EDGAR_CONTACT) throw new Error('Set the EDGAR_CONTACT script property (e.g. "Align scanner you@example.com"); the SEC requires it.')
-  var res = UrlFetchApp.fetch(url, { headers: { 'User-Agent': cfg.EDGAR_CONTACT, 'Accept-Encoding': 'gzip' }, muteHttpExceptions: true })
-  if (res.getResponseCode() >= 300) throw new Error('EDGAR ' + url.split('?')[0] + ' answered ' + res.getResponseCode())
-  return res.getContentText()
 }
 
 /** The Gemini free tier writes the note; without a key (or on any trouble) the numbers still ship. */
@@ -873,7 +747,6 @@ function scanConfig_(p) {
     if (!p[k]) throw new Error('Missing script property ' + k + ' (Project Settings → Script properties).')
     cfg[k] = p[k]
   })
-  cfg.EDGAR_CONTACT = p.EDGAR_CONTACT || ''
   cfg.GEMINI_API_KEY = p.GEMINI_API_KEY || ''
   cfg.CUSTOM_UNIVERSE = p.CUSTOM_UNIVERSE || ''
   cfg.TIME_ZONE = p.TIME_ZONE || Session.getScriptTimeZone()

@@ -44,9 +44,10 @@ export interface CandidateFacts {
   fcf?: number
   fcfMargin?: number
   netDebtToEbitda?: number
-  insiderBuys90d?: number
-  pe?: number
-  peAvg10y?: number
+  /** Insider purchases Yahoo reports for the last 6 months. */
+  insiderBuys6m?: number
+  peTrailing?: number
+  peForward?: number
 }
 
 /** One post-earnings dislocation candidate (investing/{uid}/data/watchlist). */

@@ -10,19 +10,21 @@ keeps two things fresh:
 - **Today's summary** of their own stocks: price, day / week change, 52-week range, headlines, and flags on anything
   that moved a lot — a nudge to look closer, never advice.
 - **The watchlist**: a post-earnings dislocation screen over US mid-caps ($2B–$50B by default). Three stages:
-  1. **Overreaction:** fell 15–40% in 5 trading days on >$10M/day traded, with a results filing (10-Q/10-K/8-K)
-     inside the last 10 days.
-  2. **Fundamentals** (SEC EDGAR, free and official): revenue still growing, free cash flow positive, net
-     debt/EBITDA manageable, insider open-market buys (Form 4) in the last 90 days.
-  3. **Score + report:** 0–100 (growth 25, FCF 20, balance sheet 20, valuation vs its own 10-year P/E 15, insiders
-     10, news sentiment 10). With a free Gemini key, candidates get a one-page note: why it fell, whether the
-     fundamentals changed, historical analogs, bull case, bear case, recovery odds.
+  1. **Overreaction:** fell 15–40% in 5 trading days on >$10M/day traded, with an earnings report inside the last
+     10 days.
+  2. **Fundamentals** (Yahoo Finance): revenue still growing, free cash flow positive, net debt/EBITDA manageable,
+     insiders buying (Yahoo's purchase count for the last 6 months).
+  3. **Score + report:** 0–100 (growth 25, FCF 20, balance sheet 20, valuation — the forward P/E's discount to
+     trailing — 15, insiders 10, news sentiment 10). With a free Gemini key, candidates get a one-page note: why it
+     fell, whether the fundamentals changed, historical analogs, bull case, bear case, recovery odds.
 
-Everything is free: prices from Yahoo Finance's public chart endpoint (Stooq fallback), fundamentals and insiders
-from SEC EDGAR, headlines from Google News RSS, the write-up from the Gemini API free tier. Apps Script's 6-minute
-execution limit is handled by scanning in slices — each run (every 4 hours) picks up where the last left off, so a
-full pass over ~1,000+ mid-caps completes in a day or two. That's fine: the screen looks for 5-day moves, which stay
-visible for days.
+Everything is free: the ticker universe from Nasdaq Trader's symbol directory, prices from Yahoo Finance's chart
+endpoint (Stooq fallback), fundamentals / insiders / earnings timing from Yahoo's quoteSummary, headlines from Google
+News RSS, the write-up from the Gemini API free tier. (SEC EDGAR would be the official source, but the SEC requires a
+contact `User-Agent` header and Apps Script's `UrlFetchApp` always sends its own fixed one, so the SEC answers 403 —
+EDGAR simply can't be reached from Apps Script.) The 6-minute execution limit is handled by scanning in slices — each
+run (every 4 hours) picks up where the last left off, so a full pass over ~1,000+ mid-caps completes in a day or two.
+That's fine: the screen looks for 5-day moves, which stay visible for days.
 
 **This is a research helper, not investment advice, and it never trades.**
 
@@ -42,7 +44,6 @@ visible for days.
    | `FIREBASE_PROJECT_ID` | `align-a32c1` |
    | `BOT_EMAIL` | the helper account's email |
    | `BOT_PASSWORD` | its password |
-   | `EDGAR_CONTACT` | how the SEC can reach you, e.g. `Align scanner you@example.com` (they require it) |
    | `GEMINI_API_KEY` | *optional:* a free key from https://aistudio.google.com — turns on the one-page reports |
 
    Optional tuning: `GEMINI_MODEL` (`gemini-2.5-flash`), `MIN_CAP_B` (2), `MAX_CAP_B` (50), `MIN_DROP` (15),
@@ -59,19 +60,20 @@ visible for days.
 
 - `scanStatus()` (run from the editor) logs where the pass stands; `resetScanner()` starts over with a fresh
   universe.
-- The universe comes from the SEC's complete ticker list with market caps from Yahoo's quote endpoint (which needs a
-  session cookie + crumb — if Yahoo closes that door the rebuild logs an error and the old universe keeps working;
-  set `CUSTOM_UNIVERSE` to sidestep it entirely).
-- Forward P/E needs paid analyst data, so stage 3 substitutes the trailing P/E against the stock's own 10-year
-  average — same idea (is it cheap against its own history), free data.
+- The universe comes from Nasdaq Trader's symbol directory (every US listing, ETFs and test issues dropped) with
+  market caps from Yahoo's quote endpoint (which needs a session cookie + crumb — if Yahoo closes that door the
+  rebuild logs an error and the old universe keeps working; set `CUSTOM_UNIVERSE` to sidestep it entirely).
+- "Post-earnings" is judged from Yahoo's next scheduled earnings date (companies report ~every 91 days, so right
+  after a report the next date sits a quarter out). A stock with no scheduled date can't pass.
 - Earnings-call sentiment is approximated by the AI's read of the verified numbers plus current headlines.
 - Most passes find nothing — that's by design. The screen is picky (score ≥ 60 stored, and the Firestore doc says so
   when a pass comes up empty).
 
 ## Testing locally
 
-- `npm test` covers the pure helpers (the stage-1 screen, EDGAR fact extraction, Form 4 parsing, the score with its
-  worked example, flags, RSS parsing) in `tests/apps-script/market-scanner.test.ts`.
+- `npm test` covers the pure helpers (the stage-1 screen, the symbol-directory parser, the quoteSummary fact mapping,
+  the earnings-recency check, the score with its worked example, flags, RSS parsing) in
+  `tests/apps-script/market-scanner.test.ts`.
 - With `npm run emulators` and `npm run seed` running, `npm run test:scanner` runs the whole script against the
-  emulators with canned Yahoo / EDGAR / news data: the universe build, the three stages, the per-member summaries
+  emulators with canned Yahoo / Nasdaq / news data: the universe build, the three stages, the per-member summaries
   and the published watchlists.
