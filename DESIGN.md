@@ -489,7 +489,7 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-11-05 (scanner off EDGAR): built, tested, NOT yet committed
+### 2026-11-05 (scanner off EDGAR): built and pushed (`c938b4c`)
 - **The SEC blocks Apps Script.** EDGAR requires a contact `User-Agent` and Apps Script's `UrlFetchApp` always sends
   its own fixed one, so every EDGAR call 403s (found on the user's first real run). The scanner now gets its universe
   from Nasdaq Trader's symbol directory and its stage-2 facts from Yahoo quoteSummary: quarterly YoY revenue growth,
