@@ -487,7 +487,7 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### 2026-11-04 (investing + market scanner): built, tested, NOT yet committed
+### 2026-11-04 (investing + market scanner): built and pushed (`033794c`), rules NOT yet deployed
 - **Investing** (§5.13): a new Today section (in More… to start, even for people who arranged Today) — your own stocks (type symbols or import an E*TRADE portfolio CSV) with today's prices, moves, 52-week range, headlines and flags on big moves, plus a **post-earnings dislocation watchlist**: quality mid-caps that fell 15–40% right after earnings while the fundamentals held up, each with a 0–100 score and (with a free Gemini key) a one-page note. Everything is per member and private; nothing is advice and nothing trades.
 - **New Apps Script** `scripts/market-scanner/` (its own project at script.google.com, reusing the calendar bot): free data only — Yahoo chart endpoint (Stooq fallback), SEC EDGAR fundamentals + Form 4 insiders (set `EDGAR_CONTACT`), Google News RSS, Gemini free tier. Scans in slices around the 6-minute limit, every 4 hours. Setup: `scripts/market-scanner/README.md`; the user creates the script, sets properties, runs `installTrigger`.
 - Rules: `investing/{uid}` owner-only with bot read; `data/{summary,watchlist}` bot-written. **Deploy the rules before the web app.**
