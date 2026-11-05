@@ -26,6 +26,7 @@ export type HelpTopicId =
   | 'photos'
   | 'map'
   | 'voting'
+  | 'investing'
   | 'blog'
   | 'calendar'
   | 'chat'
@@ -353,6 +354,19 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Spend tokens with ＋ and −; your balance is at the top. Tokens arrive each week and unused ones roll over, so saving them up counts for more on something you care about.',
       '• Tap an option for its note, links, pictures and comments; the board has its own Discussion.',
       '• Mark the winner Chosen, or Archive options that are out.',
+    ],
+  },
+  {
+    id: 'investing',
+    title: 'Investing',
+    tip: 'Your own stocks, with today’s prices, news and flags on big moves, plus a watchlist of quality companies that just fell harder than their numbers did. Private to you, and information only — never advice.',
+    body: [
+      'Find it on Today in More… → Investing. Everything in it is yours alone: other family members have their own, and no one sees anyone else’s.',
+      '• + adds ticker symbols to follow, or imports a portfolio CSV (E*TRADE: Portfolio → Download → Spreadsheet). Positions show your shares, what you paid and the change since.',
+      '• Each stock shows today’s price, the day and week move, and flags anything worth a look (a big daily move, a slide over the week, near its 52-week low or high). Tap a stock for its 52-week range and recent headlines.',
+      '• The watchlist is a “market overreaction detector”: a scanner reads SEC filings for quality mid-caps that dropped 15–40% right after earnings while revenue still grows, cash flow stays positive, debt stays manageable and insiders are buying. Each candidate gets a 0–100 score and a one-page note: why it fell, whether the fundamentals changed, historical analogs, the bull and bear case, and a recovery estimate.',
+      '• Most scans find nothing — the screen is picky on purpose. Candidates are things to read about and check yourself.',
+      'The data comes from a free Google Apps Script (scripts/market-scanner in the repo) that runs every few hours; prices and summaries refresh with it. None of this is investment advice, and nothing here trades.',
     ],
   },
   {

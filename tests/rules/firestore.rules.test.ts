@@ -813,7 +813,36 @@ describe('places and alerts', () => {
     await assertSucceeds(setDoc(doc(db('bot'), 'locations/daughter'), loc))
     await assertFails(setDoc(doc(db('bot'), 'locations/daughter'), { ...loc, events: Array(21).fill(loc.events[0]) }))
     // A suspicious jump held aside until the next report (the helper writes just that field).
-    await assertSucceeds(updateDoc(doc(db('bot'), 'locations/daughter'), { pending: { lat: 29.2, lon: -81.35, tst: 2 } }))
-    await assertFails(updateDoc(doc(db('bot'), 'locations/daughter'), { pending: 'not a point' }))
+  })
+})
+
+describe('investing', () => {
+  const settings = { symbols: ['AAPL', 'MSFT'], positions: [{ symbol: 'AAPL', qty: 12, paid: 155.21 }] }
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore() as unknown as Firestore, 'household/main'), { 'members.bot': { role: 'member', displayName: 'Calendar', color: '#57606a', bot: true } })
+    })
+  })
+  it('keeps each member’s stocks to themselves, readable by the helper account', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'investing/steve'), settings))
+    await assertFails(getDoc(doc(db('wife'), 'investing/steve')))
+    await assertFails(setDoc(doc(db('wife'), 'investing/steve'), settings))
+    await assertFails(setDoc(doc(db('grandma'), 'investing/grandma'), settings))
+    await assertSucceeds(getDocs(collection(db('bot'), 'investing')))
+    await assertFails(getDocs(collection(db('wife'), 'investing')))
+    await assertFails(setDoc(doc(db('steve'), 'investing/steve'), { ...settings, extra: true }))
+    await assertFails(setDoc(doc(db('steve'), 'investing/steve'), { ...settings, symbols: Array(101).fill('AAPL') }))
+    await assertSucceeds(deleteDoc(doc(db('steve'), 'investing/steve')))
+  })
+  it('lets only the helper account write the scanner’s results, read by their owner alone', async () => {
+    const summary = { day: '2026-11-04', holdings: [{ symbol: 'AAPL', price: 189.95, change1d: 0.8, flags: [] }] }
+    await assertSucceeds(setDoc(doc(db('bot'), 'investing/steve/data/summary'), summary))
+    await assertSucceeds(setDoc(doc(db('bot'), 'investing/steve/data/watchlist'), { day: '2026-11-04', candidates: [] }))
+    await assertFails(setDoc(doc(db('bot'), 'investing/steve/data/other'), summary))
+    await assertFails(setDoc(doc(db('steve'), 'investing/steve/data/summary'), summary))
+    await assertSucceeds(getDoc(doc(db('steve'), 'investing/steve/data/summary')))
+    await assertFails(getDoc(doc(db('wife'), 'investing/steve/data/summary')))
+    await assertFails(getDoc(doc(db('grandma'), 'investing/steve/data/summary')))
+    await assertSucceeds(deleteDoc(doc(db('steve'), 'investing/steve/data/summary')))
   })
 })

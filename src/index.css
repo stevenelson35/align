@@ -4217,3 +4217,51 @@ input.ladder-sparks {
 .board-text {
   margin: 0.4rem 0 0.75rem;
 }
+
+/* Investing (Today, in More… to start): your stocks and the market scanner's watchlist. */
+.invest-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.invest-symbol {
+  font-weight: 600;
+  min-width: 3.2rem;
+}
+.invest-up {
+  color: var(--tint-green-border);
+}
+.invest-down {
+  color: var(--danger);
+}
+.invest-detail {
+  margin: 0.2rem 0 0.4rem;
+  padding: 0.3rem 0.6rem;
+  border-left: 3px solid var(--border);
+}
+.invest-detail p {
+  margin: 0.2rem 0;
+}
+.invest-news {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0;
+}
+.invest-report {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.85rem;
+  margin: 0.4rem 0 0;
+  max-height: 24rem;
+  overflow-y: auto;
+}
+.invest-heading {
+  margin: 0.75rem 0 0.3rem;
+  font-size: 0.95rem;
+}
+.invest-import input[type='file'] {
+  display: none;
+}

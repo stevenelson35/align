@@ -20,6 +20,7 @@ import { useWeather } from '../../hooks/useWeather'
 import { WeatherButton, WeatherRow } from './TodayWeather'
 import { RewardsStrip } from '../Rewards/RewardsStrip'
 import { VotingSection } from '../Voting/VotingSection'
+import { InvestingSection } from '../Investing/InvestingSection'
 import { useStoredSet } from '../../hooks/useStoredSet'
 import { splitTitleNote } from '../../utils/quickAdd'
 import { TheDaily } from '../Daily/TheDaily'
@@ -133,6 +134,8 @@ export function DayView({ day }: { day: string }) {
         return <TheDaily day={day} />
       case 'voting':
         return <VotingSection />
+      case 'invest':
+        return <InvestingSection />
     }
   }
   const forThisDay = TODAY_SECTIONS.map((s) => s.id).filter((id) => day === now || id === 'goals' || id === 'photos' || id === 'daily')

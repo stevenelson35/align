@@ -4,20 +4,20 @@ import { arrangement, DEFAULT_MORE, moreOf, TODAY_SECTIONS } from './today'
 describe('arranging Today', () => {
   it('starts with the less-used sections in More…, then follows your arrangement', () => {
     expect([...moreOf({})]).toEqual(DEFAULT_MORE)
-    expect(DEFAULT_MORE).toEqual(['gifts', 'lists', 'links', 'projects', 'cards', 'voting'])
-    expect([...moreOf({ todayMore: ['daily'] })].sort()).toEqual(['daily', 'voting']) // a newly added section starts in More…
-    expect([...moreOf({ todayMore: ['!voting'] })].filter((s) => !s.startsWith('!'))).toEqual([]) // everything on the main page
+    expect(DEFAULT_MORE).toEqual(['gifts', 'lists', 'links', 'projects', 'cards', 'voting', 'invest'])
+    expect([...moreOf({ todayMore: ['daily'] })].sort()).toEqual(['daily', 'invest', 'voting']) // newly added sections start in More…
+    expect([...moreOf({ todayMore: ['!voting', '!invest'] })].filter((s) => !s.startsWith('!'))).toEqual([]) // everything on the main page
     expect(TODAY_SECTIONS.map((s) => s.id)).not.toContain('todo') // To Do always stays
   })
 
   it('remembers a newly added section moved to the main page, and back', () => {
-    const before = moreOf({ todayMore: ['gifts'] }) // gifts, and voting (new)
+    const before = moreOf({ todayMore: ['gifts'] }) // gifts, and voting + invest (new)
     const main = arrangement(before, 'voting', false)
-    expect(main).toEqual(['gifts', '!voting'])
+    expect(main).toEqual(['gifts', 'invest', '!voting'])
     expect(moreOf({ todayMore: main }).has('voting')).toBe(false)
     const back = arrangement(moreOf({ todayMore: main }), 'voting', true)
-    expect(back).toEqual(['gifts', 'voting'])
+    expect(back).toEqual(['gifts', 'voting', 'invest'])
     // Moving another section keeps the mark.
-    expect(arrangement(moreOf({ todayMore: main }), 'daily', true)).toEqual(['gifts', 'daily', '!voting'])
+    expect(arrangement(moreOf({ todayMore: main }), 'daily', true)).toEqual(['gifts', 'daily', 'invest', '!voting'])
   })
 })

@@ -13,18 +13,19 @@ export const TODAY_SECTIONS = [
   { id: 'photos', label: 'Archive Pics' },
   { id: 'daily', label: 'The Daily' },
   { id: 'voting', label: 'Voting' },
+  { id: 'invest', label: 'Investing' },
 ] as const
 
 export type TodaySection = (typeof TODAY_SECTIONS)[number]['id']
 
 /** Until someone arranges Today themselves, the less-used sections start in More…. */
-export const DEFAULT_MORE: TodaySection[] = ['gifts', 'lists', 'links', 'projects', 'cards', 'voting']
+export const DEFAULT_MORE: TodaySection[] = ['gifts', 'lists', 'links', 'projects', 'cards', 'voting', 'invest']
 
 /**
  * Sections added after people had already arranged Today: they start in More… even for them, until moved to the
  * main page (saved as "!id" in their arrangement, since "not in More…" can't tell new from moved).
  */
-export const ADDED_TO_MORE: TodaySection[] = ['voting']
+export const ADDED_TO_MORE: TodaySection[] = ['voting', 'invest']
 
 /** The sections in More… for this person (their arrangement, or the defaults). */
 export function moreOf(member: { todayMore?: string[] }): Set<string> {

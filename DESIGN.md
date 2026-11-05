@@ -212,6 +212,37 @@ Today → **Gifts** (`GiftsStrip`): what you're getting (tick Bought) and each l
 
 **Related notes** (`noteIds`, ≤10, any task or item): link notes you keep (sizes, brands, paint colors) instead of copying them. `RelatedNotes` shows each opening in place; `NotePicker` in the edit forms warns when a note is seen by fewer people than the entry.
 
+### 5.13 Investing (`investing/{uid}`)
+
+Each member's own stocks and a market scanner's findings — private to that person, never shared, never advice. Today has
+an **Investing** section (`InvestingSection`, in More… to start) where you type ticker symbols or import a broker
+portfolio CSV (E*TRADE's "Download → Spreadsheet" works; `parsePortfolioCsv` finds the header row, sums lots, averages
+the price paid). `investing/{uid}` holds `{ symbols (≤100), positions: [{ symbol, qty, paid? }] (≤200) }`, written
+only by its owner.
+
+A free Google Apps Script (`scripts/market-scanner/`, a sibling of the calendar sync) signs in as the household's
+helper account every 4 hours and writes two documents under `investing/{uid}/data` (bot-only writes; only the owner
+reads):
+
+- **`summary`** — `{ day, generatedAt, holdings: [{ symbol, name, price, change1d, change5d, low52, high52, flags, news }] }`:
+  today's look at their stocks, with flags (`holdingFlags_`: ±5% day, ±10% week, within 5% of the 52-week ends) and
+  Google News headlines. Positions show qty, price paid and change since.
+- **`watchlist`** — the post-earnings dislocation screen, a three-stage funnel over US mid-caps ($2B–$50B, built from
+  the SEC's ticker list + Yahoo market caps, rebuilt weekly): (1) fell 15–40% in 5 trading days on >$10M/day traded
+  with a results filing (10-Q/10-K/8-K) in the last 10 days; (2) fundamentals from SEC EDGAR XBRL (`factsFrom_`):
+  revenue growth (latest quarter YoY), free cash flow, net debt/EBITDA, trailing P/E vs the stock's own 10-year
+  average (forward P/E needs paid data), plus Form 4 open-market insider buys; (3) a 0–100 score (`scoreCandidate_`:
+  growth 25, FCF 20, balance sheet 20, valuation 15, insiders 10, sentiment 10) and, with a free Gemini key, a
+  one-page note (why it fell, did the fundamentals change, historical analogs, bull / bear case, recovery estimate).
+  Candidates scoring ≥ 60 are kept (≤ 10); most passes find none, and the doc says so.
+
+The 6-minute Apps Script limit is handled by scanning in slices (state chunked in Script Properties); a full pass
+takes a day or two, which suits a 5-day-drop screen. Data sources are all free: Yahoo chart endpoint (Stooq fallback),
+SEC EDGAR (requires an `EDGAR_CONTACT` User-Agent), Google News RSS, Gemini free tier. Pure helpers tested in
+`tests/apps-script/market-scanner.test.ts` and `src/utils/investing.test.ts`; the whole pipeline runs against the
+emulators with canned market data in `npm run test:scanner`. Rules + tests: `investing/{uid}` owner-only with bot
+read; `data/{summary,watchlist}` bot-written, owner-read.
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts
@@ -439,6 +470,7 @@ firestore.rules, firestore.indexes.json
 - **`boards` and `items`:** members can read and write (items may carry `note` ≤ 5000, `url` and `imageUrl` ≤ 2048). Viewers can read if the board is `viewerVisible`.
 - **`comments`** (on a board or an item): readable by anyone who can see the board; members create with their own `uid`, and edit or delete only their own (`validComment`: text 1–2000).
 - **`votes/{uid}`:** members can read; users write only their own document, `tokens` a whole number ≥ 0.
+- **`investing/{uid}`** (§5.13): the owner alone reads and writes their doc (`symbols` ≤ 100, `positions` ≤ 200); the helper account (`bot: true`) reads them all and alone writes `data/summary` and `data/watchlist`, which only the owner reads.
 - Everything else is denied.
 - **Queries must match the rules** (`visibleQueries` in `db.ts`, for lists, tasks and goals): members query own private docs, family docs and shared-with-me docs; viewers query viewer-visible family docs and shared-with-me docs.
 
@@ -446,7 +478,7 @@ firestore.rules, firestore.indexes.json
 
 - **Environment:** WSL Ubuntu 24.04, Node via nvm, GitHub `stevenelson35/align` (SSH remote), Firebase project `align-a32c1` (Spark), Turbify hosting.
 - **Local development:** `npm run emulators` + `npm run seed` + `npm run dev` (see CLAUDE.md / README).
-- **Tests:** `npm test` (unit: engine, tokens, parser, utils, Apps Script helpers), `npm run test:rules` (starts its own emulators; don't run it while `npm run emulators` is up), `npm run test:calendar` (needs emulators + seed running).
+- **Tests:** `npm test` (unit: engine, tokens, parser, utils, Apps Script helpers), `npm run test:rules` (starts its own emulators; don't run it while `npm run emulators` is up), `npm run test:calendar` and `npm run test:scanner` (both need emulators + seed running).
 - **Deploy order matters when the rules change: rules first, then the web app.** Otherwise the new app's writes are rejected by the old rules.
   - Rules + indexes: `npm run deploy:rules` (targets `--project prod` = `align-a32c1`; needs `firebase login`).
   - Web: `ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web` builds and uploads `dist/` over explicit FTPS with lftp. **It prompts for the FTP password**, so the user runs it in their own terminal (a `!` command in Claude Code can't answer the prompt; the script now says "No password entered" instead of exiting silently).
@@ -454,6 +486,13 @@ firestore.rules, firestore.indexes.json
 - **Verify a web deploy:** fetch https://align.itsallonesong.com/, read the `assets/index-*.js` name, and grep that bundle for a string from the latest change.
 
 ## 13. Status & Handoff
+
+### 2026-11-04 (investing + market scanner): built, tested, NOT yet committed
+- **Investing** (§5.13): a new Today section (in More… to start, even for people who arranged Today) — your own stocks (type symbols or import an E*TRADE portfolio CSV) with today's prices, moves, 52-week range, headlines and flags on big moves, plus a **post-earnings dislocation watchlist**: quality mid-caps that fell 15–40% right after earnings while the fundamentals held up, each with a 0–100 score and (with a free Gemini key) a one-page note. Everything is per member and private; nothing is advice and nothing trades.
+- **New Apps Script** `scripts/market-scanner/` (its own project at script.google.com, reusing the calendar bot): free data only — Yahoo chart endpoint (Stooq fallback), SEC EDGAR fundamentals + Form 4 insiders (set `EDGAR_CONTACT`), Google News RSS, Gemini free tier. Scans in slices around the 6-minute limit, every 4 hours. Setup: `scripts/market-scanner/README.md`; the user creates the script, sets properties, runs `installTrigger`.
+- Rules: `investing/{uid}` owner-only with bot read; `data/{summary,watchlist}` bot-written. **Deploy the rules before the web app.**
+- Waiting on the user: create the Apps Script project (README steps), optionally a free Gemini key, then add symbols in Align.
+- Tests: 240 unit (incl. the scanner's pure helpers with the worked 88-score example, and the CSV import), 71 rules, plus `npm run test:scanner` (the whole scanner against the emulators with canned Yahoo/EDGAR/news data).
 
 ### 2026-10-23 (wall view, adoptable pets, Alexa voice): built, tested, NOT yet committed
 - **Wall display** `#/wall` (menu → Wall display): full-screen, read-only time / date, today's calendar (+ tomorrow), to-dos, goals with status and sparklines, and a family photo that changes each minute; live data, midnight rollover, Screen Wake Lock where supported. Meant for an Echo Show's Silk browser or a spare tablet.

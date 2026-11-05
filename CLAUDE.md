@@ -12,13 +12,14 @@ npm run dev            # http://localhost:5173
 npm test               # 139 unit tests (vitest: engine, tokens, parser, utils, DB writes, Apps Script helpers)
 npm run test:rules     # 43 security-rule tests; starts its own emulators (stop `npm run emulators` first); must stay green
 npm run test:calendar  # Apps Script calendar sync + web app against the running emulators (after seed)
+npm run test:scanner   # Apps Script market scanner against the running emulators, canned market data (after seed)
 npx tsc -b && npm run lint && npm run build
 npm run deploy:rules   # real project align-a32c1 (firebase login is done)
 ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web   # the USER runs this: it prompts for the FTP password
 ```
 
 ## Rules
-- **Zero cost is a hard constraint:** Firebase **Spark** plan only (no Cloud Functions, no paid APIs). Logic runs in the browser. Firestore rules are the only access control. The only "server" is the user's free Google Apps Script (calendar sync).
+- **Zero cost is a hard constraint:** Firebase **Spark** plan only (no Cloud Functions, no paid APIs). Logic runs in the browser. Firestore rules are the only access control. The only "servers" are the user's free Google Apps Scripts (calendar sync, market scanner).
 - **Change the rules and their tests together.** Every data-model change needs rules plus tests in `tests/rules/`. **When the rules change, deploy them before the web app.**
 - **Tasks copy their list's `visibility` / `ownerId` / `viewerVisible` / `sharedWith`.** Update them in the same batch as the list (`updateList`, `copiedFields` in `src/firebase/db.ts`).
 - **`sharedWith` exists only on shared docs** (`visibility: 'shared'`), so "shared with me" stays one rule-provable query.
@@ -37,7 +38,7 @@ ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web   # the USER runs this
 - Match the existing style: functional React components, typed Firestore data in `src/types.ts`, small modules, comments that explain *why*, plain user-facing wording.
 - Layout: pure logic lives in `src/engine/`, `src/chat/parser.ts`, `src/voting/tokens.ts` and `src/utils/` (unit-tested). Firestore access is only in `src/firebase/db.ts`. Live data comes through `DataProvider` (`useData()`), UI state through `AppContext` (`useApp()`).
 - Every schedule change goes through a `ShiftPreview` → `ShiftDialog` → `applySchedule` batch.
-- `scripts/apps-script/calendar-sync.gs` is plain ES5-style Apps Script (no modules). Keep its pure helpers testable from `tests/apps-script/`. The user pastes it into the Apps Script editor and redeploys it with "Manage deployments → New version" (same URL).
+- `scripts/apps-script/calendar-sync.gs` and `scripts/market-scanner/market-scanner.gs` are plain ES5-style Apps Script (no modules). Keep their pure helpers testable from `tests/apps-script/`. The user pastes them into the Apps Script editor (two separate projects) and redeploys with "Manage deployments → New version" (same URL).
 - **Working with the user:**
   - Commit and push (over SSH) only when asked. They usually say "commit and push, then deploy the rules".
   - They run `deploy:web` themselves, then ask you to verify the live site: grep the live `assets/index-*.js` bundle for a string from the change.

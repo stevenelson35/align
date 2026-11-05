@@ -492,6 +492,24 @@ service cloud.firestore {
       allow delete: if isMember() && request.auth.uid == uid;
     }
 
+    // Investing (DESIGN.md §5.13): each member's own stocks (symbols and positions) — private to that person. The
+    // household's helper account (bot) reads them and writes the market scanner's results (scripts/market-scanner)
+    // under data/: the daily summary of their stocks and the post-earnings watchlist. No one else sees any of it.
+    match /investing/{uid} {
+      allow read: if (isMember() && request.auth.uid == uid) || isBot();
+      allow create, update: if isMember() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['symbols', 'positions', 'updatedAt'])
+        && (!('symbols' in request.resource.data) || (request.resource.data.symbols is list && request.resource.data.symbols.size() <= 100))
+        && (!('positions' in request.resource.data) || (request.resource.data.positions is list && request.resource.data.positions.size() <= 200));
+      allow delete: if isMember() && request.auth.uid == uid;
+
+      match /data/{docId} {
+        allow read: if (isMember() && request.auth.uid == uid) || isBot();
+        allow create, update: if isBot() && docId in ['summary', 'watchlist'];
+        allow delete: if (isMember() && request.auth.uid == uid) || isBot();
+      }
+    }
+
     // Flashcard leaderboards: each set's best Challenge round per person ({ scores: { uid: { right, of, ms, at } } }).
     // Members read them; each writes only their own score.
     match /cardBoards/{listId} {

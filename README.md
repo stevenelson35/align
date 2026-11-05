@@ -6,6 +6,7 @@ Household organizer for the Nelson family, live at https://align.itsallonesong.c
 - **goals** with charts, celebrations, good weeks, and sparks that play a family photo-reveal game and unlock a reward ladder
 - **flashcards** with multiple choice, Challenge rounds and a leaderboard, and maps for geography cards
 - **pick lists** (what to watch / read / play tonight, ranked from everyone's ratings) and **voting boards** (weekly tokens for family decisions)
+- **investing** (private per person): your stocks with daily prices, news and flags on big moves, and a market scanner that hunts post-earnings overreactions in quality mid-caps — research help, never advice
 - contacts, gift lists (with secret ideas), the family Google Calendar, the family map (OwnTracks), the blog and photos
 - texting family members about a task, a board or a photo, and switching people on a shared phone
 
@@ -16,7 +17,7 @@ the house?").
 
 See [DESIGN.md](DESIGN.md) for the full spec. Its §13 "Status & Handoff" says where things stand, and [CLAUDE.md](CLAUDE.md) has notes for coding agents.
 
-React + TypeScript + Vite in the browser, with Firebase Auth and Firestore on the free Spark plan. The app is static files hosted on Turbify. The calendar sync runs as a free Google Apps Script (`scripts/apps-script/`).
+React + TypeScript + Vite in the browser, with Firebase Auth and Firestore on the free Spark plan. The app is static files hosted on Turbify. The calendar sync (`scripts/apps-script/`) and the market scanner (`scripts/market-scanner/`) run as free Google Apps Scripts.
 
 ## Local development
 
@@ -93,6 +94,7 @@ Each person sets their own default privacy, mobile number (for "text <name>") an
 npm test               # unit tests
 npm run test:rules     # Firestore security rules (starts its own emulators)
 npm run test:calendar  # calendar sync script against the running emulators (after seed)
+npm run test:scanner   # market scanner script against the running emulators (after seed)
 npm run lint
 ```
 
