@@ -11,6 +11,28 @@ const call = <T>(name: string, ...args: unknown[]): T => (gs[name] as (...a: unk
 
 const cfg = { MIN_DROP: 15, MAX_DROP: 40, MIN_DOLLAR_VOL: 10e6, MIN_CAP: 2e9, MAX_CAP: 50e9 }
 
+describe('list-local peer comparisons', () => {
+  it('compares positive forward P/Es only within the exact industry, excluding the subject', () => {
+    const holdings = [
+      { symbol: 'A', industry: 'Software', peForward: 10 },
+      { symbol: 'B', industry: 'Software', peForward: 20 },
+      { symbol: 'C', industry: 'Software', peForward: 30 },
+      { symbol: 'D', industry: 'Software', peForward: 40 },
+      { symbol: 'E', industry: 'Banks', peForward: 5 },
+      { symbol: 'F', industry: 'Software', peForward: -3 },
+    ]
+    call('addPeerComparisons_', holdings)
+    expect(holdings[0]).toMatchObject({ peerComparison: { count: 3, medianForwardPe: 30, premiumPct: -66.67 } })
+    expect(holdings[4]).not.toHaveProperty('peerComparison')
+    expect(holdings[5]).not.toHaveProperty('peerComparison')
+  })
+  it('does not imply an industry benchmark from two peers', () => {
+    const holdings = ['A', 'B', 'C'].map((symbol) => ({ symbol, industry: 'Software', peForward: 10 }))
+    call('addPeerComparisons_', holdings)
+    expect(holdings.every((h) => !('peerComparison' in h))).toBe(true)
+  })
+})
+
 describe('stage 1: the overreaction screen', () => {
   it('measures the 5-trading-day move and the money traded', () => {
     expect(call('drop5d_', [100, 100, 100, 100, 100, 100, 73])).toBe(-27)

@@ -111,29 +111,33 @@ function check(cond, msg) {
   console.log(`ok: ${msg}`)
 }
 
-// Clean slate: steve follows a stock and holds two; wife follows one. No scanner docs yet.
-for (const uid of ['steve', 'wife']) {
-  await admin.doc(`investing/${uid}/data/summary`).delete()
-  await admin.doc(`investing/${uid}/data/watchlist`).delete()
+// Dedicated fixture ids keep the legacy case valid even after browsing has migrated the seeded members.
+const fixtureLists = ['holdings_scanner-test-steve', 'scanner-test-second', 'overreactions_scanner-test-steve']
+async function clearFixtures() {
+  for (const path of ['investing/scanner-test-steve', 'investing/scanner-test-wife', ...fixtureLists.map((id) => `investmentLists/${id}`)]) {
+    for (const kind of ['summary', 'watchlist']) await admin.doc(`${path}/data/${kind}`).delete()
+    await admin.doc(path).delete()
+  }
 }
-await admin.doc('investing/steve').set({ symbols: ['NVDA'], positions: [{ symbol: 'AAPL', qty: 12, paid: 155.21 }] })
-await admin.doc('investing/wife').set({ symbols: ['FLAT'], positions: [] })
+await clearFixtures()
+await admin.doc('investing/scanner-test-steve').set({ symbols: ['NVDA'], positions: [{ symbol: 'AAPL', qty: 12, paid: 155.21 }] })
+await admin.doc('investing/scanner-test-wife').set({ symbols: ['FLAT'], positions: [] })
 
 // A few runs: build the universe, then scan, then analyze and publish. Each run is one slice.
 for (let run = 0; run < 6; run++) {
   sandbox.scan()
-  if ((await admin.doc('investing/steve/data/watchlist').get()).exists) break
+  if ((await admin.doc('investing/scanner-test-steve/data/watchlist').get()).exists) break
 }
 
-const summary = (await admin.doc('investing/steve/data/summary').get()).data()
+const summary = (await admin.doc('investing/scanner-test-steve/data/summary').get()).data()
 check(summary && summary.holdings.length === 2, "steve's summary covers his typed symbol and his position")
 check(summary.holdings.every((h) => h.price > 0 && Array.isArray(h.flags)), 'every holding has a price and flags')
 check(summary.holdings.every((h) => h.news.length > 0), 'every holding has headlines')
 
-const wifeSummary = (await admin.doc('investing/wife/data/summary').get()).data()
+const wifeSummary = (await admin.doc('investing/scanner-test-wife/data/summary').get()).data()
 check(wifeSummary && wifeSummary.holdings.length === 1 && wifeSummary.holdings[0].symbol === 'FLAT', "wife's summary has her own stock only")
 
-const watchlist = (await admin.doc('investing/steve/data/watchlist').get()).data()
+const watchlist = (await admin.doc('investing/scanner-test-steve/data/watchlist').get()).data()
 check(watchlist, 'the watchlist was published')
 check(watchlist.universe === 2, 'the universe holds the two mid-caps (the mega-cap and the ETF are screened out)')
 const xyz = watchlist.candidates.find((c) => c.symbol === 'XYZ')
@@ -142,16 +146,28 @@ check(!watchlist.candidates.some((c) => c.symbol === 'FLAT'), 'FLAT (no drop) is
 check(xyz.facts.revenueGrowth === 18 && xyz.facts.netDebtToEbitda === 0.5 && xyz.facts.insiderBuys6m === 2 && xyz.facts.peForward === 8, "XYZ's facts match Yahoo's fundamentals")
 check(xyz.score >= 60 && xyz.parts.sentiment === 5, 'XYZ scores above the floor, with neutral sentiment (no Gemini key)')
 check(xyz.report.includes('not investment advice'), 'the report carries the disclaimer')
-const wifeWatchlist = (await admin.doc('investing/wife/data/watchlist').get()).data()
+const wifeWatchlist = (await admin.doc('investing/scanner-test-wife/data/watchlist').get()).data()
 check(wifeWatchlist && wifeWatchlist.candidates.length === watchlist.candidates.length, 'every member gets the watchlist')
+
+// New multi-list installations retain the scanner cursor, but route outputs to each individual parent.
+const privacy = { ownerId: 'scanner-test-steve', visibility: 'private', viewerVisible: false }
+await admin.doc('investmentLists/holdings_scanner-test-steve').set({ ...privacy, name: 'My investments', kind: 'holdings', symbols: ['XYZ'], positions: [] })
+await admin.doc('investmentLists/scanner-test-second').set({ ...privacy, name: 'Research', kind: 'holdings', symbols: ['FLAT'], positions: [] })
+await admin.doc('investmentLists/overreactions_scanner-test-steve').set({ ...privacy, name: 'Overreactions', kind: 'overreactions', symbols: [], positions: [] })
+sandbox.scan()
+const firstList = (await admin.doc('investmentLists/holdings_scanner-test-steve/data/summary').get()).data()
+const secondList = (await admin.doc('investmentLists/scanner-test-second/data/summary').get()).data()
+check(firstList.holdings.length === 1 && firstList.holdings[0].symbol === 'XYZ', 'first list has only its own stock')
+check(firstList.holdings[0].peForward === 8, 'holdings include forward P/E')
+check(secondList.holdings.length === 1 && secondList.holdings[0].symbol === 'FLAT', 'second list is independent')
+check((await admin.doc('investmentLists/overreactions_scanner-test-steve/data/watchlist').get()).data().candidates.length === watchlist.candidates.length, 'overreactions has its own output')
+check(!(await admin.doc('investmentLists/scanner-test-second/data/watchlist').get()).exists, 'no overreactions written into a holdings list')
 
 // A second pass reuses the universe and publishes again without rebuilding.
 const buildsBefore = Object.keys(props).filter((k) => k.startsWith('SCAN_STATE')).length
 for (let run = 0; run < 4; run++) sandbox.scan()
 check(Object.keys(props).filter((k) => k.startsWith('SCAN_STATE')).length >= 1 && buildsBefore >= 1, 'scanner state persists between runs')
 
-await admin.doc('investing/wife').delete()
-await admin.doc('investing/wife/data/summary').delete()
-await admin.doc('investing/wife/data/watchlist').delete()
+await clearFixtures()
 console.log('\nAll market scanner emulator checks passed.')
 process.exit(0)

@@ -1,5 +1,5 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react'
-import { useInvesting, saveInvesting } from '../../firebase/investing'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { createInvestmentList, useInvestmentList, useInvestmentLists, useInvestmentData, saveInvestmentList, saveInvestmentStocks } from '../../firebase/investing'
 import { useApp } from '../../hooks/useApp'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import {
@@ -10,32 +10,124 @@ import {
   parseSymbols,
   type Candidate,
   type Holding,
+  type InvestmentList,
+  priceContext,
 } from '../../utils/investing'
+import { audienceLabel, audienceOf, parentsOf, privacyFields, type Audience } from '../../utils/audience'
+import { safeUrl } from '../../utils/links'
+import { investmentLink } from '../../utils/text'
+import { TextForm } from '../Tasks/TextAbout'
+import { AudiencePicker } from '../UI/AudiencePicker'
 import { Icon } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
 
 const pct = (v?: number | null) => (v === null || v === undefined ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`)
 const moveClass = (v?: number | null) => (v === null || v === undefined || v === 0 ? '' : v > 0 ? ' invest-up' : ' invest-down')
 
-/**
- * Investing on Today (in More… to start; DESIGN.md §5.13): your own stocks — type symbols or import an E*TRADE
- * portfolio CSV — with today's prices, moves and headlines (big moves flagged), and the market scanner's watchlist
- * of post-earnings overreactions, each with its score and one-page note. Everything here is yours alone; the data
- * comes from scripts/market-scanner (runs every few hours). Research help, never advice.
- */
 export function InvestingSection() {
   const app = useApp()
-  const { settings, summary, watchlist } = useInvesting(app.uid)
-  const [open, setOpen] = useStoredFlag('align-today-invest', false)
+  const { lists, error } = useInvestmentLists(app.uid, app.member.role)
+  const [open, setOpen] = useStoredFlag(`align-today-invest-${app.uid}`, false)
+  const [creating, setCreating] = useState(false)
+  const [creatingBusy, setCreatingBusy] = useState(false)
+  const [name, setName] = useState('')
+  const [createError, setCreateError] = useState<string | null>(null)
+  async function create(e: FormEvent) {
+    e.preventDefault()
+    setCreatingBusy(true)
+    try {
+      await createInvestmentList(app.uid, name)
+      setName('')
+      setCreating(false)
+      setCreateError(null)
+    } catch (e) { setCreateError(String(e)) }
+    finally { setCreatingBusy(false) }
+  }
+  return (
+    <div className="day-section">
+      <SectionHeader icon="coin" title="Investing" help="investing" onTitleClick={() => setOpen(!open)} expanded={open}>
+        {!open && <button type="button" className="link small" onClick={() => setOpen(true)}>Show</button>}
+        {app.isMember && <button type="button" className="link small" onClick={() => { setOpen(true); setCreating(!creating) }}>+ New list</button>}
+      </SectionHeader>
+      {error && <p className="error small">{error}</p>}
+      {open && <>
+        {creating && <form className="row" onSubmit={create}>
+          <input aria-label="New investment list name" placeholder="List name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
+          <button type="submit" disabled={creatingBusy}>Create list</button>
+          <button type="button" className="secondary" onClick={() => setCreating(false)}>Cancel</button>
+        </form>}
+        {createError && <p className="error small">{createError}</p>}
+        {!lists.length && <p className="muted small">{app.isMember ? 'Opening your investment lists…' : 'No investment lists are shared with you.'}</p>}
+        {lists.map((list) => <InvestmentListSection key={`${app.uid}:${list.id}`} list={list} />)}
+      </>}
+    </div>
+  )
+}
+
+function InvestmentListEditor({ list, close }: { list: InvestmentList; close: () => void }) {
+  const app = useApp()
+  const [name, setName] = useState(list.name)
+  const [audience, setAudience] = useState<Audience>(audienceOf(list))
+  const [chosen, setChosen] = useState(list.sharedWith ?? [])
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  async function save(e: FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const { sharedWith: _shared, audience: _audience, ...base } = list
+      await saveInvestmentList({ ...base, name, ...privacyFields(audience, list.ownerId, chosen, parentsOf(app.household)) })
+      close()
+    } catch (e) { setError(String(e)); setSaving(false) }
+  }
+  return <form className="invest-detail" onSubmit={save}>
+    <label>Name <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required /></label>
+    <AudiencePicker label="Who can see this list" value={audience} onChange={setAudience} ownerId={list.ownerId} chosen={chosen} onChosen={setChosen} noun="investment list" />
+    <p className="muted small">Only you can edit. Sharing includes every position, quantity, cost and scanner result on this list.</p>
+    {error && <p className="error small">{error}</p>}
+    <button type="submit" disabled={saving}>Save</button>{' '}
+    <button type="button" className="secondary" onClick={close}>Cancel</button>
+  </form>
+}
+
+export function InvestmentEntryView({ listId, symbol }: { listId: string; symbol: string }) {
+  const app = useApp()
+  const { list, loaded, error } = useInvestmentList(listId, app.uid)
+  if (error) return <p className="error">{error}</p>
+  if (!list) return <p className="muted">{loaded ? "That investment list isn't shared with you, or it was deleted." : 'Opening investment…'}</p>
+  return <InvestmentListSection key={`${app.uid}:${listId}:${symbol}`} list={list} linkedSymbol={symbol} />
+}
+
+function InvestmentListSection({ list, linkedSymbol }: { list: InvestmentList; linkedSymbol?: string }) {
+  const app = useApp()
+  const { summary, watchlist, error: dataError, loaded } = useInvestmentData(list, app.uid)
+  const settings = list
+  const owner = app.isMember && list.ownerId === app.uid
+  const [storedOpen, setStoredOpen] = useStoredFlag(`align-invest-${app.uid}-${list.id}`, false)
+  const [linkOpen, setLinkOpen] = useState(true)
+  const open = linkedSymbol ? linkOpen : storedOpen
+  const setOpen = linkedSymbol ? setLinkOpen : setStoredOpen
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [detail, setDetail] = useState<string | null>(null) // an open holding (news) or candidate (report)
-  if (!app.isMember) return null
+  const [detail, setDetail] = useState<string | null>(linkedSymbol ? `${list.kind === 'holdings' ? 'h' : 'c'}:${linkedSymbol}` : null)
   const symbols = settings ? allSymbols(settings) : []
   const bySymbol = new Map((summary?.holdings ?? []).map((h) => [h.symbol, h]))
   const positions = new Map((settings?.positions ?? []).map((p) => [p.symbol, p]))
   const candidates = watchlist?.candidates ?? []
+  const linkedRow = useRef<HTMLLIElement>(null)
+  useEffect(() => {
+    if (!linkedSymbol || !loaded) return
+    // Let the page shell reset its scroll before positioning the linked stock.
+    const frame = requestAnimationFrame(() => linkedRow.current?.scrollIntoView({ block: 'start' }))
+    return () => cancelAnimationFrame(frame)
+  }, [linkedSymbol, loaded, summary, watchlist])
+  const linkedMissing = linkedSymbol && loaded && !dataError && !(list.kind === 'holdings' ? symbols.includes(linkedSymbol) : candidates.some((c) => c.symbol === linkedSymbol))
+  const textAbout = (symbol: string, name?: string) => <>
+    <p className="muted small">The recipient must sign in and have access to this list. Texting a link does not change sharing. The link opens the latest available information, not a saved report.</p>
+    <TextForm subject={{ title: `${symbol}${name && name !== symbol ? ` — ${name}` : ''} · ${list.name}`, when: '', link: investmentLink(list.id, symbol) }} startOpen={false} label="Text about this" />
+  </>
   const fail = (err: unknown) => setError(err instanceof Error ? err.message : String(err))
 
   async function add(e: FormEvent) {
@@ -44,7 +136,8 @@ export function InvestingSection() {
     if (!typed.length) return setError('Type ticker symbols, like AAPL or VOO.')
     setError(null)
     setText('')
-    await saveInvesting(app.uid, { symbols: [...new Set([...(settings?.symbols ?? []), ...typed])] }).catch(fail)
+    try { await saveInvestmentStocks(list.id, { positions: settings.positions, symbols: [...new Set([...settings.symbols, ...typed])] }) }
+    catch (e) { fail(e); setText(typed.join(', ')) }
   }
 
   async function importCsv(e: ChangeEvent<HTMLInputElement>) {
@@ -55,26 +148,28 @@ export function InvestingSection() {
       const imported = parsePortfolioCsv(await file.text())
       if (!imported.length) throw new Error('No positions found — export the portfolio as a spreadsheet (CSV) with a Symbol column.')
       setError(null)
-      await saveInvesting(app.uid, { positions: mergePositions(settings?.positions ?? [], imported) })
+      await saveInvestmentStocks(list.id, { symbols: settings.symbols, positions: mergePositions(settings.positions, imported) })
       setAdding(false)
     } catch (err) {
       fail(err)
     }
   }
 
-  const remove = (symbol: string) =>
-    saveInvesting(app.uid, {
+  const remove = async (symbol: string) => {
+    try { await saveInvestmentStocks(list.id, {
       symbols: (settings?.symbols ?? []).filter((s) => s !== symbol),
       positions: (settings?.positions ?? []).filter((p) => p.symbol !== symbol),
-    }).catch(fail)
+    }) } catch (e) { fail(e) }
+  }
 
   const holdingRow = (symbol: string) => {
     const h: Holding = bySymbol.get(symbol) ?? { symbol, flags: [] }
     const p = positions.get(symbol)
     const gain = p?.paid && h.price ? ((h.price - p.paid) / p.paid) * 100 : undefined
     const showing = detail === `h:${symbol}`
+    const context = priceContext(h)
     return (
-      <li key={symbol} className="invest-row">
+      <li key={symbol} className="invest-row" ref={symbol === linkedSymbol ? linkedRow : undefined}>
         <div className="collection-row">
           <button
             type="button"
@@ -94,9 +189,9 @@ export function InvestingSection() {
               </span>
             ))}
           </button>
-          <button type="button" className="row-action" onClick={() => remove(symbol)} aria-label={`Stop following ${symbol}`} title="Stop following">
+          {owner && <button type="button" className="row-action" onClick={() => remove(symbol)} aria-label={`Stop following ${symbol}`} title="Stop following">
             <Icon name="close" />
-          </button>
+          </button>}
         </div>
         {showing && (
           <div className="invest-detail">
@@ -107,14 +202,20 @@ export function InvestingSection() {
             )}
             {h.low52 !== undefined && h.high52 !== undefined && (
               <p className="muted small">
-                52-week range ${h.low52} – ${h.high52}
+                52-week closing-price range ${h.low52} – ${h.high52}
               </p>
             )}
+            {context && <p className="muted small">{Math.abs(context.belowHigh).toFixed(1)}% {context.belowHigh <= 0 ? 'below' : 'above'} 52-week high
+              {context.rangePosition !== undefined && <> · {context.rangePosition.toFixed(0)}% through the 52-week closing-price range</>}. Price context, not intrinsic valuation.</p>}
+            <p className="small">Trailing P/E: {h.peTrailing != null && h.peTrailing > 0 ? `${h.peTrailing.toFixed(1)}×` : 'unavailable / not meaningful'} · Forward P/E: {h.peForward != null && h.peForward > 0 ? `${h.peForward.toFixed(1)}×` : 'unavailable / not meaningful'}. Forward earnings are estimates, not guarantees.</p>
+            {h.peerComparison && <p className="small">{h.industry}: forward P/E median {h.peerComparison.medianForwardPe.toFixed(1)}× among {h.peerComparison.count} other stocks in this list; this stock trades at a {Math.abs(h.peerComparison.premiumPct).toFixed(0)}% {h.peerComparison.premiumPct >= 0 ? 'premium' : 'discount'}. Not an industry-wide benchmark.</p>}
+            {!h.peerComparison && <p className="muted small">Peer comparison needs at least three other stocks in this list with the same reported industry and positive forward P/E. ETFs and missing data may have no comparison.</p>}
+            {(h.error || h.valuationError) && <p className="error small">{h.error || h.valuationError}</p>}
             {h.news?.length ? (
               <ul className="invest-news">
                 {h.news.map((n) => (
                   <li key={n.url}>
-                    <a href={n.url} target="_blank" rel="noopener noreferrer" className="small">
+                    <a href={safeUrl(n.url) ?? undefined} target="_blank" rel="noopener noreferrer" className="small">
                       {n.title} <Icon name="external" />
                     </a>
                   </li>
@@ -123,6 +224,7 @@ export function InvestingSection() {
             ) : (
               <p className="muted small">No headlines yet.</p>
             )}
+            {textAbout(symbol, h.name)}
           </div>
         )}
       </li>
@@ -133,7 +235,7 @@ export function InvestingSection() {
     const showing = detail === `c:${c.symbol}`
     const f = c.facts ?? {}
     return (
-      <li key={c.symbol} className="invest-row">
+      <li key={c.symbol} className="invest-row" ref={c.symbol === linkedSymbol ? linkedRow : undefined}>
         <div className="collection-row">
           <button type="button" className="collection-row-main" onClick={() => setDetail(showing ? null : `c:${c.symbol}`)} aria-expanded={showing} title={c.name}>
             <span className="badge tokens">{c.score}</span>
@@ -150,9 +252,10 @@ export function InvestingSection() {
               {f.netDebtToEbitda !== undefined && <>net debt/EBITDA {f.netDebtToEbitda} · </>}
               {f.peTrailing !== undefined && f.peForward !== undefined && <>P/E {f.peTrailing} → {f.peForward} forward · </>}
               insider buys {f.insiderBuys6m ?? 0} (6 mo)
-              {c.recovery !== undefined && c.recovery !== null && <> · recovery estimate {c.recovery}%</>}
+              {c.recovery !== undefined && c.recovery !== null && <> · AI recovery estimate {c.recovery}% (uncalibrated)</>}
             </p>
             {c.report ? <pre className="invest-report">{c.report}</pre> : <p className="muted small">No write-up (add a Gemini key to the scanner for one-page notes).</p>}
+            {textAbout(c.symbol, c.name)}
           </div>
         )}
       </li>
@@ -160,22 +263,28 @@ export function InvestingSection() {
   }
 
   return (
-    <div className="day-section">
-      <SectionHeader icon="coin" title="Investing" count={symbols.length || undefined} help="investing" onTitleClick={() => setOpen(!open)} expanded={open}>
+    <div className="invest-group">
+      <SectionHeader icon={list.kind === 'holdings' ? 'list' : 'search'} title={list.name} count={list.kind === 'holdings' ? symbols.length : candidates.length} onTitleClick={() => setOpen(!open)} expanded={open}>
         {!open && (
           <button type="button" className="link small" onClick={() => setOpen(true)} aria-expanded={false}>
             Show
           </button>
         )}
-        {open && (
+        {owner && <button type="button" className="link small" onClick={() => setEditing(!editing)}>Edit / sharing</button>}
+        {open && owner && list.kind === 'holdings' && (
           <button type="button" className="link small header-add" onClick={() => setAdding(!adding)} aria-expanded={adding} title="Add stocks" aria-label="Add stocks">
             <Icon name="plus" />
           </button>
         )}
       </SectionHeader>
+      <p className="muted small">{audienceLabel(audienceOf(list))} · {list.ownerId === app.uid ? 'Your list' : `${app.household.members[list.ownerId]?.displayName ?? 'Another member'}’s list (read only)`}</p>
+      {editing && owner && <InvestmentListEditor list={list} close={() => setEditing(false)} />}
+      {dataError && <p className="error small">{dataError}</p>}
+      {linkedSymbol && !loaded && <p className="muted small">Opening stock information…</p>}
+      {linkedMissing && <p className="muted small">{linkedSymbol} is no longer in this list{list.kind === 'overreactions' ? ', or no scanner result has been published yet' : ''}. Links show the latest list, not archived reports.</p>}
       {open && (
         <>
-          {adding && (
+          {adding && owner && list.kind === 'holdings' && (
             <form className="row add-task" onSubmit={add}>
               <input autoFocus placeholder="Symbols to follow, like AAPL, VOO…" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && setAdding(false)} />
               <button type="submit" className="secondary small">
@@ -187,17 +296,18 @@ export function InvestingSection() {
               </label>
             </form>
           )}
-          {symbols.length ? (
+          {list.kind === 'holdings' && (symbols.length ? (
             <>
               {summary?.day && <p className="muted small">As of {summary.day}. Information to read about, never advice.</p>}
+              {summary?.note && <p className="muted small">{summary.note}</p>}
               <ul className="invest-list">{symbols.map(holdingRow)}</ul>
             </>
           ) : (
             <p className="muted small">
-              Follow your stocks here: + adds symbols, or imports a portfolio CSV (E*TRADE: Portfolio → Download). The market scanner (scripts/market-scanner) fills in prices, news and the watchlist below a few times a day.
+              {owner ? 'Add stocks with + or import a portfolio CSV (E*TRADE: Portfolio → Download).' : 'This list has no stocks yet.'}
             </p>
-          )}
-          {symbols.length > 0 && (
+          ))}
+          {list.kind === 'overreactions' && (
             <>
               <h4 className="invest-heading">
                 Watchlist: post-earnings overreactions

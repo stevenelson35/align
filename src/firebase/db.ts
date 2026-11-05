@@ -27,6 +27,7 @@ import { audienceOf, privacyFields, type Audience } from '../utils/audience'
 import { isStoredImage, storedImageId } from '../utils/pictures'
 import { today } from '../engine/dates'
 import type { DependencyChange } from '../utils/project'
+import type { InvestmentList } from '../utils/investing'
 
 export const householdRef = doc(db, 'household', 'main')
 
@@ -60,13 +61,16 @@ function subscribeUnion<T>(
   convert: (id: string, data: DocumentData, path: string) => T,
   onData: (items: T[]) => void,
   onError: (error: FirestoreError) => void,
+  confirmedOnly = false,
 ) {
   const parts = queries.map(() => new Map<string, T>())
   const ready = queries.map(() => false)
   const unsubs = queries.map((q, i) =>
     onSnapshot(
       q,
+      { includeMetadataChanges: confirmedOnly },
       (snap) => {
+        if (confirmedOnly && snap.metadata.hasPendingWrites) return
         parts[i] = new Map(snap.docs.map((d) => [d.ref.path, convert(d.id, d.data(), d.ref.path)]))
         ready[i] = true
         if (ready.every(Boolean)) onData(parts.flatMap((p) => [...p.values()]))
@@ -81,12 +85,17 @@ function subscribeUnion<T>(
  * Queries must match the rules (DESIGN.md §11): own private docs, family docs (viewer-visible ones for viewers),
  * and docs shared with you by name.
  */
-function visibleQueries(name: 'lists' | 'tasks' | 'goals', uid: string, role: Role) {
+function visibleQueries(name: 'lists' | 'tasks' | 'goals' | 'investmentLists', uid: string, role: Role) {
   const c = collection(db, name)
   const shared = query(c, where('sharedWith', 'array-contains', uid))
   return role === 'member'
     ? [query(c, where('ownerId', '==', uid), where('visibility', '==', 'private')), query(c, where('visibility', '==', 'family')), shared]
     : [query(c, where('visibility', '==', 'family'), where('viewerVisible', '==', true)), shared]
+}
+
+export function subscribeInvestmentLists(uid: string, role: Role, onData: (lists: InvestmentList[]) => void, onError: OnError) {
+  // Child-result rules read the parent on the server; do not subscribe before a new parent is committed.
+  return subscribeUnion(visibleQueries('investmentLists', uid, role), (id, d) => ({ ...d, id }) as InvestmentList, onData, onError, true)
 }
 
 type OnError = (e: FirestoreError) => void

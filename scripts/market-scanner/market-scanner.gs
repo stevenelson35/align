@@ -2,11 +2,11 @@
  * Align: market scanner (DESIGN.md §5.13).
  *
  * Runs in Google Apps Script (free) and writes to Firestore as the household's helper account ("bot"), so the normal
- * security rules apply. For every member with an Investing doc (investing/{uid}: their symbols and positions, entered
- * in Align) it keeps two documents under investing/{uid}/data:
+ * security rules apply. Each investmentLists/{id} has its own owner and audience. Holdings lists receive data/summary;
+ * each owner's overreactions list receives data/watchlist. Legacy investing/{uid} docs remain supported until migration.
  *
  *   summary    — today's look at their own stocks: price, day / week change, 52-week range, news headlines, and
- *                flags on anything that moved a lot (a nudge to look closer, never advice).
+ *                P/E, available list-local industry peer comparisons, and flags (a nudge to look closer, never advice).
  *   watchlist  — the post-earnings dislocation screen: quality mid-caps that just fell much more than the business
  *                did. A three-stage funnel: (1) price dropped 15–40% in 5 days on real volume, (2) fundamentals from
  *                Yahoo Finance (revenue still growing, free cash flow positive, manageable debt, insiders buying),
@@ -111,9 +111,13 @@ function scan_() {
   var props = PropertiesService.getScriptProperties()
   var cfg = scanConfig_(props.getProperties())
   var api = firestoreApi_(cfg, signIn_(cfg))
-  var users = api.all('investing')
+  var lists = api.all('investmentLists')
+  var owners = {}
+  lists.forEach(function (l) { owners[l.fields.ownerId] = true })
+  // Keep old installations working until their owner opens the new UI and migrates to lists.
+  var users = api.all('investing').filter(function (u) { return !owners[u.id] }).concat(lists)
   if (!users.length) {
-    Logger.log('No one has set up Investing in Align yet (no investing/{uid} docs); nothing to do.')
+    Logger.log('No investmentLists or legacy investing accounts found; open Investing in Align to set up lists.')
     return
   }
   var state = stateLoad_(props)
@@ -189,6 +193,7 @@ function summarize_(api, users, cfg) {
   var cache = {} // symbol → holding, shared across members
   var day = today_(cfg)
   users.forEach(function (u) {
+    if (u.fields.kind === 'overreactions') return
     var symbols = symbolsOf_(u.fields)
     if (!symbols.length) return
     var holdings = []
@@ -197,13 +202,18 @@ function summarize_(api, users, cfg) {
         try {
           cache[symbol] = holdingFor_(symbol)
         } catch (e) {
-          cache[symbol] = { symbol: symbol, flags: [], news: [] }
+          Logger.log('Holding %s failed: %s', symbol, e && e.message)
+          cache[symbol] = { symbol: symbol, flags: [], news: [], error: 'Price data unavailable. See scanner execution logs.' }
         }
         Utilities.sleep(120)
       }
-      holdings.push(cache[symbol])
+      var holding = {}
+      Object.keys(cache[symbol]).forEach(function (k) { holding[k] = cache[symbol][k] })
+      holdings.push(holding)
     })
-    api.set('investing/' + u.id + '/data/summary', { day: day, generatedAt: new Date().toISOString(), holdings: holdings })
+    addPeerComparisons_(holdings)
+    api.set((u.fields.kind ? 'investmentLists/' : 'investing/') + u.id + '/data/summary', { day: day, generatedAt: new Date().toISOString(), holdings: holdings,
+      note: symbols.length > 100 ? 'Only the first 100 symbols are refreshed per list. Split this list to refresh the rest.' : '' })
   })
 }
 
@@ -222,8 +232,33 @@ function holdingFor_(symbol) {
     high52: round2_(Math.max.apply(null, closes)),
   }
   h.flags = holdingFlags_(h)
+  try {
+    var qs = yahooQuoteSummary_(symbol)
+    if (!qs) throw new Error('No fundamentals returned.')
+    var facts = factsFromSummary_(qs, h.price)
+    h.peTrailing = facts.peTrailing
+    h.peForward = facts.peForward
+    h.industry = (qs.assetProfile || {}).industry || ''
+  } catch (e) {
+    Logger.log('Valuation for %s failed: %s', symbol, e && e.message)
+    h.valuationError = 'Valuation data unavailable. Price changes are not a valuation assessment.'
+  }
   h.news = news_(symbol).slice(0, 3)
   return h
+}
+
+/** Comparisons use only this list's stocks, never names from another person's private holdings. */
+function addPeerComparisons_(holdings) {
+  holdings.forEach(function (h) {
+    if (!h.industry || !(h.peForward > 0) || !isFinite(h.peForward)) return
+    var peers = holdings.filter(function (p) {
+      return p.symbol !== h.symbol && p.industry === h.industry && p.peForward > 0 && isFinite(p.peForward)
+    }).map(function (p) { return p.peForward }).sort(function (a, b) { return a - b })
+    if (peers.length < 3) return
+    var mid = Math.floor(peers.length / 2)
+    var median = peers.length % 2 ? peers[mid] : (peers[mid - 1] + peers[mid]) / 2
+    h.peerComparison = { count: peers.length, medianForwardPe: round2_(median), premiumPct: round2_((h.peForward / median - 1) * 100) }
+  })
 }
 
 /** investing/{uid} fields → every symbol to follow (typed ones plus held ones). */
@@ -370,10 +405,13 @@ function publishWatchlist_(api, users, state, cfg) {
     candidates: candidates,
     note: candidates.length ? '' : 'The last pass found no post-earnings dislocations that cleared the screen — most passes don’t.',
   }
+  var published = 0
   users.forEach(function (u) {
-    api.set('investing/' + u.id + '/data/watchlist', doc)
+    if (u.fields.kind === 'holdings') return
+    api.set((u.fields.kind ? 'investmentLists/' : 'investing/') + u.id + '/data/watchlist', doc)
+    published++
   })
-  Logger.log('Watchlist published: %s candidates for %s member(s).', candidates.length, users.length)
+  Logger.log('Watchlist published: %s candidates to %s feed(s).', candidates.length, published)
 }
 
 // ---------------------------------------------------------------------------
@@ -674,15 +712,11 @@ function yahooQuoteSummary_(symbol) {
   var url =
     'https://query1.finance.yahoo.com/v10/finance/quoteSummary/' +
     encodeURIComponent(symbol) +
-    '?modules=financialData,defaultKeyStatistics,netSharePurchaseActivity,calendarEvents,price&crumb=' +
+    '?modules=financialData,defaultKeyStatistics,netSharePurchaseActivity,calendarEvents,price,assetProfile&crumb=' +
     encodeURIComponent(session.crumb)
-  try {
-    var data = fetchJson_(url, { Cookie: session.cookie })
-    var result = data.quoteSummary && data.quoteSummary.result && data.quoteSummary.result[0]
-    return result || null
-  } catch (e) {
-    return null
-  }
+  var data = fetchJson_(url, { Cookie: session.cookie })
+  var result = data.quoteSummary && data.quoteSummary.result && data.quoteSummary.result[0]
+  return result || null
 }
 
 /** Headlines from Google News RSS. */

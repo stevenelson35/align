@@ -40,6 +40,11 @@ export function itemLink(boardId: string, itemId: string, base = `${window.locat
   return `${base}#/board/${encodeURIComponent(boardId)}/${encodeURIComponent(itemId)}`
 }
 
+/** A stable stock link; opening it still requires access to the investment list. */
+export function investmentLink(listId: string, symbol: string, base = `${window.location.origin}${window.location.pathname}`): string {
+  return `${base}#/investment/${encodeURIComponent(listId)}/${encodeURIComponent(symbol)}`
+}
+
 /** When it happens, for the text: "Fri, Oct 9 · 3:00 PM–4:00 PM", "Sat, Oct 10", "due Mon, Oct 12", or nothing. */
 export function whenText(t: Pick<Task, 'startDate' | 'targetDate' | 'calendar'>): string {
   if (t.startDate) return `${formatDay(t.startDate)}${t.calendar?.time ? ` · ${t.calendar.time}` : ''}`

@@ -1,7 +1,6 @@
 // Investing (DESIGN.md §5.13): each member's own stocks and the market scanner's results. Pure helpers, unit-tested.
-// The data is written two ways: you keep your symbols / positions on investing/{uid} (this file parses what you type
-// or an E*TRADE portfolio CSV), and the market scanner (scripts/market-scanner) writes the daily summary and the
-// post-earnings watchlist under investing/{uid}/data.
+// Each investmentLists/{id} has its own audience; scanner data inherits access from its parent list.
+import type { PrivacyFields } from './audience'
 
 /** A position you hold (imported from a broker CSV, or typed): how many and what you paid per share. */
 export interface Position {
@@ -11,13 +10,32 @@ export interface Position {
   paid?: number
 }
 
-/** investing/{uid}: your symbols to follow and any positions, yours alone to edit. */
+/** A holdings list's symbols and positions; also used by legacy investing/{uid}. */
 export interface InvestingSettings {
   symbols: string[]
   positions: Position[]
 }
 
-/** One stock in the daily summary (investing/{uid}/data/summary, written by the scanner). */
+export interface InvestmentList extends InvestingSettings, PrivacyFields {
+  id: string
+  ownerId: string
+  name: string
+  kind: 'holdings' | 'overreactions'
+}
+
+export function sortInvestmentLists(lists: InvestmentList[]): InvestmentList[] {
+  return [...lists].sort((a, b) => Number(a.kind === 'overreactions') - Number(b.kind === 'overreactions') || a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+}
+
+export function priceContext(h: Pick<Holding, 'price' | 'low52' | 'high52'>): { belowHigh: number; rangePosition?: number } | null {
+  if (h.price == null || h.high52 == null || h.high52 <= 0) return null
+  return {
+    belowHigh: (h.price / h.high52 - 1) * 100,
+    ...(h.low52 != null && h.high52 > h.low52 ? { rangePosition: (h.price - h.low52) / (h.high52 - h.low52) * 100 } : {}),
+  }
+}
+
+/** One stock in investmentLists/{id}/data/summary, written by the scanner. */
 export interface Holding {
   symbol: string
   name?: string
@@ -27,6 +45,16 @@ export interface Holding {
   change5d?: number
   low52?: number
   high52?: number
+  peTrailing?: number | null
+  peForward?: number | null
+  industry?: string
+  valuationError?: string
+  error?: string
+  peerComparison?: {
+    count: number
+    medianForwardPe: number
+    premiumPct: number
+  }
   /** What to look at: 'bigDrop1d' | 'bigGain1d' | 'drop5d' | 'gain5d' | 'near52wLow' | 'near52wHigh'. */
   flags: string[]
   news?: { title: string; url: string }[]
@@ -50,7 +78,7 @@ export interface CandidateFacts {
   peForward?: number
 }
 
-/** One post-earnings dislocation candidate (investing/{uid}/data/watchlist). */
+/** One post-earnings dislocation candidate (investmentLists/{id}/data/watchlist). */
 export interface Candidate {
   symbol: string
   name: string

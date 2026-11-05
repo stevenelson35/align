@@ -19,6 +19,7 @@ import { PhotosView } from '../Photos/PhotosView'
 import { HelpView } from '../Help/HelpView'
 import { BoardsView } from '../Voting/BoardsView'
 import { BoardView } from '../Voting/BoardView'
+import { InvestmentEntryView } from '../Investing/InvestingSection'
 
 // The map library (Leaflet) loads only when the map is opened.
 const FamilyMap = lazy(() => import('../Map/FamilyMap'))
@@ -29,6 +30,8 @@ export function MainView() {
   const { lists, boards, tasks, listItems, goals, loaded } = useData()
 
   switch (route.view) {
+    case 'investment':
+      return <InvestmentEntryView key={`${route.listId}:${route.symbol}`} listId={route.listId} symbol={route.symbol} />
     case 'home':
     case 'mine':
     case 'family':

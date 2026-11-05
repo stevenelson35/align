@@ -510,6 +510,45 @@ service cloud.firestore {
       }
     }
 
+    // Each portfolio and each member's overreactions feed has an independent audience. Scanner data inherits
+    // access from the parent so revoking sharing also revokes access to quantities, prices and reports.
+    function validInvestmentList(d, listId) {
+      return d.keys().hasOnly(['ownerId', 'name', 'kind', 'symbols', 'positions', 'visibility', 'viewerVisible', 'sharedWith', 'audience', 'updatedAt'])
+        && d.ownerId is string
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 100
+        && d.kind in ['holdings', 'overreactions']
+        && (d.kind != 'overreactions' || listId == 'overreactions_' + d.ownerId)
+        && (!listId.matches('holdings_.*') || (d.kind == 'holdings' && listId == 'holdings_' + d.ownerId))
+        && (!listId.matches('overreactions_.*') || d.kind == 'overreactions')
+        && d.symbols is list && d.symbols.size() <= 100
+        && d.positions is list && d.positions.size() <= 200
+        && (d.kind == 'holdings' || (d.symbols.size() == 0 && d.positions.size() == 0))
+        && d.visibility in ['private', 'family', 'shared']
+        && d.viewerVisible is bool && (d.visibility == 'family' || !d.viewerVisible)
+        && sharedOk(d)
+        && (!('audience' in d) || (d.audience == 'parents' && d.visibility == 'shared'));
+    }
+
+    match /investmentLists/{listId} {
+      allow read: if canRead(resource.data) || isBot();
+      // Migration checks deterministic ids before creating the owner's two private default lists.
+      allow get: if isMember()
+        && listId in ['holdings_' + request.auth.uid, 'overreactions_' + request.auth.uid]
+        && !exists(/databases/$(database)/documents/investmentLists/$(listId));
+      allow create: if isMember() && request.resource.data.ownerId == request.auth.uid
+        && validInvestmentList(request.resource.data, listId);
+      allow update: if isMember() && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.kind == resource.data.kind
+        && validInvestmentList(request.resource.data, listId);
+      match /data/{docId} {
+        allow read: if canRead(get(/databases/$(database)/documents/investmentLists/$(listId)).data);
+        allow create, update: if isBot()
+          && ((docId == 'summary' && get(/databases/$(database)/documents/investmentLists/$(listId)).data.kind == 'holdings')
+           || (docId == 'watchlist' && get(/databases/$(database)/documents/investmentLists/$(listId)).data.kind == 'overreactions'));
+      }
+    }
+
     // Flashcard leaderboards: each set's best Challenge round per person ({ scores: { uid: { right, of, ms, at } } }).
     // Members read them; each writes only their own score.
     match /cardBoards/{listId} {

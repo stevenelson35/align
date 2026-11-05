@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { allSymbols, cleanSymbol, mergePositions, parseCsvLine, parsePortfolioCsv, parseSymbols } from './investing'
+import { allSymbols, cleanSymbol, mergePositions, parseCsvLine, parsePortfolioCsv, parseSymbols, priceContext, sortInvestmentLists, type InvestmentList } from './investing'
+
+describe('investment lists and price context', () => {
+  it('keeps overreactions after every ordinary list', () => {
+    const base = { ownerId: 'steve', visibility: 'private' as const, viewerVisible: false, symbols: [], positions: [] }
+    const lists: InvestmentList[] = [
+      { ...base, id: 'report', name: 'A report', kind: 'overreactions' },
+      { ...base, id: 'b', name: 'B stocks', kind: 'holdings' },
+      { ...base, id: 'a', name: 'A stocks', kind: 'holdings' },
+    ]
+    expect(sortInvestmentLists(lists).map((l) => l.id)).toEqual(['a', 'b', 'report'])
+    expect(lists[0].id).toBe('report')
+  })
+  it('distinguishes price context from valuation and handles flat or missing ranges', () => {
+    expect(priceContext({ price: 75, high52: 100, low52: 50 })).toEqual({ belowHigh: -25, rangePosition: 50 })
+    expect(priceContext({ price: 100, high52: 100, low52: 100 })).toEqual({ belowHigh: 0 })
+    expect(priceContext({})).toBeNull()
+    expect(priceContext({ price: 10, high52: 0 })).toBeNull()
+  })
+})
 
 describe('cleanSymbol / parseSymbols', () => {
   it('cleans tickers and refuses what isn’t one', () => {

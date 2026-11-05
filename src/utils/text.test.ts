@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Household } from '../types'
-import { phoneDigits, smsUrl, splitAbout, splitRecipient, taskLink, textBody, whenText } from './text'
+import { investmentLink, phoneDigits, smsUrl, splitAbout, splitRecipient, taskLink, textBody, whenText } from './text'
+import { parseRoute, routeHash } from './routes'
 
 const household = {
   name: 'H',
@@ -15,6 +16,15 @@ const household = {
 } as unknown as Household
 
 describe('texting', () => {
+  it('round-trips an investment link without quantities or report contents', () => {
+    const route = { view: 'investment', listId: 'list / one', symbol: 'BRK.B' } as const
+    const hash = routeHash(route)
+    expect(investmentLink(route.listId, route.symbol, 'https://align.example/')).toBe(`https://align.example/${hash}`)
+    expect(parseRoute(hash)).toEqual(route)
+    expect(parseRoute('#/investment/missing-symbol')).toEqual({ view: 'today' })
+    expect(textBody('', { title: 'BRK.B', when: '', link: investmentLink(route.listId, route.symbol, 'https://align.example/') })).toContain(hash)
+  })
+
   it('builds an sms: link both phone platforms understand', () => {
     expect(phoneDigits(' +1 (555) 010-0100 ')).toBe('+15550100100')
     expect(smsUrl('555-0100', 'Picked up milk & eggs')).toBe('sms:5550100?&body=Picked%20up%20milk%20%26%20eggs')

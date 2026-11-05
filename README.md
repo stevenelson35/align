@@ -6,7 +6,7 @@ Household organizer for the Nelson family, live at https://align.itsallonesong.c
 - **goals** with charts, celebrations, good weeks, and sparks that play a family photo-reveal game and unlock a reward ladder
 - **flashcards** with multiple choice, Challenge rounds and a leaderboard, and maps for geography cards
 - **pick lists** (what to watch / read / play tonight, ranked from everyone's ratings) and **voting boards** (weekly tokens for family decisions)
-- **investing** (private per person): your stocks with daily prices, news and flags on big moves, and a market scanner that hunts post-earnings overreactions in quality mid-caps — research help, never advice
+- **investing**: expandable investment lists with separate audiences, prices, news, P/E and available same-industry peer comparisons, plus an independently shared post-earnings overreactions feed — private by default, research help, never advice
 - contacts, gift lists (with secret ideas), the family Google Calendar, the family map (OwnTracks), the blog and photos
 - texting family members about a task, a board or a photo, and switching people on a shared phone
 

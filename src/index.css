@@ -4231,6 +4231,19 @@ input.ladder-sparks {
   font-weight: 600;
   min-width: 3.2rem;
 }
+.invest-group {
+  margin-top: 0.6rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.invest-group .collection-row-main {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.invest-group .invest-detail {
+  overflow-wrap: anywhere;
+}
 .invest-up {
   color: var(--tint-green-border);
 }

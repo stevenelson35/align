@@ -29,6 +29,7 @@ export type Route =
   | { view: 'goal'; goalId: string }
   /** A link to one task / item / note (e.g. in a text): opens it in its list. */
   | { view: 'task'; taskId: string }
+  | { view: 'investment'; listId: string; symbol: string }
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent)
@@ -59,6 +60,9 @@ export function parseRoute(hash: string): Route {
     case 'task':
       if (parts[1]) return { view: 'task', taskId: parts[1] }
       break
+    case 'investment':
+      if (parts[1] && parts[2]) return { view: 'investment', listId: parts[1], symbol: parts[2] }
+      break
     case 'goal':
       if (parts[1]) return { view: 'goal', goalId: parts[1] }
       break
@@ -80,6 +84,8 @@ export function routeHash(route: Route): string {
       return `#/board/${encodeURIComponent(route.boardId)}${route.itemId ? `/${encodeURIComponent(route.itemId)}` : ''}`
     case 'task':
       return `#/task/${encodeURIComponent(route.taskId)}`
+    case 'investment':
+      return `#/investment/${encodeURIComponent(route.listId)}/${encodeURIComponent(route.symbol)}`
     case 'day':
       return `#/day/${route.day}`
     case 'goal':

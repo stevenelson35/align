@@ -1,15 +1,17 @@
 # Market scanner (Apps Script)
 
 `market-scanner.gs` powers Align's **Investing** section (on Today, in More… to start). It runs free in Google Apps
-Script and writes to Firestore as the household's helper account, so the normal security rules apply — each member's
-investing data stays theirs alone. See DESIGN.md §5.13.
+Script and writes to Firestore as the household's helper account. Each investment list has its own audience and only
+its owner can edit it. Lists start private; holdings can be shared with a spouse while the Overreactions feed is shared
+with a viewer separately. See DESIGN.md §5.13.
 
-For every member who has added symbols in Align (Investing → add symbols, or import an E*TRADE portfolio CSV) it
-keeps two things fresh:
+For investment lists created in Align (Investing → **+ New list**, then **Add stocks** or import an E*TRADE portfolio
+CSV), it keeps two kinds of results fresh:
 
-- **Today's summary** of their own stocks: price, day / week change, 52-week range, headlines, and flags on anything
-  that moved a lot — a nudge to look closer, never advice.
-- **The watchlist**: a post-earnings dislocation screen over US mid-caps ($2B–$50B by default). Three stages:
+- **Each holdings list's summary**: price, day / week change, 52-week closing-price range, headlines, P/E and
+  same-industry peers when available, plus big-move flags — a nudge to look closer, never advice.
+- **Each member's Overreactions feed** (always last in the UI): a post-earnings dislocation screen over US mid-caps
+  ($2B–$50B by default). Three stages:
   1. **Overreaction:** fell 15–40% in 5 trading days on >$10M/day traded, with an earnings report inside the last
      10 days.
   2. **Fundamentals** (Yahoo Finance): revenue still growing, free cash flow positive, net debt/EBITDA manageable,
@@ -27,6 +29,10 @@ run (every 4 hours) picks up where the last left off, so a full pass over ~1,000
 That's fine: the screen looks for 5-day moves, which stay visible for days.
 
 **This is a research helper, not investment advice, and it never trades.**
+
+In Align, open a holding or candidate and choose **Text about this** to send a note and link through your phone's
+Messages app (or copy the text). Recipients must sign in and already have access to that list; use **Edit / sharing**
+to choose its audience. Links open the latest stock details, not a saved report, and identify stocks no longer listed.
 
 ## One-time setup
 
@@ -49,17 +55,47 @@ That's fine: the screen looks for 5-day moves, which stay visible for days.
    Optional tuning: `GEMINI_MODEL` (`gemini-2.5-flash`), `MIN_CAP_B` (2), `MAX_CAP_B` (50), `MIN_DROP` (15),
    `MAX_DROP` (40), `MIN_DOLLAR_VOL_M` (10), `MIN_SCORE` (60), `EARNINGS_DAYS` (10), `SCAN_BATCH` (200),
    `CUSTOM_UNIVERSE` (a comma-separated ticker list that replaces the automatic mid-cap universe), `TIME_ZONE`.
-4. **Add your stocks in Align** (Today → More… → Investing): type symbols or import an E*TRADE portfolio CSV. The
-   scanner only runs for members who have.
+4. **Open Investing in Align** (Today → More…): this creates your private **My investments** and **Post-earnings
+   overreactions** lists. Add symbols or import an E*TRADE portfolio CSV into a holdings list. The Overreactions feed
+   works even without holdings.
 5. **Run it.** Pick `installTrigger` and click **Run**; authorize it (your own unpublished script: *Advanced → Go to
    Align market scanner*). That schedules a run every 4 hours and does the first slice.
 6. Check **Executions**: the first runs build the ticker universe (`Universe ready: … mid-caps`), then scan slices
    (`Slice done: cursor …`), and your summary appears in Align after the first run.
 
+## Updating an existing installation
+
+1. Deploy Firestore rules (`npm run deploy:rules`) **before** the updated web app (`npm run deploy:web`).
+2. Open Investing as each member: existing symbols and positions migrate once into **My investments**, and a separate
+   **Post-earnings overreactions** list is created. Both start private. **Edit / sharing** changes a list's audience;
+   sharing includes quantities, costs and scanner results, not just symbols.
+3. Replace the Apps Script source with the updated `market-scanner.gs` and save. Keep existing properties and trigger;
+   no web deployment, `installTrigger` rerun or `resetScanner` is needed. **Do not reset an in-progress pass.**
+4. Run `scan` manually or wait for the next trigger. Holdings refresh into `investmentLists/{id}/data/summary`.
+   The next completed pass writes `data/watchlist` under each owner's Overreactions list. Owners see their legacy
+   results until refreshed; shared recipients do not receive legacy private results and may initially see pending data.
+
+The scanner still handles unmigrated `investing/{uid}` accounts; once a member has new lists it uses those instead.
+
+## Valuation context
+
+- Expanded stock details show trailing and forward P/E, reported industry, distance from the 52-week closing high
+  and position within the closing-price range. Historical prices are not intrinsic valuation or historical P/E.
+- Peer comparisons require **three other stocks in that same list**, with the exact same reported industry and
+  positive, finite forward P/E. The subject is compared with their median. No private lists are combined, and this
+  is not an industry-wide peer screen. ETFs, losses and missing data may have no meaningful comparison.
+- Yahoo valuation failures are logged and shown explicitly. These unofficial endpoints can change or rate-limit.
+  Forward earnings are estimates, and AI scores / recovery estimates are uncalibrated, not measured probabilities.
+- Each list supports 100 followed symbols and 200 positions; only the first 100 distinct combined symbols refresh
+  per run, with an explicit summary note if that limit is exceeded.
+
 ## Good to know
 
 - `scanStatus()` (run from the editor) logs where the pass stands; `resetScanner()` starts over with a fresh
   universe.
+- `scan()` advances one slice immediately. The watchlist publishes only after the whole universe and scoring queue
+  finish, not after each slice. At 200 symbols per four-hour run, 1,706 symbols need at least nine scanning runs plus
+  scoring; run slices manually to advance sooner. An empty published pass is different from “never published.”
 - The universe comes from Nasdaq Trader's symbol directory (every US listing, ETFs and test issues dropped) with
   market caps from Yahoo's quote endpoint (which needs a session cookie + crumb — if Yahoo closes that door the
   rebuild logs an error and the old universe keeps working; set `CUSTOM_UNIVERSE` to sidestep it entirely).

@@ -212,21 +212,30 @@ Today → **Gifts** (`GiftsStrip`): what you're getting (tick Bought) and each l
 
 **Related notes** (`noteIds`, ≤10, any task or item): link notes you keep (sizes, brands, paint colors) instead of copying them. `RelatedNotes` shows each opening in place; `NotePicker` in the edit forms warns when a note is seen by fewer people than the entry.
 
-### 5.13 Investing (`investing/{uid}`)
+### 5.13 Investing (`investmentLists/{id}`)
 
-Each member's own stocks and a market scanner's findings — private to that person, never shared, never advice. Today has
-an **Investing** section (`InvestingSection`, in More… to start) where you type ticker symbols or import a broker
+Each member's investment lists and a separately shareable market scanner feed — private by default, never advice. Today has
+an **Investing** section (`InvestingSection`, in More… to start) where you create independently collapsible lists,
+type ticker symbols or import a broker
 portfolio CSV (E*TRADE's "Download → Spreadsheet" works; `parsePortfolioCsv` finds the header row, sums lots, averages
-the price paid). `investing/{uid}` holds `{ symbols (≤100), positions: [{ symbol, qty, paid? }] (≤200) }`, written
-only by its owner.
+the price paid). `investmentLists/{id}` holds `{ ownerId, name, kind: holdings | overreactions, symbols (≤100),
+positions: [{ symbol, qty, paid? }] (≤200), visibility, viewerVisible, sharedWith?, audience?, updatedAt }`, written
+only by its owner. The existing five-choice AudiencePicker controls each list separately, including named viewers.
+Opening Investing as a member transactionally creates missing `holdings_{uid}` (migrating legacy symbols/positions)
+and `overreactions_{uid}` defaults without deleting legacy data. Viewers never create lists. All Overreactions lists
+sort last. Only server-confirmed list snapshots are emitted, so nested result listeners never race a pending create.
 
 A free Google Apps Script (`scripts/market-scanner/`, a sibling of the calendar sync) signs in as the household's
-helper account every 4 hours and writes two documents under `investing/{uid}/data` (bot-only writes; only the owner
-reads):
+helper account every 4 hours and writes kind-specific documents under `investmentLists/{id}/data` (bot-only writes;
+reads inherit the current parent's audience):
 
 - **`summary`** — `{ day, generatedAt, holdings: [{ symbol, name, price, change1d, change5d, low52, high52, flags, news }] }`:
   today's look at their stocks, with flags (`holdingFlags_`: ±5% day, ±10% week, within 5% of the 52-week ends) and
   Google News headlines. Positions show qty, price paid and change since.
+  Expanded details add trailing/forward P/E, industry, distance from the closing high and range position (price
+  context, not intrinsic valuation). List-local peers require at least three other same-industry stocks with positive
+  forward P/E; the median and premium/discount are not industry-wide or ten-year comparisons. Valuation fetch failures
+  are explicit. The first 100 combined symbols refresh; larger lists receive a note.
 - **`watchlist`** — the post-earnings dislocation screen, a three-stage funnel over US mid-caps ($2B–$50B, built from
   Nasdaq Trader's symbol directory + Yahoo market caps, rebuilt weekly): (1) fell 15–40% in 5 trading days on
   >$10M/day traded with an earnings report in the last 10 days (judged from Yahoo's next scheduled earnings date:
@@ -243,7 +252,11 @@ Yahoo quoteSummary (cookie + crumb), Nasdaq Trader symbol files, Google News RSS
 used: it requires a contact User-Agent and Apps Script's UrlFetchApp always sends its own fixed one, so the SEC
 answers 403. Pure helpers tested in `tests/apps-script/market-scanner.test.ts` and `src/utils/investing.test.ts`; the
 whole pipeline runs against the emulators with canned market data in `npm run test:scanner`. Rules + tests:
-`investing/{uid}` owner-only with bot read; `data/{summary,watchlist}` bot-written, owner-read.
+`investmentLists/{id}` owner-edited, audience-read, bot-readable; nested results inherit that audience. Only holdings
+lists accept summaries and only Overreactions accept watchlists. Legacy `investing/{uid}` stays private and supported
+for unmigrated accounts. Owners alone see fallback legacy results until the updated scanner refreshes new lists.
+Sharing never grants access to the old private document. Scanner state/cursors are preserved; updating needs no reset.
+Scores and AI recovery estimates are uncalibrated research aids, not measured probabilities.
 
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
@@ -472,9 +485,9 @@ firestore.rules, firestore.indexes.json
 - **`boards` and `items`:** members can read and write (items may carry `note` ≤ 5000, `url` and `imageUrl` ≤ 2048). Viewers can read if the board is `viewerVisible`.
 - **`comments`** (on a board or an item): readable by anyone who can see the board; members create with their own `uid`, and edit or delete only their own (`validComment`: text 1–2000).
 - **`votes/{uid}`:** members can read; users write only their own document, `tokens` a whole number ≥ 0.
-- **`investing/{uid}`** (§5.13): the owner alone reads and writes their doc (`symbols` ≤ 100, `positions` ≤ 200); the helper account (`bot: true`) reads them all and alone writes `data/summary` and `data/watchlist`, which only the owner reads.
+- **`investmentLists/{id}`** (§5.13): owner-only editing, immutable owner/kind, standard per-list audience reads and bot reads. Nested results inherit the parent's current audience, with bot-only writes (summary on holdings, watchlist on Overreactions). Legacy `investing/{uid}` remains owner-only with bot read/write for compatibility.
 - Everything else is denied.
-- **Queries must match the rules** (`visibleQueries` in `db.ts`, for lists, tasks and goals): members query own private docs, family docs and shared-with-me docs; viewers query viewer-visible family docs and shared-with-me docs.
+- **Queries must match the rules** (`visibleQueries` in `db.ts`, for lists, tasks, goals and investment lists): members query own private docs, family docs and shared-with-me docs; viewers query viewer-visible family docs and shared-with-me docs.
 
 ## 12. Development and Deployment
 
@@ -488,6 +501,19 @@ firestore.rules, firestore.indexes.json
 - **Verify a web deploy:** fetch https://align.itsallonesong.com/, read the `assets/index-*.js` name, and grep that bundle for a string from the latest change.
 
 ## 13. Status & Handoff
+
+### Investment lists and valuation: implemented locally, not deployed
+- Independent collapsible holdings lists, new-list creation and separate Overreactions feeds; existing holdings migrate
+  once. Every list uses the existing five audience choices, with owner-only edits and inherited result access.
+- Expanded stock details: closing-price range context, trailing/forward P/E, industry and available list-local peer
+  median comparisons (at least three peers; not industry-wide). No historical P/E or calibrated probability claims.
+- Stock/candidate details reuse TextForm to text a note and `#/investment/<listId>/<symbol>` link. The authenticated
+  route enforces list access, opens the stock's latest details and reports missing/removed candidates explicitly.
+  Links do not grant sharing or embed portfolio quantities, reports or costs.
+- Deploy **rules first**, then web; paste the updated scanner and save, preserving trigger/properties/progress.
+  Shared recipients see results after the updated scanner writes the new paths; owners retain legacy fallback.
+- Verified: 245 unit tests, 75 rules tests, scanner emulator integration, lint and production build. Phone-sized
+  browser checks cover migration/sharing, valuation, SMS links, linked report scrolling, missing stocks and revocation.
 
 ### 2026-11-05 (scanner off EDGAR): built and pushed (`c938b4c`)
 - **The SEC blocks Apps Script.** EDGAR requires a contact `User-Agent` and Apps Script's `UrlFetchApp` always sends
