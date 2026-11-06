@@ -124,6 +124,42 @@ describe('Yahoo fundamentals', () => {
     expect(call('nextEarningsSec_', { calendarEvents: { earnings: { earningsDate: [{ raw: 1800000000 }] } } })).toBe(1800000000)
     expect(call('nextEarningsSec_', {})).toBeNull()
   })
+  it('uses Yahoo summaryDetail ratios when key statistics omit EPS or forward PE', () => {
+    expect(call('factsFromSummary_', { summaryDetail: { trailingPE: raw(18.4), forwardPE: raw(16.2) } }, 100)).toMatchObject({
+      peTrailing: 18.4, peForward: 16.2,
+    })
+    expect(call('factsFromSummary_', { summaryDetail: { trailingPE: 18.4 }, defaultKeyStatistics: { forwardPE: 16.2 } }, 100)).toMatchObject({
+      peTrailing: 18.4, peForward: 16.2,
+    })
+    expect(call('factsFromSummary_', { defaultKeyStatistics: { trailingEps: raw(-5), forwardPE: raw(-10) } }, 100)).toMatchObject({
+      peTrailing: -20, peForward: -10,
+    })
+  })
+})
+
+describe('saved scanner progress', () => {
+  it('reads a pre-telemetry pass without mutating its universe, cursor or queue', () => {
+    const state = { universe: Array(1706).fill(['XYZ', 8e9]), universeAt: '2026-11-05T11:05:00Z', cursor: 200, passers: Array(21).fill({ symbol: 'XYZ' }), scored: [] }
+    const before = JSON.stringify(state)
+    expect(call('scannerStatus_', state, 'snapshot')).toMatchObject({
+      execution: 'snapshot', stage: 'screening', universe: 1706, screened: 200, queued: 21, qualified: 0,
+      stats: null, lastRun: null, lastPass: null,
+    })
+    expect(JSON.stringify(state)).toBe(before)
+  })
+  it('distinguishes building, analyzing and completed passes while retaining last-pass details', () => {
+    expect(call('scannerStatus_', { tickers: ['A', 'B'], tickCursor: 1 }, 'idle')).toMatchObject({ stage: 'building', buildTotal: 2, buildChecked: 1 })
+    expect(call('scannerStatus_', { universe: [['A', 1]], cursor: 1, passers: [{ symbol: 'A' }] }, 'idle')).toMatchObject({ stage: 'analyzing', queued: 1 })
+    expect(call('scannerStatus_', { universe: [['A', 1]], cursor: 0, lastPass: { kept: 1 }, lastRun: { completed: true } }, 'idle')).toMatchObject({ stage: 'completed', lastPass: { kept: 1 } })
+    expect(call('scannerStatus_', { universe: [['A', 1]], cursor: 0, lastPass: { kept: 1 }, lastRun: {} }, 'running')).toMatchObject({ stage: 'screening', lastPass: { kept: 1 } })
+  })
+  it('refuses to silently reset corrupt saved state', () => {
+    expect(() => call('stateLoad_', { getProperty: (key: string) => key.endsWith('.n') ? '1' : '{broken' })).toThrow('Do not reset')
+    expect(() => call('stateLoad_', { getProperty: (key: string) => key.endsWith('.n') ? 'not-a-count' : null })).toThrow('Do not reset')
+    expect(() => call('stateLoad_', { getProperty: (key: string) => key.endsWith('.n') ? '1' : null })).toThrow('Do not reset')
+    expect(() => call('stateLoad_', { getProperty: (key: string) => key.endsWith('.0') ? '{}' : null })).toThrow('Do not reset')
+    expect(call('stateLoad_', { getProperty: () => null })).toEqual({})
+  })
 })
 
 describe('score and flags', () => {
@@ -138,6 +174,10 @@ describe('score and flags', () => {
   it('lands missing data mid-scale and shrinking companies at zero growth points', () => {
     const got = call<{ score: number; parts: Record<string, number> }>('scoreCandidate_', { revenueGrowth: -5, fcf: -10e6, netDebtToEbitda: null, peForward: null, peTrailing: null })
     expect(got.parts).toEqual({ growth: 0, fcf: 0, balance: 10, valuation: 7, insider: 0, sentiment: 5 })
+  })
+  it('does not score negative earnings multiples as a cheap valuation', () => {
+    expect(call<{ parts: { valuation: number } }>('scoreCandidate_', { peForward: -10, peTrailing: 20 }).parts.valuation).toBe(7)
+    expect(call<{ parts: { valuation: number } }>('scoreCandidate_', { peForward: -20, peTrailing: -10 }).parts.valuation).toBe(7)
   })
 
   it('flags the moves worth a look on a summary holding', () => {

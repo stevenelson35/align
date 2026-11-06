@@ -12,6 +12,8 @@ import {
   type Holding,
   type InvestmentList,
   priceContext,
+  peLabel,
+  scannerTime,
 } from '../../utils/investing'
 import { audienceLabel, audienceOf, parentsOf, privacyFields, type Audience } from '../../utils/audience'
 import { safeUrl } from '../../utils/links'
@@ -20,6 +22,7 @@ import { TextForm } from '../Tasks/TextAbout'
 import { AudiencePicker } from '../UI/AudiencePicker'
 import { Icon } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
+import { ScannerStatusPanel } from './ScannerStatusPanel'
 
 const pct = (v?: number | null) => (v === null || v === undefined ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`)
 const moveClass = (v?: number | null) => (v === null || v === undefined || v === 0 ? '' : v > 0 ? ' invest-up' : ' invest-down')
@@ -207,10 +210,12 @@ function InvestmentListSection({ list, linkedSymbol }: { list: InvestmentList; l
             )}
             {context && <p className="muted small">{Math.abs(context.belowHigh).toFixed(1)}% {context.belowHigh <= 0 ? 'below' : 'above'} 52-week high
               {context.rangePosition !== undefined && <> · {context.rangePosition.toFixed(0)}% through the 52-week closing-price range</>}. Price context, not intrinsic valuation.</p>}
-            <p className="small">Trailing P/E: {h.peTrailing != null && h.peTrailing > 0 ? `${h.peTrailing.toFixed(1)}×` : 'unavailable / not meaningful'} · Forward P/E: {h.peForward != null && h.peForward > 0 ? `${h.peForward.toFixed(1)}×` : 'unavailable / not meaningful'}. Forward earnings are estimates, not guarantees.</p>
+            <p className="small">Trailing P/E: {peLabel(h.peTrailing)} · Forward P/E: {peLabel(h.peForward)}. Forward earnings are estimates, not guarantees.</p>
+            {h.valuationCheckedAt ? <p className="muted small">Yahoo valuation checked {scannerTime(h.valuationCheckedAt)}.</p> : <p className="muted small">{h.error ? 'Valuation was not fetched because this stock refresh failed.' : 'No valuation lookup timestamp in this saved result. Older scanner versions did not fetch holdings P/E; save the updated script and wait for a holdings refresh. A pending candidate scan does not block P/E lookups.'}</p>}
             {h.peerComparison && <p className="small">{h.industry}: forward P/E median {h.peerComparison.medianForwardPe.toFixed(1)}× among {h.peerComparison.count} other stocks in this list; this stock trades at a {Math.abs(h.peerComparison.premiumPct).toFixed(0)}% {h.peerComparison.premiumPct >= 0 ? 'premium' : 'discount'}. Not an industry-wide benchmark.</p>}
             {!h.peerComparison && <p className="muted small">Peer comparison needs at least three other stocks in this list with the same reported industry and positive forward P/E. ETFs and missing data may have no comparison.</p>}
-            {(h.error || h.valuationError) && <p className="error small">{h.error || h.valuationError}</p>}
+            {h.error && <p className="error small">{h.error}</p>}
+            {h.valuationError && <p className="error small">{h.valuationError}</p>}
             {h.news?.length ? (
               <ul className="invest-news">
                 {h.news.map((n) => (
@@ -284,6 +289,7 @@ function InvestmentListSection({ list, linkedSymbol }: { list: InvestmentList; l
       {linkedMissing && <p className="muted small">{linkedSymbol} is no longer in this list{list.kind === 'overreactions' ? ', or no scanner result has been published yet' : ''}. Links show the latest list, not archived reports.</p>}
       {open && (
         <>
+          <ScannerStatusPanel list={list} watchlist={watchlist} />
           {adding && owner && list.kind === 'holdings' && (
             <form className="row add-task" onSubmit={add}>
               <input autoFocus placeholder="Symbols to follow, like AAPL, VOO…" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && setAdding(false)} />
@@ -299,6 +305,7 @@ function InvestmentListSection({ list, linkedSymbol }: { list: InvestmentList; l
           {list.kind === 'holdings' && (symbols.length ? (
             <>
               {summary?.day && <p className="muted small">As of {summary.day}. Information to read about, never advice.</p>}
+              {summary && <p className="muted small">Holdings refresh: {summary.generatedAt ? scannerTime(summary.generatedAt) : 'timestamp not recorded'} · {summary.holdings.length} stocks · {summary.priceErrors ?? 'unrecorded'} price failures · {summary.valuationIssues ?? 'unrecorded'} valuation issues.</p>}
               {summary?.note && <p className="muted small">{summary.note}</p>}
               <ul className="invest-list">{symbols.map(holdingRow)}</ul>
             </>
@@ -316,7 +323,7 @@ function InvestmentListSection({ list, linkedSymbol }: { list: InvestmentList; l
               {candidates.length ? (
                 <ul className="invest-list">{candidates.map(candidateRow)}</ul>
               ) : (
-                <p className="muted small">{watchlist ? watchlist.note || 'The last pass found nothing that cleared the screen — most don’t.' : 'The market scanner hasn’t reported yet (scripts/market-scanner/README.md sets it up).'}</p>
+                <p className="muted small">{watchlist ? watchlist.note || 'The last pass found nothing that cleared the screen — most don’t.' : 'No completed watchlist yet. See scanner progress above; the first pass can take a day or two.'}</p>
               )}
             </>
           )}

@@ -1,5 +1,38 @@
 import { describe, expect, it } from 'vitest'
-import { allSymbols, cleanSymbol, mergePositions, parseCsvLine, parsePortfolioCsv, parseSymbols, priceContext, sortInvestmentLists, type InvestmentList } from './investing'
+import { allSymbols, cleanSymbol, mergePositions, parseCsvLine, parsePortfolioCsv, parseSymbols, peLabel, priceContext, scannerProgress, scannerStale, sortInvestmentLists, type InvestmentList, type ScannerStatus } from './investing'
+
+describe('scanner visibility and valuation labels', () => {
+  const status: ScannerStatus = {
+    updatedAt: '2026-11-05T12:00:00Z', execution: 'idle', stage: 'screening',
+    universe: 1706, screened: 200, queued: 21, qualified: 0, buildTotal: 0, buildChecked: 0,
+  }
+  it('reports the real price-screening fraction without claiming overall scan completion', () => {
+    expect(scannerProgress(status)).toEqual({ label: 'Price screening', done: 200, total: 1706, percent: 11 })
+    expect(scannerProgress({ ...status, stage: 'analyzing', screened: 1706 })?.percent).toBe(100)
+    expect(scannerProgress({ ...status, stage: 'building', buildChecked: 80, buildTotal: 400 })?.percent).toBe(20)
+    expect(scannerProgress({ ...status, stage: 'building' })).toBeNull()
+    expect(scannerProgress({ ...status, screened: -1 })?.done).toBe(0)
+    expect(scannerProgress({ ...status, screened: 9999 })?.percent).toBe(100)
+  })
+  it('does not mistake a fresh saved snapshot for recent execution activity', () => {
+    const now = new Date('2026-11-05T20:00:01Z').getTime()
+    expect(scannerStale(status, now)).toBe(true)
+    expect(scannerStale({ ...status, execution: 'running' }, new Date('2026-11-05T12:11:00Z').getTime())).toBe(true)
+    expect(scannerStale({ ...status, execution: 'snapshot', updatedAt: '2026-11-05T20:00:00Z', lastRun: {
+      startedAt: '2026-11-05T10:00:00Z', finishedAt: '2026-11-05T10:05:00Z',
+      work: { screened: 200, priceErrors: 1, analyzed: 0, analysisErrors: 0, qualified: 0 },
+    } }, now)).toBe(true)
+    expect(scannerStale(status, new Date('2026-11-05T16:00:00Z').getTime())).toBe(false)
+  })
+  it('distinguishes missing data from a non-positive valuation ratio', () => {
+    expect(peLabel(19.4)).toBe('19.4×')
+    expect(peLabel(null)).toBe('not supplied in this result')
+    expect(peLabel(undefined)).toBe('not supplied in this result')
+    expect(peLabel(NaN)).toBe('not supplied in this result')
+    expect(peLabel(-4)).toBe('not meaningful (non-positive)')
+    expect(peLabel(0)).toBe('not meaningful (non-positive)')
+  })
+})
 
 describe('investment lists and price context', () => {
   it('keeps overreactions after every ordinary list', () => {

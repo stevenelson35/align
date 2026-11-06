@@ -88,18 +88,42 @@ function resetScanner() {
   Logger.log('Scanner state cleared; the next run rebuilds the universe.')
 }
 
-/** Where things stand (look in Executions, or run from the editor). */
+/** Publishes saved progress to Align and logs it, without changing SCAN_STATE or advancing the pass. */
 function scanStatus() {
-  var state = stateLoad_(PropertiesService.getScriptProperties())
-  Logger.log(
-    'Universe: %s tickers (built %s). Pass cursor: %s. Stage-1 passers waiting: %s. Scored: %s. Last watchlist: %s.',
-    (state.universe || []).length,
-    state.universeAt || 'never',
-    state.cursor || 0,
-    (state.passers || []).length,
-    (state.scored || []).length,
-    state.watchlistAt || 'never',
-  )
+  var lock = LockService.getScriptLock()
+  if (!lock.tryLock(1000)) throw new Error('A scan slice is running; wait for it to finish before publishing its saved status.')
+  try {
+    var props = PropertiesService.getScriptProperties()
+    var state = stateLoad_(props)
+    var cfg = scanConfig_(props.getProperties())
+    var api = firestoreApi_(cfg, signIn_(cfg))
+    publishStatus_(api, scannerUsers_(api), state, 'snapshot')
+    Logger.log(
+      'Universe: %s tickers (built %s). Pass cursor: %s. Stage-1 passers waiting: %s. Scored: %s. Last watchlist: %s.',
+      (state.universe || []).length,
+      state.universeAt || 'never',
+      state.cursor || 0,
+      (state.passers || []).length,
+      (state.scored || []).length,
+      state.watchlistAt || 'never',
+    )
+  } finally {
+    lock.releaseLock()
+  }
+}
+
+/** Tests KMB's public valuation lookup without advancing or resetting the scan. */
+function checkValuation() {
+  var h = holdingFor_('KMB')
+  Logger.log('KMB: trailing P/E %s; forward P/E %s; valuation checked %s; source issue %s.',
+    h.peTrailing, h.peForward, h.valuationCheckedAt, h.valuationError || 'none')
+}
+
+function scannerUsers_(api) {
+  var lists = api.all('investmentLists')
+  var owners = {}
+  lists.forEach(function (l) { owners[l.fields.ownerId] = true })
+  return api.all('investing').filter(function (u) { return !owners[u.id] }).concat(lists)
 }
 
 // ---------------------------------------------------------------------------
@@ -111,11 +135,7 @@ function scan_() {
   var props = PropertiesService.getScriptProperties()
   var cfg = scanConfig_(props.getProperties())
   var api = firestoreApi_(cfg, signIn_(cfg))
-  var lists = api.all('investmentLists')
-  var owners = {}
-  lists.forEach(function (l) { owners[l.fields.ownerId] = true })
-  // Keep old installations working until their owner opens the new UI and migrates to lists.
-  var users = api.all('investing').filter(function (u) { return !owners[u.id] }).concat(lists)
+  var users = scannerUsers_(api)
   if (!users.length) {
     Logger.log('No investmentLists or legacy investing accounts found; open Investing in Align to set up lists.')
     return
@@ -124,72 +144,140 @@ function scan_() {
   var budget = function () {
     return Date.now() - started < MAX_RUN_MS
   }
-
-  // 1. Today's summary of each member's own stocks (every run, so prices stay fresh).
-  summarize_(api, users, cfg)
-
-  // 2. The ticker universe: mid-caps worth scanning, rebuilt weekly. Built in slices too (market caps come from
-  //    batch quotes, ~80 tickers a call over the whole US market).
-  if (universeStale_(state, cfg)) {
-    buildUniverseStep_(state, cfg, budget)
+  var work = { screened: 0, priceErrors: 0, analyzed: 0, analysisErrors: 0, qualified: 0 }
+  state.lastRun = { startedAt: new Date(started).toISOString(), work: work }
+  var checkpointAt = started
+  var checkpoint = function (execution, stage) {
     stateSave_(props, state)
-    if (universeStale_(state, cfg)) return // keep building next run
+    publishStatus_(api, users, state, execution, stage)
+    checkpointAt = Date.now()
   }
 
-  // 3. Stage 1 over the universe: 5-day drop on real dollar volume. A slice per run.
-  var universe = state.universe || []
-  state.cursor = state.cursor || 0
-  state.passers = state.passers || []
-  state.scored = state.scored || []
-  var batch = 0
-  while (state.cursor < universe.length && batch < cfg.SCAN_BATCH && budget()) {
-    var row = universe[state.cursor] // [symbol, marketCap]
-    state.cursor++
-    batch++
-    try {
-      var bars = dailyCloses_(row[0])
-      var check = {
-        drop5d: drop5d_(bars.closes),
-        dollarVol: avgDollarVol_(bars.closes, bars.volumes),
-        marketCap: row[1],
+  try {
+    checkpoint('running', 'refreshing')
+    // 1. Today's summary of each member's own stocks (every run, so prices stay fresh).
+    summarize_(api, users, cfg, budget)
+
+    // 2. The ticker universe: mid-caps worth scanning, rebuilt weekly. Built in slices too (market caps come from
+    //    batch quotes, ~80 tickers a call over the whole US market).
+    if (universeStale_(state, cfg)) {
+      checkpoint('running', 'building')
+      buildUniverseStep_(state, cfg, budget)
+      if (universeStale_(state, cfg)) {
+        state.lastRun.finishedAt = new Date().toISOString()
+        checkpoint('idle')
+        return // keep building next run
       }
-      if (stage1Pass_(check, cfg)) {
-        state.passers.push({ symbol: row[0], cap: row[1], drop5d: check.drop5d, price: bars.closes[bars.closes.length - 1] })
-        Logger.log('Stage 1: %s fell %s%% in 5 days.', row[0], Math.round(check.drop5d))
-      }
-    } catch (e) {
-      // One dead ticker shouldn't stop the pass.
     }
-    Utilities.sleep(120)
-  }
+    checkpoint('running')
 
-  // 4. Stage 2 + 3 for the passers (a handful): fundamentals, insiders, score, report. Then publish.
-  if (state.cursor >= universe.length) {
-    while (state.passers.length && budget()) {
-      var p = state.passers.shift()
+    // 3. Stage 1 over the universe: 5-day drop on real dollar volume. A slice per run.
+    var universe = state.universe || []
+    state.cursor = state.cursor || 0
+    state.passers = state.passers || []
+    state.scored = state.scored || []
+    // Counts added mid-pass describe only work since this version; never fabricate old error/analysis counts.
+    state.passStats = state.passStats || { since: new Date().toISOString(), priceErrors: 0, analyzed: 0, analysisErrors: 0 }
+    var batch = 0
+    while (state.cursor < universe.length && batch < cfg.SCAN_BATCH && budget()) {
+      var row = universe[state.cursor] // [symbol, marketCap]
+      state.cursor++
+      batch++
+      work.screened++
       try {
-        var candidate = analyze_(p, cfg)
-        if (candidate) state.scored.push(candidate)
+        var bars = dailyCloses_(row[0])
+        var check = {
+          drop5d: drop5d_(bars.closes),
+          dollarVol: avgDollarVol_(bars.closes, bars.volumes),
+          marketCap: row[1],
+        }
+        if (stage1Pass_(check, cfg)) {
+          state.passers.push({ symbol: row[0], cap: row[1], drop5d: check.drop5d, price: bars.closes[bars.closes.length - 1] })
+          Logger.log('Stage 1: %s fell %s%% in 5 days.', row[0], Math.round(check.drop5d))
+        }
       } catch (e) {
-        Logger.log('Analyzing %s failed: %s', p.symbol, e && e.message)
+        work.priceErrors++
+        state.passStats.priceErrors++
+        Logger.log('Price screening for %s failed: %s', row[0], e && e.message)
+      }
+      Utilities.sleep(120)
+      if (Date.now() - checkpointAt >= 30000) checkpoint('running')
+    }
+
+    // 4. Stage 2 + 3 for the passers (a handful): fundamentals, insiders, score, report. Then publish.
+    if (state.cursor >= universe.length) {
+      checkpoint('running', 'analyzing')
+      while (state.passers.length && budget()) {
+        var p = state.passers.shift()
+        work.analyzed++
+        state.passStats.analyzed++
+        try {
+          var candidate = analyze_(p, cfg)
+          if (candidate) { state.scored.push(candidate); work.qualified++ }
+        } catch (e) {
+          work.analysisErrors++
+          state.passStats.analysisErrors++
+          Logger.log('Analyzing %s failed: %s', p.symbol, e && e.message)
+        }
+        if (Date.now() - checkpointAt >= 30000) checkpoint('running')
+      }
+      if (!state.passers.length) {
+        publishWatchlist_(api, users, state, cfg)
+        state.lastPass = {
+          completedAt: new Date().toISOString(), screened: universe.length,
+          qualified: state.scored.length, kept: Math.min(CANDIDATES_KEPT, state.scored.length),
+          stats: state.passStats,
+        }
+        state.cursor = 0
+        state.scored = []
+        state.watchlistAt = today_(cfg)
+        state.lastRun.completed = true
+        delete state.passStats
       }
     }
-    if (!state.passers.length) {
-      publishWatchlist_(api, users, state, cfg)
-      state.cursor = 0
-      state.scored = []
-      state.watchlistAt = today_(cfg)
-    }
+    state.lastRun.finishedAt = new Date().toISOString()
+    checkpoint('idle')
+    Logger.log('Slice done: cursor %s/%s, %s passers waiting, %s scored.', state.cursor, universe.length, state.passers.length, (state.scored || []).length)
+  } catch (e) {
+    state.lastRun.finishedAt = new Date().toISOString()
+    state.lastRun.error = 'Scanner run failed. Check Apps Script Executions for details.'
+    // Preserve progress even if a source or status write fails. Never reset the in-flight pass.
+    stateSave_(props, state)
+    try { publishStatus_(api, users, state, 'error') }
+    catch (statusError) { Logger.log('Publishing scanner error status failed: %s', statusError && statusError.message) }
+    throw e
   }
-  stateSave_(props, state)
-  Logger.log('Slice done: cursor %s/%s, %s passers waiting, %s scored.', state.cursor, universe.length, state.passers.length, (state.scored || []).length)
+}
+
+function scannerStatus_(state, execution, stage) {
+  var total = (state.universe || []).length
+  var cursor = Math.min(state.cursor || 0, total)
+  var lastRun = state.lastRun || null
+  var completed = !!(lastRun && lastRun.completed) && cursor === 0 && !(state.passers || []).length
+  return {
+    updatedAt: new Date().toISOString(), execution: execution,
+    stage: stage || (state.tickers || !total ? 'building' : completed ? 'completed' : cursor >= total ? 'analyzing' : 'screening'),
+    universe: total, screened: cursor, queued: (state.passers || []).length,
+    qualified: completed && state.lastPass ? state.lastPass.qualified : (state.scored || []).length,
+    buildTotal: (state.tickers || []).length, buildChecked: state.tickCursor || 0,
+    stats: state.passStats || null, lastRun: lastRun, lastPass: state.lastPass || null,
+    lastWatchlistAt: state.watchlistAt || null,
+    warning: state.universeError || '',
+  }
+}
+
+function publishStatus_(api, users, state, execution, stage) {
+  var status = scannerStatus_(state, execution, stage)
+  users.forEach(function (u) {
+    api.set((u.fields.kind ? 'investmentLists/' : 'investing/') + u.id + '/data/status', status)
+  })
 }
 
 // ---------------------------------------------------------------------------
 // Summaries: each member's own stocks
 // ---------------------------------------------------------------------------
 
-function summarize_(api, users, cfg) {
+function summarize_(api, users, cfg, budget) {
   var cache = {} // symbol → holding, shared across members
   var day = today_(cfg)
   users.forEach(function (u) {
@@ -198,6 +286,7 @@ function summarize_(api, users, cfg) {
     if (!symbols.length) return
     var holdings = []
     symbols.slice(0, 100).forEach(function (symbol) {
+      if (budget && !budget()) return
       if (!cache[symbol]) {
         try {
           cache[symbol] = holdingFor_(symbol)
@@ -212,8 +301,17 @@ function summarize_(api, users, cfg) {
       holdings.push(holding)
     })
     addPeerComparisons_(holdings)
-    api.set((u.fields.kind ? 'investmentLists/' : 'investing/') + u.id + '/data/summary', { day: day, generatedAt: new Date().toISOString(), holdings: holdings,
-      note: symbols.length > 100 ? 'Only the first 100 symbols are refreshed per list. Split this list to refresh the rest.' : '' })
+    // A partial refresh must not erase stocks from the previous published summary.
+    if (holdings.length < Math.min(symbols.length, 100)) {
+      Logger.log('Holdings refresh for %s deferred: execution time budget reached.', u.id)
+      return
+    }
+    api.set((u.fields.kind ? 'investmentLists/' : 'investing/') + u.id + '/data/summary', {
+      day: day, generatedAt: new Date().toISOString(), holdings: holdings,
+      priceErrors: holdings.filter(function (h) { return !!h.error }).length,
+      valuationIssues: holdings.filter(function (h) { return !!h.valuationError }).length,
+      note: symbols.length > 100 ? 'Only the first 100 symbols are refreshed per list. Split this list to refresh the rest.' : '',
+    })
   })
 }
 
@@ -232,6 +330,7 @@ function holdingFor_(symbol) {
     high52: round2_(Math.max.apply(null, closes)),
   }
   h.flags = holdingFlags_(h)
+  h.valuationCheckedAt = new Date().toISOString()
   try {
     var qs = yahooQuoteSummary_(symbol)
     if (!qs) throw new Error('No fundamentals returned.')
@@ -239,9 +338,13 @@ function holdingFor_(symbol) {
     h.peTrailing = facts.peTrailing
     h.peForward = facts.peForward
     h.industry = (qs.assetProfile || {}).industry || ''
+    if (h.peTrailing === null || h.peForward === null) {
+      h.valuationError = 'Yahoo did not supply ' + (h.peTrailing === null && h.peForward === null ? 'trailing or forward P/E' : h.peTrailing === null ? 'trailing P/E' : 'forward P/E') + ' for ' + symbol + '. Missing data is not evidence of poor valuation.'
+      Logger.log('%s', h.valuationError)
+    }
   } catch (e) {
     Logger.log('Valuation for %s failed: %s', symbol, e && e.message)
-    h.valuationError = 'Valuation data unavailable. Price changes are not a valuation assessment.'
+    h.valuationError = 'Yahoo valuation lookup failed for ' + symbol + ': ' + (e && e.message) + '. The candidate scan does not block holdings lookups.'
   }
   h.news = news_(symbol).slice(0, 3)
   return h
@@ -316,9 +419,11 @@ function buildUniverseStep_(state, cfg, budget) {
       })
     } catch (e) {
       Logger.log('Quote batch failed (%s); will retry next run.', e && e.message)
+      state.universeError = 'Market-cap lookup failed; this batch will retry on the next run. Check Apps Script Executions.'
       state.tickCursor -= slice.length
       return
     }
+    delete state.universeError
     Utilities.sleep(300)
   }
   if (state.tickCursor >= state.tickers.length) {
@@ -326,6 +431,8 @@ function buildUniverseStep_(state, cfg, budget) {
     state.universeAt = new Date().toISOString()
     state.cursor = 0
     state.passers = []
+    state.scored = []
+    delete state.passStats
     delete state.tickers
     delete state.tickCursor
     delete state.newUniverse
@@ -340,7 +447,7 @@ function buildUniverseStep_(state, cfg, budget) {
 /** A stage-1 passer → a scored candidate, or null (earnings weren't recent, or numbers missing). */
 function analyze_(p, cfg) {
   var qs = yahooQuoteSummary_(p.symbol)
-  if (!qs) return null
+  if (!qs) throw new Error('Yahoo returned no fundamentals for ' + p.symbol)
   // Stage 1 asked "did it fall"; here: did it fall *because of earnings* (a report in the window)?
   if (!postEarnings_(nextEarningsSec_(qs), Date.now(), cfg.EARNINGS_DAYS)) return null
   var facts = factsFromSummary_(qs, p.price)
@@ -403,6 +510,7 @@ function publishWatchlist_(api, users, state, cfg) {
     universe: (state.universe || []).length,
     scanned: (state.universe || []).length,
     candidates: candidates,
+    stats: state.passStats || null,
     note: candidates.length ? '' : 'The last pass found no post-earnings dislocations that cleared the screen — most passes don’t.',
   }
   var published = 0
@@ -504,13 +612,19 @@ function factsFromSummary_(qs, price) {
     else if (ebitda && ebitda > 0) netDebtToEbitda = round2_(netDebt / ebitda)
   }
   var eps = qsRaw_(ks, 'trailingEps')
+  var detail = qs.summaryDetail || {}
+  var trailing = qsRaw_(detail, 'trailingPE')
+  if (trailing === null) trailing = qsRaw_(ks, 'trailingPE')
+  if (trailing === null && price && eps) trailing = price / eps
+  var forward = qsRaw_(ks, 'forwardPE')
+  if (forward === null) forward = qsRaw_(detail, 'forwardPE')
   return {
     revenueGrowth: growth === null ? null : round2_(growth * 100),
     fcf: fcf,
     fcfMargin: fcf !== null && revenue ? round2_((fcf / revenue) * 100) : null,
     netDebtToEbitda: netDebtToEbitda,
-    peTrailing: price && eps && eps > 0 ? round2_(price / eps) : null,
-    peForward: qsRaw_(ks, 'forwardPE') !== null ? round2_(qsRaw_(ks, 'forwardPE')) : null,
+    peTrailing: round2_(trailing),
+    peForward: round2_(forward),
     insiderBuys6m: qsRaw_(qs.netSharePurchaseActivity || {}, 'buyInfoCount'),
   }
 }
@@ -526,7 +640,7 @@ function scoreCandidate_(f) {
   parts.fcf = f.fcf !== null && f.fcf !== undefined && f.fcf > 0 ? Math.max(4, Math.min(20, Math.floor((f.fcfMargin || 0) * 2))) : 0
   var nde = f.netDebtToEbitda
   parts.balance = nde === null || nde === undefined ? 10 : nde <= 0 ? 20 : nde < 1 ? 18 : nde < 2 ? 14 : nde < 3 ? 8 : 2
-  parts.valuation = f.peForward && f.peTrailing ? (f.peForward < f.peTrailing ? Math.min(15, Math.floor((1 - f.peForward / f.peTrailing) * 30)) : 0) : 7
+  parts.valuation = f.peForward > 0 && f.peTrailing > 0 ? (f.peForward < f.peTrailing ? Math.min(15, Math.floor((1 - f.peForward / f.peTrailing) * 30)) : 0) : 7
   var buys = f.insiderBuys6m || 0
   parts.insider = buys >= 2 ? 10 : buys === 1 ? 7 : 0
   var s = f.sentiment === null || f.sentiment === undefined ? 5 : f.sentiment
@@ -696,11 +810,14 @@ function yahooSession_() {
   var res = UrlFetchApp.fetch('https://fc.yahoo.com', { muteHttpExceptions: true })
   var cookie = ((res.getAllHeaders()['Set-Cookie'] || '') + '').split(';')[0]
   if (!cookie) throw new Error('Yahoo gave no session cookie.')
-  var crumb = UrlFetchApp.fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+  var crumbResponse = UrlFetchApp.fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
     headers: { Cookie: cookie, 'User-Agent': 'Mozilla/5.0' },
     muteHttpExceptions: true,
-  }).getContentText()
-  if (!crumb || crumb.indexOf('{') >= 0) throw new Error('Yahoo gave no crumb: ' + crumb)
+  })
+  var crumbCode = crumbResponse.getResponseCode()
+  if (crumbCode >= 300) throw new Error('Yahoo session crumb request failed (' + crumbCode + ')')
+  var crumb = crumbResponse.getContentText()
+  if (!crumb || /[\s{<]/.test(crumb)) throw new Error('Yahoo gave an invalid session crumb.')
   var session = { cookie: cookie, crumb: crumb }
   cache.put('yahooSession', JSON.stringify(session), 3600)
   return session
@@ -712,9 +829,10 @@ function yahooQuoteSummary_(symbol) {
   var url =
     'https://query1.finance.yahoo.com/v10/finance/quoteSummary/' +
     encodeURIComponent(symbol) +
-    '?modules=financialData,defaultKeyStatistics,netSharePurchaseActivity,calendarEvents,price,assetProfile&crumb=' +
+    '?modules=financialData,defaultKeyStatistics,summaryDetail,netSharePurchaseActivity,calendarEvents,price,assetProfile&crumb=' +
     encodeURIComponent(session.crumb)
   var data = fetchJson_(url, { Cookie: session.cookie })
+  if (data.quoteSummary && data.quoteSummary.error) throw new Error('Yahoo quoteSummary: ' + data.quoteSummary.error.code)
   var result = data.quoteSummary && data.quoteSummary.result && data.quoteSummary.result[0]
   return result || null
 }
@@ -814,14 +932,20 @@ function stateSave_(props, state) {
 }
 
 function stateLoad_(props) {
-  var n = Number(props.getProperty(STATE_KEY + '.n') || 0)
-  if (!n) return {}
+  var count = props.getProperty(STATE_KEY + '.n')
+  if (count === null && props.getProperty(STATE_KEY + '.0') === null) return {}
+  var n = Number(count)
+  if (!Number.isInteger(n) || n < 1) throw new Error('Saved scanner chunk count is unreadable. Do not reset; check SCAN_STATE properties.')
   var json = ''
-  for (var i = 0; i < n; i++) json += props.getProperty(STATE_KEY + '.' + i) || ''
+  for (var i = 0; i < n; i++) {
+    var chunk = props.getProperty(STATE_KEY + '.' + i)
+    if (chunk === null) throw new Error('Saved scanner chunk ' + i + ' is missing. Do not reset; check SCAN_STATE properties.')
+    json += chunk
+  }
   try {
     return JSON.parse(json)
   } catch (e) {
-    return {}
+    throw new Error('Saved scanner state is unreadable. Do not reset it; check SCAN_STATE properties before continuing.')
   }
 }
 

@@ -49,6 +49,7 @@ export interface Holding {
   peForward?: number | null
   industry?: string
   valuationError?: string
+  valuationCheckedAt?: string
   error?: string
   peerComparison?: {
     count: number
@@ -62,6 +63,9 @@ export interface Holding {
 
 export interface HoldingsSummary {
   day: string
+  generatedAt?: string
+  priceErrors?: number
+  valuationIssues?: number
   holdings: Holding[]
   note?: string
 }
@@ -97,11 +101,83 @@ export interface Candidate {
 
 export interface Watchlist {
   day?: string
+  scannedAt?: string
   candidates: Candidate[]
   /** How many tickers the universe holds and how many have been scanned this pass. */
   universe?: number
   scanned?: number
   note?: string
+  stats?: ScannerStats | null
+}
+
+export interface ScannerStats {
+  since: string
+  priceErrors: number
+  analyzed: number
+  analysisErrors: number
+}
+
+export interface ScannerWork {
+  screened: number
+  priceErrors: number
+  analyzed: number
+  analysisErrors: number
+  qualified: number
+}
+
+export interface ScannerStatus {
+  updatedAt: string
+  execution: 'running' | 'idle' | 'error' | 'snapshot'
+  stage: 'refreshing' | 'building' | 'screening' | 'analyzing' | 'completed'
+  universe: number
+  screened: number
+  queued: number
+  qualified: number
+  buildTotal: number
+  buildChecked: number
+  stats?: ScannerStats | null
+  lastRun?: {
+    startedAt: string
+    finishedAt?: string
+    error?: string
+    completed?: boolean
+    work: ScannerWork
+  } | null
+  lastPass?: {
+    completedAt: string
+    screened: number
+    qualified: number
+    kept: number
+    stats?: ScannerStats
+  } | null
+  lastWatchlistAt?: string | null
+  warning?: string
+}
+
+/** Phase progress, not a fabricated overall percentage across differently sized stages. */
+export function scannerProgress(s: ScannerStatus): { label: string; done: number; total: number; percent: number } | null {
+  const building = s.stage === 'building'
+  const total = building ? s.buildTotal : s.universe
+  if (!(total > 0)) return null
+  const done = Math.max(0, Math.min(total, building ? s.buildChecked : s.stage === 'completed' ? total : s.screened))
+  return { label: building ? 'Universe sizing' : 'Price screening', done, total, percent: Math.floor(done / total * 100) }
+}
+
+export function scannerStale(s: ScannerStatus, now = Date.now()): boolean {
+  const activity = s.lastRun?.finishedAt ?? s.lastRun?.startedAt ?? s.updatedAt
+  const age = now - new Date(activity).getTime()
+  return Number.isFinite(age) && age > (s.execution === 'running' ? 10 * 60000 : 8 * 3600000)
+}
+
+export function peLabel(value?: number | null): string {
+  if (value == null || !Number.isFinite(value)) return 'not supplied in this result'
+  return value > 0 ? `${value.toFixed(1)}×` : 'not meaningful (non-positive)'
+}
+
+export function scannerTime(value?: string): string {
+  if (!value) return 'date not recorded'
+  const date = new Date(value.length === 10 ? `${value}T12:00:00` : value)
+  return Number.isFinite(date.getTime()) ? value.length === 10 ? date.toLocaleDateString() : date.toLocaleString() : value
 }
 
 /** A ticker symbol, cleaned ("aapl " → "AAPL"), or null when it isn't one. */

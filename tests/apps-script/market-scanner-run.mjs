@@ -48,6 +48,10 @@ const otherListed = [
   'File Creation Time: 1105202603:02||||||',
 ].join('\r\n')
 const rss = '<rss><channel><item><title><![CDATA[XYZ tumbles on guidance]]></title><link>https://example.com/xyz</link></item></channel></rss>'
+let valuationFailure = false
+let statusWriteFailure = false
+let analysisFailure = false
+const screeningRequests = []
 
 const canned = (url) => {
   if (url.includes('nasdaqlisted.txt')) return nasdaqListed
@@ -55,7 +59,11 @@ const canned = (url) => {
   if (url.includes('fc.yahoo.com')) return { headers: { 'Set-Cookie': 'A3=test; Path=/' }, body: '' }
   if (url.includes('getcrumb')) return 'test-crumb'
   if (url.includes('/v7/finance/quote')) return JSON.stringify({ quoteResponse: { result: [{ symbol: 'XYZ', marketCap: 8.2e9 }, { symbol: 'FLAT', marketCap: 5e9 }, { symbol: 'BIG', marketCap: 900e9 }] } })
-  if (url.includes('/v10/finance/quoteSummary/XYZ')) return JSON.stringify({ quoteSummary: { result: [xyzSummary] } })
+  if (url.includes('/v10/finance/quoteSummary/XYZ')) return analysisFailure ? { code: 429, body: 'Too Many Requests', headers: {} } : JSON.stringify({ quoteSummary: { result: [xyzSummary] } })
+  if (url.includes('/v10/finance/quoteSummary/KMB')) {
+    check(url.includes('summaryDetail'), 'the valuation request includes summaryDetail')
+    return valuationFailure ? { code: 429, body: 'Too Many Requests', headers: {} } : JSON.stringify({ quoteSummary: { result: [{ summaryDetail: { trailingPE: raw(18.4), forwardPE: raw(16.2) } }] } })
+  }
   if (url.includes('/v10/finance/quoteSummary/')) return JSON.stringify({ quoteSummary: { result: [{}] } })
   if (url.includes('/v8/finance/chart/XYZ')) return JSON.stringify(dropped)
   if (url.includes('/v8/finance/chart/')) return JSON.stringify(steady(100))
@@ -89,7 +97,10 @@ const sandbox = createContext({
       const hit = canned(url)
       if (hit !== null) {
         const res = typeof hit === 'string' ? { headers: {}, body: hit } : hit
-        return { getResponseCode: () => 200, getContentText: () => res.body, getAllHeaders: () => res.headers }
+        return { getResponseCode: () => res.code ?? 200, getContentText: () => res.body, getAllHeaders: () => res.headers }
+      }
+      if (statusWriteFailure && o.payload?.includes('/data/status')) {
+        return { getResponseCode: () => 503, getContentText: () => 'Test status write failure', getAllHeaders: () => ({}) }
       }
       if (!url.startsWith('http://127.0.0.1')) throw new Error(`Unexpected URL in test: ${url}`)
       const args = ['-s', '-X', (o.method || 'get').toUpperCase(), '-H', 'Content-Type: application/json', '-w', '\n%{http_code}']
@@ -102,6 +113,12 @@ const sandbox = createContext({
   },
 })
 runInContext(readFileSync('scripts/market-scanner/market-scanner.gs', 'utf8'), sandbox)
+const originalCloses = sandbox.dailyCloses_
+sandbox.dailyCloses_ = (symbol, range, interval) => {
+  if (!range) screeningRequests.push(symbol)
+  if (symbol === 'BROKEN') throw new Error('Test missing price data')
+  return originalCloses(symbol, range, interval)
+}
 
 function check(cond, msg) {
   if (!cond) {
@@ -115,7 +132,7 @@ function check(cond, msg) {
 const fixtureLists = ['holdings_scanner-test-steve', 'scanner-test-second', 'overreactions_scanner-test-steve']
 async function clearFixtures() {
   for (const path of ['investing/scanner-test-steve', 'investing/scanner-test-wife', ...fixtureLists.map((id) => `investmentLists/${id}`)]) {
-    for (const kind of ['summary', 'watchlist']) await admin.doc(`${path}/data/${kind}`).delete()
+    for (const kind of ['summary', 'watchlist', 'status']) await admin.doc(`${path}/data/${kind}`).delete()
     await admin.doc(path).delete()
   }
 }
@@ -162,11 +179,58 @@ check(firstList.holdings[0].peForward === 8, 'holdings include forward P/E')
 check(secondList.holdings.length === 1 && secondList.holdings[0].symbol === 'FLAT', 'second list is independent')
 check((await admin.doc('investmentLists/overreactions_scanner-test-steve/data/watchlist').get()).data().candidates.length === watchlist.candidates.length, 'overreactions has its own output')
 check(!(await admin.doc('investmentLists/scanner-test-second/data/watchlist').get()).exists, 'no overreactions written into a holdings list')
+const completedStatus = (await admin.doc('investmentLists/overreactions_scanner-test-steve/data/status').get()).data()
+check(completedStatus.stage === 'completed' && completedStatus.lastPass.screened === 2 && completedStatus.lastPass.kept === 1, 'status records the completed pass and work performed')
+check(completedStatus.lastRun.finishedAt && completedStatus.lastRun.work.screened === 2, 'last slice has completion time and price-check count')
 
 // A second pass reuses the universe and publishes again without rebuilding.
 const buildsBefore = Object.keys(props).filter((k) => k.startsWith('SCAN_STATE')).length
 for (let run = 0; run < 4; run++) sandbox.scan()
 check(Object.keys(props).filter((k) => k.startsWith('SCAN_STATE')).length >= 1 && buildsBefore >= 1, 'scanner state persists between runs')
+
+// Upgrade an actual pre-telemetry checkpoint: status publication must not change a single state-property byte.
+const scriptProps = sandbox.PropertiesService.getScriptProperties()
+const checkpoint = {
+  universe: [['XYZ', 8.2e9], ['FLAT', 5e9]], universeAt: new Date().toISOString(), cursor: 1,
+  passers: [{ symbol: 'XYZ', cap: 8.2e9, drop5d: -27, price: 25.1 }], scored: [], watchlistAt: '2026-11-01',
+}
+sandbox.stateSave_(scriptProps, checkpoint)
+const savedState = () => JSON.stringify(Object.fromEntries(Object.entries(props).filter(([key]) => key.startsWith('SCAN_STATE'))))
+const beforeStatus = savedState()
+sandbox.scanStatus()
+check(savedState() === beforeStatus, 'scanStatus publishes saved progress without changing SCAN_STATE')
+const snapshot = (await admin.doc('investmentLists/overreactions_scanner-test-steve/data/status').get()).data()
+check(snapshot.execution === 'snapshot' && snapshot.screened === 1 && snapshot.queued === 1, 'pre-upgrade cursor and pending candidates appear in Align status')
+screeningRequests.length = 0
+sandbox.scan()
+check(JSON.stringify(screeningRequests) === JSON.stringify(['FLAT']), 'the next upgraded scan resumes at the old cursor instead of rescanning XYZ')
+const resumed = sandbox.stateLoad_(scriptProps)
+check(resumed.universeAt === checkpoint.universeAt && resumed.lastPass.kept === 1, 'the preserved candidate is scored and published without rebuilding the universe')
+
+const kmb = sandbox.holdingFor_('KMB')
+check(kmb.peTrailing === 18.4 && kmb.peForward === 16.2 && kmb.valuationCheckedAt, 'holdings P/E works when Yahoo supplies ratios only in summaryDetail')
+valuationFailure = true
+const failedKmb = sandbox.holdingFor_('KMB')
+check(failedKmb.price > 0 && failedKmb.valuationError.includes('429'), 'rate-limited valuation is explicit without hiding available price data')
+valuationFailure = false
+
+sandbox.stateSave_(scriptProps, checkpoint)
+statusWriteFailure = true
+let failed = false
+try { sandbox.scan() } catch (e) { failed = e.message.includes('503') }
+statusWriteFailure = false
+check(failed && sandbox.stateLoad_(scriptProps).cursor === 1 && sandbox.stateLoad_(scriptProps).passers.length === 1, 'failed telemetry writes surface an error and preserve the in-flight pass')
+
+sandbox.stateSave_(scriptProps, { ...checkpoint, universe: [['BROKEN', 5e9]], cursor: 0 })
+analysisFailure = true
+sandbox.scan()
+analysisFailure = false
+const failedPass = (await admin.doc('investmentLists/overreactions_scanner-test-steve/data/status').get()).data()
+check(failedPass.lastRun.work.priceErrors === 1 && failedPass.lastRun.work.analysisErrors === 1 && failedPass.lastPass.stats.analysisErrors === 1, 'completed status distinguishes failed lookups from stocks rejected by the screen')
+
+const deferredWrites = []
+sandbox.summarize_({ set: (path) => deferredWrites.push(path) }, [{ id: 'deferred', fields: { symbols: ['XYZ'] } }], { TIME_ZONE: 'America/New_York' }, () => false)
+check(deferredWrites.length === 0, 'an exhausted run budget never overwrites a holdings summary with partial or empty data')
 
 await clearFixtures()
 console.log('\nAll market scanner emulator checks passed.')

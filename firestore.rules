@@ -505,7 +505,7 @@ service cloud.firestore {
 
       match /data/{docId} {
         allow read: if (isMember() && request.auth.uid == uid) || isBot();
-        allow create, update: if isBot() && docId in ['summary', 'watchlist'];
+        allow create, update: if isBot() && docId in ['summary', 'watchlist', 'status'];
         allow delete: if (isMember() && request.auth.uid == uid) || isBot();
       }
     }
@@ -544,7 +544,8 @@ service cloud.firestore {
       match /data/{docId} {
         allow read: if canRead(get(/databases/$(database)/documents/investmentLists/$(listId)).data);
         allow create, update: if isBot()
-          && ((docId == 'summary' && get(/databases/$(database)/documents/investmentLists/$(listId)).data.kind == 'holdings')
+          && ((docId == 'status' && exists(/databases/$(database)/documents/investmentLists/$(listId)))
+           || (docId == 'summary' && get(/databases/$(database)/documents/investmentLists/$(listId)).data.kind == 'holdings')
            || (docId == 'watchlist' && get(/databases/$(database)/documents/investmentLists/$(listId)).data.kind == 'overreactions'));
       }
     }

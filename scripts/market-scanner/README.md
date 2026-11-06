@@ -75,6 +75,28 @@ to choose its audience. Links open the latest stock details, not a saved report,
    The next completed pass writes `data/watchlist` under each owner's Overreactions list. Owners see their legacy
    results until refreshed; shared recipients do not receive legacy private results and may initially see pending data.
 
+### Adding status while the first pass is underway
+
+You **do not need to restart the pass**. Deploy the new rules and web app, then save the updated script in the same
+Apps Script project. If a slice is executing, let that short execution finish first (each lasts at most six minutes);
+the multi-day pass is held in Script Properties between slices. Keep all `SCAN_STATE.*` properties, credentials,
+configuration and the existing trigger. Do **not** run `resetScanner` or reinstall the trigger.
+
+Select **`scanStatus` → Run** to send the existing universe, cursor and pending-candidate count to Align immediately.
+It reads the saved state without changing any state-property bytes, fetching holdings or advancing the scan.
+Otherwise, the next scheduled `scan` publishes status automatically and resumes from that same cursor.
+
+Each expanded list shows the phase, phase-specific progress, queued candidates, last published pass, and expandable
+**Last slice and data quality** details. Percentages describe universe sizing or price screening, **not** overall
+completion: 100% price screening may still leave fundamentals and reports to finish. A full pass shows the number
+of price checks, qualified candidates and retained reports. Holdings show their own refresh timestamp, stock count,
+price failures and valuation issues. Source failures are skipped, not confirmed screen rejections.
+
+Status is checkpointed during price/analysis work and at slice boundaries. An execution timeout can leave a
+"running" checkpoint; Align warns after ten minutes without a finish, or eight hours without other activity.
+Check **Executions** if that happens. Old runs' timestamps and failure counts cannot be reconstructed; counts added
+partway through a pass explicitly start at the tracking date. Status respects each list's sharing.
+
 The scanner still handles unmigrated `investing/{uid}` accounts; once a member has new lists it uses those instead.
 
 ## Valuation context
@@ -86,12 +108,21 @@ The scanner still handles unmigrated `investing/{uid}` accounts; once a member h
   is not an industry-wide peer screen. ETFs, losses and missing data may have no meaningful comparison.
 - Yahoo valuation failures are logged and shown explicitly. These unofficial endpoints can change or rate-limit.
   Forward earnings are estimates, and AI scores / recovery estimates are uncalibrated, not measured probabilities.
+- Trailing P/E comes from `summaryDetail.trailingPE` (or key statistics), with price / trailing EPS as a fallback;
+  forward P/E comes from key statistics or `summaryDetail.forwardPE`. Results now include a valuation lookup timestamp.
+  **Not supplied in this result** is different from **not meaningful (non-positive)**. A failing HTTP lookup shows
+  the source error; a successful response with missing fields says which ratio Yahoo omitted.
+- A pending candidate scan does **not** block holdings P/E: summaries refresh before candidate work on each run.
+  Old scanner versions did not fetch holdings P/E at all, so saved price data may have no valuation fields. Updating
+  the script fixes the incomplete field lookup but cannot guarantee Yahoo availability. After saving, run
+  **`checkValuation`** to test KMB's public lookup and read the result/error in Executions without touching scan state;
+  the next normal slice refreshes holdings in Align.
 - Each list supports 100 followed symbols and 200 positions; only the first 100 distinct combined symbols refresh
   per run, with an explicit summary note if that limit is exceeded.
 
 ## Good to know
 
-- `scanStatus()` (run from the editor) logs where the pass stands; `resetScanner()` starts over with a fresh
+- `scanStatus()` (run from the editor) publishes/logs saved progress without advancing it; `resetScanner()` starts over with a fresh
   universe.
 - `scan()` advances one slice immediately. The watchlist publishes only after the whole universe and scoring queue
   finish, not after each slice. At 200 symbols per four-hour run, 1,706 symbols need at least nine scanning runs plus
@@ -112,4 +143,5 @@ The scanner still handles unmigrated `investing/{uid}` accounts; once a member h
   `tests/apps-script/market-scanner.test.ts`.
 - With `npm run emulators` and `npm run seed` running, `npm run test:scanner` runs the whole script against the
   emulators with canned Yahoo / Nasdaq / news data: the universe build, the three stages, the per-member summaries
-  and the published watchlists.
+  and the published watchlists. It also verifies an old mid-pass checkpoint survives `scanStatus` byte-for-byte,
+  the next slice starts at its saved cursor, telemetry failures preserve the pass, and P/E/source errors are explicit.

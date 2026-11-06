@@ -245,6 +245,13 @@ reads inherit the current parent's audience):
   balance sheet 20, valuation — the forward P/E's discount to trailing — 15, insiders 10, sentiment 10) and, with a
   free Gemini key, a one-page note (why it fell, did the fundamentals change, historical analogs, bull / bear case,
   recovery estimate). Candidates scoring ≥ 60 are kept (≤ 10); most passes find none, and the doc says so.
+- **`status`** — per-list, bot-written progress with stage/execution, universe/cursor, queued/qualified counts,
+  last slice timestamps/work, last completed pass and tracked failure counts. It contains no holdings or credentials
+  and inherits the same audience. `scanStatus` publishes a read-only state snapshot; normal runs checkpoint state
+  before publishing status. Existing `SCAN_STATE.*` keys and cursor/queue are preserved when upgrading mid-pass.
+  UI percentages are phase-specific (sizing/screening), not a claimed overall completion probability or ETA.
+  Holdings summaries include `generatedAt`, `priceErrors`, `valuationIssues`; each valuation has a checked timestamp
+  or an explicit source/missing-field reason. P/E also reads `summaryDetail`, not just EPS/key-statistics fields.
 
 The 6-minute Apps Script limit is handled by scanning in slices (state chunked in Script Properties); a full pass
 takes a day or two, which suits a 5-day-drop screen. Data sources are all free: Yahoo chart endpoint (Stooq fallback),
@@ -502,7 +509,19 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### Investment lists and valuation: implemented locally, not deployed
+### Scanner progress and valuation diagnostics: implemented locally, not deployed
+- Per-list scanner progress before the first published watchlist; last-run/full-pass work, tracked failures, stale
+  activity warnings and independent holdings refresh timestamps. Missing P/E and non-positive ratios are distinct.
+- Mid-pass upgrade: deploy rules/web, save the source in the same Apps Script project, preserve properties/trigger,
+  then run `scanStatus` for an immediate snapshot or wait for the next slice. **No reset or trigger reinstall.**
+- `checkValuation` diagnoses KMB through the script's public Yahoo lookup without touching scan state. In this
+  environment a public Yahoo probe returned HTTP 429; the actual user's Apps Script response remains unverified.
+- Verified: 253 unit tests, 76 rules tests, scanner emulator integration, lint/build and phone-sized browser checks.
+  Integration proves an old checkpoint survives status publication byte-for-byte and resumes from its saved cursor;
+  telemetry/source failures are explicit and partial holdings refreshes never erase previously published data.
+- The previous investment-list changes were committed/pushed (`39527c1`) and rules/indexes deployed on Nov 5.
+
+### Investment lists and valuation: committed/pushed (`39527c1`); rules deployed
 - Independent collapsible holdings lists, new-list creation and separate Overreactions feeds; existing holdings migrate
   once. Every list uses the existing five audience choices, with owner-only edits and inherited result access.
 - Expanded stock details: closing-price range context, trailing/forward P/E, industry and available list-local peer

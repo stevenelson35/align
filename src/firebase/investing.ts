@@ -1,6 +1,6 @@
 import { collection, doc, getDoc, onSnapshot, runTransaction, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
-import type { HoldingsSummary, InvestmentList, InvestingSettings, Watchlist } from '../utils/investing'
+import type { HoldingsSummary, InvestmentList, InvestingSettings, ScannerStatus, Watchlist } from '../utils/investing'
 import { sortInvestmentLists } from '../utils/investing'
 import type { Role } from '../types'
 import { db } from './config'
@@ -49,12 +49,26 @@ export function useInvestmentList(id: string, uid: string) {
 }
 
 export function useInvestmentData(list: InvestmentList, uid: string) {
-  const [state, setState] = useState<{ key: string; summary: HoldingsSummary | null; watchlist: Watchlist | null; error: string | null }>({ key: '', summary: null, watchlist: null, error: null })
+  const kind = list.kind === 'holdings' ? 'summary' : 'watchlist'
+  const { data, ...state } = useInvestmentResult<HoldingsSummary | Watchlist>(list, uid, kind)
+  return {
+    ...state,
+    summary: kind === 'summary' ? data as HoldingsSummary | null : null,
+    watchlist: kind === 'watchlist' ? data as Watchlist | null : null,
+  }
+}
+
+export function useInvestmentStatus(list: InvestmentList, uid: string) {
+  const { data: status, ...state } = useInvestmentResult<ScannerStatus>(list, uid, 'status')
+  return { ...state, status }
+}
+
+function useInvestmentResult<T>(list: InvestmentList, uid: string, kind: 'summary' | 'watchlist' | 'status') {
+  const [state, setState] = useState<{ key: string; data: T | null; error: string | null }>({ key: '', data: null, error: null })
   const key = `${uid}:${list.id}`
   useEffect(() => {
     let active = true
     let revision = 0
-    const kind = list.kind === 'holdings' ? 'summary' : 'watchlist'
     const unsub = onSnapshot(doc(db, 'investmentLists', list.id, 'data', kind), async (snap) => {
       const current = ++revision
       try {
@@ -63,14 +77,14 @@ export function useInvestmentData(list: InvestmentList, uid: string) {
         if (!data && list.ownerId === uid && list.id === `${list.kind === 'holdings' ? 'holdings' : 'overreactions'}_${uid}`) {
           data = (await getDoc(doc(db, 'investing', uid, 'data', kind))).data()
         }
-        if (active && current === revision) setState({ key, summary: kind === 'summary' ? (data as HoldingsSummary | undefined) ?? null : null, watchlist: kind === 'watchlist' ? (data as Watchlist | undefined) ?? null : null, error: null })
+        if (active && current === revision) setState({ key, data: (data as T | undefined) ?? null, error: null })
       } catch (e) {
-        if (active && current === revision) setState({ key, summary: null, watchlist: null, error: message(e) })
+        if (active && current === revision) setState({ key, data: null, error: message(e) })
       }
-    }, (e) => { revision++; if (active) setState({ key, summary: null, watchlist: null, error: message(e) }) })
+    }, (e) => { revision++; if (active) setState({ key, data: null, error: message(e) }) })
     return () => { active = false; unsub() }
-  }, [key, list.id, list.kind, list.ownerId, uid])
-  return state.key === key ? { ...state, loaded: true } : { key, summary: null, watchlist: null, error: null, loaded: false }
+  }, [key, kind, list.id, list.kind, list.ownerId, uid])
+  return state.key === key ? { ...state, loaded: true } : { key, data: null, error: null, loaded: false }
 }
 
 export async function createInvestmentList(uid: string, name: string) {
