@@ -15,7 +15,7 @@ export function TodayDock({ more, moreCount }: { more: ReactNode; moreCount: num
   const { isMember } = useApp()
   const shortcuts = useTodayItems()
   const [open, setOpen] = useState<'more' | 'shortcuts' | null>(null)
-  const select = useTodaySelect()
+  const select = useTodaySelect(undefined, 'dock')
   const toggle = (which: 'more' | 'shortcuts') => {
     if (open !== which) select()
     setOpen(open === which ? null : which)

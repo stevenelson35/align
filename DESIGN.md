@@ -520,6 +520,15 @@ firestore.rules, firestore.indexes.json
 - Verified: 26 scanner unit tests, lint and TypeScript build. Actual Gemini access must be tested by the user in
   Apps Script. Save the updated source in the same project, preserving properties/trigger; no reset or deployment.
 
+### Today dock fix: implemented locally, not deployed
+- The focus change had wrapped TodayDock in a `TodaySectionScope` div, so `.day-view:has(> .today-dock)` and the
+  sticky footer stopped applying: More/Shortcuts floated mid-page and the More sheet could sit partly off-screen.
+  The dock now registers as `'dock'` without a wrapper (it must stay a direct child of `.day-view`).
+- Opening a section in More keeps re-aligning its heading for 2 s while its contents load (Investing's lists arrive
+  after the tap), stopping as soon as the person scrolls or taps the sheet.
+- Verified: 260 unit tests, tsc, lint; phone-sized browser check (footer at the screen bottom before/after page
+  scroll; More → Investing shows both lists; opening More still folds main sections).
+
 ### Today section focus and voting favorites: committed for deployment
 - Opening a section folds its siblings on the main page and inside More. Opening More or Shortcuts folds the
   main sections; Goals keep the personal summary but close logging/family goals, and Archive Pics stay open.

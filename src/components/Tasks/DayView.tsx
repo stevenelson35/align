@@ -331,12 +331,13 @@ function DayContents({ day }: { day: string }) {
         </div>
       )}
       {day === now && (
-        <TodaySectionScope id="dock"><TodayDock
+        // Not wrapped in a TodaySectionScope: the dock must stay a direct child of .day-view to stick to the bottom.
+        <TodayDock
           more={moreSections.map((id) => (
             <TodaySectionScope key={id} id={id}>{sectionFor(id)}</TodaySectionScope>
           ))}
           moreCount={moreSections.length}
-        /></TodaySectionScope>
+        />
       )}
     </section>
   )

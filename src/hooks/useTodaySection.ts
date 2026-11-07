@@ -16,9 +16,19 @@ export function useTodaySelect(collapse?: () => void, id?: string) {
       const element = section?.element.current
       const sheet = element?.closest<HTMLElement>('.today-sheet')
       const header = element?.querySelector('.section-header')
-      if (sheet && header) {
-        sheet.scrollTo({ top: sheet.scrollTop + header.getBoundingClientRect().top - sheet.getBoundingClientRect().top - 12 })
+      if (!element || !sheet || !header) return
+      const align = () => sheet.scrollTo({ top: sheet.scrollTop + header.getBoundingClientRect().top - sheet.getBoundingClientRect().top - 12 })
+      align()
+      // Sections like Investing load their contents after opening, and until then the sheet may be too short to
+      // bring the heading up. Keep aligning as the section grows, briefly, unless the person starts scrolling.
+      const grow = new ResizeObserver(align)
+      const stop = () => {
+        grow.disconnect()
+        for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const) sheet.removeEventListener(type, stop)
       }
+      for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const) sheet.addEventListener(type, stop, { passive: true })
+      grow.observe(element)
+      setTimeout(stop, 2000)
     })
   }, [today, key, section])
 }
