@@ -232,7 +232,7 @@ export function setPinnedLink(uid: string, current: string[] | undefined, linkId
   return updateDoc(householdRef, { [`members.${uid}.pinnedLinks`]: next.length ? next : deleteField() })
 }
 
-/** Pin (or unpin) a list or contact to the top of your Today sections; your pins follow you to every device. */
+/** Pin a list, contact or voting board to your Today sections; pins follow you to every device. */
 export function setPinned(uid: string, current: string[] | undefined, id: string, pinned: boolean) {
   const next = pinned ? [...new Set([...(current ?? []), id])] : (current ?? []).filter((x) => x !== id)
   return updateDoc(householdRef, { [`members.${uid}.pinned`]: next.length ? next.slice(-200) : deleteField() })

@@ -6,11 +6,13 @@ import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { agoText, eventText, STALE_MS, stuckSince } from '../../utils/location'
 import { people } from '../../utils/tasks'
 import { SectionHeader } from '../UI/SectionHeader'
+import { useTodayExpansion } from '../../hooks/useTodaySection'
 
 /** Family Map on the Today page (members only): when opened, each person's last report; Open map for the map. */
 export function FamilyMapStrip() {
   const { isMember, navigate } = useApp()
-  const [open, setOpen] = useStoredFlag('align-today-map', false)
+  const [open, saveOpen] = useStoredFlag('align-today-map', false)
+  const setOpen = useTodayExpansion(open, saveOpen)
   if (!isMember) return null
   return (
     <div className="day-section map-strip">

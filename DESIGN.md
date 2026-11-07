@@ -509,6 +509,31 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
+### Standalone Gemini diagnostic: committed for deployment
+- User's live diagnostic returned HTTP 404: `gemini-2.5-flash` unavailable to new users, with Google's error naming
+  `gemini-3.8-flash` as replacement. Updated the default; an explicit GEMINI_MODEL property still overrides it.
+  User must rerun checkGemini to confirm replacement access/quota; no scan reset or API migration is required yet.
+- `checkGemini` tests the configured key/model with synthetic facts, without Firebase/Yahoo access or scan-state
+  changes. Select it in Apps Script's editor and Run; success logs the test note, failure surfaces the API error.
+- Normal analysis and diagnostics share response parsing; blocked/empty/invalid reports are explicit failures.
+  Normal scans still log the failure and retain screening facts. Diagnostics never rewrite existing results.
+- Verified: 26 scanner unit tests, lint and TypeScript build. Actual Gemini access must be tested by the user in
+  Apps Script. Save the updated source in the same project, preserving properties/trigger; no reset or deployment.
+
+### Today section focus and voting favorites: committed for deployment
+- Opening a section folds its siblings on the main page and inside More. Opening More or Shortcuts folds the
+  main sections; Goals keep the personal summary but close logging/family goals, and Archive Pics stay open.
+- More scrolls an opened section's heading toward the top of its own sheet without scrolling the page behind it.
+  Outside clicks fold saved sheet expansion flags before unmounting; To Do's color key folds with its list.
+- Voting uses the existing per-person `pinned` preferences and shared PinButton, like lists/flashcards/contacts.
+  Favorites appear on opening Voting, persist across reloads, keep pin order, and report save errors.
+- Scanner help clarifies that the full pass retains the highest-scoring ten successfully evaluated qualifiers.
+  Disclaimer-only candidates now explicitly say no one-page note was returned, with key/log troubleshooting.
+- Verified: ranking regression and Today tests (22 tests), lint/build, and phone-sized emulator browser checks for
+  section switching, goal/photo exceptions, More/Shortcuts, outside-click saved state, pin/unpin/reload/order,
+  missing-report guidance, and Investing heading scrolling (within 13 px of the sheet top).
+- No data shape or rules changes; only the web app needs deployment for these Today/UI changes.
+
 ### Scanner progress and valuation diagnostics: implemented locally, not deployed
 - Per-list scanner progress before the first published watchlist; last-run/full-pass work, tracked failures, stale
   activity warnings and independent holdings refresh timestamps. Missing P/E and non-positive ratios are distinct.

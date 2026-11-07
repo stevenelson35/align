@@ -20,7 +20,7 @@ export interface HouseholdMember {
   newTaskDue?: 'today' | 'none'
   /** Links (links-list item ids) this person pinned to their own Align menu, in order. */
   pinnedLinks?: string[]
-  /** Lists and contacts this person pinned to the top of their Today sections (list ids and item ids). */
+  /** Lists, contacts and voting boards pinned to their Today sections (list, item and board ids). */
   pinned?: string[]
   /** Today sections this person moved into More… (section ids; absent = the defaults: gifts, lists, links…). */
   todayMore?: string[]

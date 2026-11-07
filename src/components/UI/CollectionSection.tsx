@@ -3,6 +3,7 @@ import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { HelpTopicId } from '../../help/topics'
 import { SectionHeader } from './SectionHeader'
 import { Icon, type IconName } from './Icon'
+import { useTodayExpansion } from '../../hooks/useTodaySection'
 
 /**
  * One Today section in the shared shape: your pinned items first, then a search box (with any filters), then Show
@@ -52,7 +53,8 @@ export function CollectionSection<T>({
   onAdd?: () => void
   addTitle?: string
 }) {
-  const [open, setOpen] = useStoredFlag(`align-today-${id}`, false)
+  const [open, saveOpen] = useStoredFlag(`align-today-${id}`, false)
+  const setOpen = useTodayExpansion(open, saveOpen)
   const [cards, setCards] = useStoredFlag(`align-today-${id}-cards`, false)
   const [query, setQuery] = useState('')
   const [all, setAll] = useState(false)

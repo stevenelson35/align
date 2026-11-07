@@ -4,6 +4,7 @@ import { useRewards } from '../../hooks/useRewards'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { SectionHeader } from '../UI/SectionHeader'
 import { IcePicture } from './IcePicture'
+import { useTodayExpansion } from '../../hooks/useTodaySection'
 
 /**
  * Reveal on Today (members): the family photo being uncovered, how far along it is, your moves, and the next
@@ -12,7 +13,8 @@ import { IcePicture } from './IcePicture'
 export function RewardsStrip() {
   const app = useApp()
   const r = useRewards()
-  const [open, setOpen] = useStoredFlag('align-today-rewards', false)
+  const [open, saveOpen] = useStoredFlag('align-today-rewards', false)
+  const setOpen = useTodayExpansion(open, saveOpen)
   const [error, setError] = useState<string | null>(null)
   if (!app.isMember) return null
   const play = () => app.navigate({ view: 'reveal' })

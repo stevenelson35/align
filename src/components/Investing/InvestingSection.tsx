@@ -23,6 +23,7 @@ import { AudiencePicker } from '../UI/AudiencePicker'
 import { Icon } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { ScannerStatusPanel } from './ScannerStatusPanel'
+import { useTodayExpansion } from '../../hooks/useTodaySection'
 
 const pct = (v?: number | null) => (v === null || v === undefined ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`)
 const moveClass = (v?: number | null) => (v === null || v === undefined || v === 0 ? '' : v > 0 ? ' invest-up' : ' invest-down')
@@ -30,7 +31,8 @@ const moveClass = (v?: number | null) => (v === null || v === undefined || v ===
 export function InvestingSection() {
   const app = useApp()
   const { lists, error } = useInvestmentLists(app.uid, app.member.role)
-  const [open, setOpen] = useStoredFlag(`align-today-invest-${app.uid}`, false)
+  const [open, saveOpen] = useStoredFlag(`align-today-invest-${app.uid}`, false)
+  const setOpen = useTodayExpansion(open, saveOpen)
   const [creating, setCreating] = useState(false)
   const [creatingBusy, setCreatingBusy] = useState(false)
   const [name, setName] = useState('')
@@ -259,7 +261,8 @@ function InvestmentListSection({ list, linkedSymbol }: { list: InvestmentList; l
               insider buys {f.insiderBuys6m ?? 0} (6 mo)
               {c.recovery !== undefined && c.recovery !== null && <> · AI recovery estimate {c.recovery}% (uncalibrated)</>}
             </p>
-            {c.report ? <pre className="invest-report">{c.report}</pre> : <p className="muted small">No write-up (add a Gemini key to the scanner for one-page notes).</p>}
+            {(!c.report || c.report.trim() === 'This is an automated research note, not investment advice.') && <p className="muted small">No one-page write-up was returned. Check the scanner’s GEMINI_API_KEY property and Executions logs for Gemini errors. The screening facts above are still available.</p>}
+            {c.report && <pre className="invest-report">{c.report}</pre>}
             {textAbout(c.symbol, c.name)}
           </div>
         )}

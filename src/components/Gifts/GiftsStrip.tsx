@@ -4,6 +4,7 @@ import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { canClaim, claimState, isRecipient, recipientKey, recipientLabel, secretListFor } from '../../utils/gifts'
 import { Icon } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
+import { useTodayExpansion } from '../../hooks/useTodaySection'
 
 /**
  * Gifts on the Today page: what you've said you'll get (tick when bought), then each gift list with how many ideas
@@ -12,7 +13,8 @@ import { SectionHeader } from '../UI/SectionHeader'
 export function GiftsStrip() {
   const app = useApp()
   const { lists, listItems } = useData()
-  const [open, setOpen] = useStoredFlag('align-today-gifts', false)
+  const [open, saveOpen] = useStoredFlag('align-today-gifts', false)
+  const setOpen = useTodayExpansion(open, saveOpen)
   const giftLists = lists.filter((l) => l.kind === 'gifts' && !l.giftSecret).sort((a, b) => a.name.localeCompare(b.name))
   const others = giftLists.filter((l) => !isRecipient(l, app.uid))
   const { claims } = useGiftClaims(canClaim(app.member.role) ? others.map(recipientKey) : [])

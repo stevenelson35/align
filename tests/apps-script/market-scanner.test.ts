@@ -11,6 +11,87 @@ const call = <T>(name: string, ...args: unknown[]): T => (gs[name] as (...a: unk
 
 const cfg = { MIN_DROP: 15, MAX_DROP: 40, MIN_DOLLAR_VOL: 10e6, MIN_CAP: 2e9, MAX_CAP: 50e9 }
 
+describe('published scanner ranking', () => {
+  it('keeps the highest-scoring ten across the pass, not the first ten encountered', () => {
+    const published: { universe: number; scanned: number; candidates: { symbol: string; score: number }[] }[] = []
+    const sandbox = createContext({
+      Utilities: { formatDate: () => '2026-11-07' },
+      Logger: { log: () => {} },
+      testApi: { set: (_path: string, data: typeof published[number]) => published.push(data) },
+      testUsers: [{ id: 'feed', fields: { kind: 'overreactions' } }],
+      testState: {
+        universe: Array.from({ length: 100 }, (_, i) => [`S${i}`, 5e9]),
+        scored: Array.from({ length: 15 }, (_, i) => ({ symbol: `S${i}`, score: 61 + i })),
+      },
+      testCfg: { TIME_ZONE: 'America/New_York' },
+    })
+    runInContext(readFileSync('scripts/market-scanner/market-scanner.gs', 'utf8'), sandbox)
+    runInContext('publishWatchlist_(testApi, testUsers, testState, testCfg)', sandbox)
+    expect(published).toHaveLength(1)
+    expect(published[0]).toMatchObject({ universe: 100, scanned: 100 })
+    expect(published[0].candidates.map((c) => c.symbol)).toEqual(['S14', 'S13', 'S12', 'S11', 'S10', 'S9', 'S8', 'S7', 'S6', 'S5'])
+  })
+})
+
+describe('standalone Gemini diagnostics', () => {
+  function diagnostic(response: unknown, code = 200, properties: Record<string, string> = { GEMINI_API_KEY: 'test-key', GEMINI_MODEL: 'test-model' }) {
+    const logs: unknown[][] = []
+    const requests: string[] = []
+    const sandbox = createContext({
+      PropertiesService: { getScriptProperties: () => ({ getProperties: () => properties }) },
+      Logger: { log: (...args: unknown[]) => logs.push(args) },
+      UrlFetchApp: { fetch: (url: string) => {
+        requests.push(url)
+        return { getResponseCode: () => code, getContentText: () => JSON.stringify(response) }
+      } },
+    })
+    runInContext(readFileSync('scripts/market-scanner/market-scanner.gs', 'utf8'), sandbox)
+    return { run: () => runInContext('checkGemini()', sandbox), logs, requests, sandbox }
+  }
+  it('uses the configured model and reports success without Firebase credentials or state access', () => {
+    const d = diagnostic({ candidates: [{ content: { parts: [{ text: '{"report":"Synthetic note","sentiment":8,"recovery":50}' }] }, finishReason: 'STOP' }] })
+    d.run()
+    expect(d.requests).toHaveLength(1)
+    expect(d.requests[0]).toContain('/models/test-model:generateContent')
+    expect(d.logs.at(-1)).toEqual(['Gemini succeeded: %s report characters. Synthetic test note:\n%s', 14, 'Synthetic note'])
+    expect(JSON.stringify(d.logs)).not.toContain('test-key')
+  })
+  it('fails before requesting when the key is absent', () => {
+    const d = diagnostic({}, 200, {})
+    expect(d.run).toThrow('Missing GEMINI_API_KEY')
+    expect(d.requests).toHaveLength(0)
+  })
+  it('defaults to the replacement model while normal scans preserve explicit model overrides', () => {
+    const d = diagnostic({ candidates: [{ content: { parts: [{ text: '{"report":"Synthetic note"}' }] } }] }, 200, { GEMINI_API_KEY: 'test-key' })
+    d.run()
+    expect(d.requests[0]).toContain('/models/gemini-3.8-flash:generateContent')
+    const required = { FIREBASE_API_KEY: 'demo', FIREBASE_PROJECT_ID: 'demo-align', BOT_EMAIL: 'bot@example.com', BOT_PASSWORD: 'test', TIME_ZONE: 'UTC' }
+    Object.assign(d.sandbox, { testProperties: required })
+    expect(runInContext('scanConfig_(testProperties).GEMINI_MODEL', d.sandbox)).toBe('gemini-3.8-flash')
+    Object.assign(d.sandbox, { testProperties: { ...required, GEMINI_MODEL: 'custom-model' } })
+    expect(runInContext('scanConfig_(testProperties).GEMINI_MODEL', d.sandbox)).toBe('custom-model')
+  })
+  it('surfaces API status and quota errors', () => {
+    const d = diagnostic({ error: { message: 'Quota exceeded' } }, 429)
+    expect(d.run).toThrow('failed (429)')
+    expect(d.run).toThrow('Quota exceeded')
+  })
+  it('reports blocked responses, invalid JSON and empty notes explicitly', () => {
+    expect(diagnostic({ promptFeedback: { blockReason: 'SAFETY' } }).run).toThrow('block reason: SAFETY')
+    expect(diagnostic({ candidates: [{ finishReason: 'MAX_TOKENS' }] }).run).toThrow('Finish reason: MAX_TOKENS')
+    expect(diagnostic({ candidates: [{ content: { parts: [{ text: 'not JSON' }] } }] }).run).toThrow()
+    expect(diagnostic({ candidates: [{ content: { parts: [{ text: '{"report":" "}' }] } }] }).run).toThrow('without a non-empty report')
+  })
+  it('combines output text while excluding thought parts and preserves the normal-scan fallback', () => {
+    const d = diagnostic({ candidates: [{ content: { parts: [{ thought: true, text: 'internal text' }, { text: '{"report":' }, { text: '"Synthetic note"}' }] } }] })
+    d.run()
+    const failed = diagnostic({ error: { message: 'Quota exceeded' } }, 429)
+    const result = runInContext('gemini_({GEMINI_API_KEY:"test-key", GEMINI_MODEL:"test-model", GEMINI_URL:DEFAULTS.GEMINI_URL}, "test")', failed.sandbox)
+    expect(result).toEqual({ sentiment: 5, recovery: null, report: '' })
+    expect(failed.logs[0][0]).toBe('Gemini call failed: %s')
+  })
+})
+
 describe('list-local peer comparisons', () => {
   it('compares positive forward P/Es only within the exact industry, excluding the subject', () => {
     const holdings = [

@@ -1,4 +1,4 @@
-import { Fragment, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { addDays, formatDay, today } from '../../engine/dates'
 import { shiftForward } from '../../engine/scheduling'
 import { addTaskNow, inboxFor, updateTask, withStatus } from '../../firebase/db'
@@ -33,12 +33,18 @@ import { GiftsStrip } from '../Gifts/GiftsStrip'
 import { FlashcardsSection, LinksSection, ListsSection, ProjectsSection } from '../Lists/ListSections'
 import { moreOf, TODAY_SECTIONS, type TodaySection } from '../../utils/today'
 import { TodayDock } from './TodayDock'
+import { TodaySections, TodaySectionScope } from '../../context/TodaySections'
+import { useTodaySelect } from '../../hooks/useTodaySection'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
  * was skipped, and what was pushed on, so yesterday shows what actually happened.
  */
 export function DayView({ day }: { day: string }) {
+  return <TodaySections><DayContents day={day} /></TodaySections>
+}
+
+function DayContents({ day }: { day: string }) {
   const app = useApp()
   const { tasks, lists } = useData()
   const now = today()
@@ -144,6 +150,14 @@ export function DayView({ day }: { day: string }) {
 
   // The add box opens from "+" (and stays open for several adds).
   const [adding, setAdding] = useState(false)
+  const selectTodo = useTodaySelect(() => {
+    setHide({ ...hide, todo: true, done: true, skipped: true, pushed: true })
+    setAdding(false)
+  }, 'tasks')
+  const toggleTasks = (id: string, hidden: boolean) => {
+    if (!hidden) selectTodo()
+    setHide(hidden ? { ...hide, [id]: true } : { todo: true, done: true, skipped: true, pushed: true, [id]: false })
+  }
   // The color key starts shown; hiding (or showing) it is remembered on this device.
   const [showKey, setShowKey] = useStoredFlag('align-color-key-shown', true)
   const [weatherOpen, setWeatherOpen] = useStoredFlag('align-weather-open', false)
@@ -204,7 +218,7 @@ export function DayView({ day }: { day: string }) {
       {day === now && weatherOpen && <WeatherRow weather={weather} error={weatherError} place={weatherPlace} settings={weatherSettings} />}
 
       {mainSections.map((id) => (
-        <Fragment key={id}>{sectionFor(id)}</Fragment>
+        <TodaySectionScope key={id} id={id}>{sectionFor(id)}</TodaySectionScope>
       ))}
 
       <div className="day-section">
@@ -213,7 +227,7 @@ export function DayView({ day }: { day: string }) {
           title={day < now ? 'Not Done' : 'To Do'}
           count={b.todo.length}
           help="todo"
-          onTitleClick={() => setHide({ ...hide, todo: !hide.todo })}
+          onTitleClick={() => toggleTasks('todo', !hide.todo)}
           expanded={!hide.todo}
           beside={
             <button
@@ -221,7 +235,7 @@ export function DayView({ day }: { day: string }) {
               className={`link small key-toggle${showKey ? ' on' : ''}`}
               onClick={() => {
                 // Showing the key also opens the To Do list (so the colors have cards to explain); hiding it leaves the list alone.
-                if (!showKey && hide.todo) setHide({ ...hide, todo: false })
+                if (!showKey) toggleTasks('todo', false)
                 setShowKey(!showKey)
               }}
               aria-expanded={showKey}
@@ -233,7 +247,7 @@ export function DayView({ day }: { day: string }) {
           }
         >
           {hide.todo && (
-            <button type="button" className="link small" onClick={() => setHide({ ...hide, todo: false })} aria-expanded={false}>
+            <button type="button" className="link small" onClick={() => toggleTasks('todo', false)} aria-expanded={false}>
               {b.todo.length ? `Show ${b.todo.length}` : 'Show'}
             </button>
           )}
@@ -241,7 +255,7 @@ export function DayView({ day }: { day: string }) {
             All tasks
           </button>
           {app.isMember && (
-            <button type="button" className="link small header-add" onClick={() => setAdding(!adding)} aria-expanded={adding} title="Add a to do" aria-label="Add a to do">
+            <button type="button" className="link small header-add" onClick={() => { if (!adding) toggleTasks('todo', false); setAdding(!adding) }} aria-expanded={adding} title="Add a to do" aria-label="Add a to do">
               <Icon name="plus" />
             </button>
           )}
@@ -252,8 +266,8 @@ export function DayView({ day }: { day: string }) {
           )}
         </SectionHeader>
         {/* Folded, To Do is just its header (with Show); open, its filters, key and tasks. */}
-        {!hide.todo && <WhoseChips value={todoWhose} onChange={setTodoWhose} label="Whose to-dos" />}
-        {showKey && <ColorKey />}
+        {!hide.todo && <WhoseChips value={todoWhose} onChange={(value) => { selectTodo(); setTodoWhose(value) }} label="Whose to-dos" />}
+        {!hide.todo && showKey && <ColorKey />}
         {!hide.todo && viewOnlyPeople.length > 0 && (
           <div className="also-show small" role="group" aria-label="Also show tasks you can only view">
             <span className="muted">Also show:</span>
@@ -300,29 +314,29 @@ export function DayView({ day }: { day: string }) {
       </div>
       {b.done.length > 0 && (
         <div className="day-section">
-          <SectionHeader icon="check" title="Done" count={b.done.length} onTitleClick={() => setHide({ ...hide, done: !hide.done })} expanded={!hide.done} />
+          <SectionHeader icon="check" title="Done" count={b.done.length} onTitleClick={() => toggleTasks('done', !hide.done)} expanded={!hide.done} />
           {!hide.done && <div className="task-list">{byDate(b.done).map((t) => card(t))}</div>}
         </div>
       )}
       {b.skipped.length > 0 && (
         <div className="day-section">
-          <SectionHeader icon="close" title="Won't Do" count={b.skipped.length} onTitleClick={() => setHide({ ...hide, skipped: !hide.skipped })} expanded={!hide.skipped} />
+          <SectionHeader icon="close" title="Won't Do" count={b.skipped.length} onTitleClick={() => toggleTasks('skipped', !hide.skipped)} expanded={!hide.skipped} />
           {!hide.skipped && <div className="task-list">{byDate(b.skipped).map((t) => card(t))}</div>}
         </div>
       )}
       {b.pushed.length > 0 && (
         <div className="day-section">
-          <SectionHeader icon="skip" title="Pushed to a Later Day" count={b.pushed.length} onTitleClick={() => setHide({ ...hide, pushed: !hide.pushed })} expanded={!hide.pushed} />
+          <SectionHeader icon="skip" title="Pushed to a Later Day" count={b.pushed.length} onTitleClick={() => toggleTasks('pushed', !hide.pushed)} expanded={!hide.pushed} />
           {!hide.pushed && <div className="task-list">{byDate(b.pushed).map((t) => card(t, { note: movedTo(t), dayActions: undefined }))}</div>}
         </div>
       )}
       {day === now && (
-        <TodayDock
+        <TodaySectionScope id="dock"><TodayDock
           more={moreSections.map((id) => (
-            <Fragment key={id}>{sectionFor(id)}</Fragment>
+            <TodaySectionScope key={id} id={id}>{sectionFor(id)}</TodaySectionScope>
           ))}
           moreCount={moreSections.length}
-        />
+        /></TodaySectionScope>
       )}
     </section>
   )

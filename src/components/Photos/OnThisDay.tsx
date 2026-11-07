@@ -6,6 +6,7 @@ import { PhotoViewer } from './PhotoViewer'
 import { SectionHeader } from '../UI/SectionHeader'
 import { useApp } from '../../hooks/useApp'
 import { Icon } from '../UI/Icon'
+import { useTodaySelect } from '../../hooks/useTodaySection'
 
 /**
  * "On this day": favorites taken on this date in earlier years, on the day view. With none, the nearest date within
@@ -15,7 +16,12 @@ export function OnThisDay({ day }: { day: string }) {
   const { manifest } = useFavorites()
   const { navigate } = useApp()
   // Shown each morning; Hide lasts for the rest of the day.
-  const [hidden, setHidden] = useDailyFlag('align-on-this-day-hidden', false)
+  const [hidden, saveHidden] = useDailyFlag('align-on-this-day-hidden', false)
+  const select = useTodaySelect()
+  const setHidden = (next: boolean) => {
+    if (!next) select()
+    saveHidden(next)
+  }
   const [open, setOpen] = useState<Favorite | null>(null)
   const found = manifest ? photosForDay(manifest.photos, day) : null
   const photos = found?.photos ?? []

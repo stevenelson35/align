@@ -9,6 +9,7 @@ import { GoalControl } from './GoalControl'
 import { SectionHeader } from '../UI/SectionHeader'
 import { Icon } from '../UI/Icon'
 import { GoalSparkline } from './GoalSparkline'
+import { useTodaySelect } from '../../hooks/useTodaySection'
 
 /**
  * The day's goals you can log, at the top of a day view. It starts as a summary (each goal's status and trend, like
@@ -18,15 +19,32 @@ import { GoalSparkline } from './GoalSparkline'
 export function GoalsStrip({ day }: { day: string }) {
   const { navigate, uid, member, household } = useApp()
   const { goals } = useData()
-  const [hidden, setHidden] = useDailyFlag('align-goals-hidden', true)
-  const [logAll, setLogAll] = useStoredFlag('align-goals-log-all', false)
+  const [hidden, saveHidden] = useDailyFlag('align-goals-hidden', true)
+  const [logAll, saveLogAll] = useStoredFlag('align-goals-log-all', false)
   // Optionally, everyone else's goals for the day below yours (view only: no pencil).
-  const [showFamily, setShowFamily] = useStoredFlag('align-goals-family', false)
+  const [showFamily, saveShowFamily] = useStoredFlag('align-goals-family', false)
   const [logging, setLogging] = useState<Set<string>>(new Set())
+  const select = useTodaySelect(() => {
+    saveLogAll(false)
+    saveShowFamily(false)
+    setLogging(new Set())
+  })
+  const setHidden = (next: boolean) => {
+    if (!next) select()
+    saveHidden(next)
+  }
+  const setLogAll = (next: boolean) => {
+    if (next) select()
+    saveLogAll(next)
+  }
+  const setShowFamily = (next: boolean) => {
+    if (next) select()
+    saveShowFamily(next)
+  }
   const toggleOne = (id: string) => {
     const next = new Set(logging)
     if (next.has(id)) next.delete(id)
-    else next.add(id)
+    else { select(); next.add(id) }
     setLogging(next)
   }
   // Only the goals you log (yours first, then shared ones); ones you can just view are on the Goals page. Goals that

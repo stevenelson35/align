@@ -28,7 +28,7 @@
  *   BOT_PASSWORD         its password
  *   GEMINI_API_KEY       optional: a free key from https://aistudio.google.com → the AI report and sentiment score
  * Optional tuning (defaults in brackets):
- *   GEMINI_MODEL (gemini-2.5-flash), MIN_CAP_B (2), MAX_CAP_B (50), MIN_DROP (15), MAX_DROP (40),
+ *   GEMINI_MODEL (gemini-3.8-flash), MIN_CAP_B (2), MAX_CAP_B (50), MIN_DROP (15), MAX_DROP (40),
  *   MIN_DOLLAR_VOL_M (10), MIN_SCORE (60), EARNINGS_DAYS (10), SCAN_BATCH (200), CUSTOM_UNIVERSE (tickers,comma,separated)
  * Then run installTrigger() once.
  *
@@ -43,7 +43,7 @@ var DEFAULTS = {
   AUTH_URL: 'https://identitytoolkit.googleapis.com/v1',
   FIRESTORE_URL: 'https://firestore.googleapis.com/v1',
   GEMINI_URL: 'https://generativelanguage.googleapis.com/v1beta',
-  GEMINI_MODEL: 'gemini-2.5-flash',
+  GEMINI_MODEL: 'gemini-3.8-flash',
   MIN_CAP_B: '2',
   MAX_CAP_B: '50',
   MIN_DROP: '15',
@@ -117,6 +117,23 @@ function checkValuation() {
   var h = holdingFor_('KMB')
   Logger.log('KMB: trailing P/E %s; forward P/E %s; valuation checked %s; source issue %s.',
     h.peTrailing, h.peForward, h.valuationCheckedAt, h.valuationError || 'none')
+}
+
+/** Tests only Gemini with synthetic facts; no Yahoo, Firestore, or scanner-state access. */
+function checkGemini() {
+  var props = PropertiesService.getScriptProperties().getProperties()
+  var cfg = {
+    GEMINI_API_KEY: props.GEMINI_API_KEY || '',
+    GEMINI_MODEL: props.GEMINI_MODEL || DEFAULTS.GEMINI_MODEL,
+    GEMINI_URL: DEFAULTS.GEMINI_URL,
+  }
+  if (!cfg.GEMINI_API_KEY) throw new Error('Missing GEMINI_API_KEY in Project Settings → Script properties.')
+  Logger.log('Testing Gemini model %s with synthetic example facts (not a real stock). No scan state or published results will change.', cfg.GEMINI_MODEL)
+  var result = geminiResponse_(cfg, reportPrompt_({
+    symbol: 'EXAMPLE', name: 'Synthetic Example Company (not a real stock)', drop5d: -20, price: 25,
+    facts: { revenueGrowth: 18, fcf: 360000000, fcfMargin: 9, netDebtToEbitda: 0.5, peTrailing: 20, peForward: 12, insiderBuys6m: 2 },
+  }, []))
+  Logger.log('Gemini succeeded: %s report characters. Synthetic test note:\n%s', result.report.length, result.report)
 }
 
 function scannerUsers_(api) {
@@ -852,20 +869,34 @@ function gemini_(cfg, prompt) {
   var fallback = { sentiment: 5, recovery: null, report: '' }
   if (!cfg.GEMINI_API_KEY) return fallback
   try {
-    var res = http_('post', cfg.GEMINI_URL + '/models/' + cfg.GEMINI_MODEL + ':generateContent?key=' + encodeURIComponent(cfg.GEMINI_API_KEY), {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: 'application/json', temperature: 0.4 },
-    })
-    var text = res.candidates[0].content.parts[0].text
-    var parsed = JSON.parse(text)
-    return {
-      sentiment: typeof parsed.sentiment === 'number' ? parsed.sentiment : 5,
-      recovery: typeof parsed.recovery === 'number' ? Math.round(parsed.recovery) : null,
-      report: String(parsed.report || ''),
-    }
+    return geminiResponse_(cfg, prompt)
   } catch (e) {
     Logger.log('Gemini call failed: %s', e && e.message)
     return fallback
+  }
+}
+
+/** Shared request/parser: diagnostics fail explicitly; normal scans log and keep screening facts. */
+function geminiResponse_(cfg, prompt) {
+  var res = http_('post', cfg.GEMINI_URL + '/models/' + cfg.GEMINI_MODEL + ':generateContent?key=' + encodeURIComponent(cfg.GEMINI_API_KEY), {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.4 },
+  })
+  var candidate = (res.candidates || [])[0]
+  var parts = ((candidate || {}).content || {}).parts || []
+  var text = parts.filter(function (p) { return !p.thought && typeof p.text === 'string' }).map(function (p) { return p.text }).join('')
+  if (!text.trim()) {
+    throw new Error('Gemini returned no report text. Finish reason: ' + ((candidate || {}).finishReason || 'not supplied') +
+      '; block reason: ' + ((res.promptFeedback || {}).blockReason || 'not supplied') + '.')
+  }
+  var parsed = JSON.parse(text)
+  if (!parsed || typeof parsed.report !== 'string' || !parsed.report.trim()) {
+    throw new Error('Gemini returned JSON without a non-empty report. Finish reason: ' + (candidate.finishReason || 'not supplied') + '.')
+  }
+  return {
+    sentiment: typeof parsed.sentiment === 'number' ? parsed.sentiment : 5,
+    recovery: typeof parsed.recovery === 'number' ? Math.round(parsed.recovery) : null,
+    report: parsed.report,
   }
 }
 

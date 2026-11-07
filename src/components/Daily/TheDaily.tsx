@@ -16,6 +16,7 @@ import { Icon } from '../UI/Icon'
 import { PictureLightbox } from '../UI/Picture'
 import { RevealCard } from '../UI/RevealCard'
 import { SectionHeader } from '../UI/SectionHeader'
+import { useTodayExpansion } from '../../hooks/useTodaySection'
 
 /** Days since 2026-01-01: picks the day's built-in items (the same for everyone that day). */
 const dayIndex = (day: string) => Math.max(0, diffDays('2026-01-01', day))
@@ -51,7 +52,9 @@ function useFetched<T>(day: string, key: string, on: boolean, load: (day: string
  * each with its answer or more to reveal. Folded each morning (tap the title); choose items in Settings.
  */
 export function TheDaily({ day }: { day: string }) {
-  const [hidden, setHidden] = useDailyFlag('align-daily-folded', true)
+  const [hidden, saveHidden] = useDailyFlag('align-daily-folded', true)
+  const setOpen = useTodayExpansion(!hidden, (open) => saveHidden(!open))
+  const setHidden = (next: boolean) => setOpen(!next)
   const settings = useDailySettings()
   const show = (i: DailyItem) => !hidden && !settings.hidden.has(i)
   const joke = useFetched<Joke>(day, 'joke', show('joke'), fetchJoke)

@@ -52,7 +52,7 @@ to choose its audience. Links open the latest stock details, not a saved report,
    | `BOT_PASSWORD` | its password |
    | `GEMINI_API_KEY` | *optional:* a free key from https://aistudio.google.com — turns on the one-page reports |
 
-   Optional tuning: `GEMINI_MODEL` (`gemini-2.5-flash`), `MIN_CAP_B` (2), `MAX_CAP_B` (50), `MIN_DROP` (15),
+   Optional tuning: `GEMINI_MODEL` (`gemini-3.8-flash`), `MIN_CAP_B` (2), `MAX_CAP_B` (50), `MIN_DROP` (15),
    `MAX_DROP` (40), `MIN_DOLLAR_VOL_M` (10), `MIN_SCORE` (60), `EARNINGS_DAYS` (10), `SCAN_BATCH` (200),
    `CUSTOM_UNIVERSE` (a comma-separated ticker list that replaces the automatic mid-cap universe), `TIME_ZONE`.
 4. **Open Investing in Align** (Today → More…): this creates your private **My investments** and **Post-earnings
@@ -121,6 +121,37 @@ The scanner still handles unmigrated `investing/{uid}` accounts; once a member h
   per run, with an explicit summary note if that limit is exceeded.
 
 ## Good to know
+
+### Checking Gemini separately
+
+In Apps Script, click **Executions** in the left sidebar, then click a completed execution to read its **Cloud logs**.
+Stage-1 messages and `Slice done: cursor 800/1706, 85 passers waiting, 0 scored` mean price screening is still underway;
+Gemini runs only after the cursor reaches the universe size, during candidate analysis. Look at executions from the
+previous completed pass for `Gemini call failed`, not just the latest price-screening slice.
+
+To test without waiting for a pass:
+
+1. Save this updated source in the **same** Apps Script project. Keep all properties and the trigger; do not reset.
+2. Open **Editor**, choose **checkGemini** in the function dropdown, then click **Run**.
+3. Read the **Execution log** below the editor, or the new entry in **Executions**. Success logs the model, report
+   character count, and a synthetic test note. Failure shows the API error (including HTTP status), invalid JSON,
+   empty report, or response finish/block reason. Never share your API key.
+
+If the API returns 404 saying `gemini-2.5-flash` is no longer available to new users, set **GEMINI_MODEL** to
+**gemini-3.8-flash** in Script properties and run `checkGemini` again. An explicit property overrides the source's
+default, so updating the source alone does not replace an old model property. Preserve scan state and the trigger.
+The model change's actual API access and free-tier quota must be confirmed in your Apps Script account.
+
+The test makes one request using the configured `GEMINI_API_KEY` and `GEMINI_MODEL` (default `gemini-3.8-flash`).
+It uses synthetic company facts, consumes the API's applicable quota, and does not access Yahoo, Firestore, or
+scanner state. It does not replace missing reports on existing results; a future normal analysis must generate them.
+
+- A watchlist is published after the full configured universe has been price-screened and its queued passers
+  analyzed. It keeps up to **10 highest-scoring qualifying candidates**, not the first 10 found. Source failures
+  are skipped, so this is a ranking of successfully evaluated candidates, not a guarantee of complete data coverage.
+- Each retained candidate can have a one-page Gemini note. Without `GEMINI_API_KEY`, or if Gemini fails or returns
+  no report text, only screening facts and the automated-research disclaimer are available. Check **Executions**
+  for `Gemini call failed` and verify the key/model properties. The disclaimer is not itself a generated report.
 
 - `scanStatus()` (run from the editor) publishes/logs saved progress without advancing it; `resetScanner()` starts over with a fresh
   universe.

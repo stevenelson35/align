@@ -4,6 +4,7 @@ import { useTodayItems } from '../../hooks/useTodayItems'
 import { Icon } from '../UI/Icon'
 import { ArrangeToday } from './ArrangeToday'
 import { TodayShortcuts } from './TodayShortcuts'
+import { useTodaySelect } from '../../hooks/useTodaySection'
 
 /**
  * Today's footer, always at the bottom of the screen: More… (the sections you moved off the main page, and Arrange
@@ -14,7 +15,11 @@ export function TodayDock({ more, moreCount }: { more: ReactNode; moreCount: num
   const { isMember } = useApp()
   const shortcuts = useTodayItems()
   const [open, setOpen] = useState<'more' | 'shortcuts' | null>(null)
-  const toggle = (which: 'more' | 'shortcuts') => setOpen(open === which ? null : which)
+  const select = useTodaySelect()
+  const toggle = (which: 'more' | 'shortcuts') => {
+    if (open !== which) select()
+    setOpen(open === which ? null : which)
+  }
   const dock = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
@@ -24,7 +29,11 @@ export function TodayDock({ more, moreCount }: { more: ReactNode; moreCount: num
     // phase, so a handler that stops propagation can't keep the sheet open. Dialogs opened from inside the sheet are
     // rendered inside the dock, so taps in them count as inside.
     const onClick = (e: MouseEvent) => {
-      if (e.target instanceof Node && !dock.current?.contains(e.target)) setOpen(null)
+      if (e.target instanceof Node && !dock.current?.contains(e.target)) {
+        // Fold the sheet's sections before unmounting them, so they cannot reopen from stale saved flags.
+        select()
+        setOpen(null)
+      }
     }
     window.addEventListener('keydown', onKey)
     window.addEventListener('click', onClick, true)
@@ -32,7 +41,7 @@ export function TodayDock({ more, moreCount }: { more: ReactNode; moreCount: num
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('click', onClick, true)
     }
-  }, [open])
+  }, [open, select])
 
   return (
     <div className="today-dock" ref={dock}>
