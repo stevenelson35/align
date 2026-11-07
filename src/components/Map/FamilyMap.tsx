@@ -247,7 +247,7 @@ function MySharing({ mine }: { mine?: FamilyLocation }) {
         {mine?.off
           ? 'Paused: your phone’s reports are ignored, and everyone sees your last position as paused.'
           : placed(mine) && stuckSince(mine)
-            ? `Your phone checks in, but its location hasn't changed since ${agoText(mine.tst)}: OwnTracks isn't getting new locations. ${STUCK_HELP}`
+            ? `Your phone checks in, but its newest location is from ${agoText(mine.tst)}. ${STUCK_HELP}`
             : placed(mine)
             ? `Sharing: last report ${agoText(mine.tst)}.`
             : 'Not sharing yet. The free OwnTracks app on your phone reports where you are (in the background, battery-friendly) to the family only.'}
@@ -320,7 +320,7 @@ function MySharing({ mine }: { mine?: FamilyLocation }) {
 function StuckNote({ loc, name }: { loc: FamilyLocation; name: string }) {
   return (
     <span className="map-stuck small">
-      <Icon name="warning" /> {name}’s phone checked in {agoText(loc.updatedAt!)} but has no new location since {new Date(loc.tst!).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}. {STUCK_HELP}
+      <Icon name="warning" /> {name}’s phone checked in {agoText(loc.updatedAt!)}, but its newest location is from {new Date(loc.tst!).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}. {STUCK_HELP}
     </span>
   )
 }

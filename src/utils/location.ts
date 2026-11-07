@@ -136,8 +136,8 @@ export function stuckSince(loc: Pick<FamilyLocation, 'tst' | 'updatedAt' | 'off'
   return loc.updatedAt - loc.tst > STUCK_MS && now - loc.updatedAt < 3 * 86400000 ? loc.tst : null
 }
 
-/** What to tell someone about a stuck phone. */
-export const STUCK_HELP = 'If OwnTracks’ status (ⓘ) shows “HTTP Response error 302”, open Family map on that phone and tap Set up another phone, then Set up OwnTracks, to give it the current link. Otherwise, on an iPhone: Settings → OwnTracks → Location → Always (Precise on), and Background App Refresh on; Low Power Mode pauses it.'
+/** What to tell someone about a stuck phone (the details are in Help → Family map). */
+export const STUCK_HELP = 'Open OwnTracks and keep it open until the red number on its icon is gone. Still stuck? Help → Family map.'
 
 /** "just now", "5 min ago", "3 h ago", "2 days ago". */
 export function agoText(tst: number, now = Date.now()): string {

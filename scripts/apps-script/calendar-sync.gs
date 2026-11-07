@@ -162,6 +162,10 @@ var TRAIL_POINTS = 100
 var LOCATION_MAX_ACCURACY = 250
 var LOCATION_MAX_SPEED = 70 // m/s, about 155 mph
 var LOCATION_STALE_MS = 30 * 60000
+// Arrive / leave alerts only for reports this recent. A phone that was offline (or stuck) sends its saved reports
+// later, oldest first; those still update the map and its "Arrived …" history, but alerting about last week's trips
+// would be noise.
+var ALERT_MAX_AGE_MS = 15 * 60000
 
 /** The signing secret for personal location links: LOCATION_SECRET, or else VOICE_SECRET. */
 function locationSecret_(props) {
@@ -230,9 +234,10 @@ function location_(key, body) {
   doc.inside = change.inside
   doc.events = ((prev && prev.events) || []).concat(change.events).slice(-20)
   api.commit([{ update: { name: api.docName('locations/' + uid), fields: toFields_(doc) }, updateTransforms: [{ fieldPath: 'updatedAt', setToServerValue: 'REQUEST_TIME' }] }])
-  if (change.events.length) {
+  var fresh = freshEvents_(change.events, Date.now())
+  if (fresh.length) {
     try {
-      sendAlerts_(cfg, api, uid, change.events)
+      sendAlerts_(cfg, api, uid, fresh)
     } catch (err) {
       console.log('Alerts failed: ' + err)
     }
@@ -280,6 +285,13 @@ function placeChanges_(prev, point, places) {
     if (!isNew && nowIn !== wasIn) events.push({ place: p.id, name: f.name, kind: nowIn ? 'enter' : 'leave', tst: point.tst })
   })
   return { inside: inside, events: events }
+}
+
+/** The place changes worth an alert now: from reports no older than ALERT_MAX_AGE_MS (not a phone catching up). */
+function freshEvents_(events, now) {
+  return events.filter(function (e) {
+    return now - e.tst <= ALERT_MAX_AGE_MS
+  })
 }
 
 /** Who wants to hear about this: alertPrefs whose rules match the person, place and kind (never yourself). */

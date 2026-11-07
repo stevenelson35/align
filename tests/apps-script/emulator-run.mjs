@@ -261,6 +261,18 @@ postTo({ loc: key }, { ...report, lat: 30, tst: report.tst + 660 })
 postTo({ loc: key }, { ...report, lat: 30.0005, tst: report.tst + 720 })
 loc = await latNow()
 check(loc.lat === 30.0005 && loc.trail.some((t) => t.lat === 30) && !loc.pending, 'filter: a jump the next fix confirms is accepted, with both on the trail')
+
+// A phone catching up on saved reports (offline, or an iPhone that was stuck behind a redirect): last week's trips
+// update the map and its history, but nobody gets alerts about them.
+await admin.doc('locations/steve').delete()
+const sentBefore = requests().filter((r) => r.url.includes('messages:send')).length
+const mailsBefore = mails.length
+const hoursAgo = report.tst - 2 * 3600
+postTo({ loc: key }, { ...report, lat: 28.62, tst: hoursAgo })
+postTo({ loc: key }, { ...report, lat: 28.6001, tst: hoursAgo + 60 })
+loc = await latNow()
+check(loc.inside?.[0] === 'home' && loc.events?.at(-1)?.kind === 'enter', 'catch-up: an old arrival still updates the map and its history')
+check(requests().filter((r) => r.url.includes('messages:send')).length === sentBefore && mails.length === mailsBefore, 'catch-up: but sends no notification or email')
 stub.kill()
 console.log('Calendar sync works against the emulator.')
 process.exit(0)

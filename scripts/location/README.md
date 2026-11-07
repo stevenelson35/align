@@ -46,6 +46,9 @@ seconds while travelling.
 - **Phones set up before the relay** post to the script directly. Android copes, but an iPhone gets stuck as above:
   open Align → Family map → **Set up another phone** → **Set up OwnTracks** on that phone to switch it to the relay.
   Its queued reports then go through, oldest first, and the map catches up.
+- **Catching up:** OwnTracks for iPhone only sends saved reports while it's running, so a phone with a backlog (the red
+  number on its icon) must keep OwnTracks open until the number is gone. Reports older than 15 minutes
+  (`ALERT_MAX_AGE_MS`) still update the map and its "Arrived …" history, but send no alerts.
 
 ## Places and alerts (optional)
 **Places** (geofences): Family map → Places → **+ Add place**. Name it, then set the center with **Here** (where the

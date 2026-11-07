@@ -201,6 +201,12 @@ describe('places and alerts (family map)', () => {
   const at = (lat: number, tst: number, acc = 10) => ({ lat, lon: -81.35, tst, acc })
   const prevAt = (lat: number, tst: number, inside: string[]) => ({ lat, lon: -81.35, tst, inside })
   const t0 = Date.parse('2026-10-26T12:00:00Z')
+  it('alerts only for recent reports, not a phone catching up on saved ones', () => {
+    const fresh = gs.freshEvents_ as (events: { tst: number }[], now: number) => { tst: number }[]
+    const now = t0 + 3600000
+    const events = [{ tst: now - 16 * 60000 }, { tst: now - 14 * 60000 }, { tst: now }]
+    expect(fresh(events, now)).toEqual(events.slice(1))
+  })
   it('measures distance', () => {
     expect(Math.round(dist(28.6, -81.35, 28.6018, -81.35))).toBe(200)
   })

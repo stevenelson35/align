@@ -520,7 +520,17 @@ firestore.rules, firestore.indexes.json
 - Verified: 26 scanner unit tests, lint and TypeScript build. Actual Gemini access must be tested by the user in
   Apps Script. Save the updated source in the same project, preserving properties/trigger; no reset or deployment.
 
-### OwnTracks relay for iPhones: implemented locally, not deployed
+### OwnTracks catch-up: implemented locally; script not pasted, web not deployed
+- After the relay went live (verified: 405 `[]`, not PHP source), Linda's phone sent its backlog oldest first, then
+  stopped at Nov 1 when iOS suspended OwnTracks (it only drains its queue while running). The replayed Oct 31 / Nov 1
+  trips sent Steve "arrived home" alerts.
+- `calendar-sync.gs`: `freshEvents_` alerts only for reports at most `ALERT_MAX_AGE_MS` (15 min) old; older ones still
+  update `inside` / `events`. The user must paste the script and deploy a new version.
+- Stuck-location messages are short ("open OwnTracks until the red number on its icon is gone"); details (302,
+  permissions) moved to Help → Family map.
+- Verified: 262 unit tests, tsc, lint, `npm run test:calendar` (new catch-up checks: map updates, no push or email).
+
+### OwnTracks relay for iPhones: deployed (relay verified live)
 - Linda's map location stayed at Oct 30 while her phone checked in: OwnTracks' status showed "HTTP Response error 302".
   OwnTracks iOS refuses redirects (`Connection.m` `willPerformHTTPRedirection` returns nil) and Apps Script answers
   every POST with a 302, so each send "failed", the oldest queued report was resent forever, and the script saved it
