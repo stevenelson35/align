@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { deleteMyLocation, getLocationKey, setSharing, useLocations } from '../../firebase/location'
 import { calendarSyncUrl } from '../../firebase/calendarSync'
 import { useApp } from '../../hooks/useApp'
-import { agoText, cleanTrail, directionsUrl, eventText, initialsOf, MAX_ACCURACY, metersText, ownTracksSetupLink, reportUrl, STALE_MS, STUCK_HELP, stuckSince, type FamilyLocation, type Place } from '../../utils/location'
+import { agoText, cleanTrail, directionsUrl, eventText, initialsOf, MAX_ACCURACY, metersText, ownTracksSetupLink, relayUrl, reportUrl, STALE_MS, STUCK_HELP, stuckSince, type FamilyLocation, type Place } from '../../utils/location'
 import { usePlaces } from '../../firebase/places'
 import { AlertsPanel, PlacesPanel, type PlaceDraft } from './MapPlaces'
 import { people } from '../../utils/tasks'
@@ -233,7 +233,7 @@ function MySharing({ mine }: { mine?: FamilyLocation }) {
     try {
       const r = await getLocationKey()
       if (!r.ok || !r.key) setError(r.error ?? 'That didn’t work.')
-      else setLink(reportUrl(calendarSyncUrl!, r.key))
+      else setLink(reportUrl(import.meta.env.PROD ? relayUrl(window.location.href) : calendarSyncUrl!, r.key))
     } catch (err) {
       fail(err)
     }

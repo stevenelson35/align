@@ -9,7 +9,7 @@ npm install
 npm run emulators      # terminal 1 (Auth + Firestore emulators, project demo-align)
 npm run seed           # terminal 2: test accounts + household (password "align-dev")
 npm run dev            # http://localhost:5173
-npm test               # 139 unit tests (vitest: engine, tokens, parser, utils, DB writes, Apps Script helpers)
+npm test               # 261 unit tests (vitest: engine, tokens, parser, utils, DB writes, Apps Script helpers)
 npm run test:rules     # 43 security-rule tests; starts its own emulators (stop `npm run emulators` first); must stay green
 npm run test:calendar  # Apps Script calendar sync + web app against the running emulators (after seed)
 npm run test:scanner   # Apps Script market scanner against the running emulators, canned market data (after seed)
@@ -38,6 +38,7 @@ ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web   # the USER runs this
 - Match the existing style: functional React components, typed Firestore data in `src/types.ts`, small modules, comments that explain *why*, plain user-facing wording.
 - Layout: pure logic lives in `src/engine/`, `src/chat/parser.ts`, `src/voting/tokens.ts` and `src/utils/` (unit-tested). Firestore access is only in `src/firebase/db.ts`. Live data comes through `DataProvider` (`useData()`), UI state through `AppContext` (`useApp()`).
 - Every schedule change goes through a `ShiftPreview` → `ShiftDialog` → `applySchedule` batch.
+- **OwnTracks posts to `owntracks.php`** (relay built from `scripts/location/owntracks-relay.php` with `VITE_CALENDAR_SYNC_URL`), never straight to Apps Script: iPhone OwnTracks treats the script's 302 as a failure and resends its oldest report forever.
 - `scripts/apps-script/calendar-sync.gs` and `scripts/market-scanner/market-scanner.gs` are plain ES5-style Apps Script (no modules). Keep their pure helpers testable from `tests/apps-script/`. The user pastes them into the Apps Script editor (two separate projects) and redeploys with "Manage deployments → New version" (same URL).
 - **Working with the user:**
   - Commit and push (over SSH) only when asked. They usually say "commit and push, then deploy the rules".

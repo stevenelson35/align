@@ -520,7 +520,20 @@ firestore.rules, firestore.indexes.json
 - Verified: 26 scanner unit tests, lint and TypeScript build. Actual Gemini access must be tested by the user in
   Apps Script. Save the updated source in the same project, preserving properties/trigger; no reset or deployment.
 
-### Today dock fix: implemented locally, not deployed
+### OwnTracks relay for iPhones: implemented locally, not deployed
+- Linda's map location stayed at Oct 30 while her phone checked in: OwnTracks' status showed "HTTP Response error 302".
+  OwnTracks iOS refuses redirects (`Connection.m` `willPerformHTTPRedirection` returns nil) and Apps Script answers
+  every POST with a 302, so each send "failed", the oldest queued report was resent forever, and the script saved it
+  every time (her trail was 100 copies of one report).
+- `owntracks.php` (from `scripts/location/owntracks-relay.php`, URL filled in by a Vite build plugin from
+  `.env.production.local`) posts to the script, follows the redirect and answers 200; 502 = retry, 403 = bad link.
+  Align's setup link now points at it in production (`relayUrl`); development still posts to the script.
+- Verified: unit tests, tsc, lint, build; local PHP 8.4 (curl and stream paths) against the real script (fake key
+  → 403 "Unknown location link", no writes) and a mock script (200 / 502 paths). Not yet verified: that Turbify
+  runs PHP; after deploy:web, `curl -i https://align.itsallonesong.com/owntracks.php` must answer 405 `[]`.
+- Each iPhone set up earlier must re-run Set up OwnTracks once to get the relay link.
+
+### Today dock fix: deployed
 - The focus change had wrapped TodayDock in a `TodaySectionScope` div, so `.day-view:has(> .today-dock)` and the
   sticky footer stopped applying: More/Shortcuts floated mid-page and the More sheet could sit partly off-screen.
   The dock now registers as `'dock'` without a wrapper (it must stay a direct child of `.day-view`).

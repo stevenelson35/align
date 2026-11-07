@@ -1,8 +1,9 @@
 # Family map (OwnTracks → Align)
 
 Each phone runs the free **OwnTracks** app, which reports its location in the background (battery-friendly: it
-reports real moves, not a constant stream). It posts to the family's Google Apps Script web app — the same script and
-URL as "Refresh calendar" and Alexa — which writes `locations/{uid}` in Firestore as the household's helper account.
+reports real moves, not a constant stream). It posts to `owntracks.php` on the Align site, which passes each report on
+to the family's Google Apps Script web app — the same script and URL as "Refresh calendar" and Alexa — which writes
+`locations/{uid}` in Firestore as the household's helper account.
 Align's **Family map** (menu → Family map, members only) shows everyone on an OpenStreetMap map. Nothing costs money.
 
 ## 1. Update the Apps Script (once)
@@ -12,7 +13,10 @@ Align's **Family map** (menu → Family map, members only) shows everyone on an 
 3. **Deploy → Manage deployments → ✏️ → Version: New version → Deploy** (same URL).
 
 ## 2. Deploy the rules, then the web app
-`firebase deploy --only firestore:rules` (adds `locations`), then `deploy:web`.
+`firebase deploy --only firestore:rules` (adds `locations`), then `deploy:web`. The build writes `dist/owntracks.php`
+(the relay, from `owntracks-relay.php`) with `VITE_CALENDAR_SYNC_URL` filled in, and the upload puts it next to
+`index.html`. Check it runs: `curl -i https://align.itsallonesong.com/owntracks.php` should answer `405` with `[]`, not
+show PHP source.
 
 ## 3. Each person, on their phone
 1. Open Align → menu → **Family map** → **Set up my phone**.
@@ -23,7 +27,7 @@ Align's **Family map** (menu → Family map, members only) shows everyone on an 
 4. In OwnTracks, tap the upload (publish) button once to send a first report; the map shows it within seconds.
 
 By hand instead: OwnTracks → Preferences → Connection → Mode **HTTP**, URL = the personal link from "Set it up by hand
-instead" (it ends in `?loc=<uid>.<signature>`). Monitoring "Significant" saves battery; "Move" reports every few
+instead" (`…/owntracks.php?loc=<uid>.<signature>`). Monitoring "Significant" saves battery; "Move" reports every few
 seconds while travelling.
 
 ## How it works
@@ -32,8 +36,16 @@ seconds while travelling.
 - `location_` keeps the latest point (lat, lon, accuracy, battery, time) and the last 24 hours (≤100 points) of trail.
 - **Pause sharing** sets `off: true`; the script then ignores that phone, and the rules stop the helper account from
   writing it or unpausing it. **Delete my location** removes the document.
-- Apps Script answers every POST with a redirect; the report is saved before the redirect, so even if a phone shows a
-  connection warning, check the map before troubleshooting.
+- **Why the relay:** Apps Script answers every POST with a 302 redirect to its response. OwnTracks for iPhone doesn't
+  follow redirects, so it counts every send as failed ("HTTP Response error 302"): the report stays first in its queue
+  and is resent forever, and the map shows that first report (its time never changes) no matter where the phone goes.
+  `owntracks.php` posts to the script itself, follows the redirect and answers 200, so the phone moves on. It only
+  posts to the one built-in URL, accepts only `?loc=` keys shaped like `uid.<32 hex>`, and caps reports at 64 KB.
+  It answers 502 (OwnTracks retries later) when the script fails or is busy, and 403 (OwnTracks drops the report and
+  shows the error) for a link the script doesn't recognize. It uses curl, or PHP's own HTTP client without it.
+- **Phones set up before the relay** post to the script directly. Android copes, but an iPhone gets stuck as above:
+  open Align → Family map → **Set up another phone** → **Set up OwnTracks** on that phone to switch it to the relay.
+  Its queued reports then go through, oldest first, and the map catches up.
 
 ## Places and alerts (optional)
 **Places** (geofences): Family map → Places → **+ Add place**. Name it, then set the center with **Here** (where the

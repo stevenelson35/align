@@ -137,7 +137,7 @@ export function stuckSince(loc: Pick<FamilyLocation, 'tst' | 'updatedAt' | 'off'
 }
 
 /** What to tell someone about a stuck phone. */
-export const STUCK_HELP = 'On an iPhone: Settings → OwnTracks → Location → Always (Precise on), and Background App Refresh on; Low Power Mode pauses it.'
+export const STUCK_HELP = 'If OwnTracks’ status (ⓘ) shows “HTTP Response error 302”, open Family map on that phone and tap Set up another phone, then Set up OwnTracks, to give it the current link. Otherwise, on an iPhone: Settings → OwnTracks → Location → Always (Precise on), and Background App Refresh on; Low Power Mode pauses it.'
 
 /** "just now", "5 min ago", "3 h ago", "2 days ago". */
 export function agoText(tst: number, now = Date.now()): string {
@@ -158,7 +158,14 @@ export const initialsOf = (name: string) =>
     .map((w) => w[0]!.toUpperCase())
     .join('') || '?'
 
-/** The personal address OwnTracks posts to: the Apps Script web app with the person's signed key. */
+/**
+ * Where OwnTracks posts: owntracks.php next to Align's page, which passes reports on to the Apps Script. OwnTracks
+ * for iPhone treats the script's own 302 answer as a failure and resends its oldest report forever, so phones must
+ * not post to the script directly (scripts/location/README.md).
+ */
+export const relayUrl = (pageUrl: string) => new URL('owntracks.php', pageUrl.split('#')[0]).href
+
+/** The personal address OwnTracks posts to: the relay (or, in development, the Apps Script) with the person's signed key. */
 export const reportUrl = (webAppUrl: string, key: string) => `${webAppUrl}${webAppUrl.includes('?') ? '&' : '?'}loc=${encodeURIComponent(key)}`
 
 /**

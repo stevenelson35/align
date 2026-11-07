@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { agoText, cleanTrail, directionsUrl, initialsOf, ownTracksSetupLink, reportUrl, stuckSince } from './location'
+import { agoText, cleanTrail, directionsUrl, initialsOf, ownTracksSetupLink, relayUrl, reportUrl, stuckSince } from './location'
 
 describe('family map helpers', () => {
   it('says how long ago', () => {
@@ -21,6 +21,11 @@ describe('family map helpers', () => {
     expect(link.startsWith('owntracks:///config?inline=')).toBe(true)
     const config = JSON.parse(atob(link.split('inline=')[1]))
     expect(config).toMatchObject({ _type: 'configuration', mode: 3, url, tid: 'SN', monitoring: 1 })
+  })
+  it('posts through the relay next to the page, whatever the route', () => {
+    expect(relayUrl('https://align.itsallonesong.com/#/map')).toBe('https://align.itsallonesong.com/owntracks.php')
+    expect(relayUrl('https://example.com/align/index.html?x=1#/task/a')).toBe('https://example.com/align/owntracks.php')
+    expect(reportUrl(relayUrl('https://align.itsallonesong.com/'), 'uid.abc')).toBe('https://align.itsallonesong.com/owntracks.php?loc=uid.abc')
   })
   it('links to directions', () => {
     expect(directionsUrl(28.6, -81.35)).toBe('https://www.google.com/maps/dir/?api=1&destination=28.6,-81.35')
