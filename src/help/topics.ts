@@ -63,14 +63,15 @@ export const HELP_TOPICS: HelpTopic[] = [
     body: [
       'Today shows one day; ‹ and › go to other days (past days show what was done, skipped or pushed then). From top to bottom:',
       '• Goals: a summary of the goals you log: where each stands (“4 to go”, Done) and a small trend chart. The pencil beside a goal opens logging for just that one; Log all shows every goal ready to log (remembered on this device). Goals that don’t run that day (a weekdays-only walk on Saturday) show greyed as “Not today”. Folded each morning.',
-      '• Family Map: where everyone sharing their location was last seen; tap a name to open the map on them.',
+      '• Family Map: pin the people you check most with ☆, search by name, or Show all to see everyone’s last location. Tap a name to open the map on them. Map pins are separate from contact pins.',
+      '• Reveal: the expanded panel shows the hidden family picture, with progress, your moves and Play underneath.',
       '• Gifts: what you’re getting for others (tick when bought) and each gift list.',
       '• To Do filters by All / Mine / Family / Shared, like the Tasks page and Goals (remembered on this device); picking one opens the list. Folded, it shows “Show 28”.',
       '• The weather icon beside the date (Today only) shows the weather now; tap it for the high / low, chance of rain and a link to the full forecast. Settings → Weather picks the place (automatic: where you are while you share your location on the family map, otherwise Orlando) and the forecast site. Data from Open-Meteo (©), refreshed every 30 minutes.',
       '• The footer at the bottom of Today has More… and Shortcuts…; tap either again, its title, ✕, or anywhere outside it to close it. More… holds the sections you use less (Gifts, Lists, Links, Projects, Flashcards and Voting to start; watch lists and other pick lists are in Lists); Arrange Today, inside it, moves any section between the main page and More… (for you, on every device).',
       '• Shortcuts… holds the people and links you use most: open one and tap “Add to Shortcuts”. A person gets call / text / email; a link opens in one tap. Reorder… moves them up or down (or ✕ removes one).',
       '• Gifts, Lists, Links, Projects, Flashcards and Contacts each have + in the heading: a new list, project, set or gift list, or a new link or person (pick which list it goes in).',
-      '• Contacts, Lists, Links, Projects, Flashcards and Voting all open the same way: what you pinned (☆) first, then a search box (with filters: contact lists and tags; Mine / Family / Shared for lists), then Show all to scroll through everything right here. Pins are yours and follow you across devices. Lists, Projects and Flashcards show as rows or cards. “All contacts” opens the contacts page (import, export, editing).',
+      '• Family Map, Contacts, Lists, Links, Projects, Flashcards and Voting all open the same way: an inset panel with what you pinned (☆) first, then a search box (with filters: contact lists and tags; Mine / Family / Shared for lists), then Show all to scroll through everything right here. Pins are yours and follow you across devices. Lists, Projects and Flashcards show as rows or cards. “All contacts” opens the contacts page (import, export, editing).',
       '• On This Day / Archive Pics: favorite family photos from this date in earlier years (see Archive Pics).',
       '• The Daily: a word, joke, puzzles, pictures and more, with answers to reveal. Folded each morning.',
       '• To Do: the day’s tasks (see To Do), then Done, Won’t Do and Pushed to a Later Day.',
@@ -297,6 +298,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     tip: 'Every goal you meet is a spark. Sparks are moves in a match game that uncovers a family photo together, and the family’s total unlocks rewards.',
     body: [
       'Sparks: each goal you meet earns one (up to 5 a day), and finishing all of your day’s goals earns 2 more. They’re banked: never spent and never lost.',
+      'On Today, open Reveal for an inset picture panel with progress, your moves and the Play link below the picture.',
       'Reveal: a family photo, picked by chance, sits under frosted ice, and the game board is laid right on it. Each spark is one move: swipe a gem toward a neighbor (or tap one, then the other) to line up 3 or more of a color. They burst, the gems above fall, and chains keep going. Each burst breaks the frost under it (thicker frost takes more), and a broken square stays clear: that bit of the photo shows around the gems that fall onto it. Hold Peek to fade the gems and look. Everyone gets 3 moves when a new reveal starts.',
       '• 4 in a row makes a gem with stripes that clears its whole row or column; an L or T makes a bomb that clears around it; 5 in a row makes a rainbow wheel that clears every gem of the color you swap it with.',
       'The photo is shared: whatever anyone breaks stays broken, and two people can play at the same time. When the last ice breaks, everyone sees the photo uncovered, with who helped.',
@@ -324,6 +326,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     tip: 'Where everyone who shares their location is, from the free OwnTracks app on their phone. Only members of the household see it.',
     body: [
       'Menu → Family map shows a pin for each person sharing (faded when the last report is more than 2 hours old), how long ago it was, battery, and how accurate it is. Show centers on them, Trail draws their last day, Directions opens Google Maps.',
+      'On Today, Family Map shows your pinned people first, then a name search and Show all. ☆ pins someone; ★ unpins them. These pins follow you across devices and are separate from contact pins.',
       '• To share: under Your location, tap Set up my phone, install OwnTracks (iPhone or Android), tap Set up OwnTracks on the phone, and allow location Always. It reports in the background and saves battery by only reporting real moves.',
       '• If a phone checks in but its newest location is old, Align says so on the map. A red number on the OwnTracks icon is reports waiting to send: iPhones only send them while OwnTracks is open, oldest first, so open it and keep it open until the number is gone. Catching up updates the map but sends no arrive / leave alerts.',
       '• Still stuck? Look at OwnTracks’ status (ⓘ). “HTTP Response error 302” means an old link: on that phone, Family map → Set up another phone → Set up OwnTracks. Otherwise, on an iPhone: Settings → OwnTracks → Location → Always (Precise on), and Background App Refresh on; Low Power Mode pauses it.',

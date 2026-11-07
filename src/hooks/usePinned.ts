@@ -1,7 +1,7 @@
 import { setPinned } from '../firebase/db'
 import { useApp } from './useApp'
 
-/** Your pins (lists, contacts and voting boards on Today), saved for every device. */
+/** Your pins (lists, contacts, map people and voting boards on Today), saved for every device. */
 export function usePinned() {
   const { uid, member } = useApp()
   const ids = member.pinned ?? []

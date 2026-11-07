@@ -1853,6 +1853,12 @@ a.nav-link {
 .day-section {
   margin: 0 0 1.25rem;
 }
+.section-content {
+  min-width: 0;
+  margin-inline-start: 0.5rem;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 2px solid var(--border);
+}
 
 /* An entry's view (EntryPanel / EntryExtras): title, facts, a note sized to its text, links, pictures, comments */
 .entry-panel {
@@ -3089,6 +3095,27 @@ a.nav-link {
   margin: 0.4rem 0 0.2rem;
   font-weight: 600;
 }
+.collection-pinned {
+  margin-bottom: 0.75rem;
+}
+.collection-pinned-items {
+  padding-inline-start: 0.5rem;
+}
+.map-strip .map-person {
+  padding: 0.45rem 0.6rem;
+}
+.map-strip .map-person > .grow {
+  min-width: 0;
+  flex-basis: 8rem;
+  overflow-wrap: anywhere;
+}
+.collection-search input {
+  min-width: 0;
+}
+.collection-modes {
+  display: inline-flex;
+  flex: none;
+}
 .collection-search {
   margin: 0.4rem 0;
   gap: 0.5rem;
@@ -3778,9 +3805,15 @@ input[type='color'].color-input {
 /* Reveal on Today, the reveal page and the finale. */
 .rewards-today {
   display: grid;
-  grid-template-columns: minmax(7rem, 40%) 1fr;
-  gap: 0.75rem;
-  align-items: center;
+  gap: 0.5rem;
+}
+.rewards-today,
+.rewards-start {
+  width: min(100%, 20rem);
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
 }
 .rewards-thumb {
   padding: 0;
@@ -3788,8 +3821,8 @@ input[type='color'].color-input {
   border: none;
   cursor: pointer;
 }
-.rewards-facts p {
-  margin: 0 0 0.25rem;
+.rewards-facts {
+  margin: 0;
 }
 .rewards-start {
   display: grid;
@@ -4194,7 +4227,8 @@ input.ladder-sparks {
 :root[data-theme='dark'] .map-stuck {
   color: #d29922;
 }
-.map-people .map-stuck {
+.map-people .map-stuck,
+.map-strip .map-stuck {
   margin-top: 0.15rem;
 }
 

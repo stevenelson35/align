@@ -7,8 +7,10 @@ import { agoText, eventText, STALE_MS, stuckSince } from '../../utils/location'
 import { people } from '../../utils/tasks'
 import { SectionHeader } from '../UI/SectionHeader'
 import { useTodayExpansion } from '../../hooks/useTodaySection'
+import { CollectionContents, PinButton } from '../UI/CollectionSection'
+import { usePinned } from '../../hooks/usePinned'
 
-/** Family Map on the Today page (members only): when opened, each person's last report; Open map for the map. */
+/** Family Map on Today (members only): pinned people, search and everyone's last report; Open map for the map. */
 export function FamilyMapStrip() {
   const { isMember, navigate } = useApp()
   const [open, saveOpen] = useStoredFlag('align-today-map', false)
@@ -33,18 +35,29 @@ export function FamilyMapStrip() {
 function WhoIsWhere() {
   const app = useApp()
   const { locations, error } = useLocations()
+  const pins = usePinned()
+  const [pinError, setPinError] = useState<string | null>(null)
   const [now] = useState(() => Date.now())
   const places = usePlaces()
   const at = (ids?: string[]) => (ids ?? []).map((id) => places.find((p) => p.id === id)?.name).filter(Boolean).join(', ')
   const byUid = new Map(locations.map((l) => [l.uid, l]))
-  if (error) return <p className="error small">{error}</p>
+  const members = people(app.household, true)
+  const pinId = (uid: string) => `map-person:${uid}`
   return (
-    <ul className="map-people small">
-      {people(app.household, true).map(([uid, m]) => {
+    <CollectionContents
+      id="map"
+      title="Family Map"
+      items={members}
+      pinned={members.filter(([uid]) => pins.isPinned(pinId(uid))).sort(([a], [b]) => pins.order(pinId(a)) - pins.order(pinId(b)))}
+      itemKey={([uid]) => uid}
+      matches={([, m], q) => q.toLowerCase().split(/\s+/).every((word) => m.displayName.toLowerCase().includes(word))}
+      searchHint="Find a family member…"
+      filters={<>{error && <p className="error small">{error}</p>}{pinError && <p className="error small">{pinError}</p>}</>}
+      render={([uid, m]) => {
         const loc = byUid.get(uid)
         const tst = loc && typeof loc.tst === 'number' ? loc.tst : undefined
         return (
-          <li key={uid} className={`map-person${tst && now - tst > STALE_MS ? ' stale' : ''}`}>
+          <div className={`collection-row map-person small${tst && now - tst > STALE_MS ? ' stale' : ''}`}>
             <span className="map-dot" style={{ background: m.color }} aria-hidden="true" />
             <span className="grow">
               {tst ? (
@@ -68,9 +81,13 @@ function WhoIsWhere() {
                 Show
               </button>
             )}
-          </li>
+            <PinButton pinned={pins.isPinned(pinId(uid))} onToggle={() => {
+              setPinError(null)
+              void pins.toggle(pinId(uid)).catch((err: unknown) => setPinError(err instanceof Error ? err.message : String(err)))
+            }} label={m.displayName} />
+          </div>
         )
-      })}
-    </ul>
+      }}
+    />
   )
 }

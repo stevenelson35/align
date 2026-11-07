@@ -73,7 +73,7 @@ export function GoalsStrip({ day }: { day: string }) {
         </button>
       </SectionHeader>
       {(!hidden || !forDay.length) && (
-        <>
+        <div className="section-content">
           {day > today() && <p className="muted small">Log goals on the day.</p>}
           <div className="goal-list">
             {forDay.map((g) =>
@@ -112,7 +112,7 @@ export function GoalsStrip({ day }: { day: string }) {
                 ))}
             </>
           )}
-        </>
+        </div>
       )}
     </div>
   )

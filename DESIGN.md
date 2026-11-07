@@ -509,6 +509,15 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
+### Today panel layout: ready for web deployment
+- Goals and collection sections have a small inset and quiet left border; pinned rows are indented below Pinned.
+- Family Map uses the same pinned/search/Show all body as Contacts. Map pins use `map-person:<uid>` in the existing
+  personal pins field, independently of contact pins. Location/place listeners still mount only while expanded.
+- Reveal is a bordered, inset card with the picture above progress, moves and Play.
+- Verified: build, lint, 262 tests; emulator browser checks at 320, 390 and 1280 px (no panel overflow), dark mode,
+  map pin/unpin and persistence, name search and empty results, Contacts query retention, Goals logging reset,
+  and Reveal's picture/text ordering. No rules changes or deployment required beyond the web upload.
+
 ### Standalone Gemini diagnostic: committed for deployment
 - User's live diagnostic returned HTTP 404: `gemini-2.5-flash` unavailable to new users, with Google's error naming
   `gemini-3.8-flash` as replacement. Updated the default; an explicit GEMINI_MODEL property still overrides it.
