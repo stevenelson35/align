@@ -13,8 +13,10 @@ quotas (Spark projects stop accepting requests at quota limits rather than silen
 1. In Google Cloud Console for the same Firebase project, create a service account for the Wordle endpoint and grant it
    **Cloud Datastore User**. Create a JSON key and place it somewhere outside the Align document root. Do not commit or
    send the key.
-2. Create `.align-wordle-config.php` in the parent directory of the document root, with permissions limited to the
-   hosting account. For example:
+2. Create `.align-wordle-config.php` in the hosting account's home directory, outside `public_html`, with permissions
+   limited to the hosting account. For the Turbify layout where `wordle.php` is at
+   `/home/ACCOUNT/public_html/align.itsallonesong.com/wordle.php`, the endpoint looks for
+   `/home/ACCOUNT/.align-wordle-config.php`. For example:
 
    ```php
    <?php
@@ -22,7 +24,7 @@ quotas (Spark projects stop accepting requests at quota limits rather than silen
        'projectId' => 'your-firebase-project-id',
        'apiKey' => 'your-firebase-web-api-key',
        'allowedOrigin' => 'https://align.itsallonesong.com',
-       'serviceAccountFile' => '/home/your-account/.align-wordle-service-account.json',
+       'serviceAccountFile' => '/home/your-account/private/align-wordle-service-account.json',
        'dailySecret' => 'replace-with-at-least-32-random-characters',
        'dailyWords' => [
            'apple', 'brave', 'cabin', 'dance', 'eager', 'flame', 'grape', 'happy',

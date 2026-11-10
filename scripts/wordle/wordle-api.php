@@ -16,7 +16,7 @@ function fail($status, $message) {
 }
 
 function config() {
-    $path = dirname(__DIR__) . '/.align-wordle-config.php';
+    $path = dirname(__DIR__, 2) . '/.align-wordle-config.php';
     if (!is_file($path)) fail(503, 'Wordle is not configured on this server yet.');
     $config = require $path;
     if (!is_array($config)) fail(503, 'Wordle server configuration is invalid.');
