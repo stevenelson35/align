@@ -34,13 +34,31 @@ quotas (Spark projects stop accepting requests at quota limits rather than silen
    ];
    ```
 
-   Use the Firebase web API key from the production app configuration. It is not a service credential. Generate the
-   `dailySecret` on the server with `php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"`. Replace the sample daily
-   words with a substantially larger, family-friendly list of unique five-letter words. The secret HMAC picks a
-   stable answer for each date; the endpoint saves that answer in the server-only `wordleSecrets` collection.
+   Set `apiKey` to the exact production Firebase web API key in `.env.production.local`
+   (`VITE_FIREBASE_API_KEY`) for the same project. This is a public web-app key, not a service credential. A mismatch
+   makes the endpoint reject an otherwise valid sign-in token.
+
+   Set `serviceAccountFile` to the exact absolute path of the JSON key file on the server. Confirm the file exists,
+   is readable by PHP, and is outside the document root; the endpoint deliberately refuses keys in the public web
+   directory. Keep both the JSON key and this config out of the repository.
+
+   Generate the `dailySecret` on the server with `php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"`. Replace the
+   sample daily words with a substantially larger, family-friendly list of unique five-letter words. The secret HMAC
+   picks a stable answer for each date; the endpoint saves that answer in the server-only `wordleSecrets` collection.
 3. Confirm Turbify runs PHP 8.1+ with cURL and OpenSSL. After building and uploading, `GET
    https://align.itsallonesong.com/wordle.php` should return JSON `405`, never PHP source. A POST without a valid
    Firebase ID token should return JSON `401`.
+
+## Troubleshooting
+
+- **“Your sign-in expired”**: verify `.align-wordle-config.php` uses the production web app `apiKey` from
+  `.env.production.local`, and that the key belongs to the configured Firebase `projectId`.
+- **“The private Wordle service-account file is missing or is inside the public web root”**: verify the
+  `serviceAccountFile` absolute path and filename, then confirm the file exists and PHP can read it outside the
+  document root.
+- Turbify may send JSON error bodies with HTTP `200` instead of the status selected by PHP. The browser checks the
+  JSON `error` field as well as the HTTP status, so use the visible error message to diagnose setup rather than
+  assuming a `200` response means the action succeeded.
 
 ## Build and deploy
 

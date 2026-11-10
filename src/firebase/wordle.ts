@@ -28,7 +28,8 @@ async function wordleRequest<T>(action: string, values: Record<string, unknown> 
     body: JSON.stringify({ action, ...values }),
   })
   const result = await response.json() as { error?: string } & T
-  if (!response.ok) throw new Error(result.error ?? `Wordle service returned ${response.status}.`)
+  if (typeof result.error === 'string') throw new Error(result.error)
+  if (!response.ok) throw new Error(`Wordle service returned ${response.status}.`)
   return result
 }
 
