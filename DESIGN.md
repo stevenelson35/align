@@ -523,7 +523,8 @@ firestore.rules, firestore.indexes.json
 ### Wordle: implemented locally; server setup and deployment remain
 - Games includes a shared daily puzzle, sender-authored 2–12 letter challenges, and live group challenges with a
   server-random five-letter answer. The server keeps answers and guessed words private; live progress shares only
-  colored mark rows with the sender and players. Each player's timer starts when they open their own game.
+  compact colored mark rows for opponents above the active player's full board. Each player's timer starts when they
+  open their own game.
 - Five-letter games use server-installed answer and accepted-guess text files, enforce accepted guesses and hard
   mode, and mark hard-mode leaderboard scores.
 - The list files must be downloaded from the sources in `scripts/wordle/README.md` and placed outside the document

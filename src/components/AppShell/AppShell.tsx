@@ -197,7 +197,7 @@ export function AppShell({ uid, household, member }: Props) {
             {data.loaded && !['today', 'list', 'task'].includes(route.view) && <PageBar crumbs={pageCrumbs} />}
             {data.loaded ? (
               <>
-                {app.isMember && <PendingGameInvitations />}
+                {app.isMember && <PendingGameInvitations activeChallengeId={route.view === 'games' ? route.challengeId : undefined} />}
                 <MainView />
               </>
             ) : <AppSkeleton note="Loading your lists…" />}

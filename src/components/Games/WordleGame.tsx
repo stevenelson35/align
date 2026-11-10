@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import {
   createWordleChallenge,
   getDailyWordle,
@@ -26,6 +26,8 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [guessError, setGuessError] = useState<string | null>(null)
+  const guessInput = useRef<HTMLInputElement>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [word, setWord] = useState('')
   const [randomWord, setRandomWord] = useState(false)
@@ -79,18 +81,20 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     if (!game || game.complete || submitting) return
     const normalized = normalizeWord(guess)
     if (!validWord(normalized, game.length)) {
-      setError(`Enter a ${game.length}-letter word.`)
+      setGuessError(`Enter a ${game.length}-letter word.`)
+      requestAnimationFrame(() => guessInput.current?.focus())
       return
     }
     if (game.length === 5) {
       const violation = hardModeError(game.guesses, normalized)
       if (violation) {
-        setError(`Hard mode: ${violation}`)
+        setGuessError(`Hard mode: ${violation}`)
+        requestAnimationFrame(() => guessInput.current?.focus())
         return
       }
     }
     setSubmitting(true)
-    setError(null)
+    setGuessError(null)
     try {
       let next: WordleGameState
       if (game.mode === 'daily') next = await guessDailyWordle(normalized)
@@ -112,9 +116,10 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setGuessError(err instanceof Error ? err.message : String(err))
     } finally {
       setSubmitting(false)
+      requestAnimationFrame(() => guessInput.current?.focus())
     }
   }
 
@@ -174,17 +179,6 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
       {loading && <p className="muted">Opening Wordle…</p>}
       {error && <p className="error small" role="alert">{error}</p>}
       {challengeProgressError && <p className="error small">{challengeProgressError}</p>}
-
-      {challenge?.payload?.puzzleId && (
-        <article className="card">
-          <h3>Live challenge progress</h3>
-          <WordleProgressBoard
-            participants={challenge.players ?? [challenge.to]}
-            progress={challengeProgress.filter((item) => item.groupId === challenge.payload?.puzzleId)}
-            members={app.household.members}
-          />
-        </article>
-      )}
 
       {!challenge && (
         <article className="card game-invite-form">
@@ -273,6 +267,14 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
               <div className="wordle-clock" aria-label="Elapsed time">{seconds(elapsed)}</div>
             </header>
 
+            {challenge?.payload?.puzzleId && (challenge.players ?? [challenge.to]).some((uid) => uid !== app.uid) && (
+              <WordleProgressBoard
+                participants={(challenge.players ?? [challenge.to]).filter((uid) => uid !== app.uid)}
+                progress={challengeProgress.filter((item) => item.groupId === challenge.payload?.puzzleId)}
+                members={app.household.members}
+              />
+            )}
+
             <div className="wordle-board" aria-label="Wordle guesses" aria-live="polite">
               {Array.from({ length: WORDLE_MAX_GUESSES }, (_, row) => {
                 const submitted = game.guesses[row]
@@ -292,16 +294,21 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
 
             {!game.complete && (
               <form className="wordle-guess-form" onSubmit={(event) => { event.preventDefault(); void submitGuess() }}>
+                {guessError && <p className="wordle-guess-error" role="alert">{guessError}</p>}
                 <label className="small">
                   Guess {game.guesses.length + 1} of {WORDLE_MAX_GUESSES}
                   <input
+                    ref={guessInput}
                     type="text"
                     autoComplete="off"
                     autoCapitalize="characters"
                     spellCheck={false}
                     maxLength={game.length}
                     value={guess}
-                    onChange={(event) => setGuess(event.target.value.replace(/[^a-z]/gi, '').slice(0, game.length).toUpperCase())}
+                    onChange={(event) => {
+                      setGuess(event.target.value.replace(/[^a-z]/gi, '').slice(0, game.length).toUpperCase())
+                      setGuessError(null)
+                    }}
                     onKeyDown={onGuessKeyDown}
                     aria-label={`${game.length}-letter guess`}
                     disabled={submitting}

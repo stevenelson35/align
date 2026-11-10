@@ -7,11 +7,12 @@ import { WordleProgressBoard } from './WordleProgressBoard'
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 
 /** A small, app-wide inbox for game invitations and live Wordle progress. */
-export function PendingGameInvitations() {
+export function PendingGameInvitations({ activeChallengeId }: { activeChallengeId?: string }) {
   const app = useApp()
   const { challenges, error } = usePendingGameChallenges(app.uid, app.isMember)
   const { challenges: wordleChallenges, error: wordleError } = useWordleChallengeUpdates(app.uid, app.isMember)
   const { progress, error: progressError } = useWordleChallengeProgress(app.uid, app.isMember)
+  const visibleChallenges = challenges.filter((challenge) => challenge.id !== activeChallengeId)
   const groups = new Map<string, GameChallenge[]>()
   for (const challenge of wordleChallenges) {
     const puzzleId = challenge.payload?.puzzleId
@@ -20,15 +21,15 @@ export function PendingGameInvitations() {
     group.push(challenge)
     groups.set(puzzleId, group)
   }
-  const liveGroups = [...groups.values()]
-  if (!challenges.length && !error && !liveGroups.length && !wordleError && !progressError) return null
+  const liveGroups = [...groups.values()].filter((group) => !group.some((challenge) => challenge.id === activeChallengeId))
+  if (!visibleChallenges.length && !error && !liveGroups.length && !wordleError && !progressError) return null
   return (
     <section className="game-invitations card" aria-label="Game invitations">
-      <strong><Icon name="sparkle" /> Game challenges {challenges.length ? `(${challenges.length})` : ''}</strong>
+      <strong><Icon name="sparkle" /> Game challenges {visibleChallenges.length ? `(${visibleChallenges.length})` : ''}</strong>
       {error && <p className="error small">{error}</p>}
       {wordleError && <p className="error small">{wordleError}</p>}
       {progressError && <p className="error small">{progressError}</p>}
-      {challenges.map((challenge) => (
+      {visibleChallenges.map((challenge) => (
         <div className="row" key={challenge.id}>
           <span className="grow small">
             {challenge.from === app.uid
