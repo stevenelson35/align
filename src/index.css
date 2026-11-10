@@ -4448,23 +4448,37 @@ input.ladder-sparks {
   width: min(100%, 16rem);
 }
 .wordle-keyboard {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.25rem;
-  max-width: 28rem;
+  display: grid;
+  gap: 0.35rem;
+  width: min(100%, 32rem);
   margin: 0 auto;
 }
 .wordle-key {
-  display: grid;
-  place-items: center;
-  min-width: 1.55rem;
-  height: 2rem;
-  padding: 0 0.25rem;
+  flex: 1;
+  min-width: 0;
+  height: clamp(2.4rem, 8vw, 3rem);
+  padding: 0.2rem 0;
   border-radius: 0.25rem;
   background: color-mix(in srgb, var(--text) 12%, var(--surface));
   font-size: 0.75rem;
   font-weight: 700;
+}
+.wordle-key-row {
+  display: flex;
+  justify-content: center;
+  gap: clamp(0.15rem, 1vw, 0.35rem);
+}
+.wordle-key-row:nth-child(2) {
+  padding: 0 4%;
+}
+.wordle-key.wordle-key-action {
+  flex: 1.5;
+  padding: 0 0.35rem;
+  font-size: 0.7rem;
+}
+.wordle-key:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 .wordle-result {
   text-align: center;

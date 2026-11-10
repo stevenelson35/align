@@ -74,8 +74,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     return () => window.clearInterval(timer)
   }, [game, receivedAt])
 
-  async function submitGuess(event: FormEvent) {
-    event.preventDefault()
+  async function submitGuess() {
     if (!game || game.complete || submitting) return
     const normalized = normalizeWord(guess)
     if (!validWord(normalized, game.length)) {
@@ -116,6 +115,16 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
       event.preventDefault()
       event.currentTarget.form?.requestSubmit()
     }
+  }
+
+  function addLetter(letter: string) {
+    if (!game || game.complete || submitting) return
+    setGuess((current) => current.length < game.length ? current + letter : current)
+  }
+
+  function removeLetter() {
+    if (!game || game.complete || submitting) return
+    setGuess((current) => current.slice(0, -1))
   }
 
   async function sendChallenge(event: FormEvent) {
@@ -222,7 +231,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
             </div>
 
             {!game.complete && (
-              <form className="wordle-guess-form" onSubmit={(event) => void submitGuess(event)}>
+              <form className="wordle-guess-form" onSubmit={(event) => { event.preventDefault(); void submitGuess() }}>
                 <label className="small">
                   Guess {game.guesses.length + 1} of {WORDLE_MAX_GUESSES}
                   <input
@@ -244,11 +253,53 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
               </form>
             )}
 
-            <div className="wordle-keyboard" aria-label="Letter feedback">
-              {'QWERTYUIOPASDFGHJKLZXCVBNM'.split('').map((letter) => (
-                <span className={`wordle-key ${keyboardMarks.get(letter) ?? ''}`} key={letter}>{letter}</span>
-              ))}
-            </div>
+            {!game.complete && (
+              <div className="wordle-keyboard" role="group" aria-label="Wordle keyboard">
+                {['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'].map((row, rowIndex) => (
+                  <div className="wordle-key-row" key={row}>
+                    {rowIndex === 2 && (
+                      <button
+                        type="button"
+                        className="wordle-key wordle-key-action"
+                        onClick={() => void submitGuess()}
+                        disabled={submitting || !validWord(guess, game.length)}
+                      >
+                        Enter
+                      </button>
+                    )}
+                    {row.split('').map((letter) => {
+                      const mark = keyboardMarks.get(letter)
+                      const markLabel = mark ? `, ${mark}` : ''
+                      return (
+                        <button
+                          type="button"
+                          className={`wordle-key${mark ? ` ${mark}` : ''}`}
+                          key={letter}
+                          onClick={() => addLetter(letter)}
+                          disabled={submitting || guess.length >= game.length}
+                          aria-label={`${letter}${markLabel}`}
+                          title={mark ? `${letter}: ${mark}` : letter}
+                        >
+                          {letter}
+                        </button>
+                      )
+                    })}
+                    {rowIndex === 2 && (
+                      <button
+                        type="button"
+                        className="wordle-key wordle-key-action"
+                        onClick={removeLetter}
+                        disabled={submitting || !guess}
+                        aria-label="Delete last letter"
+                        title="Delete last letter"
+                      >
+                        ⌫
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {game.complete && (
               <p className="wordle-result" role="status">
