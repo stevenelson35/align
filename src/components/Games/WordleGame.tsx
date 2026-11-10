@@ -7,12 +7,13 @@ import {
   guessWordleChallenge,
   type WordleGameState,
 } from '../../firebase/wordle'
-import { useGameScores, type GameChallenge } from '../../firebase/games'
+import { useGameScores, useWordleChallengeProgress, type GameChallenge } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
 import { compareGameResults, formatGameResult } from '../../games/catalog'
-import { normalizeWord, validWord, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES, type LetterMark } from '../../games/wordle'
+import { hardModeError, normalizeWord, validWord, wordleKeyboardMarks, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES } from '../../games/wordle'
 import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
+import { WordleProgressBoard } from './WordleProgressBoard'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 
@@ -27,25 +28,25 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   const [error, setError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [word, setWord] = useState('')
+  const [randomWord, setRandomWord] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [inviting, setInviting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const seed = game?.seed ?? ''
   const { scores, error: scoreError } = useGameScores('wordle', seed, !!game && app.isMember)
+  const { progress: challengeProgress, error: challengeProgressError } = useWordleChallengeProgress(app.uid, app.isMember && !!challenge)
   const people = Object.entries(app.household.members)
     .filter(([id, member]) => id !== app.uid && member.role === 'member' && !member.bot)
     .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
-  const keyboardMarks = useMemo(() => {
-    const marks = new Map<string, LetterMark>()
-    const rank = { absent: 0, present: 1, correct: 2 }
-    for (const row of game?.guesses ?? []) {
-      row.word.split('').forEach((letter, index) => {
-        const next = row.marks[index]
-        if ((rank[next] ?? 0) > (rank[marks.get(letter) ?? 'absent'] ?? 0)) marks.set(letter, next)
-      })
-    }
-    return marks
-  }, [game])
+  const challengePlayers = randomWord
+    ? Object.entries(app.household.members)
+      .filter(([, member]) => member.role === 'member' && !member.bot)
+      .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
+    : people
+  const canSendChallenge = selected.length >= (randomWord ? 2 : 1)
+    && (randomWord || validWord(word))
+    && !inviting
+  const keyboardMarks = useMemo(() => wordleKeyboardMarks(game?.guesses ?? []), [game])
 
   const challengeId = challenge?.id
   useEffect(() => {
@@ -80,6 +81,13 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     if (!validWord(normalized, game.length)) {
       setError(`Enter a ${game.length}-letter word.`)
       return
+    }
+    if (game.length === 5) {
+      const violation = hardModeError(game.guesses, normalized)
+      if (violation) {
+        setError(`Hard mode: ${violation}`)
+        return
+      }
     }
     setSubmitting(true)
     setError(null)
@@ -129,15 +137,19 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
 
   async function sendChallenge(event: FormEvent) {
     event.preventDefault()
-    if (!validWord(word) || !selected.length || inviting) return
+    if (!canSendChallenge) return
     setInviting(true)
     setError(null)
     setMessage(null)
     try {
-      const result = await createWordleChallenge(normalizeWord(word), selected)
+      const result = await createWordleChallenge(randomWord ? null : normalizeWord(word), selected, randomWord)
       setWord('')
       setSelected([])
-      setMessage(`Challenge sent to ${result.invited} ${result.invited === 1 ? 'person' : 'people'}.`)
+      if (randomWord && result.challengeId) {
+        app.navigate({ view: 'games', challengeId: result.challengeId })
+      } else {
+        setMessage(`Challenge sent to ${result.invited} ${result.invited === 1 ? 'person' : 'people'}.`)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -152,49 +164,93 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
       <header className="view-header">
         <h2><Icon name="sparkle" /> Wordle</h2>
         <span className="muted small">
-          {challenge ? `Challenge from ${app.household.members[challenge.from]?.displayName ?? 'a family member'}` : 'A shared daily word, or a word challenge you create.'}
+          {challenge
+            ? challenge.from === app.uid ? 'Your live challenge' : `Challenge from ${app.household.members[challenge.from]?.displayName ?? 'a family member'}`
+            : 'A shared daily word, or a word challenge you create.'}
         </span>
         <button type="button" className="secondary small" onClick={onBack}>Show all games</button>
       </header>
 
       {loading && <p className="muted">Opening Wordle…</p>}
       {error && <p className="error small" role="alert">{error}</p>}
+      {challengeProgressError && <p className="error small">{challengeProgressError}</p>}
+
+      {challenge?.payload?.puzzleId && (
+        <article className="card">
+          <h3>Live challenge progress</h3>
+          <WordleProgressBoard
+            participants={challenge.players ?? [challenge.to]}
+            progress={challengeProgress.filter((item) => item.groupId === challenge.payload?.puzzleId)}
+            members={app.household.members}
+          />
+        </article>
+      )}
 
       {!challenge && (
         <article className="card game-invite-form">
           <div className="row">
-            <h3 className="grow">Custom word challenge</h3>
+            <h3 className="grow">Wordle challenge</h3>
             <button type="button" className="secondary small" aria-expanded={showCreate} onClick={() => setShowCreate((open) => !open)}>
               {showCreate ? 'Hide' : 'Create'}
             </button>
           </div>
           {showCreate && (
             <form onSubmit={(event) => void sendChallenge(event)}>
-              <p className="muted small">Choose a 2–12 letter word and invite family members. The answer is stored privately and isn’t sent with the invitation.</p>
-              <div className="row wrap">
+              <fieldset className="wordle-challenge-mode">
+                <legend className="small">Challenge type</legend>
                 <label className="small">
-                  Your word
                   <input
-                    type="password"
-                    autoComplete="off"
-                    maxLength={WORDLE_MAX_LENGTH}
-                    value={word}
-                    onChange={(event) => setWord(event.target.value.replace(/[^a-z]/gi, '').slice(0, WORDLE_MAX_LENGTH))}
-                    aria-label="Custom Wordle answer"
+                    type="radio"
+                    name="wordle-challenge-type"
+                    checked={!randomWord}
+                    onChange={() => {
+                      setRandomWord(false)
+                      setSelected((current) => current.filter((id) => id !== app.uid))
+                    }}
                   />
+                  Choose a word
                 </label>
-                <span className="muted small">{WORDLE_MIN_LENGTH}–{WORDLE_MAX_LENGTH} letters</span>
-              </div>
+                <label className="small">
+                  <input type="radio" name="wordle-challenge-type" checked={randomWord} onChange={() => setRandomWord(true)} />
+                  Live random Wordle challenge
+                </label>
+              </fieldset>
+              {randomWord ? (
+                <p className="muted small">
+                  Everyone plays the same random five-letter answer from the Wordle answer list. Select yourself and at least one other player.
+                  Guess rows appear as colored squares for all participants; letters and the answer stay private.
+                </p>
+              ) : (
+                <>
+                  <p className="muted small">Choose a 2–12 letter word and invite family members. Five-letter answers must be accepted Wordle words, and every five-letter game uses hard mode. The answer is stored privately and isn’t sent with the invitation.</p>
+                  <div className="row wrap">
+                    <label className="small">
+                      Your word
+                      <input
+                        type="text"
+                        autoComplete="off"
+                        spellCheck={false}
+                        maxLength={WORDLE_MAX_LENGTH}
+                        value={word}
+                        onChange={(event) => setWord(event.target.value.replace(/[^a-z]/gi, '').slice(0, WORDLE_MAX_LENGTH))}
+                        aria-label="Custom Wordle answer"
+                      />
+                    </label>
+                    <span className="muted small">{WORDLE_MIN_LENGTH}–{WORDLE_MAX_LENGTH} letters</span>
+                  </div>
+                </>
+              )}
+              <p className="muted small">{randomWord ? 'Players' : 'Invite family members'}</p>
               <div className="chips">
-                {people.map(([id, member]) => (
+                {challengePlayers.map(([id, member]) => (
                   <label className={`chip-toggle${selected.includes(id) ? ' on' : ''}`} key={id}>
                     <input type="checkbox" checked={selected.includes(id)} onChange={() => setSelected((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />
-                    {member.displayName}
+                    {member.displayName}{id === app.uid ? ' (you)' : ''}
                   </label>
                 ))}
               </div>
-              <button type="submit" className="small" disabled={!validWord(word) || !selected.length || inviting}>
-                {inviting ? 'Sending…' : `Send challenge${selected.length ? ` to ${selected.length}` : ''}`}
+              <button type="submit" className="small" disabled={!canSendChallenge}>
+                {inviting ? 'Sending…' : randomWord ? `Start live challenge${selected.length ? ` with ${selected.length}` : ''}` : `Send challenge${selected.length ? ` to ${selected.length}` : ''}`}
               </button>
               {message && <p className="muted small" role="status">{message}</p>}
             </form>
@@ -208,7 +264,11 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
             <header className="row wrap">
               <div className="grow">
                 <h3>{game.mode === 'daily' ? `Daily word · ${game.date}` : `${game.length}-letter challenge`}</h3>
-                <p className="muted small">{game.length} letters · six guesses · fewest guesses, then fastest time</p>
+                <p className="muted small">
+                  {game.length} letters · six guesses
+                  {game.length === 5 ? ' · hard mode (use every revealed hint)' : ''}
+                  {' · '}fewest guesses, then fastest time
+                </p>
               </div>
               <div className="wordle-clock" aria-label="Elapsed time">{seconds(elapsed)}</div>
             </header>
@@ -320,7 +380,14 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                 {scores.map((score) => (
                   <li key={score.uid} className={score.uid === app.uid ? 'game-score-me' : ''}>
                     <strong>{app.household.members[score.uid]?.displayName ?? 'Family member'}</strong>
-                    <span>{formatGameResult('wordle', score.best)}</span>
+                    <span>
+                      {formatGameResult('wordle', score.best)}
+                      {game.length === 5 && (
+                        <small className="wordle-mode">
+                          {score.best.hardMode === true ? 'Hard mode' : 'Mode unknown'}
+                        </small>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ol>

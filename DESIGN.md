@@ -521,12 +521,19 @@ firestore.rules, firestore.indexes.json
 ## 13. Status & Handoff
 
 ### Wordle: implemented locally; server setup and deployment remain
-- Games includes a shared daily puzzle and sender-authored 2–12 letter challenges. Scoring ranks solved games by
-  guesses, then time; the PHP endpoint keeps answers and progress out of client-readable Firestore collections.
+- Games includes a shared daily puzzle, sender-authored 2–12 letter challenges, and live group challenges with a
+  server-random five-letter answer. The server keeps answers and guessed words private; live progress shares only
+  colored mark rows with the sender and players. Each player's timer starts when they open their own game.
+- Five-letter games use server-installed answer and accepted-guess text files, enforce accepted guesses and hard
+  mode, and mark hard-mode leaderboard scores.
+- The list files must be downloaded from the sources in `scripts/wordle/README.md` and placed outside the document
+  root; they are intentionally not included in the repository.
 - The endpoint is built to `dist/wordle.php`; private service-account credentials and the daily HMAC secret must be
   installed outside the document root as described in `scripts/wordle/README.md`.
-- Verified locally: production build, all 286 unit tests, all 87 Firestore rule tests, targeted lint and PHP 8.3
-  syntax check. Turbify PHP/cURL/OpenSSL support and live endpoint behavior are not yet verified.
+- Verified locally: 293 unit tests, 89 Firestore rule tests, lint, and browser checks for keyboard colors, plain-text
+  answer input, and shared completion summaries. PHP syntax validation is
+  still needed (`php` is not installed in the current environment); Turbify PHP/cURL/OpenSSL support and live endpoint
+  behavior are not yet verified.
 - Before release, install the private server config, check that GET returns JSON 405 and unauthenticated POST returns
   JSON 401, deploy Firestore rules, then deploy the web app and test daily play plus a custom invitation.
 

@@ -2,8 +2,8 @@
 
 The browser never receives an answer until its daily game or custom challenge is over. `wordle.php` verifies each
 Firebase ID token, checks household membership, and uses a server-only service account to read/write the private
-answer and progress collections. The service-account key and daily selection secret must stay outside the web root and
-out of the repository.
+answer and progress collections. Live challenges publish colored marks only; actual guesses and answers remain
+private. The service-account key and daily selection secret must stay outside the web root and out of the repository.
 
 The existing Turbify hosting plan serves this PHP endpoint; Firebase Auth and Firestore usage stays within their free
 quotas (Spark projects stop accepting requests at quota limits rather than silently billing for overages).
@@ -18,6 +18,15 @@ quotas (Spark projects stop accepting requests at quota limits rather than silen
    `/home/ACCOUNT/public_html/align.itsallonesong.com/wordle.php`, the endpoint looks for
    `/home/ACCOUNT/.align-wordle-config.php`. For example:
 
+   Download the two newline-separated word lists to files outside the document root:
+
+   - Answer words: <https://gist.githubusercontent.com/cfreshman/a03ef2cba789d8cf00c08f767e0fad7b/raw/>
+   - Accepted guesses: <https://raw.githubusercontent.com/tabatkins/wordle-list/main/words>
+
+   Save them as `wordle-answers.txt` and `wordle-guesses.txt` in a private directory. The endpoint checks that the
+   files contain at least 2,000 and 10,000 unique five-letter words respectively, and that every answer is also an
+   accepted guess. These files are read by PHP and must not be put in the public web directory or committed to Align.
+
    ```php
    <?php
    return [
@@ -26,11 +35,8 @@ quotas (Spark projects stop accepting requests at quota limits rather than silen
        'allowedOrigin' => 'https://align.itsallonesong.com',
        'serviceAccountFile' => '/home/your-account/private/align-wordle-service-account.json',
        'dailySecret' => 'replace-with-at-least-32-random-characters',
-       'dailyWords' => [
-           'apple', 'brave', 'cabin', 'dance', 'eager', 'flame', 'grape', 'happy',
-           'ivory', 'jolly', 'kneel', 'lemon', 'mango', 'noble', 'ocean', 'peace',
-           'quiet', 'river', 'smile', 'tiger', 'uncle', 'vivid', 'water', 'young',
-       ],
+       'answerWordsFile' => '/home/your-account/private/wordle-answers.txt',
+       'validGuessesFile' => '/home/your-account/private/wordle-guesses.txt',
    ];
    ```
 
@@ -42,9 +48,10 @@ quotas (Spark projects stop accepting requests at quota limits rather than silen
    is readable by PHP, and is outside the document root; the endpoint deliberately refuses keys in the public web
    directory. Keep both the JSON key and this config out of the repository.
 
-   Generate the `dailySecret` on the server with `php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"`. Replace the
-   sample daily words with a substantially larger, family-friendly list of unique five-letter words. The secret HMAC
-   picks a stable answer for each date; the endpoint saves that answer in the server-only `wordleSecrets` collection.
+   Generate the `dailySecret` on the server with `php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"`. The secret
+   HMAC picks a stable answer from the answer list for each date; live challenges select a random answer from that
+   same list. Answers are saved in the server-only `wordleSecrets` collection. All five-letter games use accepted
+   guesses only and enforce hard mode.
 3. Confirm Turbify runs PHP 8.1+ with cURL and OpenSSL. After building and uploading, `GET
    https://align.itsallonesong.com/wordle.php` should return JSON `405`, never PHP source. A POST without a valid
    Firebase ID token should return JSON `401`.
@@ -63,7 +70,9 @@ quotas (Spark projects stop accepting requests at quota limits rather than silen
 ## Build and deploy
 
 `npm run build` emits `dist/wordle.php` from `wordle-api.php`; normal web deployment uploads it alongside `index.html`.
-Deploy the changed Firestore rules before the web app. The rules deny all client access to `wordleSecrets` and
-`wordleProgress`, deny clients writing Wordle scores or invitations, and still permit family members to read the
-public scores and recipient-visible invitations. The service account uses IAM on the server and is not subject to
-client Firestore rules.
+Update the private config and install both word-list files before uploading the changed endpoint. Deploy the changed
+Firestore rules before the web app. The rules deny all client access to `wordleSecrets` and `wordleProgress`, deny
+clients writing Wordle scores or invitations, and permit only challenge participants to read `wordleChallengeProgress`.
+That collection contains six rows of color marks and finish status, never guess text. Progress updates live for the
+sender and all invitees. Each player's timer starts when they open their own game; there is no synchronized countdown.
+The service account uses IAM on the server and is not subject to client Firestore rules.

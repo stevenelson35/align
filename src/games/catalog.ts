@@ -1,5 +1,5 @@
 export type GameMetric = 'moves' | 'guesses' | 'ms'
-export type GameResult = Partial<Record<GameMetric, number>>
+export type GameResult = Partial<Record<GameMetric, number>> & { hardMode?: boolean }
 
 export interface GameDefinition {
   id: string
@@ -30,7 +30,7 @@ export const GAMES = [
   {
     id: 'wordle',
     name: 'Wordle',
-    description: 'Guess the shared daily word, or choose a word and invite family members to solve your challenge.',
+    description: 'Guess the shared daily word, choose a word to challenge family, or start a live random-word race.',
     scoreOrder: ['guesses', 'ms'],
   },
 ] as const satisfies readonly GameDefinition[]

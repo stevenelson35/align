@@ -5,6 +5,15 @@ export interface WordleGuess {
   marks: LetterMark[]
 }
 
+export function decodeWordleProgressRow(row: string | undefined): LetterMark[] {
+  return [...(row ?? '')].flatMap((mark) => {
+    if (mark === 'C') return ['correct']
+    if (mark === 'P') return ['present']
+    if (mark === 'A') return ['absent']
+    return []
+  })
+}
+
 export const WORDLE_MAX_GUESSES = 6
 export const WORDLE_MIN_LENGTH = 2
 export const WORDLE_MAX_LENGTH = 12
@@ -41,6 +50,58 @@ export function markGuess(answer: string, guess: string): LetterMark[] {
     }
   }
   return marks
+}
+
+export function wordleKeyboardMarks(guesses: WordleGuess[]): Map<string, LetterMark> {
+  const marks = new Map<string, LetterMark>()
+  const rank = { absent: 0, present: 1, correct: 2 }
+  for (const row of guesses) {
+    row.word.split('').forEach((letter, index) => {
+      const next = row.marks[index]
+      const current = marks.get(letter)
+      if (next && (current === undefined || rank[next] > rank[current])) marks.set(letter, next)
+    })
+  }
+  return marks
+}
+
+export function hardModeError(guesses: WordleGuess[], guess: string): string | null {
+  const requiredLetters = new Map<string, number>()
+  const fixedLetters = new Map<number, string>()
+  const excludedPositions = new Map<number, Set<string>>()
+
+  for (const row of guesses) {
+    const rowRequired = new Map<string, number>()
+    row.word.split('').forEach((letter, index) => {
+      const mark = row.marks[index]
+      if (mark === 'correct') {
+        fixedLetters.set(index, letter)
+        rowRequired.set(letter, (rowRequired.get(letter) ?? 0) + 1)
+      } else if (mark === 'present') {
+        rowRequired.set(letter, (rowRequired.get(letter) ?? 0) + 1)
+        const excluded = excludedPositions.get(index) ?? new Set<string>()
+        excluded.add(letter)
+        excludedPositions.set(index, excluded)
+      }
+    })
+    for (const [letter, count] of rowRequired) {
+      requiredLetters.set(letter, Math.max(requiredLetters.get(letter) ?? 0, count))
+    }
+  }
+
+  const attempt = normalizeWord(guess)
+  for (const [index, letter] of fixedLetters) {
+    if (attempt[index] !== letter) return `Keep ${letter} in position ${index + 1}.`
+  }
+  for (const [index, letters] of excludedPositions) {
+    if (letters.has(attempt[index])) return `Move ${attempt[index]} from position ${index + 1}.`
+  }
+  for (const [letter, count] of requiredLetters) {
+    if ([...attempt].filter((candidate) => candidate === letter).length < count) {
+      return `Use at least ${count} ${letter}${count === 1 ? '' : 's'} revealed by your earlier guesses.`
+    }
+  }
+  return null
 }
 
 export function compareWordleResults(

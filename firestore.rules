@@ -656,7 +656,11 @@ service cloud.firestore {
       return gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle']
         && result is map && result.ms is int && result.ms > 0 && result.ms <= 3600000
         && (gameId == 'wordle'
-          ? result.keys().hasOnly(['guesses', 'ms']) && result.guesses is int && result.guesses > 0 && result.guesses <= 6
+          ? result.keys().hasOnly(['guesses', 'ms', 'hardMode', 'solved'])
+            && result.keys().hasAll(['guesses', 'ms'])
+            && result.guesses is int && result.guesses > 0 && result.guesses <= 6
+            && (!('hardMode' in result) || result.hardMode is bool)
+            && (!('solved' in result) || result.solved is bool)
           : result.keys().hasOnly(['moves', 'ms']) && result.moves is int && result.moves > 0 && result.moves <= 5000);
     }
 
@@ -697,7 +701,11 @@ service cloud.firestore {
     }
 
     match /gameChallenges/{id} {
-      allow read: if isMember() && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow read: if isMember() && (
+        resource.data.from == request.auth.uid
+        || resource.data.to == request.auth.uid
+        || ('participants' in resource.data && request.auth.uid in resource.data.participants)
+      );
       allow create: if isMember()
         && request.resource.data.keys().hasOnly(['gameId', 'from', 'to', 'seed', 'payload', 'status', 'createdAt'])
         && request.resource.data.gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle']
@@ -730,6 +738,13 @@ service cloud.firestore {
 
     match /wordleProgress/{id} {
       allow read, write: if false;
+    }
+
+    match /wordleChallengeProgress/{id} {
+      allow read: if isMember()
+        && 'participants' in resource.data
+        && request.auth.uid in resource.data.participants;
+      allow write: if false;
     }
 
     // ---- Goal rewards (DESIGN.md §5.6) ----

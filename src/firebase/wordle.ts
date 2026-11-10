@@ -44,5 +44,8 @@ export const getWordleChallenge = (challengeId: string) =>
 export const guessWordleChallenge = (challengeId: string, guess: string) =>
   wordleRequest<WordleGameState>('challenge_guess', { challengeId, guess })
 
-export const createWordleChallenge = (word: string, recipients: string[]) =>
-  wordleRequest<{ invited: number }>('custom_create', { word, recipients })
+export const createWordleChallenge = (word: string | null, recipients: string[], randomWord = false) =>
+  wordleRequest<{ invited: number; participants: number; challengeId?: string }>(
+    'custom_create',
+    { ...(word ? { word } : {}), recipients, randomWord },
+  )

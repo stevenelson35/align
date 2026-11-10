@@ -15,15 +15,43 @@ function fail($status, $message) {
     reply($status, ['error' => $message]);
 }
 
+function loadWordList($path, $minimum, $description) {
+    $documentRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '');
+    $realPath = is_string($path) ? realpath($path) : false;
+    $isPublic = $documentRoot && is_string($realPath) && (
+        $documentRoot === DIRECTORY_SEPARATOR
+        || $realPath === $documentRoot
+        || str_starts_with($realPath, rtrim($documentRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR)
+    );
+    if (!$documentRoot || !$realPath || !is_file($realPath) || !is_readable($realPath) || $isPublic) {
+        fail(503, 'The private Wordle ' . $description . ' list is missing or inside the public web root.');
+    }
+    $lines = file($realPath, FILE_IGNORE_NEW_LINES);
+    if ($lines === false) fail(503, 'The Wordle ' . $description . ' list could not be read.');
+    $words = [];
+    foreach ($lines as $line) {
+        $word = strtoupper(trim($line));
+        if ($word === '') continue;
+        if (!preg_match('/^[A-Z]{5}$/', $word)) {
+            fail(503, 'The Wordle ' . $description . ' list must contain one five-letter word per line.');
+        }
+        $words[$word] = true;
+    }
+    if (count($words) < $minimum) {
+        fail(503, 'The Wordle ' . $description . ' list is incomplete.');
+    }
+    return array_keys($words);
+}
+
 function config() {
     $path = dirname(__DIR__, 2) . '/.align-wordle-config.php';
     if (!is_file($path)) fail(503, 'Wordle is not configured on this server yet.');
     $config = require $path;
     if (!is_array($config)) fail(503, 'Wordle server configuration is invalid.');
-    foreach (['projectId', 'apiKey', 'allowedOrigin', 'serviceAccountFile', 'dailySecret', 'dailyWords'] as $key) {
+    foreach (['projectId', 'apiKey', 'allowedOrigin', 'serviceAccountFile', 'dailySecret', 'answerWordsFile', 'validGuessesFile'] as $key) {
         if (!isset($config[$key])) fail(503, 'Wordle server configuration is incomplete.');
     }
-    foreach (['projectId', 'apiKey', 'allowedOrigin', 'serviceAccountFile'] as $key) {
+    foreach (['projectId', 'apiKey', 'allowedOrigin', 'serviceAccountFile', 'answerWordsFile', 'validGuessesFile'] as $key) {
         if (!is_string($config[$key]) || trim($config[$key]) === '') fail(503, 'Wordle server configuration is invalid.');
     }
     $origin = parse_url($config['allowedOrigin']);
@@ -34,15 +62,13 @@ function config() {
     if (!is_string($config['dailySecret']) || strlen(trim($config['dailySecret'])) < 32) {
         fail(503, 'Wordle daily secret must be at least 32 characters.');
     }
-    if (!is_array($config['dailyWords']) || count($config['dailyWords']) < 20) {
-        fail(503, 'Wordle needs at least 20 daily words.');
+    $answers = loadWordList($config['answerWordsFile'], 2000, 'answer');
+    $guesses = loadWordList($config['validGuessesFile'], 10000, 'valid guess');
+    $config['answerWords'] = $answers;
+    $config['validGuesses'] = array_fill_keys($guesses, true);
+    foreach ($answers as $word) {
+        if (!isset($config['validGuesses'][$word])) fail(503, 'Every Wordle answer must also be an accepted guess.');
     }
-    $uniqueWords = [];
-    foreach ($config['dailyWords'] as $word) {
-        if (!is_string($word) || !preg_match('/^[A-Za-z]{5}$/', $word)) fail(503, 'The daily word list must contain five-letter words.');
-        $uniqueWords[] = strtoupper($word);
-    }
-    if (count(array_unique($uniqueWords)) < 20) fail(503, 'Wordle needs at least 20 unique daily words.');
     return $config;
 }
 
@@ -232,8 +258,7 @@ function dailySecret($config, $token, $date) {
     $id = 'daily_' . str_replace('-', '', $date);
     $existing = firestoreGet($config, $token, 'wordleSecrets', $id);
     if ($existing) return $existing['fields'];
-    $words = array_values(array_unique(array_map('strtoupper', $config['dailyWords'])));
-    if (count($words) < 20) fail(503, 'Wordle needs at least 20 unique daily words.');
+    $words = $config['answerWords'];
     $index = hexdec(substr(hash_hmac('sha256', $date, $config['dailySecret']), 0, 8)) % count($words);
     $answer = $words[$index];
     $fields = ['mode' => 'daily', 'date' => $date, 'answer' => $answer];
@@ -283,11 +308,50 @@ function wordleMarks($answer, $guess) {
     return $marks;
 }
 
-function updateBestScore($config, $token, $uid, $seed, $guesses, $ms) {
+function hardModeError($previousGuesses, $guess) {
+    $requiredLetters = [];
+    $fixedLetters = [];
+    $excludedPositions = [];
+    foreach ($previousGuesses as $row) {
+        $rowRequired = [];
+        foreach (str_split($row['word']) as $index => $letter) {
+            $mark = $row['marks'][$index] ?? 'absent';
+            if ($mark === 'correct') {
+                $fixedLetters[$index] = $letter;
+                $rowRequired[$letter] = ($rowRequired[$letter] ?? 0) + 1;
+            } elseif ($mark === 'present') {
+                $rowRequired[$letter] = ($rowRequired[$letter] ?? 0) + 1;
+                $excludedPositions[$index][$letter] = true;
+            }
+        }
+        foreach ($rowRequired as $letter => $count) {
+            $requiredLetters[$letter] = max($requiredLetters[$letter] ?? 0, $count);
+        }
+    }
+
+    $attempt = str_split($guess);
+    foreach ($fixedLetters as $index => $letter) {
+        if (($attempt[$index] ?? '') !== $letter) return 'Keep ' . $letter . ' in position ' . ($index + 1) . '.';
+    }
+    foreach ($excludedPositions as $index => $letters) {
+        if (isset($letters[$attempt[$index] ?? ''])) {
+            return 'Move ' . $attempt[$index] . ' from position ' . ($index + 1) . '.';
+        }
+    }
+    foreach ($requiredLetters as $letter => $count) {
+        if (substr_count($guess, $letter) < $count) {
+            return 'Use at least ' . $count . ' ' . $letter . ($count === 1 ? '' : 's') . ' revealed by your earlier guesses.';
+        }
+    }
+    return null;
+}
+
+function updateBestScore($config, $token, $uid, $seed, $guesses, $ms, $length) {
     $id = $uid . '_wordle_' . $seed;
     $old = firestoreGet($config, $token, 'gameScores', $id);
     $best = $old['fields']['best'] ?? null;
     $result = ['guesses' => $guesses, 'ms' => $ms];
+    if ($length === 5) $result['hardMode'] = true;
     $isBetter = !is_array($best)
         || $guesses < ($best['guesses'] ?? PHP_INT_MAX)
         || ($guesses === ($best['guesses'] ?? PHP_INT_MAX) && $ms < ($best['ms'] ?? PHP_INT_MAX));
@@ -335,6 +399,29 @@ function dailyState($config, $token, $uid, $guess = null) {
     return stateResponse('daily', $seed, 5, $progress, $date);
 }
 
+function challengeProgressId($groupId, $uid) {
+    return 'custom_' . $groupId . '_' . $uid;
+}
+
+function ensureChallengeProgress($config, $token, $groupId, $uid, $participants, $length) {
+    $id = challengeProgressId($groupId, $uid);
+    $existing = firestoreGet($config, $token, 'wordleChallengeProgress', $id);
+    if ($existing) return $existing;
+    firestoreCreate($config, $token, 'wordleChallengeProgress', $id, [
+        'groupId' => $groupId,
+        'uid' => $uid,
+        'participants' => $participants,
+        'length' => $length,
+        'rows' => [],
+        'complete' => false,
+        'solved' => false,
+        'updatedAt' => gmdate('Y-m-d\TH:i:s\Z'),
+    ]);
+    $created = firestoreGet($config, $token, 'wordleChallengeProgress', $id);
+    if (!$created) fail(502, 'The Wordle challenge progress could not be initialized.');
+    return $created;
+}
+
 function challengeState($config, $token, $uid, $challengeId, $guess = null) {
     if (!is_string($challengeId) || !preg_match('/^[a-f0-9]{32}$/', $challengeId)) fail(400, 'That Wordle challenge link is invalid.');
     $challenge = firestoreGet($config, $token, 'gameChallenges', $challengeId);
@@ -348,24 +435,36 @@ function challengeState($config, $token, $uid, $challengeId, $guess = null) {
     if (!is_string($groupId) || !preg_match('/^[a-f0-9]{32}$/', $groupId)) fail(502, 'The Wordle challenge data is invalid.');
     $secret = firestoreGet($config, $token, 'wordleSecrets', 'custom_' . $groupId);
     if (!$secret || !in_array($uid, $secret['fields']['recipients'] ?? [], true)) fail(404, 'The Wordle answer is not available for this account.');
+    $participants = $secret['fields']['recipients'];
+    $viewers = $secret['fields']['participants'] ?? array_values(array_unique(array_merge([$secret['fields']['from']], $participants)));
     $seed = 'custom-' . $groupId;
     $progressId = 'custom_' . $challengeId;
     $progress = firestoreGet($config, $token, 'wordleProgress', $progressId);
     if (!$progress) $progress = newProgress($config, $token, $progressId, $uid, $seed, $secret['fields']['length'], $secret['fields']['answer']);
-    if ($guess !== null) $progress = submitGuess($config, $token, $progressId, $progress, $guess, $uid, $seed, $challengeId);
+    ensureChallengeProgress($config, $token, $groupId, $uid, $viewers, $secret['fields']['length']);
+    if ($guess !== null) {
+        $progress = submitGuess($config, $token, $progressId, $progress, $guess, $uid, $seed, $challengeId, $groupId, $viewers);
+    }
     $latestChallenge = firestoreGet($config, $token, 'gameChallenges', $challengeId);
     return stateResponse('custom', $seed, $secret['fields']['length'], $progress, null, $latestChallenge['fields']['status'] ?? $status);
 }
 
-function submitGuess($config, $token, $progressId, $progress, $guess, $uid, $seed, $challengeId = null) {
+function submitGuess($config, $token, $progressId, $progress, $guess, $uid, $seed, $challengeId = null, $groupId = null, $participants = []) {
     if (!is_string($guess) || !preg_match('/^[A-Za-z]{2,12}$/', $guess)) fail(400, 'Enter a word using letters only.');
     $fields = $progress['fields'];
     if (!empty($fields['complete'])) fail(409, 'This Wordle is already complete.');
     if (strlen($guess) !== (int) $fields['length']) fail(400, 'Your guess must match the word length.');
     $guess = strtoupper($guess);
+    if ((int) $fields['length'] === 5 && !isset($config['validGuesses'][$guess])) {
+        fail(400, 'That is not an accepted five-letter Wordle guess.');
+    }
     $guesses = json_decode($fields['guessesJson'] ?? '[]', true);
     if (!is_array($guesses)) $guesses = [];
     if (count($guesses) >= 6) fail(409, 'You have used all six guesses.');
+    if ((int) $fields['length'] === 5) {
+        $violation = hardModeError($guesses, $guess);
+        if ($violation !== null) fail(400, 'Hard mode: ' . $violation);
+    }
     $marks = wordleMarks($fields['answer'], $guess);
     $guesses[] = ['word' => $guess, 'marks' => $marks];
     $solved = $guess === strtoupper($fields['answer']);
@@ -378,14 +477,32 @@ function submitGuess($config, $token, $progressId, $progress, $guess, $uid, $see
     ];
     if ($complete) $updates['elapsedMs'] = $elapsed;
     firestorePatch($config, $token, 'wordleProgress', $progressId, $updates, $progress['updateTime']);
+    if ($challengeId !== null && $groupId !== null) {
+        $publicProgress = ensureChallengeProgress($config, $token, $groupId, $uid, $participants, (int) $fields['length']);
+        firestorePatch($config, $token, 'wordleChallengeProgress', challengeProgressId($groupId, $uid), [
+            'rows' => array_map(static fn($row) => implode('', array_map(
+                static fn($mark) => ['correct' => 'C', 'present' => 'P', 'absent' => 'A'][$mark] ?? 'A',
+                $row['marks'],
+            )), $guesses),
+            'complete' => $complete,
+            'solved' => $solved,
+            'elapsedMs' => $complete ? $elapsed : null,
+            'updatedAt' => gmdate('Y-m-d\TH:i:s\Z'),
+        ], $publicProgress['updateTime']);
+    }
     if ($complete) {
-        if ($solved) updateBestScore($config, $token, $uid, $seed, count($guesses), $elapsed);
+        if ($solved) updateBestScore($config, $token, $uid, $seed, count($guesses), $elapsed, (int) $fields['length']);
         if ($challengeId !== null) {
             $currentChallenge = firestoreGet($config, $token, 'gameChallenges', $challengeId);
             if ($currentChallenge && $currentChallenge['fields']['status'] === 'pending') {
                 firestorePatch($config, $token, 'gameChallenges', $challengeId, [
                     'status' => 'completed',
-                    'result' => ['guesses' => count($guesses), 'ms' => $elapsed],
+                    'result' => [
+                        'guesses' => count($guesses),
+                        'ms' => $elapsed,
+                        'solved' => $solved,
+                        'hardMode' => (int) $fields['length'] === 5,
+                    ],
                     'completedAt' => gmdate('Y-m-d\TH:i:s\Z'),
                 ], $currentChallenge['updateTime']);
             }
@@ -395,14 +512,29 @@ function submitGuess($config, $token, $progressId, $progress, $guess, $uid, $see
 }
 
 function createCustomChallenges($config, $token, $uid, $body) {
-    $word = strtoupper(trim(is_string($body['word'] ?? null) ? $body['word'] : ''));
+    $randomWord = ($body['randomWord'] ?? false) === true;
+    $word = $randomWord
+        ? $config['answerWords'][random_int(0, count($config['answerWords']) - 1)]
+        : strtoupper(trim(is_string($body['word'] ?? null) ? $body['word'] : ''));
     $recipients = $body['recipients'] ?? null;
-    if (!preg_match('/^[A-Za-z]{2,12}$/', $word)) fail(400, 'Choose a word from 2 to 12 letters long.');
+    if (!$randomWord && !preg_match('/^[A-Za-z]{2,12}$/', $word)) fail(400, 'Choose a word from 2 to 12 letters long.');
+    if (strlen($word) === 5 && !isset($config['validGuesses'][$word])) {
+        fail(400, 'Choose an accepted five-letter Wordle word.');
+    }
     if (!is_array($recipients)) fail(400, 'Choose at least one family member to challenge.');
-    $recipients = array_values(array_unique(array_filter($recipients, static fn($to) => is_string($to) && $to !== $uid)));
-    if (count($recipients) < 1 || count($recipients) > 10) fail(400, 'Choose between 1 and 10 people to challenge.');
+    $recipients = array_values(array_unique(array_filter($recipients, static fn($to) => is_string($to))));
+    if ($randomWord) {
+        if (!in_array($uid, $recipients, true) || count($recipients) < 2 || count($recipients) > 10) {
+            fail(400, 'A live Wordle challenge needs you and 1 to 9 other participants.');
+        }
+    } else {
+        $recipients = array_values(array_filter($recipients, static fn($to) => $to !== $uid));
+        if (count($recipients) < 1 || count($recipients) > 10) fail(400, 'Choose between 1 and 10 people to challenge.');
+    }
+    $players = $recipients;
+    $viewers = array_values(array_unique(array_merge([$uid], $players)));
     $household = requireMember($config, $token, $uid);
-    foreach ($recipients as $to) {
+    foreach ($players as $to) {
         if (($household['members'][$to]['role'] ?? '') !== 'member') fail(400, 'Every recipient must be a household member.');
     }
     $groupId = bin2hex(random_bytes(16));
@@ -412,21 +544,32 @@ function createCustomChallenges($config, $token, $uid, $body) {
         'answer' => $word,
         'length' => strlen($word),
         'from' => $uid,
-        'recipients' => $recipients,
+        'recipients' => $players,
+        'participants' => $viewers,
         'createdAt' => gmdate('Y-m-d\TH:i:s\Z'),
     ]);
-    foreach ($recipients as $to) {
+    $ownChallengeId = null;
+    foreach ($players as $to) {
         $challengeId = bin2hex(random_bytes(16));
+        if ($to === $uid) $ownChallengeId = $challengeId;
         firestoreCreate($config, $token, 'gameChallenges', $challengeId, [
             'gameId' => 'wordle',
             'from' => $uid,
             'to' => $to,
+            'participants' => $viewers,
+            'players' => $players,
             'payload' => ['puzzleId' => $groupId, 'wordLength' => strlen($word), 'version' => 1],
             'status' => 'pending',
             'createdAt' => gmdate('Y-m-d\TH:i:s\Z'),
         ]);
+        ensureChallengeProgress($config, $token, $groupId, $to, $viewers, strlen($word));
     }
-    return ['invited' => count($recipients)];
+    $result = [
+        'invited' => count(array_filter($players, static fn($to) => $to !== $uid)),
+        'participants' => count($players),
+    ];
+    if ($ownChallengeId !== null) $result['challengeId'] = $ownChallengeId;
+    return $result;
 }
 
 try {

@@ -313,7 +313,8 @@ export const HELP_TOPICS: HelpTopic[] = [
     tip: 'Short family puzzles with leaderboards. Invite someone to solve the same puzzle, then compare moves, guesses or time.',
     body: [
       'Games has Lights Out, Tower of Hanoi, Picture Slider and Wordle. Choose a favorite photo and a 3 × 3, 4 × 4 or 5 × 5 slider board; invitations replay the same picture and board size.',
-      'Wordle gives the family the same daily five-letter word, or lets you choose a 2–12 letter word and invite members to guess it. The answer stays on the server until the game ends. Leaderboards rank fewest guesses, then fastest time.',
+      'Wordle gives the family the same daily five-letter word, or lets you choose a 2–12 letter word and invite members to guess it. Five-letter games accept the Wordle guess list and require hard mode; other word lengths accept any letters-only guess. Leaderboards rank fewest guesses, then fastest time, and identify hard-mode scores.',
+      'A live Wordle challenge uses a random five-letter answer and lets you pick the players, including yourself. Everyone sees each player’s six guess rows update as colored squares only; letters and the answer stay private. It’s an asynchronous race: each timer starts when that player opens the challenge.',
       'Leaderboards compare fewest moves or guesses first, then fastest time, for the same puzzle. Beat your personal best for a celebration. You can invite someone to replay the same puzzle from the game.',
       'Game invitations appear in Align until they play; open one to try the shared puzzle.',
     ],

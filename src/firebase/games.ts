@@ -20,8 +20,22 @@ export interface GameChallenge {
   seed?: string
   /** Public, non-secret data needed to replay this challenge. */
   payload?: GameChallengePayload
+  participants?: string[]
+  players?: string[]
   status: 'pending' | 'completed'
-  result?: GameResult
+  result?: GameResult & { solved?: boolean; hardMode?: boolean }
+}
+
+export interface WordleChallengeProgress {
+  id: string
+  groupId: string
+  uid: string
+  participants: string[]
+  length: number
+  rows: string[]
+  complete: boolean
+  solved: boolean
+  elapsedMs?: number
 }
 
 export interface GameChallengePayload {
@@ -81,6 +95,46 @@ export function usePendingGameChallenges(uid: string, enabled = true) {
     )
   }, [uid, enabled])
   return { challenges, error }
+}
+
+export function useWordleChallengeUpdates(uid: string, enabled = true) {
+  const [challenges, setChallenges] = useState<GameChallenge[]>([])
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!enabled) return
+    const q = query(collection(db, 'gameChallenges'), where('participants', 'array-contains', uid))
+    return onSnapshot(
+      q,
+      (snap) => {
+        setChallenges(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }) as GameChallenge)
+            .filter((challenge) => challenge.gameId === 'wordle'),
+        )
+        setError(null)
+      },
+      (err) => setError(err.message),
+    )
+  }, [uid, enabled])
+  return { challenges, error }
+}
+
+export function useWordleChallengeProgress(uid: string, enabled = true) {
+  const [progress, setProgress] = useState<WordleChallengeProgress[]>([])
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!enabled) return
+    const q = query(collection(db, 'wordleChallengeProgress'), where('participants', 'array-contains', uid))
+    return onSnapshot(
+      q,
+      (snap) => {
+        setProgress(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WordleChallengeProgress))
+        setError(null)
+      },
+      (err) => setError(err.message),
+    )
+  }, [uid, enabled])
+  return { progress, error }
 }
 
 export function useGameChallenge(id: string | undefined) {

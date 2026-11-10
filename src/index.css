@@ -19,6 +19,9 @@
   --muted: #656d76;
   --border: #d0d7de;
   --danger: #cf222e;
+  --wordle-key: #d3d6da;
+  --wordle-key-text: #1a1a1b;
+  --wordle-key-absent: #787c7e;
   --radius: 8px;
 
   /* Badge tints */
@@ -68,6 +71,9 @@ html:root[data-accent-all] {
   --muted: #8d96a0;
   --border: #30363d;
   --danger: #f85149;
+  --wordle-key: #818384;
+  --wordle-key-text: #ffffff;
+  --wordle-key-absent: #3a3a3c;
 
   --tint-red-bg: rgb(248 81 73 / 0.15);
   --tint-red-border: rgb(248 81 73 / 0.6);
@@ -4431,10 +4437,13 @@ input.ladder-sparks {
   color: white;
   background: #b59f3b;
 }
-.wordle-cell.absent,
-.wordle-key.absent {
+.wordle-cell.absent {
   color: white;
   background: #787c7e;
+}
+.wordle-key.absent {
+  color: white;
+  background: var(--wordle-key-absent);
 }
 .wordle-guess-form {
   display: flex;
@@ -4459,7 +4468,8 @@ input.ladder-sparks {
   height: clamp(2.4rem, 8vw, 3rem);
   padding: 0.2rem 0;
   border-radius: 0.25rem;
-  background: color-mix(in srgb, var(--text) 12%, var(--surface));
+  color: var(--wordle-key-text);
+  background: var(--wordle-key);
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -4482,6 +4492,73 @@ input.ladder-sparks {
 }
 .wordle-result {
   text-align: center;
+}
+.wordle-mode {
+  display: block;
+  color: var(--muted);
+}
+.wordle-challenge-updates {
+  display: grid;
+  gap: 0.45rem;
+  padding-top: 0.5rem;
+}
+.wordle-challenge-update {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--border);
+}
+.wordle-challenge-update p {
+  margin: 0;
+}
+.wordle-challenge-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 0;
+  padding: 0.65rem;
+}
+.wordle-challenge-mode legend {
+  padding: 0 0.25rem;
+}
+.wordle-challenge-mode label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.wordle-live-players {
+  display: grid;
+  gap: 0.65rem;
+}
+.wordle-live-player {
+  display: grid;
+  gap: 0.25rem;
+}
+.wordle-live-board {
+  display: grid;
+  gap: 0.15rem;
+  width: min(100%, 18rem);
+}
+.wordle-live-row {
+  display: grid;
+  gap: 0.15rem;
+}
+.wordle-live-cell {
+  aspect-ratio: 1;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--text) 25%, var(--surface));
+  border-radius: 0.12rem;
+}
+.wordle-live-cell.correct {
+  background: #538d4e;
+}
+.wordle-live-cell.present {
+  background: #b59f3b;
+}
+.wordle-live-cell.absent {
+  background: #787c7e;
 }
 .game-mini-hanoi {
   grid-template-columns: repeat(3, 1fr);

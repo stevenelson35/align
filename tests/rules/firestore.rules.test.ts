@@ -540,6 +540,57 @@ describe('games', () => {
     await assertFails(updateDoc(challengeRef, { status: 'completed', result: { guesses: 3, ms: 20000 }, completedAt: new Date() }))
   })
 
+  it('lets the sender and every Wordle challenge participant read group progress', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const admin = ctx.firestore() as unknown as Firestore
+      for (const [id, to, status] of [['wordle-a', 'wife', 'pending'], ['wordle-b', 'daughter', 'completed']]) {
+        await setDoc(doc(admin, `gameChallenges/${id}`), {
+          gameId: 'wordle',
+          from: 'steve',
+          to,
+          participants: ['steve', 'wife', 'daughter'],
+          payload: { puzzleId: '0123456789abcdef0123456789abcdef', wordLength: 5, version: 1 },
+          status,
+          createdAt: new Date(),
+        })
+      }
+    })
+    await assertSucceeds(getDoc(doc(db('steve'), 'gameChallenges/wordle-a')))
+    await assertSucceeds(getDoc(doc(db('wife'), 'gameChallenges/wordle-b')))
+    await assertSucceeds(getDocs(query(
+      collection(db('wife'), 'gameChallenges'),
+      where('participants', 'array-contains', 'wife'),
+    )))
+    await assertFails(getDoc(doc(db('grandma'), 'gameChallenges/wordle-a')))
+    await assertFails(getDocs(query(
+      collection(db('grandma'), 'gameChallenges'),
+      where('participants', 'array-contains', 'grandma'),
+    )))
+  })
+
+  it('shares only colored Wordle rows with live challenge participants', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const admin = ctx.firestore() as unknown as Firestore
+      await setDoc(doc(admin, 'wordleChallengeProgress/group_wife'), {
+        groupId: 'group',
+        uid: 'wife',
+        participants: ['steve', 'wife', 'daughter'],
+        length: 5,
+        rows: ['ACPAA'],
+        complete: false,
+        solved: false,
+        updatedAt: new Date(),
+      })
+    })
+    await assertSucceeds(getDoc(doc(db('steve'), 'wordleChallengeProgress/group_wife')))
+    await assertSucceeds(getDocs(query(
+      collection(db('daughter'), 'wordleChallengeProgress'),
+      where('participants', 'array-contains', 'daughter'),
+    )))
+    await assertFails(getDoc(doc(db('grandma'), 'wordleChallengeProgress/group_wife')))
+    await assertFails(updateDoc(doc(db('wife'), 'wordleChallengeProgress/group_wife'), { rows: ['CCCCC'] }))
+  })
+
   it('lets a member save only their Lights Out best score', async () => {
     await assertSucceeds(setDoc(doc(db('steve'), 'gameScores/steve_lights-out_2026-10-30'), {
       uid: 'steve', gameId: 'lights-out', seed: '2026-10-30', bestMoves: 12, bestMs: 20000, plays: 1, updatedAt: new Date(),
