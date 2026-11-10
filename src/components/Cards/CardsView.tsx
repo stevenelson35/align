@@ -6,6 +6,7 @@ import { choicesFor, parseCards, resultFor, STUDY_MODES, studyOrder, type Card, 
 import { ListHeader } from '../Tasks/ListHeader'
 import { Icon } from '../UI/Icon'
 import { RevealCard } from '../UI/RevealCard'
+import { ItemIcon } from '../UI/ItemIcon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { celebrate } from '../../utils/celebrate'
 import { beats, saveChallengeScore, useCardBoard, type ChallengeScore } from '../../firebase/cardBoards'
@@ -243,6 +244,7 @@ export function CardsView({ list }: { list: List }) {
               front={
                 <FlashFront
                   title={current.title}
+                  customIcon={current.customIcon}
                   place={geo ? places.get(current.id) : undefined}
                   geo={geo}
                   mapFirst={mapFirst && canMapFirst}
@@ -256,7 +258,7 @@ export function CardsView({ list }: { list: List }) {
                   onPick={pick}
                 />
               }
-              back={<FlashBack title={current.title} notes={current.notes} place={geo ? places.get(current.id) : undefined} geo={geo} mapFirst={mapFirst && canMapFirst} />}
+              back={<FlashBack title={current.title} customIcon={current.customIcon} notes={current.notes} place={geo ? places.get(current.id) : undefined} geo={geo} mapFirst={mapFirst && canMapFirst} />}
               open={revealed}
               onOpen={() => setRevealed(true)}
               canReveal={!inChallenge}
@@ -369,7 +371,7 @@ export function CardsView({ list }: { list: List }) {
               return (
                 <li key={c.id} className={`card-row${app.selectedTaskId === c.id ? ' selected' : ''}`}>
                   <button type="button" className="link card-front" onClick={() => app.selectTask(c.id)}>
-                    {c.title}
+                    <ItemIcon value={c.customIcon} /> {c.title}
                   </button>
                   {showBacks && <span className="muted small card-back">{c.notes}</span>}
                   <span className={`card-state small ${r.known ? 'known' : r.wrong ? 'missed' : ''}`} title={r.right || r.wrong ? `✓ ${r.right ?? 0} · ✗ ${r.wrong ?? 0}` : 'Not studied yet'}>
@@ -488,6 +490,7 @@ function Choices({ choices, answer, picked, onPick }: { choices: string[]; answe
  */
 function FlashFront({
   title,
+  customIcon,
   place,
   geo,
   mapFirst,
@@ -501,6 +504,7 @@ function FlashFront({
   onPick,
 }: {
   title: string
+  customIcon?: string
   place?: Place
   geo: ReturnType<typeof useGeoIndex>
   mapFirst: boolean
@@ -536,14 +540,14 @@ function FlashFront({
   if (place && geo && mapFirst)
     return (
       <div className="flash-extra">
-        <span className="flash-ask">Where is this?</span>
+        <span className="flash-ask"><ItemIcon value={customIcon} /> Where is this?</span>
         <PlaceMap place={place} mode="hint" index={geo} />
         {help}
       </div>
     )
   return (
     <>
-      <span className="flash-front">{title}</span>
+      <span className="flash-front"><ItemIcon value={customIcon} /> {title}</span>
       <div className="flash-extra">{help}</div>
     </>
   )
@@ -551,10 +555,10 @@ function FlashFront({
 
 /** A card's back: the answer, and for a place a labeled map (capital marked, neighbors named), its borders, and
  *  Learn more. In Map first the front's words show too, since the front was only a map. */
-function FlashBack({ title, notes, place, geo, mapFirst }: { title: string; notes?: string; place?: Place; geo: ReturnType<typeof useGeoIndex>; mapFirst: boolean }) {
+function FlashBack({ title, customIcon, notes, place, geo, mapFirst }: { title: string; customIcon?: string; notes?: string; place?: Place; geo: ReturnType<typeof useGeoIndex>; mapFirst: boolean }) {
   return (
     <div className="flash-back-wrap">
-      {mapFirst && place && <span className="flash-front">{title}</span>}
+      {mapFirst && place && <span className="flash-front"><ItemIcon value={customIcon} /> {title}</span>}
       <span className="flash-back">{notes || '(no answer written)'}</span>
       {place && geo && (
         <div className="flash-map">

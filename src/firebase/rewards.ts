@@ -1,6 +1,6 @@
 // Goal rewards (DESIGN.md §5.6): everyone's sparks (sparks/{uid}), the picture being uncovered (reveals/current)
 // and the reward ladder (rewards/ladder). Members only, by the rules.
-import { collection, doc, increment, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, increment, onSnapshot, runTransaction, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { cleanLadder, DEFAULT_LADDER, type Reward, type SparkDays } from '../utils/sparks'
 import { db } from './config'
@@ -29,6 +29,7 @@ export const REVEAL_COLS = 8
 export const REVEAL_ROWS = 7
 
 const revealRef = () => doc(db, 'reveals', 'current')
+const revealPhotoRef = () => doc(db, 'rewards', 'reveal-photo')
 
 /** Everyone's sparks by day, live (one small document per person). */
 export function useSparks(enabled = true): Record<string, SparkDays> {
@@ -61,10 +62,72 @@ export function useReveal(enabled = true): Reveal | null | undefined {
   return reveal
 }
 
-/** Starts a new reveal with this photo (the last one's photo goes on the list of past ones). */
-export function startReveal(uid: string, photoId: string, day: string, thick: number, previous: Reveal | null | undefined) {
+/** The next reveal photo chosen in Settings, or null to pick one at random. */
+export function useRevealPhoto(enabled = true): { photoId: string | null | undefined; error: string | null } {
+  const [photoId, setPhotoId] = useState<string | null | undefined>(undefined)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!enabled) return
+    return onSnapshot(
+      revealPhotoRef(),
+      (snap) => {
+        setPhotoId(snap.exists() ? ((snap.data() as { photoId?: string | null }).photoId ?? null) : null)
+        setError(null)
+      },
+      (err) => {
+        setPhotoId(undefined)
+        setError(err.message)
+      },
+    )
+  }, [enabled])
+  return { photoId, error }
+}
+
+export async function getRevealPhoto(): Promise<string | null> {
+  const snap = await getDoc(revealPhotoRef())
+  return snap.exists() ? ((snap.data() as { photoId?: string | null }).photoId ?? null) : null
+}
+
+export const saveRevealPhoto = (uid: string, photoId: string | null) => setDoc(revealPhotoRef(), { photoId, updatedBy: uid })
+
+/** Starts a reveal, consuming a saved photo choice if one was used. */
+export function startReveal(
+  uid: string,
+  photoId: string,
+  day: string,
+  thick: number,
+  previous: Reveal | null | undefined,
+  consumePhotoChoice = false,
+) {
   const past = [...(previous?.past ?? []), ...(previous ? [previous.photoId] : [])].slice(-300)
-  return setDoc(revealRef(), { photoId, startedAt: day, startedBy: uid, cols: REVEAL_COLS, rows: REVEAL_ROWS, thick, hits: {}, by: {}, spent: {}, past })
+  const batch = writeBatch(db)
+  batch.set(revealRef(), { photoId, startedAt: day, startedBy: uid, cols: REVEAL_COLS, rows: REVEAL_ROWS, thick, hits: {}, by: {}, spent: {}, past })
+  if (consumePhotoChoice) batch.set(revealPhotoRef(), { photoId: null, updatedBy: uid })
+  return batch.commit()
+}
+
+/** Replaces the active reveal with a photo, keeping the independently selected next photo unchanged. */
+export function replaceCurrentReveal(uid: string, photoId: string, day: string) {
+  return runTransaction(db, async (transaction) => {
+    const revealSnap = await transaction.get(revealRef())
+    if (!revealSnap.exists()) throw new Error('There is no active reveal to replace.')
+
+    const current = revealSnap.data() as Reveal
+    if (current.photoId === photoId) throw new Error('This photo is already the active reveal.')
+    const past = [...(current.past ?? []), current.photoId].slice(-300)
+    transaction.set(revealRef(), {
+      photoId,
+      startedAt: day,
+      startedBy: uid,
+      cols: REVEAL_COLS,
+      rows: REVEAL_ROWS,
+      thick: current.thick,
+      hits: {},
+      by: {},
+      spent: {},
+      past,
+    })
+  })
 }
 
 /** One move played: its hits are added to each cell's count (two people playing at once never clash). */

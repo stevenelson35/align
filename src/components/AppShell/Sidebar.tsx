@@ -86,6 +86,7 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
       <NavLink route={{ view: 'today' }} label="Today" />
       <NavLink route={{ view: 'home' }} label={<><Icon name="todo" /> Tasks</>} also={['mine', 'family', 'work']} />
       <NavLink route={{ view: 'goals' }} label={<><Icon name="goal" /> Goals</>} also={['goal']} />
+      {isMember && <NavLink route={{ view: 'games' }} label={<><Icon name="sparkle" /> Games</>} />}
       {isMember && <NavLink route={{ view: 'blog' }} label={<><Icon name="compose" /> New blog post</>} />}
       <NavLink route={{ view: 'photos' }} label={<><Icon name="photo" /> Photos</>} />
       <a className="nav-link" href={BLOG_URL} target="_blank" rel="noopener noreferrer">

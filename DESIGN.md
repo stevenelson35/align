@@ -355,6 +355,14 @@ Shifting always shows a **preview** first. Then it applies the changes as one ba
 
 ## 8. Combined View
 
+**Personal panel styling** is stored in each member's `todayPanels` setting and synchronized to their devices. Settings accepts an independent color, curated sticker and Favorites photo background for Today, More and Shortcuts. Photo IDs are validated rather than accepting arbitrary URLs, and a translucent overlay keeps text legible. Tasks, list items and voting-board entries can each have a curated icon or emoji; the choice is stored on the entry and displayed in its list and details.
+
+**Family games** includes a shared daily Lights Out board, a three-disk Tower of Hanoi puzzle, and Picture Slider (`#/games`). Picture Slider uses a selected Favorites photo and a 3×3, 4×4 or 5×5 board. Its leaderboard is scoped to the photo ID and board size, and ranks by fewest moves then fastest time; invites preserve the same image and size. The score contract stores a per-game result map and reads existing Lights Out records in their legacy format. Replay invitations carry a versioned public puzzle payload; legacy seed-only invitations remain readable. The app-wide pending-invitation strip names the game from the catalog, and a new personal best uses the shared `celebrate` effect. Scores are visible only to members; only the score owner can improve their score and only the invitation recipient can complete it. Future games with private answers (such as a user-authored Wordle challenge) must store secrets separately from the replay payload so the recipient cannot read the answer before playing.
+
+Games is an Arrange Today section that can be placed on Today or More. Its Today section shows pinned games with mini previews, search and a Show all action; the full catalog is searchable and games can be pinned or launched there.
+
+The reveal settings separate the active picture from the queued next picture. Admins can replace the active board (confirmation resets progress and records the old picture) and independently choose or clear the next picture. Future work may let a configurable achievement policy award next-photo selection to a household member; candidate signals include goal consistency, completing the final reveal tile, flashcard progress, or game scores. The policy still needs agreed eligibility, ties, and timing before implementation.
+
 - **Views:** Today (the start page, `#/`), Everything (`#/all`), My tasks, Family tasks, Work. They show **tasks only** (never checklist items or notes).
 - **Colors** (left edge of each card; a color key is shown at the top):
   - Private = blue 🔒
@@ -476,13 +484,14 @@ firestore.rules, firestore.indexes.json
 
 ## 11. Security Rules (outline)
 
-`firestore.rules`, tested in `tests/rules/` (36 tests) against the emulator.
+`firestore.rules`, tested in `tests/rules/` against the emulator.
 
 - `isMember()` means `household/main.members[uid].role == "member"`. `isViewer()` means `"viewer"`.
 - **`household/main`:**
   - Members and viewers can read it. Any signed-in user may `get` it only while it doesn't exist, and `create` it then (first-time setup).
   - Members can update `pets`, `weeklyTokens`, `groups`, and **their own** member entry's `displayName`, `color`, `defaultVisibility` (private/family) and `phone` (string ≤ 24). Never roles.
   - `groups.parents` (`parentsChangeOk`): anyone may set it while it's empty; after that only someone already in it may change it.
+  - Each member may store `todayPanels` (only Today / More / Shortcuts, validated `#rrggbb` colors and an allowlisted sticker) in their own member entry.
 - **`lists` and `tasks`** (tasks carry copies of their list's fields; checked against the list with `getAfter()`, so a list + its tasks can change in one batch):
   - read: `private` → owner; `family` → members, or viewers if `viewerVisible`; anyone (member or viewer) whose uid is in `sharedWith`.
   - write: members, if `family`, or owner, or in `sharedWith`. Only the current owner may hand a list to someone else.
@@ -490,6 +499,7 @@ firestore.rules, firestore.indexes.json
   - Lists: `kind` in list/project/checklist/notes/links. Tasks: valid status (incl. `canceled`), priority, context, duration, `dependsOn` list, optional `calendar` map, `finishedOn` (10-char string), `pushedFrom` (list), `url` (≤ 2048), `category` (≤ 200), and copied fields equal to the list's (incl. `sharedWith`).
 - **`goals`** (`validGoal`): same read/write and owner-change rules as lists (private/family/shared via `canRead`/`canWrite`/`sharedOk`); `kind` in check/tally/progressive/measure; name 1–100 chars; `log` a map; `weekdays` a list.
 - **`boards` and `items`:** members can read and write (items may carry `note` ≤ 5000, `url` and `imageUrl` ≤ 2048). Viewers can read if the board is `viewerVisible`.
+- **Games:** members read family scores and only create/improve their own records for an allowlisted game; game invitations are readable by sender and recipient, created by a member for another member, and completed only by the recipient.
 - **`comments`** (on a board or an item): readable by anyone who can see the board; members create with their own `uid`, and edit or delete only their own (`validComment`: text 1–2000).
 - **`votes/{uid}`:** members can read; users write only their own document, `tokens` a whole number ≥ 0.
 - **`investmentLists/{id}`** (§5.13): owner-only editing, immutable owner/kind, standard per-list audience reads and bot reads. Nested results inherit the parent's current audience, with bot-only writes (summary on holdings, watchlist on Overreactions). Legacy `investing/{uid}` remains owner-only with bot read/write for compatibility.

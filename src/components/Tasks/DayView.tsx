@@ -35,6 +35,8 @@ import { moreOf, TODAY_SECTIONS, type TodaySection } from '../../utils/today'
 import { TodayDock } from './TodayDock'
 import { TodaySections, TodaySectionScope } from '../../context/TodaySections'
 import { useTodaySelect } from '../../hooks/useTodaySection'
+import { panelBackground } from '../../utils/panelStyle'
+import { GamesTodaySection } from '../Games/GamesTodaySection'
 
 /**
  * One day (DESIGN.md §8): today is the start page; ‹ › go to other days. Shows what's left, what got done, what
@@ -47,6 +49,7 @@ export function DayView({ day }: { day: string }) {
 function DayContents({ day }: { day: string }) {
   const app = useApp()
   const { tasks, lists } = useData()
+  const todayStyle = app.member.todayPanels?.today
   const now = today()
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -120,6 +123,8 @@ function DayContents({ day }: { day: string }) {
         return <GoalsStrip day={day} />
       case 'rewards':
         return <RewardsStrip />
+      case 'games':
+        return <GamesTodaySection />
       case 'map':
         return <FamilyMapStrip />
       case 'contacts':
@@ -193,12 +198,16 @@ function DayContents({ day }: { day: string }) {
   }
 
   return (
-    <section className="day-view">
+    <section
+      className="day-view"
+      style={day === now && todayStyle ? { ...panelBackground(todayStyle), borderRadius: 'var(--radius)', padding: '0.5rem' } : undefined}
+    >
       <header className="view-header day-header">
         <button type="button" className="secondary small" onClick={() => go(addDays(day, -1))} aria-label="Previous day" title="Previous day">
           ‹
         </button>
         <h2>
+          {todayStyle?.sticker && day === now ? <>{todayStyle.sticker} </> : null}
           {label || formatDay(day)}
           {label && <span className="muted small day-date"> {formatDay(day)}</span>}
         </h2>

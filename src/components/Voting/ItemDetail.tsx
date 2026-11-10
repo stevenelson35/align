@@ -7,6 +7,7 @@ import { cleanDetails, detailsOf, hasDetails, storedDetails } from '../../utils/
 import { itemLink } from '../../utils/text'
 import { DetailsFields } from '../UI/Details'
 import { EntryExtras } from '../UI/EntryExtras'
+import { ItemIcon, ItemIconPicker } from '../UI/ItemIcon'
 
 /**
  * A voting item opened up: the common EntryExtras block (note, links, pictures, comments, Text about this with a
@@ -15,7 +16,7 @@ import { EntryExtras } from '../UI/EntryExtras'
 export function ItemDetail({ item }: { item: BoardItem }) {
   const { isMember } = useApp()
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({ title: item.title, ...detailsOf(item) })
+  const [form, setForm] = useState({ title: item.title, customIcon: item.customIcon, ...detailsOf(item) })
   const [error, setError] = useState<string | null>(null)
 
   function save(e: FormEvent) {
@@ -26,7 +27,7 @@ export function ItemDetail({ item }: { item: BoardItem }) {
       return
     }
     setError(null)
-    updateItem(item, { title: form.title.trim() || item.title, note: details.note, ...storedDetails(details) })
+    updateItem(item, { title: form.title.trim() || item.title, customIcon: form.customIcon, note: details.note, ...storedDetails(details) })
       .then(() => {
         setEditing(false)
         return deleteRemovedImages(detailsOf(item).images, details.images)
@@ -42,6 +43,7 @@ export function ItemDetail({ item }: { item: BoardItem }) {
             Title
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
           </label>
+          <ItemIconPicker value={form.customIcon} onChange={(customIcon) => setForm({ ...form, customIcon })} />
           <DetailsFields value={form} onChange={(d) => setForm({ ...form, ...d })} onError={setError} linkHint="e.g. a trailer or menu" />
           {error && <p className="error small">{error}</p>}
           <div className="row">
@@ -63,6 +65,7 @@ export function ItemDetail({ item }: { item: BoardItem }) {
               </button>
             </div>
           )}
+          <h3 className="item-detail-title"><ItemIcon value={item.customIcon} /> {item.title}</h3>
           <EntryExtras details={detailsOf(item)} alt={item.title} thread={commentThread.boardItem(item.boardId, item.id)} text={{ title: item.title, when: '', link: itemLink(item.boardId, item.id) }} />
         </>
       )}

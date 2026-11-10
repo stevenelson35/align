@@ -233,6 +233,17 @@ describe('household', () => {
     await assertFails(updateDoc(doc(db('grandma'), 'household/main'), { groups: { parents: ['grandma'] } }))
   })
 
+  it('lets a parent assign one Reveal manager, then only that manager can transfer the role', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore() as unknown as Firestore, 'household/main'), { 'groups.parents': ['steve', 'wife'] })
+    })
+    await assertFails(updateDoc(doc(db('daughter'), 'household/main'), { 'groups.revealManager': 'daughter' }))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'groups.revealManager': 'steve' }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'groups.revealManager': 'wife' }))
+    await assertFails(updateDoc(doc(db('steve'), 'household/main'), { 'groups.revealManager': 'grandma' }))
+    await assertSucceeds(updateDoc(doc(db('steve'), 'household/main'), { 'groups.revealManager': 'wife' }))
+  })
+
   it('blocks role changes, editing others, and viewer writes', async () => {
     await assertFails(updateDoc(doc(db('daughter'), 'household/main'), { 'members.daughter.role': 'viewer' }))
     await assertFails(updateDoc(doc(db('daughter'), 'household/main'), { 'members.steve.displayName': 'Dad' }))
@@ -472,10 +483,150 @@ describe('goal rewards', () => {
     await assertFails(getDoc(doc(db('grandma'), 'reveals/current')))
   })
 
+  it('lets only the Reveal manager replace the active picture', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore() as unknown as Firestore, 'household/main'), { 'groups': { parents: ['steve', 'wife'], revealManager: 'steve' } })
+    })
+    await assertSucceeds(setDoc(doc(db('steve'), 'reveals/current'), reveal))
+    await assertFails(setDoc(doc(db('daughter'), 'reveals/current'), { ...reveal, photoId: 'new-photo', hits: {}, by: {}, spent: {} }))
+    await assertFails(setDoc(doc(db('wife'), 'reveals/current'), { ...reveal, photoId: 'new-photo', hits: {}, by: {}, spent: {} }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'reveals/current'), { ...reveal, photoId: 'new-photo', hits: {}, by: {}, spent: {} }))
+  })
+
   it('lets members edit the reward ladder', async () => {
     await assertSucceeds(setDoc(doc(db('wife'), 'rewards/ladder'), { items: [{ title: 'Pizza night', sparks: 60 }], updatedBy: 'wife' }))
     await assertFails(setDoc(doc(db('wife'), 'rewards/ladder'), { items: 'pizza' }))
     await assertFails(setDoc(doc(db('grandma'), 'rewards/ladder'), { items: [] }))
+  })
+
+  it('lets only the Reveal manager choose the next picture, while any member can consume that choice', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore() as unknown as Firestore, 'household/main'), { 'groups': { parents: ['steve', 'wife'], revealManager: 'steve' } })
+    })
+    await assertSucceeds(setDoc(doc(db('steve'), 'rewards/reveal-photo'), { photoId: 'camilla-photo', updatedBy: 'steve' }))
+    await assertFails(setDoc(doc(db('steve'), 'rewards/reveal-photo'), { photoId: '', updatedBy: 'steve' }))
+    await assertFails(setDoc(doc(db('wife'), 'rewards/reveal-photo'), { photoId: 'family-photo', updatedBy: 'wife' }))
+    await assertFails(setDoc(doc(db('daughter'), 'rewards/reveal-photo'), { photoId: 'other-photo', updatedBy: 'daughter' }))
+    await assertFails(setDoc(doc(db('daughter'), 'rewards/reveal-photo'), { photoId: 'other-photo', updatedBy: 'wife' }))
+    await assertSucceeds(setDoc(doc(db('daughter'), 'rewards/reveal-photo'), { photoId: null, updatedBy: 'daughter' }))
+    await assertFails(setDoc(doc(db('daughter'), 'rewards/reveal-photo'), { photoId: 'other-photo', updatedBy: 'daughter' }))
+  })
+})
+
+describe('games', () => {
+  it('lets a member save only their Lights Out best score', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'gameScores/steve_lights-out_2026-10-30'), {
+      uid: 'steve', gameId: 'lights-out', seed: '2026-10-30', bestMoves: 12, bestMs: 20000, plays: 1, updatedAt: new Date(),
+    }))
+    await assertSucceeds(getDocs(query(collection(db('steve'), 'gameScores'), where('gameId', '==', 'lights-out'), where('seed', '==', '2026-10-30'))))
+    await assertSucceeds(updateDoc(doc(db('steve'), 'gameScores/steve_lights-out_2026-10-30'), { bestMoves: 11, plays: 2, updatedAt: new Date() }))
+    await assertFails(updateDoc(doc(db('steve'), 'gameScores/steve_lights-out_2026-10-30'), { bestMoves: 13, plays: 3, updatedAt: new Date() }))
+    await assertFails(setDoc(doc(db('wife'), 'gameScores/steve_lights-out_2026-10-30'), {
+      uid: 'steve', gameId: 'lights-out', seed: '2026-10-30', bestMoves: 9, bestMs: 10000, plays: 1, updatedAt: new Date(),
+    }))
+  })
+
+  it('accepts metric-based scores and only lets a player improve their result', async () => {
+    const ref = doc(db('steve'), 'gameScores/steve_lights-out_2026-10-31')
+    await assertSucceeds(setDoc(ref, {
+      uid: 'steve', gameId: 'lights-out', seed: '2026-10-31', best: { moves: 12, ms: 20000 }, plays: 1, updatedAt: new Date(),
+    }))
+    await assertSucceeds(updateDoc(ref, {
+      best: { moves: 11, ms: 30000 }, plays: 2, updatedAt: new Date(),
+    }))
+    await assertFails(updateDoc(ref, {
+      best: { moves: 12, ms: 10000 }, plays: 3, updatedAt: new Date(),
+    }))
+    await assertFails(setDoc(doc(db('steve'), 'gameScores/steve_lights-out_2026-11-01'), {
+      uid: 'steve', gameId: 'lights-out', seed: '2026-11-01', best: { moves: 12, ms: 20000, points: 99 }, plays: 1, updatedAt: new Date(),
+    }))
+  })
+
+  it('lets members record Tower of Hanoi scores with the same generic result contract', async () => {
+    const ref = doc(db('steve'), 'gameScores/steve_tower-of-hanoi_2026-10-30')
+    await assertSucceeds(setDoc(ref, {
+      uid: 'steve', gameId: 'tower-of-hanoi', seed: '2026-10-30', best: { moves: 7, ms: 16000 }, plays: 1, updatedAt: new Date(),
+    }))
+    await assertSucceeds(updateDoc(ref, {
+      best: { moves: 7, ms: 15000 }, plays: 2, updatedAt: new Date(),
+    }))
+    await assertFails(setDoc(doc(db('steve'), 'gameScores/steve_magic-ball_2026-10-30'), {
+      uid: 'steve', gameId: 'magic-ball', seed: '2026-10-30', best: { moves: 1, ms: 1000 }, plays: 1, updatedAt: new Date(),
+    }))
+  })
+
+  it('accepts sliding-tile scores and validates the photo and board size in invitations', async () => {
+    const ref = doc(db('steve'), 'gameScores/steve_sliding-tiles_slide-4-family_photo-2026')
+    await assertSucceeds(setDoc(ref, {
+      uid: 'steve', gameId: 'sliding-tiles', seed: 'slide-4-family_photo-2026', best: { moves: 30, ms: 50000 }, plays: 1, updatedAt: new Date(),
+    }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'gameChallenges/ch-slider'), {
+      gameId: 'sliding-tiles', from: 'steve', to: 'wife', payload: { imageId: 'family_photo-2026', boardSize: 4, version: 1 }, status: 'pending', createdAt: new Date(),
+    }))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'gameChallenges/ch-slider'), {
+      status: 'completed', result: { moves: 27, ms: 45000 }, completedAt: new Date(),
+    }))
+    await assertFails(setDoc(doc(db('steve'), 'gameChallenges/ch-slider-bad-size'), {
+      gameId: 'sliding-tiles', from: 'steve', to: 'wife', payload: { imageId: 'family_photo-2026', boardSize: 9, version: 1 }, status: 'pending', createdAt: new Date(),
+    }))
+    await assertFails(setDoc(doc(db('steve'), 'gameChallenges/ch-slider-url'), {
+      gameId: 'sliding-tiles', from: 'steve', to: 'wife', payload: { imageId: 'https://example.com/photo', boardSize: 3, version: 1 }, status: 'pending', createdAt: new Date(),
+    }))
+  })
+
+  it('lets members save valid styles and pinned games for their own account', async () => {
+    await assertSucceeds(updateDoc(doc(db('steve'), 'household/main'), {
+      'members.steve.todayPanels': { today: { color: '#fedcba', sticker: '🐈', image: 'favorite_123' }, more: { sticker: '🌈' }, shortcuts: { sticker: '🚀' } },
+      'members.steve.pinnedGames': ['lights-out'],
+    }))
+    await assertFails(updateDoc(doc(db('steve'), 'household/main'), {
+      'members.steve.todayPanels': { today: { color: 'red' } },
+    }))
+    await assertFails(updateDoc(doc(db('steve'), 'household/main'), {
+      'members.steve.todayPanels': { shortcuts: { sticker: '🛸' } },
+    }))
+    await assertFails(updateDoc(doc(db('steve'), 'household/main'), {
+      'members.steve.todayPanels': { today: { image: 'https://example.com/image.jpg' } },
+    }))
+    await assertFails(updateDoc(doc(db('steve'), 'household/main'), {
+      'members.steve.pinnedGames': 'lights-out',
+    }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), {
+      'members.steve.todayPanels': { today: { color: '#fedcba' } },
+    }))
+  })
+
+  it('lets a member invite a household member to a puzzle and only the recipient complete it', async () => {
+    const challenge = {
+      gameId: 'lights-out', from: 'steve', to: 'wife', seed: 'same-puzzle', status: 'pending', createdAt: new Date(),
+    }
+    await assertSucceeds(setDoc(doc(db('steve'), 'gameChallenges/ch1'), challenge))
+    await assertSucceeds(getDoc(doc(db('wife'), 'gameChallenges/ch1')))
+    await assertSucceeds(getDocs(query(collection(db('wife'), 'gameChallenges'), where('to', '==', 'wife'), where('status', '==', 'pending'))))
+    await assertFails(getDoc(doc(db('daughter'), 'gameChallenges/ch1')))
+    await assertFails(getDoc(doc(db('grandma'), 'gameChallenges/ch1')))
+    await assertFails(setDoc(doc(db('daughter'), 'gameChallenges/ch2'), { ...challenge, from: 'steve', to: 'daughter' }))
+    await assertFails(setDoc(doc(db('grandma'), 'gameChallenges/ch3'), { ...challenge, from: 'grandma', to: 'wife' }))
+    await assertFails(updateDoc(doc(db('steve'), 'gameChallenges/ch1'), { status: 'completed', moves: 10, ms: 5000, completedAt: new Date() }))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'gameChallenges/ch1'), { status: 'completed', moves: 10, ms: 5000, completedAt: new Date() }))
+  })
+
+  it('accepts versioned replay payloads and metric-based challenge results', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'gameChallenges/ch-payload'), {
+      gameId: 'lights-out', from: 'steve', to: 'wife', payload: { puzzleId: 'daily-2026-10-30', version: 1 }, status: 'pending', createdAt: new Date(),
+    }))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'gameChallenges/ch-payload'), {
+      status: 'completed', result: { moves: 10, ms: 5000 }, completedAt: new Date(),
+    }))
+    await assertFails(setDoc(doc(db('steve'), 'gameChallenges/ch-invalid-payload'), {
+      gameId: 'lights-out', from: 'steve', to: 'wife', payload: { answer: 'secret' }, status: 'pending', createdAt: new Date(),
+    }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'gameChallenges/ch-hanoi'), {
+      gameId: 'tower-of-hanoi', from: 'steve', to: 'wife', payload: { puzzleId: '2026-10-30', version: 1 }, status: 'pending', createdAt: new Date(),
+    }))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'gameChallenges/ch-hanoi'), {
+      status: 'completed', result: { moves: 7, ms: 15000 }, completedAt: new Date(),
+    }))
   })
 })
 

@@ -7,6 +7,7 @@ import { canAddIdeas, canClaim, claimState, cleanGift, giftSummary, isRecipient,
 import { targetName } from '../../utils/tasks'
 import { ListHeader } from '../Tasks/ListHeader'
 import { Icon } from '../UI/Icon'
+import { ItemIcon } from '../UI/ItemIcon'
 
 /** When an item was added, so the list keeps the order things were thought of. */
 const added = (t: Task) => (t.createdAt ? t.createdAt.seconds : Infinity)
@@ -60,7 +61,7 @@ function GiftRow({ item, list, secret, claims }: { item: Task; list: List; secre
   return (
     <li className={`gift-row${app.selectedTaskId === item.id ? ' selected' : ''}`}>
       <button type="button" className="gift-main" onClick={() => app.selectTask(item.id)}>
-        <strong>{item.title}</strong>
+        <strong><ItemIcon value={item.customIcon} /> {item.title}</strong>
         <span className="muted small">
           {[summary, item.noteIds?.length ? `${item.noteIds.length} note${item.noteIds.length > 1 ? 's' : ''}` : '', item.links?.length ? 'link' : ''].filter(Boolean).join(' · ')}
           {secret && <span className="badge gift-secret">secret idea</span>}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocations } from '../../firebase/location'
 import { usePlaces } from '../../firebase/places'
 import { useApp } from '../../hooks/useApp'
@@ -37,7 +37,11 @@ function WhoIsWhere() {
   const { locations, error } = useLocations()
   const pins = usePinned()
   const [pinError, setPinError] = useState<string | null>(null)
-  const [now] = useState(() => Date.now())
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(timer)
+  }, [])
   const places = usePlaces()
   const at = (ids?: string[]) => (ids ?? []).map((id) => places.find((p) => p.id === id)?.name).filter(Boolean).join(', ')
   const byUid = new Map(locations.map((l) => [l.uid, l]))
@@ -56,6 +60,7 @@ function WhoIsWhere() {
       render={([uid, m]) => {
         const loc = byUid.get(uid)
         const tst = loc && typeof loc.tst === 'number' ? loc.tst : undefined
+        const lastEvent = loc?.events?.[loc.events.length - 1]
         return (
           <div className={`collection-row map-person small${tst && now - tst > STALE_MS ? ' stale' : ''}`}>
             <span className="map-dot" style={{ background: m.color }} aria-hidden="true" />
@@ -71,7 +76,7 @@ function WhoIsWhere() {
                 {loc?.off
                   ? 'paused'
                   : tst
-                    ? [at(loc?.inside) ? `at ${at(loc?.inside)}` : '', loc?.events?.length ? eventText(loc.events[loc.events.length - 1]) : '', agoText(tst, now), loc?.batt !== undefined ? `${loc.batt}% battery` : ''].filter(Boolean).join(' · ')
+                    ? [at(loc?.inside) ? `at ${at(loc?.inside)}` : '', lastEvent ? eventText(lastEvent, now) : '', lastEvent ? `location ${agoText(tst, now)}` : agoText(tst, now), loc?.batt !== undefined ? `${loc.batt}% battery` : ''].filter(Boolean).join(' · ')
                     : 'not sharing'}
               </span>
               {loc && stuckSince(loc, now) && <span className="map-stuck small">Location not updating: see the map</span>}

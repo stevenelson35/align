@@ -8,6 +8,7 @@ import { colorKey, isFinished, PRIORITY_LABEL, STATUS_LABEL, targetName, waiting
 import { Icon } from '../UI/Icon'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 import { DetailsMarks } from '../UI/Details'
+import { ItemIcon } from '../UI/ItemIcon'
 
 interface Props {
   task: Task
@@ -55,6 +56,7 @@ export function TaskCard({ task, showList = true, onTicked, day, dayActions, not
       />
       <div className="grow">
         <div className="task-title">
+          <ItemIcon value={task.customIcon} />
           {task.title}
           <DetailsMarks links={task.links} images={task.images} />
         </div>

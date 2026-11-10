@@ -18,6 +18,7 @@ import { cleanLinks, cleanUrls, detailsOf, MAX_IMAGES, taskDetails } from '../..
 import { DetailsView, LinksAndPictures } from '../UI/Details'
 import { NotePicker } from '../UI/RelatedNotes'
 import { AutoTextarea } from '../UI/AutoTextarea'
+import { ItemIconPicker } from '../UI/ItemIcon'
 
 /** ✓ done, ✕ canceled, ⏳ not finished yet. */
 function statusIcon(t: Task) {
@@ -51,6 +52,7 @@ function TaskView({ task, onEdit }: { task: Task; onEdit: () => void }) {
     <EntryPanel
       kind="Task"
       title={task.title}
+      customIcon={task.customIcon}
       onEdit={app.canEdit(task) ? onEdit : undefined}
       onClose={() => app.selectTask(null)}
       facts={
@@ -161,6 +163,7 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
     const patch: Partial<TaskInput> = {
       ...taskDetails({ links, images }),
       noteIds: noteIds.length ? noteIds : undefined,
+      customIcon: form.customIcon || undefined,
       title: form.title.trim() || task.title,
       notes: form.notes || undefined,
       priority: form.priority,
@@ -297,6 +300,7 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
           Notes
           <AutoTextarea rows={3} value={form.notes ?? ''} onChange={(e) => set({ notes: e.target.value })} />
         </label>
+        <ItemIconPicker value={form.customIcon} onChange={(customIcon) => set({ customIcon })} disabled={!editable} />
         {editable ? (
           <LinksAndPictures value={extras} onChange={(d) => setExtras({ ...extras, ...d })} onError={setError} />
         ) : (

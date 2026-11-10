@@ -8,6 +8,7 @@ import { ListHeader } from './ListHeader'
 import { Icon } from '../UI/Icon'
 import { parentsOf } from '../../utils/audience'
 import { DetailsMarks } from '../UI/Details'
+import { ItemIcon } from '../UI/ItemIcon'
 
 /** Links (bookmarks) in a collapsible category tree. Tapping a name opens it in a new tab; 💬 texts the address. */
 export function LinksView({ list }: { list: List }) {
@@ -86,10 +87,10 @@ export function LinksView({ list }: { list: List }) {
         <div className="grow">
           {href ? (
             <a href={href} target="_blank" rel="noopener noreferrer" className="link-name">
-              {l.title} <span aria-hidden="true">↗</span>
+              <ItemIcon value={l.customIcon} /> {l.title} <span aria-hidden="true">↗</span>
             </a>
           ) : (
-            <span className="link-name">{l.title}</span>
+            <span className="link-name"><ItemIcon value={l.customIcon} /> {l.title}</span>
           )}
           <DetailsMarks links={l.links} images={l.images} />
           {showUrls && l.url && <div className="muted small link-url">{l.url}</div>}

@@ -1,6 +1,13 @@
 import type { Timestamp } from 'firebase/firestore'
 
 export type Role = 'member' | 'viewer'
+export type TodaySurface = 'today' | 'more' | 'shortcuts'
+
+export interface TodayPanelStyle {
+  color?: string
+  sticker?: string
+  image?: string
+}
 
 /** A link on an entry's details: `{ url, label? }`, or a bare address (saved before links had names). */
 export type StoredLink = string | { url: string; label?: string }
@@ -20,12 +27,16 @@ export interface HouseholdMember {
   newTaskDue?: 'today' | 'none'
   /** Links (links-list item ids) this person pinned to their own Align menu, in order. */
   pinnedLinks?: string[]
+  /** Game ids this person pinned in the Today Games section, in display order. */
+  pinnedGames?: string[]
   /** Today pins: list, item and board ids, or `map-person:<uid>` for a family map person. */
   pinned?: string[]
   /** Today sections this person moved into More… (section ids; absent = the defaults: gifts, lists, links…). */
   todayMore?: string[]
   /** Contacts and links this person put on the top of Today (item ids), with their call / text / email or open. */
   todayItems?: string[]
+  /** Their personal colors and sticker decorations for Today, More and Shortcuts. */
+  todayPanels?: Partial<Record<TodaySurface, TodayPanelStyle>>
   /** The calendar-sync account: a member for the rules, hidden from people pickers. Set in the console. */
   bot?: boolean
 }
@@ -43,7 +54,7 @@ export interface Household {
   weeklyTokens: number
   tokenStartDate: Timestamp
   /** Named groups for the sharing shortcuts (e.g. "Parents"). A convenience only: access is each list's sharedWith. */
-  groups?: { parents?: string[] }
+  groups?: { parents?: string[]; revealManager?: string }
 }
 
 /** private: the owner. family: every member (viewers too if viewerVisible). shared: the people in sharedWith. */
@@ -110,6 +121,8 @@ export interface Task {
   editors?: string[]
 
   title: string
+  /** A curated icon name (`icon:goal`) or emoji (`emoji:🐾`) chosen for this item. */
+  customIcon?: string
   notes?: string
   priority: Priority
   status: Status
@@ -224,6 +237,8 @@ export interface BoardItem {
   id: string
   boardId: string
   title: string
+  /** A curated icon name (`icon:goal`) or emoji (`emoji:🐾`) chosen for this item. */
+  customIcon?: string
   category?: string
   status: ItemStatus
   /** Optional details: a note, links and pictures (utils/details.ts; url / imageUrl are the older single ones). */

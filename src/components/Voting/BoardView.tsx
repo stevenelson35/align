@@ -8,6 +8,7 @@ import type { Board, BoardItem, ItemStatus } from '../../types'
 import { Comments } from '../UI/Comments'
 import { SectionHeader } from '../UI/SectionHeader'
 import { ItemDetail } from './ItemDetail'
+import { ItemIcon } from '../UI/ItemIcon'
 import { Icon } from '../UI/Icon'
 import { HelpTip } from '../UI/HelpTip'
 import { TextForm } from '../Tasks/TextAbout'
@@ -29,7 +30,7 @@ export function BoardView({ board, openItemId }: { board: Board; openItemId?: st
   const itemTitle = (item: BoardItem) => (
     <button type="button" className="item-title" onClick={() => toggleItem(item.id)} aria-expanded={openItem === item.id} title="Details and comments">
       {detailsOf(item).images[0] && <Picture src={detailsOf(item).images[0]} alt="" className="item-thumb" />}
-      <strong>{item.title}</strong>
+      <strong><ItemIcon value={item.customIcon} /> {item.title}</strong>
       {item.note && <span title="Has a note"> <Icon name="note" /></span>}
       {detailsOf(item).links.length > 0 && <span title="Has links"> <Icon name="link" /></span>}
       {detailsOf(item).images.length > 1 && <span className="muted small" title="Pictures"> <Icon name="photo" /> {detailsOf(item).images.length}</span>}

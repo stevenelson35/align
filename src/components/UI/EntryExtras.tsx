@@ -8,6 +8,7 @@ import { DetailsView } from './Details'
 import { Icon, type IconName } from './Icon'
 import { HelpTip } from './HelpTip'
 import { RelatedNotes } from './RelatedNotes'
+import { ItemIcon } from './ItemIcon'
 
 /** What a text about an entry says: its title, when (if anything), and a link that opens it. */
 export interface TextSubject {
@@ -83,6 +84,7 @@ export function EntryFact({ icon, children }: { icon: IconName; children: ReactN
 export function EntryPanel({
   kind,
   title,
+  customIcon,
   onEdit,
   onClose,
   facts,
@@ -90,6 +92,7 @@ export function EntryPanel({
 }: {
   kind: string
   title: string
+  customIcon?: string
   onEdit?: () => void
   onClose: () => void
   facts?: ReactNode
@@ -108,7 +111,7 @@ export function EntryPanel({
           ✕
         </button>
       </header>
-      <h2 className="entry-title">{title}</h2>
+      <h2 className="entry-title"><ItemIcon value={customIcon} /> {title}</h2>
       {facts && <ul className="entry-facts">{facts}</ul>}
       {children}
     </div>

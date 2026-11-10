@@ -11,6 +11,7 @@ import { DetailsMarks } from '../UI/Details'
 import { Icon } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { StarRating } from './StarRating'
+import { ItemIcon } from '../UI/ItemIcon'
 
 type Sort = 'tonight' | 'rating' | 'newest' | 'title'
 
@@ -88,7 +89,7 @@ export function PicksView({ list }: { list: List }) {
             {top.map((r) => (
               <li key={r.item.id} className={r.item.id === picked ? 'chosen' : ''}>
                 <button type="button" className="link pick-title" onClick={() => app.selectTask(r.item.id)}>
-                  {r.item.title}
+                  <ItemIcon value={r.item.customIcon} /> {r.item.title}
                 </button>
                 <span className="muted small"> {whoRated(r)}</span>
               </li>
@@ -102,7 +103,7 @@ export function PicksView({ list }: { list: List }) {
             </button>
             {chosen && (
               <>
-                <strong className="picked-title">{chosen.item.title}</strong>
+                <strong className="picked-title"><ItemIcon value={chosen.item.customIcon} /> {chosen.item.title}</strong>
                 <button
                   type="button"
                   className="small"
@@ -147,7 +148,7 @@ export function PicksView({ list }: { list: List }) {
               <li key={t.id} className={`pick-row${app.selectedTaskId === t.id ? ' selected' : ''}${resting ? ' resting' : ''}`}>
                 <div className="grow">
                   <button type="button" className="link pick-title" onClick={() => app.selectTask(t.id)}>
-                    {t.title}
+                    <ItemIcon value={t.customIcon} /> {t.title}
                   </button>
                   <DetailsMarks links={t.links} images={t.images} />
                   <div className="muted small">

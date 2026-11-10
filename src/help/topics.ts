@@ -23,6 +23,7 @@ export type HelpTopicId =
   | 'texting'
   | 'goals'
   | 'rewards'
+  | 'games'
   | 'photos'
   | 'map'
   | 'voting'
@@ -300,9 +301,20 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Sparks: each goal you meet earns one (up to 5 a day), and finishing all of your day’s goals earns 2 more. They’re banked: never spent and never lost.',
       'On Today, open Reveal for an inset picture panel with progress, your moves and the Play link below the picture.',
       'Reveal: a family photo, picked by chance, sits under frosted ice, and the game board is laid right on it. Each spark is one move: swipe a gem toward a neighbor (or tap one, then the other) to line up 3 or more of a color. They burst, the gems above fall, and chains keep going. Each burst breaks the frost under it (thicker frost takes more), and a broken square stays clear: that bit of the photo shows around the gems that fall onto it. Hold Peek to fade the gems and look. Everyone gets 3 moves when a new reveal starts.',
+      'A parent can assign one Reveal picture manager in Settings. Only that account sees or changes the current and next picture controls; the next-picture choice is used once, then future reveals return to random picks.',
       '• 4 in a row makes a gem with stripes that clears its whole row or column; an L or T makes a bomb that clears around it; 5 in a row makes a rainbow wheel that clears every gem of the color you swap it with.',
       'The photo is shared: whatever anyone breaks stays broken, and two people can play at the same time. When the last ice breaks, everyone sees the photo uncovered, with who helped.',
       'Rewards: the family’s sparks, all time, unlock the ladder (Ice cream night, Movie night…). Nothing is spent, so each one stays unlocked. Edit the ladder on the Reveal page.',
+    ],
+  },
+  {
+    id: 'games',
+    title: 'Family games',
+    tip: 'Short puzzles with a family leaderboard. Invite someone to solve the same board, then compare moves and time.',
+    body: [
+      'Games has Lights Out, Tower of Hanoi and Picture Slider. Choose a favorite photo and a 3 × 3, 4 × 4 or 5 × 5 slider board; invitations replay the same picture and board size.',
+      'The family leaderboards compare fewest moves first, then fastest time, for the same puzzle settings. Beat your personal best for a celebration. You can invite someone to replay the same puzzle from the game.',
+      'After solving a board, select family members to send them that same puzzle. Their invitations appear in Align until they play; open one to try the shared board.',
     ],
   },
   {
@@ -372,7 +384,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Add stocks follows ticker symbols or imports a portfolio CSV (E*TRADE: Portfolio → Download → Spreadsheet). Positions show your shares, what you paid and the change since.',
       '• Each stock shows its price, day and week move, and big-move flags. Tap it for headlines, its 52-week closing-price range, distance from the high, and trailing / forward P/E when available. The range is price context, not intrinsic valuation; forward earnings are estimates.',
       '• Peer comparisons use at least three other stocks in the same list with the same reported industry and positive forward P/E. They show the median and your stock’s premium or discount, not an industry-wide survey or a ten-year valuation history. Missing data is labeled; ETFs may have no useful P/E.',
-      '• The watchlist is a “market overreaction detector”: a scanner hunts for quality mid-caps that dropped 15–40% right after earnings while revenue still grows, cash flow stays positive, debt stays manageable and insiders are buying. After a full pass it publishes up to 10 highest-scoring qualifying candidates, not the first 10 found. Failed source lookups are skipped, not confirmed rejections. Each candidate gets a 0–100 score. With GEMINI_API_KEY configured and a successful response, it also gets a one-page note: why it fell, whether the fundamentals changed, historical analogs, the bull and bear case, and a recovery estimate. A disclaimer alone is not a write-up; check the key and Executions logs for Gemini errors.',
+      '• The watchlist is a “market overreaction detector”: a scanner hunts for quality mid-caps that dropped 15–40% right after earnings while revenue still grows, cash flow stays positive, debt stays manageable and insiders are buying. After a full pass it publishes up to 10 highest-scoring qualifying candidates, not the first 10 found. Failed source lookups are skipped, not confirmed rejections. Each candidate gets a 0–100 score. With GEMINI_API_KEY configured and a successful response, it also gets a one-page note: why it fell, whether the fundamentals changed, historical analogs, the bull and bear case, and a recovery estimate. New results show whether a note was generated and when, attempted but failed, or not configured. Older results do not record the outcome, so a disclaimer alone cannot tell whether generation was attempted.',
       '• Most scans find nothing — the screen is picky on purpose. Candidates are things to read about and check yourself.',
       '• Open a stock or scanner candidate and choose Text about this. Pick a person, add a note, then Send text opens your phone’s Messages app; you send it there. Copy text also works. Recipients must sign in and have access to the list: texting does not grant access. Links open the latest report, not an archived scan; a stock that has left the list is labeled.',
       '• Scores and AI recovery estimates are uncalibrated research aids, not measured probabilities. After upgrading, old results remain visible to their owner; shared people see results once the updated scanner refreshes that list. A watchlist publishes only after a complete scanning and scoring pass.',
@@ -414,15 +426,17 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'settings',
     title: 'Settings',
-    tip: 'Your own settings (tap your initial at the top right): sign out, who sees new things by default, your phone number, the Parents group, your password, the blog token, icons, theme and colors.',
+    tip: 'Your own settings, an optional four-digit device PIN, and switching accounts. Switching stays available without a PIN.',
     body: [
       'Tap your initial (top right) for Settings.',
       '• Who can see new things: your default for new lists and quick adds.',
       '• New tasks without a date: due the day you add them (so they show on Today), or no date.',
       '• Your mobile number: so others can text you from Align.',
       '• Parents: who “Parents” means. Once set, only a parent can change it.',
+      '• Settings PIN: optionally require a four-digit PIN to open this account’s settings on this device. Switching accounts remains available without a PIN; this is a convenience lock, not account security.',
       '• Password: change it here; forgot it? Use “Forgot password?” on the sign-in screen.',
       '• Someone else using this phone (a child borrowing it)? Switch to, at the top of Settings, opens Align as them in one tap, and everything they do counts as them. Add someone signs them in the first time; after that no password is needed to switch either way.',
+      '• Today panel colors & stickers: personalize Today, More and Shortcuts separately; those choices follow your account across devices.',
       '• Your color (the circle with your initial, your map dot) is saved for everyone to see. Blog posting, Icons, Theme, Accent color, Phone bars and Color key colors are saved on this device only.',
     ],
   },

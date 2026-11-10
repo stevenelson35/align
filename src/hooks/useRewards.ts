@@ -1,5 +1,5 @@
 import { today } from '../engine/dates'
-import { startReveal, useLadder, useReveal, useSparks } from '../firebase/rewards'
+import { getRevealPhoto, startReveal, useLadder, useReveal, useSparks } from '../firebase/rewards'
 import { loadFavorites } from '../photos/favorites'
 import { iceLeft, activeEarners, thicknessFor } from '../utils/reveal'
 import { familySparks, ladderStatus, movesLeft, pickRevealPhoto } from '../utils/sparks'
@@ -28,10 +28,14 @@ export function useRewards() {
     pct: cells ? Math.round((cleared.size / cells) * 100) : 0,
     /** A new reveal with a family photo picked by chance (one not revealed before). */
     startNext: async () => {
-      const m = await loadFavorites()
-      const id = pickRevealPhoto(m.photos, [...(reveal?.past ?? []), ...(reveal ? [reveal.photoId] : [])], Math.random)
+      const preferredPhoto = await getRevealPhoto()
+      const id = preferredPhoto ?? pickRevealPhoto(
+        (await loadFavorites()).photos,
+        [...(reveal?.past ?? []), ...(reveal ? [reveal.photoId] : [])],
+        Math.random,
+      )
       if (!id) throw new Error('No family photos to use yet.')
-      await startReveal(uid, id, today(), thicknessFor(activeEarners(sparks, today())), reveal)
+      await startReveal(uid, id, today(), thicknessFor(activeEarners(sparks, today())), reveal, !!preferredPhoto)
     },
   }
 }

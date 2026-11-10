@@ -20,6 +20,7 @@ import { ContactDetails } from '../Contacts/ContactDetails'
 import { GiftClaimPanel } from '../Gifts/GiftDetails'
 import { useTodayItems } from '../../hooks/useTodayItems'
 import { cleanGift, giftSummary, isRecipient, ownGiftIdea, recipientLabel } from '../../utils/gifts'
+import { ItemIconPicker } from '../UI/ItemIcon'
 
 /**
  * Side panel for a checklist item, a note or a link. It opens as a view (the item, its note, links, pictures,
@@ -44,6 +45,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
     <EntryPanel
       kind={isNote ? 'Note' : isLink ? 'Link' : isPick ? pickKind(list.pickKind).label : list.kind === 'cards' ? 'Flashcard' : isGift ? (list.giftSecret ? 'Secret gift idea' : 'Gift idea') : 'Checklist item'}
       title={item.title}
+      customIcon={item.customIcon}
       onEdit={app.canEdit(item) || ownGiftIdea(item, list, app.member.role, app.uid) ? () => setEditing(true) : undefined}
       onClose={() => app.selectTask(null)}
       facts={
@@ -178,6 +180,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
   const isLink = list.kind === 'links'
   const noun = isNote ? 'note' : isLink ? 'link' : 'item'
   const [title, setTitle] = useState(item.title)
+  const [customIcon, setCustomIcon] = useState(item.customIcon)
   const [url, setUrl] = useState(item.url ?? '')
   const [category, setCategory] = useState(item.category ?? '')
   const [text, setText] = useState(item.notes ?? '')
@@ -209,6 +212,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
         item.id,
         {
           title: title.trim() || item.title,
+          customIcon: customIcon || undefined,
           notes: text.trim() ? text : undefined,
           ...taskDetails({ links, images }),
           noteIds: noteIds.filter((id) => id !== item.id).length ? noteIds.filter((id) => id !== item.id) : undefined,
@@ -257,6 +261,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
           {isNote ? 'Title' : isLink ? 'Name' : list.kind === 'cards' ? 'Front (the question)' : 'Item'}
           <input value={title} onChange={(e) => setTitle(e.target.value)} required />
         </label>
+        <ItemIconPicker value={customIcon} onChange={setCustomIcon} disabled={!editable} />
         {isLink && (
           <>
             <label>

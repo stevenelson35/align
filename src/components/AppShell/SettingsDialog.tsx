@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
-import { getIntegrations, setDefaultVisibility, setIntegration, setMemberColor, setNewTaskDue, setParents, setPhone } from '../../firebase/db'
+import { getIntegrations, setDefaultVisibility, setIntegration, setMemberColor, setNewTaskDue, setParents, setPhone, setRevealManager, setTodayPanelStyles } from '../../firebase/db'
 import { changePassword, signOut } from '../../firebase/auth'
 import { addPerson, currentSlot, loadAccounts, switchTo } from '../../firebase/accounts'
 import { auth } from '../../firebase/config'
+import { today } from '../../engine/dates'
 import { people } from '../../utils/tasks'
 import { githubToken, setGithubToken, testToken } from '../../blog/github'
 import { useApp } from '../../hooks/useApp'
-import type { HouseholdMember } from '../../types'
+import type { HouseholdMember, TodayPanelStyle, TodaySurface } from '../../types'
 import { AUDIENCE_ICON, AUDIENCES } from '../../utils/audience'
 import { loadTheme, onThemeChange, saveTheme, type ThemeChoice } from '../../utils/theme'
 import { ACCENTS, barsColor, customAccent, LIST_COLORS, loadAccent, loadAccentAll, loadBars, loadListColors, saveAccent, saveAccentAll, saveBars, saveListColors, type Accent, type Bars, type ListColorId } from '../../utils/accent'
@@ -18,6 +19,11 @@ import { Icon, type IconName } from '../UI/Icon'
 import { HelpTip } from '../UI/HelpTip'
 import { loadWeatherSettings, saveWeatherSettings } from '../../hooks/useWeather'
 import { DEFAULT_PLACE, FORECAST_SITES, forecastLink, geocodeUrl, parsePlaces, type WeatherPlace, type WeatherSettings } from '../../utils/weather'
+import { replaceCurrentReveal, saveRevealPhoto, useReveal, useRevealPhoto } from '../../firebase/rewards'
+import { photoCaption, photoUrl } from '../../photos/favorites'
+import { useFavorites } from '../../hooks/useFavorites'
+import { PhotoPicker } from '../Photos/PhotoPicker'
+import { hasSettingsPin, removeSettingsPin, saveSettingsPin, verifySettingsPin } from '../../utils/settingsPin'
 
 type DefaultAudience = NonNullable<HouseholdMember['defaultVisibility']>
 
@@ -47,7 +53,12 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const parents = new Set(household.groups?.parents ?? [])
   // Matches the rules: anyone may set the group up while it's empty; after that only a parent may change it.
   const canSetParents = parents.size === 0 || parents.has(uid)
+  const revealManager = household.groups?.revealManager
+  const canConfigureRevealManager = revealManager ? revealManager === uid : parents.has(uid)
   const adults = people(household, true)
+  const pinSet = hasSettingsPin(uid)
+  const [unlockedPinUid, setUnlockedPinUid] = useState<string | null>(null)
+  const pinLocked = pinSet && unlockedPinUid !== uid
 
   async function savePhone() {
     setError(null)
@@ -119,7 +130,13 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <SwitchPerson />
+        {pinLocked ? (
+          <SettingsPinPrompt uid={uid} onUnlock={() => setUnlockedPinUid(uid)} />
+        ) : (
+          <>
+            <SettingsPinSetting uid={uid} enabled={pinSet} onPinSet={() => setUnlockedPinUid(uid)} onPinRemoved={() => setUnlockedPinUid(null)} />
         {isMember && <YourColorSetting />}
+        {isMember && <TodayPanelsSetting uid={uid} member={member} />}
         {isMember && (
           <fieldset className="setting">
             <legend>
@@ -197,8 +214,13 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                   : 'Only parents can change this.'
                 : 'Only a parent can change who the parents are.'}
             </p>
+            {!revealManager && parents.size === 0 && (
+              <p className="muted small">Choose yourself in Parents to set up a sole Reveal picture manager; other accounts won’t see the picture controls.</p>
+            )}
           </fieldset>
         )}
+        {isMember && canConfigureRevealManager && <RevealManagerSetting managerUid={revealManager} members={adults} />}
+        {isMember && revealManager === uid && <RevealPhotoSetting uid={uid} />}
         <PasswordSetting />
         {isMember && (
           <fieldset className="setting">
@@ -323,6 +345,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         <PhoneBarsSetting />
         <ListColorsSetting />
         {error && <p className="error">{error}</p>}
+          </>
+        )}
       </div>
     </div>
   )
@@ -347,6 +371,173 @@ function SwitchPerson() {
         + Add someone
       </button>
     </div>
+  )
+}
+
+function SettingsPinPrompt({ uid, onUnlock }: { uid: string; onUnlock: () => void }) {
+  const [pin, setPin] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
+
+  async function unlock(event: FormEvent) {
+    event.preventDefault()
+    setChecking(true)
+    setError(null)
+    try {
+      if (await verifySettingsPin(uid, pin)) onUnlock()
+      else setError('That PIN did not match.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  return (
+    <form className="setting" onSubmit={(event) => void unlock(event)}>
+      <h3>Settings locked</h3>
+      <p className="muted small">Enter this account’s PIN to open its settings. You can still switch users above. If you forget it, clear Align’s site data on this device.</p>
+      <div className="row">
+        <input
+          type="password"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={4}
+          value={pin}
+          onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 4))}
+          aria-label="Settings PIN"
+          required
+        />
+        <button type="submit" className="small" disabled={checking || pin.length !== 4}>{checking ? 'Checking…' : 'Unlock settings'}</button>
+      </div>
+      {error && <p className="error small">{error}</p>}
+    </form>
+  )
+}
+
+function SettingsPinSetting({
+  uid, enabled, onPinSet, onPinRemoved,
+}: {
+  uid: string
+  enabled: boolean
+  onPinSet: () => void
+  onPinRemoved: () => void
+}) {
+  const [pin, setPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function save(event: FormEvent) {
+    event.preventDefault()
+    setError(null)
+    setNote(null)
+    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      setError('Choose a four-digit PIN.')
+      return
+    }
+    if (pin !== confirmPin) {
+      setError('The PINs do not match.')
+      return
+    }
+    setSaving(true)
+    try {
+      await saveSettingsPin(uid, pin)
+      setPin('')
+      setConfirmPin('')
+      setNote('Settings PIN saved on this device.')
+      onPinSet()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function remove() {
+    removeSettingsPin(uid)
+    setPin('')
+    setConfirmPin('')
+    setNote('Settings PIN removed from this device.')
+    setError(null)
+    onPinRemoved()
+  }
+
+  return (
+    <fieldset className="setting">
+      <legend>Settings PIN (this device)</legend>
+      <p className="muted small">
+        {enabled ? 'A PIN is required to open this account’s settings.' : 'Optionally lock this account’s settings with a four-digit PIN.'}
+        {' '}This is a convenience lock, not account security; switching users remains available without a PIN. If forgotten, clear Align’s site data on this device.
+      </p>
+      <form onSubmit={(event) => void save(event)}>
+        <div className="row">
+          <input
+            type="password"
+            inputMode="numeric"
+            autoComplete="new-password"
+            maxLength={4}
+            placeholder={enabled ? 'New PIN' : 'Four-digit PIN'}
+            value={pin}
+            onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 4))}
+            aria-label={enabled ? 'New settings PIN' : 'Settings PIN'}
+          />
+          <input
+            type="password"
+            inputMode="numeric"
+            autoComplete="new-password"
+            maxLength={4}
+            placeholder="Confirm PIN"
+            value={confirmPin}
+            onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, '').slice(0, 4))}
+            aria-label="Confirm settings PIN"
+          />
+          <button type="submit" className="small" disabled={saving || pin.length !== 4 || confirmPin.length !== 4}>
+            {saving ? 'Saving…' : enabled ? 'Change PIN' : 'Set PIN'}
+          </button>
+          {enabled && <button type="button" className="link small" onClick={remove} disabled={saving}>Remove PIN</button>}
+        </div>
+      </form>
+      {note && <p className="muted small" role="status">{note}</p>}
+      {error && <p className="error small">{error}</p>}
+    </fieldset>
+  )
+}
+
+function RevealManagerSetting({ managerUid, members }: { managerUid?: string; members: [string, HouseholdMember][] }) {
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+
+  async function chooseManager(uid: string) {
+    setSaving(true)
+    setError(null)
+    setNote(null)
+    try {
+      await setRevealManager(uid || null)
+      setNote(uid ? 'Reveal picture manager updated.' : 'Reveal picture manager removed.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <fieldset className="setting">
+      <legend>Reveal picture manager</legend>
+      <p className="muted small">Only this account can see or change the current and next Reveal pictures in Settings.</p>
+      <label className="inline small">
+        Account
+        <select value={managerUid ?? ''} disabled={saving} onChange={(event) => void chooseManager(event.target.value)}>
+          <option value="">Choose one account…</option>
+          {members.map(([uid, member]) => <option key={uid} value={uid}>{member.displayName}</option>)}
+        </select>
+      </label>
+      {note && <p className="muted small" role="status">{note}</p>}
+      {error && <p className="error small">{error}</p>}
+    </fieldset>
   )
 }
 
@@ -510,6 +701,186 @@ function PhoneBarsSetting() {
       </label>
       <p className="muted small">A web page opened from Align (a link) has its own bar, in the color Align had when it was added to the home screen.</p>
     </fieldset>
+  )
+}
+
+const PANEL_OPTIONS: { id: TodaySurface; label: string }[] = [
+  { id: 'today', label: 'Today' },
+  { id: 'more', label: 'More' },
+  { id: 'shortcuts', label: 'Shortcuts' },
+]
+const PANEL_STICKERS = ['', '🌈', '⭐', '🐾', '🐈', '🌻', '🦋', '🎮', '🍓', '🪴', '🚀', '🧩', '🌙', '☀️']
+
+function TodayPanelsSetting({ uid, member }: { uid: string; member: HouseholdMember }) {
+  const [styles, setStyles] = useState<Partial<Record<TodaySurface, TodayPanelStyle>>>(member.todayPanels ?? {})
+  const [saving, setSaving] = useState(false)
+  const [picking, setPicking] = useState<TodaySurface | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+
+  async function save() {
+    setSaving(true)
+    setNote(null)
+    try {
+      await setTodayPanelStyles(uid, styles)
+      setNote('Saved for your account.')
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const update = (surface: TodaySurface, patch: TodayPanelStyle) => {
+    const next = { ...styles }
+    const value = { ...next[surface], ...patch }
+    if (!value.color && !value.sticker && !value.image) delete next[surface]
+    else next[surface] = value
+    setStyles(next)
+    setNote(null)
+  }
+
+  return (
+    <fieldset className="setting">
+      <legend>Today panel decorations</legend>
+      <p className="muted small">Give Today, More and Shortcuts their own color, sticker, or photo background. These follow your account.</p>
+      {PANEL_OPTIONS.map(({ id, label }) => (
+        <div className="today-panel-setting" key={id}>
+          <div className="today-panel-style">
+            <strong className="grow small">{label}</strong>
+            <label className="inline small">
+              Color
+              <input
+                type="color"
+                className="color-input"
+                value={styles[id]?.color ?? '#ffffff'}
+                onChange={(e) => update(id, { color: e.target.value })}
+                disabled={saving}
+                aria-label={`${label} panel color`}
+              />
+            </label>
+            <label className="inline small">
+              Sticker
+              <select value={styles[id]?.sticker ?? ''} onChange={(e) => update(id, { sticker: e.target.value })} aria-label={`${label} panel sticker`} disabled={saving}>
+                {PANEL_STICKERS.map((sticker) => <option key={sticker || 'none'} value={sticker}>{sticker || 'None'}</option>)}
+              </select>
+            </label>
+          </div>
+          <div className="row">
+            {styles[id]?.image && <img className="today-panel-image-preview" src={photoUrl(styles[id]!.image!, 640)} alt={`${label} panel background`} />}
+            <button type="button" className="secondary small" onClick={() => setPicking(id)} disabled={saving}>
+              {styles[id]?.image ? 'Change background photo…' : 'Choose background photo…'}
+            </button>
+            {styles[id]?.image && <button type="button" className="link small" onClick={() => update(id, { image: '' })} disabled={saving}>Remove photo</button>}
+            {(styles[id]?.color || styles[id]?.sticker || styles[id]?.image) && (
+              <button type="button" className="link small" onClick={() => update(id, { color: '', sticker: '', image: '' })} aria-label={`Reset ${label} panel`} disabled={saving}>
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+      <div className="row">
+        <button type="button" className="small" onClick={() => void save()} disabled={saving}>{saving ? 'Saving…' : 'Save panels'}</button>
+        {note && <span className="muted small" role="status">{note}</span>}
+      </div>
+      {picking && <PhotoPicker onPick={(photo) => { update(picking, { image: photo.id }); setPicking(null) }} onClose={() => setPicking(null)} />}
+    </fieldset>
+  )
+}
+
+function RevealPhotoSetting({ uid }: { uid: string }) {
+  const { photoId, error: loadError } = useRevealPhoto()
+  const reveal = useReveal()
+  const { manifest } = useFavorites()
+  const [pickingNext, setPickingNext] = useState(false)
+  const [pickingCurrent, setPickingCurrent] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [currentNote, setCurrentNote] = useState<string | null>(null)
+  const [nextNote, setNextNote] = useState<string | null>(null)
+  const nextPhoto = photoId ? manifest?.photos.find((p) => p.id === photoId) : undefined
+  const currentPhoto = reveal && reveal !== null ? manifest?.photos.find((p) => p.id === reveal.photoId) : undefined
+
+  async function save(id: string | null) {
+    setSaving(true)
+    setSaveError(null)
+    setNextNote(null)
+    try {
+      await saveRevealPhoto(uid, id)
+      setPickingNext(false)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function changeCurrent(photoId: string) {
+    setPickingCurrent(false)
+    if (!reveal || reveal === null) return
+    if (photoId === reveal.photoId) {
+      setCurrentNote('This picture is already the active Reveal.')
+      return
+    }
+    const photo = manifest?.photos.find((p) => p.id === photoId)
+    const name = photo ? photoCaption(photo) : photoId
+    if (!window.confirm(`Replace the active Reveal with ${name}? This resets its uncovered progress and moves spent. The current picture can't be restored.`)) return
+    setSaving(true)
+    setSaveError(null)
+    setCurrentNote(null)
+    try {
+      await replaceCurrentReveal(uid, photoId, today())
+      setCurrentNote('The active Reveal now uses this picture. The separately selected next picture is unchanged.')
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <>
+      <fieldset className="setting">
+        <legend>Current Reveal picture</legend>
+        {reveal === undefined ? (
+          <p className="muted small">Loading…</p>
+        ) : reveal ? (
+          <div className="row">
+            <span className="grow small">{currentPhoto ? photoCaption(currentPhoto) : 'Active family photo'}</span>
+            <button type="button" className="secondary small" onClick={() => setPickingCurrent(true)} disabled={saving}>
+              Change active picture…
+            </button>
+          </div>
+        ) : (
+          <p className="muted small">There is no active Reveal to change.</p>
+        )}
+        {reveal && <img src={photoUrl(reveal.photoId, 640)} alt={currentPhoto ? photoCaption(currentPhoto) : 'Active family photo'} style={{ maxWidth: 160, borderRadius: 8 }} />}
+        <p className="muted small">Changing it resets the active board’s progress. The next-picture choice is separate.</p>
+        {currentNote && <p className="muted small" role="status">{currentNote}</p>}
+        {pickingCurrent && <PhotoPicker onPick={(p) => void changeCurrent(p.id)} onClose={() => setPickingCurrent(false)} />}
+      </fieldset>
+      <fieldset className="setting">
+        <legend>Next Reveal picture</legend>
+        <p className="muted small">Choose a family photo from Favorites for the next reveal. It will be used once; otherwise, Align picks one at random.</p>
+        {loadError ? (
+          <p className="error small">{loadError}</p>
+        ) : photoId === undefined ? (
+          <p className="muted small">Loading…</p>
+        ) : photoId ? (
+        <div className="row">
+          <span className="grow small">{nextPhoto ? photoCaption(nextPhoto) : 'A selected family photo'}</span>
+          <button type="button" className="secondary small" onClick={() => void save(null)} disabled={saving}>Use random</button>
+        </div>
+      ) : null}
+        {photoId && <img src={photoUrl(photoId, 640)} alt={nextPhoto ? photoCaption(nextPhoto) : 'Selected family photo'} style={{ maxWidth: 160, borderRadius: 8 }} />}
+        <button type="button" className="secondary small" onClick={() => setPickingNext(true)} disabled={saving || photoId === undefined || !!loadError}>
+          Choose a photo…
+        </button>
+        {nextNote && <p className="muted small" role="status">{nextNote}</p>}
+        {pickingNext && <PhotoPicker onPick={(p) => void save(p.id)} onClose={() => setPickingNext(false)} />}
+      </fieldset>
+      {saveError && <p className="error small">{saveError}</p>}
+    </>
   )
 }
 

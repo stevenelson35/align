@@ -5,6 +5,7 @@ import { Icon } from '../UI/Icon'
 import { ArrangeToday } from './ArrangeToday'
 import { TodayShortcuts } from './TodayShortcuts'
 import { useTodaySelect } from '../../hooks/useTodaySection'
+import { panelBackground } from '../../utils/panelStyle'
 
 /**
  * Today's footer, always at the bottom of the screen: More… (the sections you moved off the main page, and Arrange
@@ -12,7 +13,10 @@ import { useTodaySelect } from '../../hooks/useTodaySection'
  * tapping it again, its title, ✕, Escape, or a tap anywhere outside the dock closes it.
  */
 export function TodayDock({ more, moreCount }: { more: ReactNode; moreCount: number }) {
-  const { isMember } = useApp()
+  const { isMember, member } = useApp()
+  const panels = member.todayPanels ?? {}
+  const moreStyle = panels.more
+  const shortcutsStyle = panels.shortcuts
   const shortcuts = useTodayItems()
   const [open, setOpen] = useState<'more' | 'shortcuts' | null>(null)
   const select = useTodaySelect(undefined, 'dock')
@@ -46,10 +50,15 @@ export function TodayDock({ more, moreCount }: { more: ReactNode; moreCount: num
   return (
     <div className="today-dock" ref={dock}>
       {open && (
-        <div className="today-sheet" role="region" aria-label={open === 'more' ? 'More' : 'Shortcuts'}>
+        <div
+          className="today-sheet"
+          role="region"
+          aria-label={open === 'more' ? 'More' : 'Shortcuts'}
+          style={panelBackground(open === 'more' ? moreStyle : shortcutsStyle, 'var(--surface)')}
+        >
           <header className="row">
             <button type="button" className="link grow today-sheet-title" onClick={() => setOpen(null)} aria-label={`Close ${open === 'more' ? 'More' : 'Shortcuts'}`}>
-              <strong>{open === 'more' ? 'More' : 'Shortcuts'}</strong>
+              <strong>{(open === 'more' ? moreStyle : shortcutsStyle)?.sticker} {open === 'more' ? 'More' : 'Shortcuts'}</strong>
             </button>
             <button type="button" className="link" onClick={() => setOpen(null)} aria-label="Close">
               <Icon name="close" />
@@ -66,11 +75,11 @@ export function TodayDock({ more, moreCount }: { more: ReactNode; moreCount: num
         </div>
       )}
       <nav className="today-footer" aria-label="More and shortcuts">
-        <button type="button" className={open === 'more' ? 'on' : ''} onClick={() => toggle('more')} aria-expanded={open === 'more'}>
-          <Icon name="list" /> More…{moreCount ? <span className="muted small"> {moreCount}</span> : null}
+        <button type="button" className={open === 'more' ? 'on' : ''} onClick={() => toggle('more')} aria-expanded={open === 'more'} style={{ backgroundColor: moreStyle?.color ? `color-mix(in srgb, ${moreStyle.color} 16%, var(--surface))` : undefined }}>
+          {moreStyle?.sticker || <Icon name="list" />} More…{moreCount ? <span className="muted small"> {moreCount}</span> : null}
         </button>
-        <button type="button" className={open === 'shortcuts' ? 'on' : ''} onClick={() => toggle('shortcuts')} aria-expanded={open === 'shortcuts'}>
-          <Icon name="star" /> Shortcuts…{shortcuts.ids.length ? <span className="muted small"> {shortcuts.ids.length}</span> : null}
+        <button type="button" className={open === 'shortcuts' ? 'on' : ''} onClick={() => toggle('shortcuts')} aria-expanded={open === 'shortcuts'} style={{ backgroundColor: shortcutsStyle?.color ? `color-mix(in srgb, ${shortcutsStyle.color} 16%, var(--surface))` : undefined }}>
+          {shortcutsStyle?.sticker || <Icon name="star" />} Shortcuts…{shortcuts.ids.length ? <span className="muted small"> {shortcuts.ids.length}</span> : null}
         </button>
       </nav>
     </div>

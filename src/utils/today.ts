@@ -3,6 +3,7 @@
 export const TODAY_SECTIONS = [
   { id: 'goals', label: 'Goals' },
   { id: 'rewards', label: 'Reveal' },
+  { id: 'games', label: 'Games' },
   { id: 'map', label: 'Family Map' },
   { id: 'contacts', label: 'Contacts' },
   { id: 'gifts', label: 'Gifts' },

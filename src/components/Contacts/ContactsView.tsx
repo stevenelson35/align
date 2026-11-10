@@ -9,6 +9,7 @@ import { smsUrl } from '../../utils/text'
 import { ListHeader } from '../Tasks/ListHeader'
 import { Icon } from '../UI/Icon'
 import { Picture } from '../UI/Picture'
+import { ItemIcon } from '../UI/ItemIcon'
 
 const initials = (name: string) =>
   name
@@ -89,7 +90,7 @@ export function ContactRow({ person: p, note, pin, block = false }: { person: Ta
           {p.images?.[0] ? <Picture src={p.images[0]} alt="" /> : initials(p.title)}
         </span>
         <span className="contact-text">
-          <strong>{p.title}</strong>
+          <strong><ItemIcon value={p.customIcon} /> {p.title}</strong>
           {sub && <span className="muted small">{sub}</span>}
         </span>
       </button>

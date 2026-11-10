@@ -11,6 +11,7 @@ import { CollectionSection, PinButton } from '../UI/CollectionSection'
 import { WhoseChips } from '../UI/WhoseChips'
 import { WHOSE_VALUES, whoseMatches, type Whose } from '../../utils/whose'
 import { Icon, type IconName } from '../UI/Icon'
+import { ItemIcon } from '../UI/ItemIcon'
 
 const KIND: Record<List['kind'], { icon: IconName; label: string }> = {
   list: { icon: 'todo', label: 'Tasks' },
@@ -141,7 +142,7 @@ export function LinksSection() {
         <div className="collection-card">
           <a className="collection-card-main" href={href} target="_blank" rel="noopener noreferrer">
             <Icon name="link" />
-            <strong>{t.title}</strong>
+            <strong><ItemIcon value={t.customIcon} /> {t.title}</strong>
             <span className="muted small">{sub(t) || defaultName(href)}</span>
           </a>
           {info}
@@ -153,7 +154,7 @@ export function LinksSection() {
         <a className="collection-row-main" href={href} target="_blank" rel="noopener noreferrer" title={href}>
           <Icon name="link" />
           <span className="grow collection-row-text">
-            {t.title}
+            <ItemIcon value={t.customIcon} /> {t.title}
             {sub(t) && <span className="muted small">{sub(t)}</span>}
           </span>
           <Icon name="external" />

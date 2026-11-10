@@ -23,6 +23,7 @@ import { TopBar } from './TopBar'
 import { routeHash } from '../../utils/routes'
 import { MENU_OPEN_KEY, MENU_SCROLL_KEY } from '../../utils/menu'
 import { WallView } from '../Wall/WallView'
+import { PendingGameInvitations } from '../Games/PendingGameInvitations'
 
 interface Props {
   uid: string
@@ -144,6 +145,18 @@ export function AppShell({ uid, household, member }: Props) {
     window.scrollTo(0, 0)
     mainRef.current?.scrollTo?.(0, 0)
   }, [pageKey])
+  const pageCrumbs =
+    route.view === 'boards' ? (
+      <span aria-current="page">All boards</span>
+    ) : route.view === 'board' ? (
+      <>
+        <button type="button" className="link" onClick={() => go({ view: 'boards' })}>
+          All boards
+        </button>
+        <span aria-hidden="true">›</span>
+        <span aria-current="page">{data.boards.find((board) => board.id === route.boardId)?.name ?? 'Voting board'}</span>
+      </>
+    ) : undefined
 
   // Escape closes the phone menu, like tapping outside it.
   useEffect(() => {
@@ -181,8 +194,13 @@ export function AppShell({ uid, household, member }: Props) {
               </p>
             )}
             {/* Every page but Today gets a way back to Today (list pages put it beside their breadcrumb). */}
-            {data.loaded && !['today', 'list', 'task'].includes(route.view) && <PageBar />}
-            {data.loaded ? <MainView /> : <AppSkeleton note="Loading your lists…" />}
+            {data.loaded && !['today', 'list', 'task'].includes(route.view) && <PageBar crumbs={pageCrumbs} />}
+            {data.loaded ? (
+              <>
+                {app.isMember && <PendingGameInvitations />}
+                <MainView />
+              </>
+            ) : <AppSkeleton note="Loading your lists…" />}
           </main>
           {selectedTask && (
             <aside className="right-panel">

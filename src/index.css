@@ -4312,3 +4312,345 @@ input.ladder-sparks {
 .invest-import input[type='file'] {
   display: none;
 }
+
+/* Family mini-games: the square board fits a phone, but the same controls work with keyboard and touch. */
+.games-view {
+  display: grid;
+  gap: 0.75rem;
+}
+.game-card,
+.game-leaderboard,
+.game-invite-form {
+  display: grid;
+  gap: 0.65rem;
+}
+.game-library {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0.75rem;
+}
+.games-search input {
+  width: 100%;
+}
+.game-mini-list {
+  display: grid;
+  gap: 0.65rem;
+}
+.game-tile {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  align-content: space-between;
+}
+.game-tile-main {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+}
+.game-tile-copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.game-tile-copy > * {
+  overflow-wrap: anywhere;
+}
+.game-mini-picture {
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+  padding: 3px;
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--text) 10%, var(--surface));
+}
+.game-mini-picture span {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text) 12%, var(--surface));
+}
+.game-mini-picture span.lit {
+  background: color-mix(in srgb, #f3c969 82%, var(--surface));
+}
+.game-mini-hanoi {
+  grid-template-columns: repeat(3, 1fr);
+  align-items: end;
+}
+.game-mini-slider {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+.game-mini-slider span.number {
+  display: grid;
+  place-items: center;
+  font-size: 0.55rem;
+  color: var(--text);
+  background: color-mix(in srgb, var(--brand) 25%, var(--surface));
+}
+.game-mini-slider span.empty {
+  background: transparent;
+}
+.hanoi-mini-stack {
+  height: 85%;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  border-bottom: 2px solid var(--text);
+  background: linear-gradient(90deg, transparent 48%, var(--text) 48%, var(--text) 52%, transparent 52%);
+}
+.hanoi-mini-stack i {
+  height: 18%;
+  min-height: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--brand) 65%, var(--surface));
+}
+.hanoi-mini-stack i:nth-child(1) { width: 90%; }
+.hanoi-mini-stack i:nth-child(2) { width: 70%; }
+.hanoi-mini-stack i:nth-child(3) { width: 50%; }
+.hanoi-game {
+  justify-items: center;
+}
+.hanoi-rods {
+  width: min(100%, 30rem);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+.hanoi-rod {
+  min-width: 0;
+  padding: 0.4rem;
+  display: grid;
+  gap: 0.35rem;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.hanoi-rod.selected {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.hanoi-stack {
+  min-height: 11rem;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  padding-bottom: 0.2rem;
+  border-bottom: 0.25rem solid var(--text);
+  background: linear-gradient(90deg, transparent 49%, color-mix(in srgb, var(--text) 70%, transparent) 49%, color-mix(in srgb, var(--text) 70%, transparent) 51%, transparent 51%);
+}
+.hanoi-disk {
+  height: 1.65rem;
+  flex: 0 0 1.65rem;
+  border: 1px solid color-mix(in srgb, var(--text) 25%, transparent);
+  border-radius: 0.4rem;
+}
+.hanoi-disk-1 { background: color-mix(in srgb, #68c9a8 80%, var(--surface)); }
+.hanoi-disk-2 { background: color-mix(in srgb, #77a9ee 80%, var(--surface)); }
+.hanoi-disk-3 { background: color-mix(in srgb, #e99775 80%, var(--surface)); }
+.hanoi-space {
+  height: 1.65rem;
+  flex: 0 0 1.65rem;
+}
+.hanoi-rod strong {
+  font-size: 0.8rem;
+}
+.sliding-game {
+  justify-items: center;
+}
+.sliding-board {
+  width: min(100%, 30rem);
+  aspect-ratio: 1;
+  display: grid;
+  gap: clamp(2px, 0.7vw, 5px);
+  padding: clamp(3px, 1vw, 6px);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--text) 12%, var(--surface));
+}
+.sliding-tile {
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 0.7);
+  border-radius: 0.2rem;
+  background-repeat: no-repeat;
+  background-color: var(--surface);
+}
+.sliding-tile:not(:disabled) {
+  cursor: pointer;
+}
+.sliding-tile:disabled.empty {
+  border: 1px dashed var(--border);
+  background: color-mix(in srgb, var(--text) 9%, var(--surface));
+}
+.item-icon-picker {
+  min-width: 0;
+  margin: 0;
+}
+.item-icon-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.5rem, 1fr));
+  gap: 0.35rem;
+  max-height: 12rem;
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+.item-icon-choice {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.25rem;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+}
+.item-icon-choice.selected {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.item-custom-emoji {
+  display: inline-block;
+  line-height: 1;
+  vertical-align: -0.08em;
+}
+.today-panel-image-preview {
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+.today-panel-setting {
+  display: grid;
+  gap: 0.4rem;
+  padding-block: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.games-today {
+  min-width: 0;
+}
+.game-card h3,
+.game-leaderboard h3,
+.game-invite-form h3 {
+  margin: 0;
+}
+.game-card .view-header,
+.game-card p {
+  margin-block: 0;
+}
+.game-status {
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.lights-board {
+  width: min(100%, 22rem);
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(0.25rem, 1.5vw, 0.5rem);
+  margin-inline: auto;
+  padding: clamp(0.3rem, 1.5vw, 0.55rem);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--text) 6%, var(--surface));
+}
+.light-cell {
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 1;
+  border-radius: 0.8rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.08);
+  transition: background-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+.light-cell.on {
+  background: color-mix(in srgb, #f3c969 82%, var(--surface));
+  border-color: #d7a833;
+  box-shadow: 0 0 1rem rgb(243 201 105 / 0.35), inset 0 1px 2px rgb(255 255 255 / 0.45);
+}
+.light-cell:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.light-cell:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+.game-result {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+}
+.game-result p {
+  text-align: center;
+}
+.game-leaderboard ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.game-leaderboard li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-variant-numeric: tabular-nums;
+}
+.game-leaderboard li > span {
+  margin-left: auto;
+}
+.game-leaderboard li.game-score-me {
+  border-color: var(--brand);
+}
+.game-invite-form .chips {
+  margin-block: 0.25rem;
+}
+.today-panel-style {
+  display: grid;
+  grid-template-columns: minmax(2.5rem, 1fr) auto auto auto;
+  align-items: center;
+  gap: 0.4rem;
+  padding-block: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.today-panel-style label {
+  margin: 0;
+}
+.today-panel-style select {
+  max-width: 6rem;
+}
+.game-invitations {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  border-color: color-mix(in srgb, var(--brand) 38%, var(--border));
+}
+.game-invitations .row {
+  margin: 0;
+  flex-wrap: wrap;
+}
+@media (max-width: 360px) {
+  .today-panel-style {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  .today-panel-style > strong {
+    grid-column: 1 / -1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .light-cell {
+    transition: none;
+  }
+}

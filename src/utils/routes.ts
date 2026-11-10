@@ -16,6 +16,7 @@ export type Route =
   | { view: 'board'; boardId: string; itemId?: string }
   | { view: 'goals' }
   | { view: 'reveal' }
+  | { view: 'games'; challengeId?: string; gameId?: string }
   /** ✍ New blog post. */
   | { view: 'blog' }
   /** Favorite photos (psort). */
@@ -66,6 +67,9 @@ export function parseRoute(hash: string): Route {
     case 'goal':
       if (parts[1]) return { view: 'goal', goalId: parts[1] }
       break
+    case 'games':
+      if (parts[1] === 'play' && parts[2]) return { view: 'games', gameId: parts[2] }
+      return parts[1] ? { view: 'games', challengeId: parts[1] } : { view: 'games' }
     case 'day':
       if (/^\d{4}-\d{2}-\d{2}$/.test(parts[1] ?? '')) return { view: 'day', day: parts[1] }
       break
@@ -90,6 +94,8 @@ export function routeHash(route: Route): string {
       return `#/day/${route.day}`
     case 'goal':
       return `#/goal/${encodeURIComponent(route.goalId)}`
+    case 'games':
+      return route.challengeId ? `#/games/${encodeURIComponent(route.challengeId)}` : route.gameId ? `#/games/play/${encodeURIComponent(route.gameId)}` : '#/games'
     case 'help':
       return route.topic ? `#/help/${route.topic}` : '#/help'
     case 'map':

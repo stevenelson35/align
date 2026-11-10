@@ -164,6 +164,7 @@ function MapPage() {
         {family.map(([uid, member]) => {
           const loc = byUid.get(uid)
           const where = placed(loc)
+          const lastEvent = loc?.events?.[loc.events.length - 1]
           return (
             <li key={uid} className={`map-person${where && now - loc.tst > STALE_MS ? ' stale' : ''}${focusFor === uid ? ' focused' : ''}`}>
               <span className="map-dot" style={{ background: member.color }} aria-hidden="true" />
@@ -171,7 +172,7 @@ function MapPage() {
                 <strong>{member.displayName}</strong>{' '}
                 <span className="muted small">
                   {where
-                    ? [placeNames(loc.inside).length ? `at ${placeNames(loc.inside).join(', ')}` : '', loc.events?.length ? eventText(loc.events[loc.events.length - 1]) : '', agoText(loc.tst, now), loc.batt !== undefined ? `${loc.batt}% battery` : '', loc.acc ? (loc.acc > MAX_ACCURACY ? `rough position ±${metersText(loc.acc)}` : `±${loc.acc} m`) : '', loc.off ? 'paused' : ''].filter(Boolean).join(' · ')
+                    ? [placeNames(loc.inside).length ? `at ${placeNames(loc.inside).join(', ')}` : '', lastEvent ? eventText(lastEvent, now) : '', lastEvent ? `location ${agoText(loc.tst, now)}` : agoText(loc.tst, now), loc.batt !== undefined ? `${loc.batt}% battery` : '', loc.acc ? (loc.acc > MAX_ACCURACY ? `rough position ±${metersText(loc.acc)}` : `±${loc.acc} m`) : '', loc.off ? 'paused' : ''].filter(Boolean).join(' · ')
                     : loc?.off
                       ? 'paused'
                       : 'not sharing'}

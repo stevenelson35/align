@@ -7,6 +7,7 @@ import { ListHeader } from './ListHeader'
 import { Icon } from '../UI/Icon'
 import { DetailsMarks } from '../UI/Details'
 import { splitTitleNote } from '../../utils/quickAdd'
+import { ItemIcon } from '../UI/ItemIcon'
 
 /** When it was added (to the nanosecond: quick additions land in the same second); one still being saved is newest. */
 const added = (t: Task) => (t.createdAt ? t.createdAt.seconds + t.createdAt.nanoseconds / 1e9 : Infinity)
@@ -71,6 +72,7 @@ export function ChecklistView({ list }: { list: List }) {
               onChange={(e) => updateTask(t.id, withStatus(t, e.target.checked ? 'done' : 'todo')).catch((err) => setError(String(err)))}
             />
             <button type="button" className="check-title" onClick={() => app.selectTask(t.id)}>
+              <ItemIcon value={t.customIcon} />
               {t.title}
               <DetailsMarks links={t.links} images={t.images} />
               {t.notes && <span className="muted small"> · {t.notes.split('\n')[0]}</span>}

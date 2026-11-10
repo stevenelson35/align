@@ -20,6 +20,7 @@ import { HelpView } from '../Help/HelpView'
 import { BoardsView } from '../Voting/BoardsView'
 import { BoardView } from '../Voting/BoardView'
 import { InvestmentEntryView } from '../Investing/InvestingSection'
+import { GamesView } from '../Games/GamesView'
 
 // The map library (Leaflet) loads only when the map is opened.
 const FamilyMap = lazy(() => import('../Map/FamilyMap'))
@@ -95,6 +96,8 @@ export function MainView() {
           <RevealView />
         </Suspense>
       )
+    case 'games':
+      return <GamesView key={route.challengeId ?? route.gameId ?? 'games'} challengeId={route.challengeId} gameId={route.gameId} />
     case 'help':
       return <HelpView topic={route.topic} />
     case 'goal': {

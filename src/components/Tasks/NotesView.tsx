@@ -6,6 +6,7 @@ import { ListHeader } from './ListHeader'
 import { DetailsMarks } from '../UI/Details'
 import { Icon } from '../UI/Icon'
 import { splitTitleNote } from '../../utils/quickAdd'
+import { ItemIcon } from '../UI/ItemIcon'
 
 /** Notes: reference info (Wi-Fi password, sizes, the plumber's number). Alphabetical; tap one to read or edit it. */
 export function NotesView({ list }: { list: List }) {
@@ -51,6 +52,7 @@ export function NotesView({ list }: { list: List }) {
             onClick={() => app.selectTask(n.id)}
           >
             <strong>
+              <ItemIcon value={n.customIcon} />
               {n.title}
               <DetailsMarks links={n.links} images={n.images} />
             </strong>

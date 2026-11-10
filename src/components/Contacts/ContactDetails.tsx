@@ -9,6 +9,7 @@ import { AutoTextarea } from '../UI/AutoTextarea'
 import { LinksAndPictures } from '../UI/Details'
 import { EntryExtras, EntryFact, EntryPanel } from '../UI/EntryExtras'
 import { Icon } from '../UI/Icon'
+import { ItemIconPicker } from '../UI/ItemIcon'
 import { TagPicker } from './ContactTags'
 import { usePinned } from '../../hooks/usePinned'
 import { useTodayItems } from '../../hooks/useTodayItems'
@@ -37,6 +38,7 @@ export function ContactDetails({ item, list }: { item: Task; list: List }) {
     <EntryPanel
       kind="Contact"
       title={item.title}
+      customIcon={item.customIcon}
       onEdit={app.canEdit(item) ? () => setEditing(true) : undefined}
       onClose={() => app.selectTask(null)}
       facts={
@@ -135,6 +137,7 @@ function ContactForm({ item, onDone }: { item: Task; onDone: () => void }) {
   const app = useApp()
   const c = item.contact ?? {}
   const [name, setName] = useState(item.title)
+  const [customIcon, setCustomIcon] = useState(item.customIcon)
   const [org, setOrg] = useState(c.org ?? '')
   const [jobTitle, setJobTitle] = useState(c.jobTitle ?? '')
   const [birthday, setBirthday] = useState(c.birthday ?? '')
@@ -165,7 +168,7 @@ function ContactForm({ item, onDone }: { item: Task; onDone: () => void }) {
     }
     setBusy(true)
     try {
-      await updateTask(item.id, { title: name.trim() || item.title, notes: notes.trim() || undefined, contact: Object.keys(contact).length ? contact : undefined, ...taskDetails({ links, images }) })
+      await updateTask(item.id, { title: name.trim() || item.title, customIcon: customIcon || undefined, notes: notes.trim() || undefined, contact: Object.keys(contact).length ? contact : undefined, ...taskDetails({ links, images }) })
       void deleteRemovedImages(detailsOf(item, false).images, images)
       onDone()
     } catch (err) {
@@ -195,6 +198,7 @@ function ContactForm({ item, onDone }: { item: Task; onDone: () => void }) {
         Name
         <input value={name} onChange={(e) => setName(e.target.value)} required />
       </label>
+      <ItemIconPicker value={customIcon} onChange={setCustomIcon} disabled={busy} />
       <div className="grid2">
         <label>
           Company

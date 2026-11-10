@@ -21,7 +21,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import type { Move } from '../engine/scheduling'
-import type { Board, BoardItem, Comment, Goal, GoalEntry, Household, ItemStatus, List, Role, Task, Vote } from '../types'
+import type { Board, BoardItem, Comment, Goal, GoalEntry, Household, ItemStatus, List, Role, Task, TodayPanelStyle, TodaySurface, Vote } from '../types'
 import { db } from './config'
 import { audienceOf, privacyFields, type Audience } from '../utils/audience'
 import { isStoredImage, storedImageId } from '../utils/pictures'
@@ -241,6 +241,16 @@ export function setPinned(uid: string, current: string[] | undefined, id: string
 /** Which Today sections sit in More… (your arrangement, for every device). */
 export const setTodayMore = (uid: string, ids: string[]) => updateDoc(householdRef, { [`members.${uid}.todayMore`]: ids })
 
+/** Personal colors and stickers for the Today surfaces (Settings). */
+export function setTodayPanelStyles(uid: string, styles: Partial<Record<TodaySurface, TodayPanelStyle>>) {
+  return updateDoc(householdRef, { [`members.${uid}.todayPanels`]: Object.keys(styles).length ? styles : deleteField() })
+}
+
+/** Ordered Games tiles for this person (Today / More). */
+export function setPinnedGames(uid: string, ids: string[]) {
+  return updateDoc(householdRef, { [`members.${uid}.pinnedGames`]: [...new Set(ids)].slice(0, 30) })
+}
+
 /** Put a contact or link on the top of Today, or take it off. */
 export function setTodayItem(uid: string, current: string[] | undefined, id: string, on: boolean) {
   const next = on ? [...new Set([...(current ?? []), id])] : (current ?? []).filter((x) => x !== id)
@@ -255,6 +265,11 @@ export function setTodayItems(uid: string, ids: string[]) {
 /** Who the "Parents" sharing shortcut picks. */
 export function setParents(uids: string[]) {
   return updateDoc(householdRef, { 'groups.parents': uids })
+}
+
+/** The one household account that can see and change Reveal pictures. */
+export function setRevealManager(uid: string | null) {
+  return updateDoc(householdRef, { 'groups.revealManager': uid ?? deleteField() })
 }
 
 /** The fields a task copies from its list, so queries and rules need no lookups (sharedWith only when shared). */
@@ -552,9 +567,9 @@ export function setItemStatus(item: BoardItem, status: ItemStatus) {
 }
 
 /** Edit an item's title and optional note / link / picture (an empty value removes it). */
-export function updateItem(item: BoardItem, patch: Partial<Pick<BoardItem, 'title' | 'note' | 'url' | 'imageUrl' | 'links' | 'images'>>) {
+export function updateItem(item: BoardItem, patch: Partial<Pick<BoardItem, 'title' | 'note' | 'url' | 'imageUrl' | 'links' | 'images' | 'customIcon'>>) {
   const data: Record<string, unknown> = { title: patch.title ?? item.title, status: item.status, updatedAt: serverTimestamp() }
-  for (const k of ['note', 'url', 'imageUrl', 'links', 'images'] as const) if (k in patch) data[k] = patch[k]?.length ? patch[k] : deleteField()
+  for (const k of ['note', 'url', 'imageUrl', 'links', 'images', 'customIcon'] as const) if (k in patch) data[k] = patch[k]?.length ? patch[k] : deleteField()
   return updateDoc(doc(db, 'boards', item.boardId, 'items', item.id), data)
 }
 
