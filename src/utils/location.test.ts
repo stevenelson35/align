@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { agoText, cleanTrail, directionsUrl, initialsOf, ownTracksSetupLink, relayUrl, reportUrl, stuckSince } from './location'
+import { agoText, cleanTrail, directionsUrl, eventText, initialsOf, ownTracksSetupLink, relayUrl, reportUrl, stuckSince } from './location'
 
 describe('family map helpers', () => {
   it('says how long ago', () => {
@@ -8,6 +8,12 @@ describe('family map helpers', () => {
     expect(agoText(now - 5 * 60000, now)).toBe('5 min ago')
     expect(agoText(now - 3 * 3600000, now)).toBe('3 h ago')
     expect(agoText(now - 50 * 3600000, now)).toBe('2 days ago')
+  })
+  it('shows how long ago a place event happened, independently of the latest location report', () => {
+    const now = Date.UTC(2026, 9, 25, 12)
+    const event = { place: 'home', name: 'Home', kind: 'leave' as const, tst: now - 2 * 3600000 }
+    const time = new Date(event.tst).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    expect(eventText(event, now)).toBe(`Left Home ${time} (2 h ago)`)
   })
   it('makes initials', () => {
     expect(initialsOf('Steve Nelson')).toBe('SN')

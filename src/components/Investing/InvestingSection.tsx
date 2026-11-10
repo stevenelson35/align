@@ -261,7 +261,11 @@ function InvestmentListSection({ list, linkedSymbol }: { list: InvestmentList; l
               insider buys {f.insiderBuys6m ?? 0} (6 mo)
               {c.recovery !== undefined && c.recovery !== null && <> · AI recovery estimate {c.recovery}% (uncalibrated)</>}
             </p>
-            {(!c.report || c.report.trim() === 'This is an automated research note, not investment advice.') && <p className="muted small">No one-page write-up was returned. Check the scanner’s GEMINI_API_KEY property and Executions logs for Gemini errors. The screening facts above are still available.</p>}
+            {c.reportStatus === 'generated' && <p className="muted small">AI write-up generated {scannerTime(c.reportGeneratedAt)}.</p>}
+            {c.reportStatus === 'failed' && <p className="muted small">AI write-up was attempted {scannerTime(c.reportAttemptedAt)}, but no report was returned. Check the scanner’s Executions logs for Gemini errors. The screening facts above are still available.</p>}
+            {c.reportStatus === 'not_configured' && <p className="muted small">AI write-up was not attempted: GEMINI_API_KEY was not configured when this candidate was analyzed. The screening facts above are still available.</p>}
+            {c.reportStatus === 'not_attempted' && <p className="muted small">AI write-up was not attempted for this candidate. The screening facts above are still available.</p>}
+            {!c.reportStatus && <p className="muted small">{c.report && c.report.trim() !== 'This is an automated research note, not investment advice.' ? 'This report has no recorded generation time or attempt status.' : 'No AI write-up is included, and this result has no recorded report status, so it’s not possible to tell whether generation was attempted.'} Save the updated scanner; its next completed pass will record the outcome.</p>}
             {c.report && <pre className="invest-report">{c.report}</pre>}
             {textAbout(c.symbol, c.name)}
           </div>

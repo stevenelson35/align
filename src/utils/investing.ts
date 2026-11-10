@@ -97,6 +97,11 @@ export interface Candidate {
   recovery?: number
   /** The one-page write-up: why it fell, fundamentals, bull / bear case, analogs. */
   report?: string
+  /** Whether report generation succeeded, failed, was not configured, or was not attempted. */
+  reportStatus?: 'generated' | 'failed' | 'not_configured' | 'not_attempted'
+  /** When the report request started and, if successful, when the report was returned. */
+  reportAttemptedAt?: string
+  reportGeneratedAt?: string
 }
 
 export interface Watchlist {

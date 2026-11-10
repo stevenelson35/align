@@ -111,10 +111,10 @@ export function parseLatLon(text: string): { lat: number; lon: number } | null {
 /** "350 m" / "1.2 km". */
 export const metersText = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`)
 
-/** "Arrived at School 3:05 PM" for someone's latest event. */
-export function eventText(e: PlaceEvent): string {
+/** "Arrived at School 3:05 PM (2 h ago)" for someone's latest event. */
+export function eventText(e: PlaceEvent, now = Date.now()): string {
   const time = new Date(e.tst).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-  return `${e.kind === 'enter' ? 'Arrived at' : 'Left'} ${e.name} ${time}`
+  return `${e.kind === 'enter' ? 'Arrived at' : 'Left'} ${e.name} ${time} (${agoText(e.tst, now)})`
 }
 
 /** Whether a rule fires for this person, place and kind (the Apps Script's alertTargets_ does the same). */

@@ -149,9 +149,11 @@ scanner state. It does not replace missing reports on existing results; a future
 - A watchlist is published after the full configured universe has been price-screened and its queued passers
   analyzed. It keeps up to **10 highest-scoring qualifying candidates**, not the first 10 found. Source failures
   are skipped, so this is a ranking of successfully evaluated candidates, not a guarantee of complete data coverage.
-- Each retained candidate can have a one-page Gemini note. Without `GEMINI_API_KEY`, or if Gemini fails or returns
-  no report text, only screening facts and the automated-research disclaimer are available. Check **Executions**
-  for `Gemini call failed` and verify the key/model properties. The disclaimer is not itself a generated report.
+- Each retained candidate records whether its Gemini note was generated (and when), attempted but failed, not
+  configured, or not attempted. Older watchlists have no per-candidate report status, so a disclaimer-only result
+  cannot reveal whether Gemini was attempted. Without `GEMINI_API_KEY`, or if Gemini fails or returns no report text,
+  only screening facts and the automated-research disclaimer are available. Check **Executions** for
+  `Gemini call failed` and verify the key/model properties. The disclaimer is not itself a generated report.
 
 - `scanStatus()` (run from the editor) publishes/logs saved progress without advancing it; `resetScanner()` starts over with a fresh
   universe.

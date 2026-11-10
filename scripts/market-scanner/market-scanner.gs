@@ -476,8 +476,18 @@ function analyze_(p, cfg) {
     provisional[k] = facts[k]
   })
   provisional.sentiment = 10
+  var reportStatus = cfg.GEMINI_API_KEY ? 'not_attempted' : 'not_configured'
+  var reportAttemptedAt
+  var reportGeneratedAt
   if (cfg.GEMINI_API_KEY && scoreCandidate_(provisional).score >= cfg.MIN_SCORE) {
+    reportAttemptedAt = new Date().toISOString()
     ai = gemini_(cfg, reportPrompt_({ symbol: p.symbol, name: name, drop5d: p.drop5d, price: p.price, marketCap: p.cap, facts: facts }, headlines))
+    if (ai.report) {
+      reportStatus = 'generated'
+      reportGeneratedAt = new Date().toISOString()
+    } else {
+      reportStatus = 'failed'
+    }
   }
   facts.sentiment = ai.sentiment
   var scored = scoreCandidate_(facts)
@@ -493,6 +503,9 @@ function analyze_(p, cfg) {
     facts: cleanFacts_(facts),
     recovery: ai.recovery,
     report: (ai.report ? ai.report + '\n\n' : '') + 'This is an automated research note, not investment advice.',
+    reportStatus: reportStatus,
+    reportAttemptedAt: reportAttemptedAt || null,
+    reportGeneratedAt: reportGeneratedAt || null,
     headlines: headlines,
   }
 }

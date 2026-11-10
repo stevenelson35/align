@@ -33,6 +33,7 @@ export function ScannerStatusPanel({ list, watchlist }: { list: InvestmentList; 
   return <div className="invest-detail small">
     <strong>Scanner: {STAGES[status.stage]}</strong>
     <p>{stale ? 'Activity not confirmed' : status.execution === 'running' ? 'Slice running' : status.execution === 'error' || run?.error ? 'Last slice failed' : status.execution === 'snapshot' ? 'Saved progress snapshot' : 'Between scheduled slices'} · reported {scannerTime(status.updatedAt)}</p>
+    {status.stage === 'analyzing' && <p className="muted">The next watchlist is pending while candidate analysis finishes. This list shows the previous completed pass until then.</p>}
     {progress && <>
       <label>{progress.label}: {progress.percent}% ({progress.done.toLocaleString()} / {progress.total.toLocaleString()} attempted)
         <progress aria-label={progress.label} value={progress.done} max={progress.total} style={{ display: 'block', width: '100%' }} />

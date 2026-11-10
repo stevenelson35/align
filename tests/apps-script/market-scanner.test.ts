@@ -92,6 +92,53 @@ describe('standalone Gemini diagnostics', () => {
   })
 })
 
+describe('candidate report status', () => {
+  function analyze(apiKey: string, report: string) {
+    const sandbox = createContext({})
+    runInContext(readFileSync('scripts/market-scanner/market-scanner.gs', 'utf8'), sandbox)
+    Object.assign(sandbox, {
+      yahooQuoteSummary_: () => ({ price: { longName: 'Synthetic Company' } }),
+      postEarnings_: () => true,
+      factsFromSummary_: () => ({ revenueGrowth: 10 }),
+      news_: () => [],
+      scoreCandidate_: () => ({ score: 80, parts: {} }),
+      cleanFacts_: (facts: unknown) => facts,
+      reportPrompt_: () => 'synthetic prompt',
+      gemini_: () => ({ sentiment: 8, recovery: 50, report }),
+      testCandidate: { symbol: 'SYN', price: 25, drop5d: -20, cap: 5e9 },
+      testConfig: { GEMINI_API_KEY: apiKey, MIN_SCORE: 60 },
+    })
+    return runInContext('analyze_(testCandidate, testConfig)', sandbox) as Record<string, unknown> | null
+  }
+
+  it('records a successful report and both timestamps', () => {
+    const candidate = analyze('configured', 'Synthetic report')
+    expect(candidate).toMatchObject({ reportStatus: 'generated', report: expect.stringContaining('Synthetic report') })
+    expect(candidate?.reportAttemptedAt).toEqual(expect.any(String))
+    expect(candidate?.reportGeneratedAt).toEqual(expect.any(String))
+  })
+
+  it('records a failed attempt without treating the disclaimer as a report', () => {
+    const candidate = analyze('configured', '')
+    expect(candidate).toMatchObject({
+      reportStatus: 'failed',
+      report: 'This is an automated research note, not investment advice.',
+    })
+    expect(candidate?.reportAttemptedAt).toEqual(expect.any(String))
+    expect(candidate?.reportGeneratedAt).toBeNull()
+  })
+
+  it('records when report generation was not configured', () => {
+    const candidate = analyze('', '')
+    expect(candidate).toMatchObject({
+      reportStatus: 'not_configured',
+      report: 'This is an automated research note, not investment advice.',
+      reportAttemptedAt: null,
+      reportGeneratedAt: null,
+    })
+  })
+})
+
 describe('list-local peer comparisons', () => {
   it('compares positive forward P/Es only within the exact industry, excluding the subject', () => {
     const holdings = [
