@@ -18,7 +18,11 @@ export function GameTile({
   return (
     <article className="game-tile card">
       <button type="button" className="game-tile-main" onClick={onPlay}>
-        {id === 'sliding-tiles' ? (
+        {id === 'wordle' ? (
+          <span className="game-mini-picture game-mini-wordle" role="img" aria-label={`${name} preview`}>
+            {['W', 'O', 'R', 'D', 'L'].map((letter, i) => <span key={letter} className={i < 3 ? 'correct' : 'absent'}>{letter}</span>)}
+          </span>
+        ) : id === 'sliding-tiles' ? (
           <span className="game-mini-picture game-mini-slider" role="img" aria-label={`${name} preview`}>
             {Array.from({ length: 9 }, (_, i) => <span key={i} className={i === 8 ? 'empty' : 'number'}>{i === 8 ? '' : i + 1}</span>)}
           </span>

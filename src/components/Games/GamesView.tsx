@@ -10,6 +10,7 @@ import { GameTile } from './GameTile'
 import { setPinnedGames } from '../../firebase/db'
 import { TowerOfHanoiGame } from './TowerOfHanoiGame'
 import { SlidingTilesGame } from './SlidingTilesGame'
+import { WordleGame } from './WordleGame'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 export function GamesView({ challengeId, gameId }: { challengeId?: string; gameId?: string }) {
@@ -61,7 +62,7 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
 
   const validChallenge = !challengeId || (
     !!selectedGame && !!gameById(selectedGame) && challenge?.to === app.uid && challenge.gameId === selectedGame
-    && (challenge.status === 'pending' || (challenge.status === 'completed' && solved))
+    && (challenge.status === 'pending' || (challenge.status === 'completed' && (solved || selectedGame === 'wordle')))
   )
   const setupError = challengeError
     ?? (challengeId && challenge === null ? 'This challenge is no longer available.' : null)
@@ -69,7 +70,7 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
   const people = Object.entries(app.household.members)
     .filter(([id, member]) => id !== app.uid && member.role === 'member' && !member.bot)
     .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
-  const pinnedGames = app.member.pinnedGames ?? ['lights-out']
+  const pinnedGames = app.member.pinnedGames ?? ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle']
 
   function togglePin(id: GameId) {
     const next = pinnedGames.includes(id) ? pinnedGames.filter((x) => x !== id) : [...pinnedGames, id]
@@ -151,6 +152,9 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
   }
   if (selectedGame === 'sliding-tiles') {
     return <SlidingTilesGame challenge={challengeId ? challenge ?? undefined : undefined} onBack={() => app.navigate({ view: 'games' })} onSolved={() => setSolved(true)} />
+  }
+  if (selectedGame === 'wordle') {
+    return <WordleGame key={challengeId ?? 'daily'} challenge={challengeId ? challenge ?? undefined : undefined} onBack={() => app.navigate({ view: 'games' })} />
   }
   if (!selectedGame) {
     const visibleGames = GAMES.filter((game) => `${game.name} ${game.description}`.toLowerCase().includes(gameSearch.trim().toLowerCase()))

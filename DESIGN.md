@@ -12,8 +12,8 @@ These rules override anything else in this document.
    - Firebase **Spark** (free) plan. **No Cloud Functions** (they need the paid Blaze plan).
    - No paid APIs. Chat uses a local command parser, not an AI service.
    - Hosting on the existing Turbify web-hosting plan.
-2. **Static hosting only.** The app is a single-page app: HTML, CSS and JS built into `dist/` and uploaded to Turbify at **https://align.itsallonesong.com**. It needs no server code.
-3. **Browser-only logic.** Scheduling, vote totals and command parsing all run in the browser. Firestore security rules are the only access control.
+2. **Static app hosting.** The single-page app is HTML, CSS and JS built into `dist/` and uploaded to Turbify at **https://align.itsallonesong.com**. Wordle is the sole exception: a small PHP API handles its private answers and progress.
+3. **Browser-first logic.** Scheduling, vote totals and command parsing run in the browser. Firestore rules protect client access; Wordle secrets are accessible only to the PHP service account.
 4. **Household scale.** 3 active users and a few read-only viewers, with hundreds of tasks, not thousands. Choose simplicity over scalability.
 5. **Trust model.** Users are family. Rules block outsiders and viewers, and each user can edit only their own private data. Rules don't try to stop a family member from gaming token counts.
 
@@ -68,7 +68,8 @@ Browser (React + TypeScript + Vite SPA)
   ├─ Command parser (pure TS, uses chrono-node for dates)
   └─ Firebase JS SDK ──► Firebase (Spark): Auth + Firestore + Security Rules
 
-Turbify: serves static files from dist/ at align.itsallonesong.com
+Browser ──► Turbify PHP Wordle API ──► Firebase Auth + Firestore (service account)
+Turbify: serves static files and wordle.php at align.itsallonesong.com
 ```
 
 - **Routing:** use hash routing (`/#/tasks`) so Turbify needs no rewrite rules.
@@ -357,7 +358,7 @@ Shifting always shows a **preview** first. Then it applies the changes as one ba
 
 **Personal panel styling** is stored in each member's `todayPanels` setting and synchronized to their devices. Settings accepts an independent color, curated sticker and Favorites photo background for Today, More and Shortcuts. Photo IDs are validated rather than accepting arbitrary URLs, and a translucent overlay keeps text legible. Tasks, list items and voting-board entries can each have a curated icon or emoji; the choice is stored on the entry and displayed in its list and details.
 
-**Family games** includes a shared daily Lights Out board, a three-disk Tower of Hanoi puzzle, and Picture Slider (`#/games`). Picture Slider uses a selected Favorites photo and a 3×3, 4×4 or 5×5 board. Its leaderboard is scoped to the photo ID and board size, and ranks by fewest moves then fastest time; invites preserve the same image and size. The score contract stores a per-game result map and reads existing Lights Out records in their legacy format. Replay invitations carry a versioned public puzzle payload; legacy seed-only invitations remain readable. The app-wide pending-invitation strip names the game from the catalog, and a new personal best uses the shared `celebrate` effect. Scores are visible only to members; only the score owner can improve their score and only the invitation recipient can complete it. Future games with private answers (such as a user-authored Wordle challenge) must store secrets separately from the replay payload so the recipient cannot read the answer before playing.
+**Family games** includes a shared daily Lights Out board, a three-disk Tower of Hanoi puzzle, Picture Slider (`#/games`), and Wordle. Picture Slider uses a selected Favorites photo and a 3×3, 4×4 or 5×5 board. Its leaderboard is scoped to the photo ID and board size, and ranks by fewest moves then fastest time; invites preserve the same image and size. Wordle offers one shared daily answer and private-answer challenges for 2–12 letter words; results rank by fewest guesses then fastest time. The PHP API authenticates household members, keeps answers/progress in server-only Firestore collections and writes Wordle scores/invitations. Other games keep their existing client-side score and invitation flows. The app-wide pending-invitation strip names the game from the catalog, and a new personal best uses the shared `celebrate` effect.
 
 Games is an Arrange Today section that can be placed on Today or More. Its Today section shows pinned games with mini previews, search and a Show all action; the full catalog is searchable and games can be pinned or launched there.
 
@@ -499,7 +500,7 @@ firestore.rules, firestore.indexes.json
   - Lists: `kind` in list/project/checklist/notes/links. Tasks: valid status (incl. `canceled`), priority, context, duration, `dependsOn` list, optional `calendar` map, `finishedOn` (10-char string), `pushedFrom` (list), `url` (≤ 2048), `category` (≤ 200), and copied fields equal to the list's (incl. `sharedWith`).
 - **`goals`** (`validGoal`): same read/write and owner-change rules as lists (private/family/shared via `canRead`/`canWrite`/`sharedOk`); `kind` in check/tally/progressive/measure; name 1–100 chars; `log` a map; `weekdays` a list.
 - **`boards` and `items`:** members can read and write (items may carry `note` ≤ 5000, `url` and `imageUrl` ≤ 2048). Viewers can read if the board is `viewerVisible`.
-- **Games:** members read family scores and only create/improve their own records for an allowlisted game; game invitations are readable by sender and recipient, created by a member for another member, and completed only by the recipient.
+- **Games:** members read family scores and only create/improve their own records for client-managed games; Wordle score and invitation writes come only from the PHP service account. Wordle answer/progress collections deny all client access. Game invitations are readable by sender and recipient, and client-managed games are completed only by the recipient.
 - **`comments`** (on a board or an item): readable by anyone who can see the board; members create with their own `uid`, and edit or delete only their own (`validComment`: text 1–2000).
 - **`votes/{uid}`:** members can read; users write only their own document, `tokens` a whole number ≥ 0.
 - **`investmentLists/{id}`** (§5.13): owner-only editing, immutable owner/kind, standard per-list audience reads and bot reads. Nested results inherit the parent's current audience, with bot-only writes (summary on holdings, watchlist on Overreactions). Legacy `investing/{uid}` remains owner-only with bot read/write for compatibility.
@@ -518,6 +519,16 @@ firestore.rules, firestore.indexes.json
 - **Verify a web deploy:** fetch https://align.itsallonesong.com/, read the `assets/index-*.js` name, and grep that bundle for a string from the latest change.
 
 ## 13. Status & Handoff
+
+### Wordle: implemented locally; server setup and deployment remain
+- Games includes a shared daily puzzle and sender-authored 2–12 letter challenges. Scoring ranks solved games by
+  guesses, then time; the PHP endpoint keeps answers and progress out of client-readable Firestore collections.
+- The endpoint is built to `dist/wordle.php`; private service-account credentials and the daily HMAC secret must be
+  installed outside the document root as described in `scripts/wordle/README.md`.
+- Verified locally: production build, all 286 unit tests, all 87 Firestore rule tests, targeted lint and PHP 8.3
+  syntax check. Turbify PHP/cURL/OpenSSL support and live endpoint behavior are not yet verified.
+- Before release, install the private server config, check that GET returns JSON 405 and unauthenticated POST returns
+  JSON 401, deploy Firestore rules, then deploy the web app and test daily play plus a custom invitation.
 
 ### Today panel layout: ready for web deployment
 - Goals and collection sections have a small inset and quiet left border; pinned rows are indented below Pinned.

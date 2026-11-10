@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+.align-wordle-config.php
+.align-wordle-service-account.json
 
 # Editor directories and files
 .vscode/*

@@ -514,6 +514,32 @@ describe('goal rewards', () => {
 })
 
 describe('games', () => {
+  it('keeps Wordle answers and progress server-only', async () => {
+    const scoreRef = doc(db('steve'), 'gameScores/steve_wordle_daily-2026-11-10')
+    const challengeRef = doc(db('steve'), 'gameChallenges/wordle-server-created')
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const admin = ctx.firestore() as unknown as Firestore
+      await setDoc(doc(admin, 'gameScores/steve_wordle_daily-2026-11-10'), {
+        uid: 'steve', gameId: 'wordle', seed: 'daily-2026-11-10', best: { guesses: 3, ms: 20000 }, plays: 1, updatedAt: new Date(),
+      })
+      await setDoc(doc(admin, 'gameChallenges/wordle-server-created'), {
+        gameId: 'wordle', from: 'wife', to: 'steve', payload: { puzzleId: '0123456789abcdef0123456789abcdef', wordLength: 5, version: 1 }, status: 'pending', createdAt: new Date(),
+      })
+    })
+    await assertFails(getDoc(doc(db('steve'), 'wordleSecrets/daily_20261110')))
+    await assertFails(setDoc(doc(db('steve'), 'wordleSecrets/daily_20261110'), { answer: 'APPLE' }))
+    await assertFails(getDoc(doc(db('steve'), 'wordleProgress/daily_20261110_steve')))
+    await assertFails(setDoc(doc(db('steve'), 'wordleProgress/daily_20261110_steve'), { answer: 'APPLE' }))
+    await assertFails(setDoc(scoreRef, {
+      uid: 'steve', gameId: 'wordle', seed: 'daily-2026-11-10', best: { guesses: 3, ms: 20000 }, plays: 1, updatedAt: new Date(),
+    }))
+    await assertFails(updateDoc(scoreRef, { best: { guesses: 2, ms: 10000 }, plays: 2, updatedAt: new Date() }))
+    await assertFails(setDoc(doc(db('steve'), 'gameChallenges/wordle-client-created'), {
+      gameId: 'wordle', from: 'steve', to: 'wife', payload: { puzzleId: '0123456789abcdef0123456789abcdef', wordLength: 5, version: 1 }, status: 'pending', createdAt: new Date(),
+    }))
+    await assertFails(updateDoc(challengeRef, { status: 'completed', result: { guesses: 3, ms: 20000 }, completedAt: new Date() }))
+  })
+
   it('lets a member save only their Lights Out best score', async () => {
     await assertSucceeds(setDoc(doc(db('steve'), 'gameScores/steve_lights-out_2026-10-30'), {
       uid: 'steve', gameId: 'lights-out', seed: '2026-10-30', bestMoves: 12, bestMs: 20000, plays: 1, updatedAt: new Date(),

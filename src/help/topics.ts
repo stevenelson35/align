@@ -310,11 +310,12 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'games',
     title: 'Family games',
-    tip: 'Short puzzles with a family leaderboard. Invite someone to solve the same board, then compare moves and time.',
+    tip: 'Short family puzzles with leaderboards. Invite someone to solve the same puzzle, then compare moves, guesses or time.',
     body: [
-      'Games has Lights Out, Tower of Hanoi and Picture Slider. Choose a favorite photo and a 3 × 3, 4 × 4 or 5 × 5 slider board; invitations replay the same picture and board size.',
-      'The family leaderboards compare fewest moves first, then fastest time, for the same puzzle settings. Beat your personal best for a celebration. You can invite someone to replay the same puzzle from the game.',
-      'After solving a board, select family members to send them that same puzzle. Their invitations appear in Align until they play; open one to try the shared board.',
+      'Games has Lights Out, Tower of Hanoi, Picture Slider and Wordle. Choose a favorite photo and a 3 × 3, 4 × 4 or 5 × 5 slider board; invitations replay the same picture and board size.',
+      'Wordle gives the family the same daily five-letter word, or lets you choose a 2–12 letter word and invite members to guess it. The answer stays on the server until the game ends. Leaderboards rank fewest guesses, then fastest time.',
+      'Leaderboards compare fewest moves or guesses first, then fastest time, for the same puzzle. Beat your personal best for a celebration. You can invite someone to replay the same puzzle from the game.',
+      'Game invitations appear in Align until they play; open one to try the shared puzzle.',
     ],
   },
   {

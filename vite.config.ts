@@ -32,9 +32,20 @@ function ownTracksRelay(appsScriptUrl: string | undefined): Plugin {
   }
 }
 
+function wordleEndpoint(): Plugin {
+  return {
+    name: 'wordle-endpoint',
+    apply: 'build',
+    generateBundle() {
+      const source = readFileSync('scripts/wordle/wordle-api.php', 'utf8')
+      this.emitFile({ type: 'asset', fileName: 'wordle.php', source })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), ownTracksRelay(loadEnv(mode, process.cwd(), 'VITE_').VITE_CALENDAR_SYNC_URL)],
+  plugins: [react(), ownTracksRelay(loadEnv(mode, process.cwd(), 'VITE_').VITE_CALENDAR_SYNC_URL), wordleEndpoint()],
   define: {
     __BUILD_COMMIT__: JSON.stringify(commit),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),

@@ -624,9 +624,12 @@ service cloud.firestore {
     match /gameScores/{id} {
       allow read: if isMember();
       allow create: if isMember()
+        && request.resource.data.gameId != 'wordle'
         && id == request.auth.uid + '_' + request.resource.data.gameId + '_' + request.resource.data.seed
         && validGameScore(request.resource.data);
       allow update: if isMember()
+        && resource.data.gameId != 'wordle'
+        && request.resource.data.gameId != 'wordle'
         && id == request.auth.uid + '_' + request.resource.data.gameId + '_' + request.resource.data.seed
         && validGameScore(request.resource.data)
         && request.resource.data.plays == resource.data.plays + 1
@@ -634,7 +637,7 @@ service cloud.firestore {
     }
 
     function validGameScore(d) {
-      return d.uid == request.auth.uid && d.gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles']
+      return d.uid == request.auth.uid && d.gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle']
         && d.seed is string && d.seed.size() > 0 && d.seed.size() <= 120
         && d.plays is int && d.plays > 0 && d.plays <= 1000000
         && d.updatedAt is timestamp
@@ -650,10 +653,11 @@ service cloud.firestore {
     }
 
     function validGameResult(gameId, result) {
-      return gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles']
-        && result is map && result.keys().hasOnly(['moves', 'ms'])
-        && result.moves is int && result.moves > 0 && result.moves <= 5000
-        && result.ms is int && result.ms > 0 && result.ms <= 3600000;
+      return gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle']
+        && result is map && result.ms is int && result.ms > 0 && result.ms <= 3600000
+        && (gameId == 'wordle'
+          ? result.keys().hasOnly(['guesses', 'ms']) && result.guesses is int && result.guesses > 0 && result.guesses <= 6
+          : result.keys().hasOnly(['moves', 'ms']) && result.moves is int && result.moves > 0 && result.moves <= 5000);
     }
 
     function scoreResult(score) {
@@ -663,8 +667,9 @@ service cloud.firestore {
     function gameScoreBeats(newScore, oldScore) {
       let newer = scoreResult(newScore);
       let older = scoreResult(oldScore);
-      return newer.moves < older.moves
-        || (newer.moves == older.moves && newer.ms <= older.ms);
+      return newScore.gameId == 'wordle'
+        ? newer.guesses < older.guesses || (newer.guesses == older.guesses && newer.ms <= older.ms)
+        : newer.moves < older.moves || (newer.moves == older.moves && newer.ms <= older.ms);
     }
 
     function validGameChallengePayload(payload) {
@@ -675,6 +680,10 @@ service cloud.firestore {
         || (payload.keys().hasOnly(['imageId', 'boardSize', 'version'])
           && payload.imageId is string && payload.imageId.matches('^[A-Za-z0-9_-]{1,100}$')
           && payload.boardSize in [3, 4, 5]
+          && payload.version is int && payload.version == 1)
+        || (payload.keys().hasOnly(['puzzleId', 'wordLength', 'version'])
+          && payload.puzzleId is string && payload.puzzleId.matches('^[a-f0-9]{32}$')
+          && payload.wordLength is int && payload.wordLength >= 2 && payload.wordLength <= 12
           && payload.version is int && payload.version == 1)
       );
     }
@@ -691,7 +700,8 @@ service cloud.firestore {
       allow read: if isMember() && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
       allow create: if isMember()
         && request.resource.data.keys().hasOnly(['gameId', 'from', 'to', 'seed', 'payload', 'status', 'createdAt'])
-        && request.resource.data.gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles']
+        && request.resource.data.gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle']
+        && request.resource.data.gameId != 'wordle'
         && request.resource.data.from == request.auth.uid
         && request.resource.data.to is string && request.resource.data.to != request.auth.uid
         && roleOf(request.resource.data.to) == 'member'
@@ -705,12 +715,21 @@ service cloud.firestore {
             && 'imageId' in request.resource.data.payload))
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt is timestamp;
-      allow update: if isMember()
+      allow update: if isMember() && resource.data.gameId != 'wordle'
         && resource.data.to == request.auth.uid && resource.data.status == 'pending'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'result', 'moves', 'ms', 'completedAt'])
         && request.resource.data.status == 'completed'
         && request.resource.data.completedAt is timestamp
         && validGameChallengeResult(request.resource.data);
+    }
+
+    // The answer key and per-account guesses are written only by the trusted Wordle PHP service account.
+    match /wordleSecrets/{id} {
+      allow read, write: if false;
+    }
+
+    match /wordleProgress/{id} {
+      allow read, write: if false;
     }
 
     // ---- Goal rewards (DESIGN.md §5.6) ----
