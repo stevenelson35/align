@@ -44,7 +44,7 @@ export interface WordleChallengeProgress {
   lobbyStatus?: 'waiting' | 'playing' | 'cancelled' | 'expired'
   startedAt?: Timestamp | string | Date
   elapsedMs?: number
-  updatedAt?: string
+  updatedAt?: Timestamp | string | Date
 }
 
 export interface GameChallengePayload {

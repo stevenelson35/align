@@ -14,49 +14,16 @@ import {
   type WordleGameState,
   type WordleChallengeType,
 } from '../../firebase/wordle'
-import { useGameScores, useWordleChallengeProgress, type GameChallenge, type WordleChallengeProgress } from '../../firebase/games'
+import { useGameScores, useWordleChallengeProgress, type GameChallenge } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
 import { formatGameResult } from '../../games/catalog'
 import { hardModeError, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES } from '../../games/wordle'
 import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
 import { WordleProgressBoard } from './WordleProgressBoard'
+import { challengeNotification } from './wordleNotification'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
-
-function challengeNotification(
-  game: WordleGameState,
-  challenge: GameChallenge | undefined,
-  progress: WordleChallengeProgress[],
-  members: Record<string, { displayName: string }>,
-) {
-  const allPlayersFinished = challenge
-    ? wordleChallengeFinished(challenge.players ?? [challenge.to], progress)
-    : false
-  if (game.complete) {
-    if (game.challengeStatus === 'cancelled') return 'This real-time challenge was cancelled.'
-    if (game.challengeStatus === 'expired') return 'The real-time lobby timed out.'
-    const others = challenge ? allPlayersFinished ? ' Challenge complete.' : ' Other players can keep going.' : ''
-    if (game.solved) return `You solved it!${others}`
-    if (game.abandoned) return `You gave up.${others}`
-    return `No guesses left.${others}`
-  }
-  if (challenge) {
-    const finished = progress
-      .filter((item) => item.complete)
-      .sort((a, b) => (a.updatedAt ?? '').localeCompare(b.updatedAt ?? ''))
-    const latest = finished[finished.length - 1]
-    if (latest) {
-      const name = members[latest.uid]?.displayName ?? 'A family member'
-      if (latest.status === 'declined') return `${name} declined. You can keep playing or give up.`
-      if (latest.status === 'abandoned') return `${name} gave up. You can keep playing or give up.`
-      if (!latest.solved) return `${name} ran out of guesses. You can keep playing or give up.`
-      const solved = finished.filter((item) => item.solved).length
-      return `${name} ${solved === 1 ? 'solved first' : `solved (${solved} finished)`}! Keep playing or give up.`
-    }
-  }
-  return game.length === 5 ? 'Hard mode: use every revealed hint.' : ' '
-}
 
 export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; onBack: () => void }) {
   const app = useApp()

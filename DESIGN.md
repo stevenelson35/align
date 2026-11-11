@@ -541,7 +541,8 @@ firestore.rules, firestore.indexes.json
   stable six-row board.
   One, two, or three player boards are arranged for their count. The active
   game reserves a message row and hides the leaderboard. Real-time timer and guess submission use the shared server
-  start time; other challenge types retain per-player timers.
+  start time; other challenge types retain per-player timers. Completion notices order live progress using Firestore
+  timestamps, including when a progress update arrives before the player's guess response.
 - Five-letter games use server-installed answer and accepted-guess text files, enforce accepted guesses and hard
   mode, and mark hard-mode leaderboard scores.
 - The list files must be downloaded from the sources in `scripts/wordle/README.md` and placed outside the document
