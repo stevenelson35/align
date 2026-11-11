@@ -4405,6 +4405,17 @@ input.ladder-sparks {
   display: grid;
   gap: 1rem;
 }
+.wordle-ready-lobby {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--text) 15%, var(--surface));
+  border-radius: 0.75rem;
+}
+.wordle-ready-lobby h4,
+.wordle-ready-lobby p {
+  margin: 0;
+}
 .wordle-clock {
   font-variant-numeric: tabular-nums;
   font-weight: 700;

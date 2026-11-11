@@ -526,7 +526,10 @@ firestore.rules, firestore.indexes.json
   compact colored mark rows in six-row mini-boards above the active player's full board, with ready/playing/completion
   states. Live completion never ends another player's game; each player can keep guessing or give up.
   Daily play can also be ended by giving up. Word challenges distinguish separate chosen-word invites, live chosen-word
-  challenges where the sender watches, and live random-word challenges where the sender plays. Challenge notifications
+  challenges where the sender watches, live random-word challenges where each player's timer starts on opening, and
+  Real-time Live Wordle. In real-time play all participants must tap Ready before a shared server start time is set;
+  any participant can cancel while waiting, and a 15-minute timeout cancels an unready lobby on the next active check-in.
+  Challenge notifications
   live in the Today Games section, with open and complete invitation counts on one line and per-invite status and
   dismissal. Invitations, Live Wordle Updates, Pinned Games, and Search Games are
   a remembered one-open-at-a-time accordion; collapsing Games preserves the selected subsection. Live updates do not
@@ -534,14 +537,15 @@ firestore.rules, firestore.indexes.json
   recap is collapsible; each player, including the current user when they play, has a status, guess count, time, and
   stable six-row board.
   One, two, or three player boards are arranged for their count. The active
-  game reserves a message row and hides the leaderboard. Each player's timer starts when they open their own game.
+  game reserves a message row and hides the leaderboard. Real-time timer and guess submission use the shared server
+  start time; other challenge types retain per-player timers.
 - Five-letter games use server-installed answer and accepted-guess text files, enforce accepted guesses and hard
   mode, and mark hard-mode leaderboard scores.
 - The list files must be downloaded from the sources in `scripts/wordle/README.md` and placed outside the document
   root; they are intentionally not included in the repository.
 - The endpoint is built to `dist/wordle.php`; private service-account credentials and the daily HMAC secret must be
   installed outside the document root as described in `scripts/wordle/README.md`.
-- Verified locally: 298 unit tests, 89 Firestore rule tests, TypeScript build checks, lint, and PHP syntax validation.
+- Verified locally: 304 unit tests, 91 Firestore rule tests, production build, lint, and PHP syntax validation.
   At 390 px, emulator browser checks verified the Today Games invitation count and expanded sections, readable
   challenge options, one- and two-opponent mini-board layouts, the reserved completion notice, and no leaderboard
   during live play. Live endpoint behavior and Turbify PHP support are not yet verified.

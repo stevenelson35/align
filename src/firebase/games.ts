@@ -22,8 +22,8 @@ export interface GameChallenge {
   payload?: GameChallengePayload
   participants?: string[]
   players?: string[]
-  challengeType?: 'invite' | 'live-chosen' | 'random-live'
-  status: 'pending' | 'playing' | 'completed' | 'declined' | 'abandoned'
+  challengeType?: 'invite' | 'live-chosen' | 'random-live' | 'realtime-live'
+  status: 'pending' | 'playing' | 'completed' | 'declined' | 'abandoned' | 'cancelled' | 'expired'
   dismissed?: boolean
   createdAt?: Timestamp | string | Date
   result?: GameResult & { solved?: boolean; hardMode?: boolean; abandoned?: boolean }
@@ -39,7 +39,10 @@ export interface WordleChallengeProgress {
   started?: boolean
   complete: boolean
   solved: boolean
-  status?: 'declined' | 'abandoned'
+  status?: 'declined' | 'abandoned' | 'cancelled' | 'expired'
+  ready?: boolean
+  lobbyStatus?: 'waiting' | 'playing' | 'cancelled' | 'expired'
+  startedAt?: Timestamp | string | Date
   elapsedMs?: number
   updatedAt?: string
 }

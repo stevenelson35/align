@@ -13,7 +13,9 @@ export interface WordleGameState {
   solved: boolean
   abandoned?: boolean
   answer?: string
-  challengeStatus?: 'pending' | 'playing' | 'completed' | 'declined' | 'abandoned'
+  challengeStatus?: 'pending' | 'waiting' | 'playing' | 'completed' | 'declined' | 'abandoned' | 'cancelled' | 'expired'
+  ready?: boolean
+  lobbyExpiresAt?: string
 }
 
 export interface DailyWordlePreview {
@@ -25,7 +27,7 @@ export interface DailyWordlePreview {
   guessCount: number
 }
 
-export type WordleChallengeType = 'invite' | 'live-chosen' | 'random-live'
+export type WordleChallengeType = 'invite' | 'live-chosen' | 'random-live' | 'realtime-live'
 
 async function wordleRequest<T>(action: string, values: Record<string, unknown> = {}): Promise<T> {
   const user = auth.currentUser
@@ -61,7 +63,13 @@ export const guessWordleChallenge = (challengeId: string, guess: string) =>
   wordleRequest<WordleGameState>('challenge_guess', { challengeId, guess })
 
 export const declineWordleChallenge = (challengeId: string) =>
-  wordleRequest<{ challengeStatus: 'declined' }>('challenge_decline', { challengeId })
+  wordleRequest<{ challengeStatus: 'declined' | 'cancelled' }>('challenge_decline', { challengeId })
+
+export const readyWordleChallenge = (challengeId: string) =>
+  wordleRequest<WordleGameState>('challenge_ready', { challengeId })
+
+export const cancelWordleChallenge = (challengeId: string) =>
+  wordleRequest<WordleGameState>('challenge_cancel', { challengeId })
 
 export const abandonWordleChallenge = (challengeId: string) =>
   wordleRequest<WordleGameState>('challenge_abandon', { challengeId })

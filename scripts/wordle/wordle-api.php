@@ -169,7 +169,8 @@ function encodeValue($value) {
 function encodeFields($fields) {
     $encoded = [];
     foreach ($fields as $key => $value) {
-        $encoded[$key] = in_array($key, ['startedAt', 'createdAt', 'completedAt', 'updatedAt'], true)
+        $encoded[$key] = in_array($key, ['startedAt', 'createdAt', 'completedAt', 'updatedAt', 'lobbyExpiresAt'], true)
+            && is_string($value)
             ? ['timestampValue' => $value]
             : encodeValue($value);
     }
@@ -211,13 +212,20 @@ function firestoreCreate($config, $token, $collection, $id, $fields) {
 }
 
 function firestorePatch($config, $token, $collection, $id, $fields, $updateTime = null) {
+    if (!firestoreTryPatch($config, $token, $collection, $id, $fields, $updateTime)) {
+        fail(409, 'This Wordle changed in another tab. Reload the puzzle and try again.');
+    }
+}
+
+function firestoreTryPatch($config, $token, $collection, $id, $fields, $updateTime = null) {
     $query = [];
     foreach (array_keys($fields) as $field) $query[] = 'updateMask.fieldPaths=' . rawurlencode($field);
     if ($updateTime) $query[] = 'currentDocument.updateTime=' . rawurlencode($updateTime);
     $url = firestoreUrl($config, $collection, $id) . '?' . implode('&', $query);
     [$status] = httpJson('PATCH', $url, ['fields' => encodeFields($fields)], $token);
-    if ($status === 409 || $status === 412) fail(409, 'This Wordle changed in another tab. Reload the puzzle and try again.');
+    if ($status === 409 || $status === 412) return false;
     if ($status !== 200) fail(502, 'The Wordle server could not update game data.');
+    return true;
 }
 
 function requireMember($config, $token, $uid) {
@@ -268,8 +276,8 @@ function dailySecret($config, $token, $date) {
     return $stored['fields'];
 }
 
-function newProgress($config, $token, $id, $uid, $seed, $length, $answer) {
-    $now = gmdate('Y-m-d\TH:i:s\Z');
+function newProgress($config, $token, $id, $uid, $seed, $length, $answer, $startedAt = null) {
+    $now = $startedAt ?? gmdate('Y-m-d\TH:i:s\Z');
     $fields = [
         'uid' => $uid,
         'seed' => $seed,
@@ -446,11 +454,11 @@ function challengeHasLiveProgress($secret) {
     return ($secret['fields']['challengeType'] ?? 'live-chosen') !== 'invite';
 }
 
-function ensureChallengeProgress($config, $token, $groupId, $uid, $participants, $length) {
+function ensureChallengeProgress($config, $token, $groupId, $uid, $participants, $length, $lobbyState = null) {
     $id = challengeProgressId($groupId, $uid);
     $existing = firestoreGet($config, $token, 'wordleChallengeProgress', $id);
     if ($existing) return $existing;
-    firestoreCreate($config, $token, 'wordleChallengeProgress', $id, [
+    $fields = [
         'groupId' => $groupId,
         'uid' => $uid,
         'participants' => $participants,
@@ -460,10 +468,160 @@ function ensureChallengeProgress($config, $token, $groupId, $uid, $participants,
         'complete' => false,
         'solved' => false,
         'updatedAt' => gmdate('Y-m-d\TH:i:s\Z'),
-    ]);
+    ];
+    if ($lobbyState !== null) {
+        $fields['ready'] = false;
+        $fields['lobbyStatus'] = $lobbyState;
+    }
+    firestoreCreate($config, $token, 'wordleChallengeProgress', $id, $fields);
     $created = firestoreGet($config, $token, 'wordleChallengeProgress', $id);
     if (!$created) fail(502, 'The Wordle challenge progress could not be initialized.');
     return $created;
+}
+
+function realtimeChallenge($secret) {
+    return ($secret['fields']['challengeType'] ?? '') === 'realtime-live';
+}
+
+function publishRealtimeLobby($config, $token, $secret, $status) {
+    $fields = $secret['fields'];
+    $groupId = $fields['groupId'] ?? '';
+    $participants = $fields['participants'] ?? [];
+    $length = (int) ($fields['length'] ?? 5);
+    if (!is_string($groupId) || !is_array($participants)) fail(502, 'The real-time Wordle lobby data is invalid.');
+    foreach (($fields['challengeIds'] ?? []) as $uid => $challengeId) {
+        if (!is_string($uid) || !is_string($challengeId)) continue;
+        $challenge = firestoreGet($config, $token, 'gameChallenges', $challengeId);
+        if ($challenge && ($challenge['fields']['status'] ?? '') !== $status) {
+            $updates = ['status' => $status];
+            if (in_array($status, ['cancelled', 'expired'], true)) $updates['completedAt'] = gmdate('Y-m-d\TH:i:s\Z');
+            firestoreTryPatch($config, $token, 'gameChallenges', $challengeId, $updates, $challenge['updateTime']);
+        }
+        $progress = ensureChallengeProgress($config, $token, $groupId, $uid, $participants, $length, 'waiting');
+        $updates = [
+            'lobbyStatus' => $status,
+        ];
+        if ($status === 'playing') {
+            $updates['started'] = true;
+            $updates['startedAt'] = $fields['startedAt'];
+            $updates['elapsedMs'] = 0;
+        } else {
+            $updates['complete'] = true;
+            $updates['solved'] = false;
+            $updates['status'] = $status;
+        }
+        $changed = array_filter(
+            $updates,
+            static fn($value, $key) => ($progress['fields'][$key] ?? null) !== $value,
+            ARRAY_FILTER_USE_BOTH,
+        );
+        if ($changed) {
+            $changed['updatedAt'] = gmdate('Y-m-d\TH:i:s\Z');
+            firestoreTryPatch($config, $token, 'wordleChallengeProgress', challengeProgressId($groupId, $uid), $changed, $progress['updateTime']);
+        }
+    }
+}
+
+function realtimeLobbyState($config, $token, $groupId) {
+    $secretId = 'custom_' . $groupId;
+    $secret = firestoreGet($config, $token, 'wordleSecrets', $secretId);
+    if (!$secret || !realtimeChallenge($secret)) fail(404, 'That real-time Wordle lobby is unavailable.');
+    $status = $secret['fields']['lobbyStatus'] ?? '';
+    if ($status === 'waiting') {
+        $expiry = $secret['fields']['lobbyExpiresAt'] ?? null;
+        $expiresAt = is_string($expiry) ? strtotime($expiry) : false;
+        if ($expiresAt === false) fail(502, 'The real-time Wordle lobby has an invalid timeout.');
+        if ($expiresAt <= time()) {
+            firestoreTryPatch($config, $token, 'wordleSecrets', $secretId, [
+                'lobbyStatus' => 'expired',
+                'completedAt' => gmdate('Y-m-d\TH:i:s\Z'),
+            ], $secret['updateTime']);
+            $secret = firestoreGet($config, $token, 'wordleSecrets', $secretId);
+            $status = $secret['fields']['lobbyStatus'] ?? '';
+        }
+    }
+    if (in_array($status, ['cancelled', 'expired'], true)) {
+        publishRealtimeLobby($config, $token, $secret, $status);
+    }
+    return $secret;
+}
+
+function realtimeLobbyResponse($config, $token, $uid, $secret, $status) {
+    $fields = $secret['fields'];
+    $waiting = $status === 'waiting';
+    $progress = firestoreGet(
+        $config,
+        $token,
+        'wordleChallengeProgress',
+        challengeProgressId($fields['groupId'], $uid),
+    );
+    return [
+        'mode' => 'custom',
+        'seed' => 'custom-' . $fields['groupId'],
+        'length' => (int) $fields['length'],
+        'guesses' => [],
+        'startedAt' => $fields['startedAt'] ?? gmdate('Y-m-d\TH:i:s\Z'),
+        'elapsedMs' => 0,
+        'complete' => !$waiting,
+        'solved' => false,
+        'challengeStatus' => $status,
+        'ready' => !empty($progress['fields']['ready']),
+        'lobbyExpiresAt' => $fields['lobbyExpiresAt'] ?? null,
+    ];
+}
+
+function realtimeLobbyReadyPlayers($config, $token, $secret) {
+    $ready = [];
+    $groupId = $secret['fields']['groupId'];
+    foreach ($secret['fields']['recipients'] as $uid) {
+        $progress = firestoreGet($config, $token, 'wordleChallengeProgress', challengeProgressId($groupId, $uid));
+        if ($progress && !empty($progress['fields']['ready'])) $ready[] = $uid;
+    }
+    return $ready;
+}
+
+function maybeStartRealtimeLobby($config, $token, $secret) {
+    $fields = $secret['fields'];
+    if (($fields['lobbyStatus'] ?? '') !== 'waiting') return realtimeLobbyState($config, $token, $fields['groupId']);
+    $ready = realtimeLobbyReadyPlayers($config, $token, $secret);
+    $players = $fields['recipients'] ?? [];
+    if (count($ready) !== count($players) || count($players) < 2) return $secret;
+    $latest = firestoreGet($config, $token, 'wordleSecrets', 'custom_' . $fields['groupId']);
+    if (!$latest || ($latest['fields']['lobbyStatus'] ?? '') !== 'waiting') return $latest ?? $secret;
+    $expiresAt = strtotime($latest['fields']['lobbyExpiresAt'] ?? '');
+    if ($expiresAt === false) fail(502, 'The real-time Wordle lobby has an invalid timeout.');
+    if ($expiresAt <= time()) return realtimeLobbyState($config, $token, $fields['groupId']);
+    $startedAt = gmdate('Y-m-d\TH:i:s\Z');
+    if (firestoreTryPatch($config, $token, 'wordleSecrets', 'custom_' . $fields['groupId'], [
+        'lobbyStatus' => 'playing',
+        'readyPlayers' => $players,
+        'startedAt' => $startedAt,
+    ], $latest['updateTime'])) {
+        $latest = firestoreGet($config, $token, 'wordleSecrets', 'custom_' . $fields['groupId']);
+        publishRealtimeLobby($config, $token, $latest, 'playing');
+    }
+    return $latest ?? $secret;
+}
+
+function ensureRealtimeGameProgress($config, $token, $uid, $challenge, $secret) {
+    $fields = $secret['fields'];
+    $id = 'custom_' . $challenge['id'];
+    $progress = firestoreGet($config, $token, 'wordleProgress', $id);
+    if (!$progress) {
+        newProgress(
+            $config,
+            $token,
+            $id,
+            $uid,
+            'custom-' . $fields['groupId'],
+            (int) $fields['length'],
+            $fields['answer'],
+            $fields['startedAt'],
+        );
+        $progress = firestoreGet($config, $token, 'wordleProgress', $id);
+    }
+    if (!$progress) fail(502, 'The real-time Wordle game could not be initialized.');
+    return $progress;
 }
 
 function challengeState($config, $token, $uid, $challengeId, $guess = null) {
@@ -474,23 +632,46 @@ function challengeState($config, $token, $uid, $challengeId, $guess = null) {
     }
     $fields = $challenge['fields'];
     $status = $fields['status'] ?? '';
-    if (!in_array($status, ['pending', 'playing', 'completed', 'abandoned'], true)) fail(409, 'That Wordle challenge is no longer available.');
+    if (!in_array($status, ['pending', 'playing', 'completed', 'abandoned', 'cancelled', 'expired'], true)) fail(409, 'That Wordle challenge is no longer available.');
     $groupId = $fields['payload']['puzzleId'] ?? '';
     if (!is_string($groupId) || !preg_match('/^[a-f0-9]{32}$/', $groupId)) fail(502, 'The Wordle challenge data is invalid.');
     $secret = firestoreGet($config, $token, 'wordleSecrets', 'custom_' . $groupId);
     if (!$secret || !in_array($uid, $secret['fields']['recipients'] ?? [], true)) fail(404, 'The Wordle answer is not available for this account.');
+    if (realtimeChallenge($secret)) {
+        $secret = realtimeLobbyState($config, $token, $groupId);
+        $lobbyStatus = $secret['fields']['lobbyStatus'] ?? '';
+        if ($lobbyStatus !== 'playing') {
+            if ($guess !== null) fail(409, 'Wait for everyone to be ready before guessing.');
+            return realtimeLobbyResponse($config, $token, $uid, $secret, $lobbyStatus);
+        }
+        $challenge = firestoreGet($config, $token, 'gameChallenges', $challengeId);
+        if (!$challenge) fail(404, 'That Wordle challenge is unavailable for this account.');
+        $fields = $challenge['fields'];
+        $status = $fields['status'] ?? '';
+        $progress = ensureRealtimeGameProgress($config, $token, $uid, $challenge, $secret);
+    }
     $participants = $secret['fields']['recipients'];
     $viewers = $secret['fields']['participants'] ?? array_values(array_unique(array_merge([$secret['fields']['from']], $participants)));
     $seed = 'custom-' . $groupId;
     $progressId = 'custom_' . $challengeId;
     $progress = firestoreGet($config, $token, 'wordleProgress', $progressId);
-    if (!$progress) $progress = newProgress($config, $token, $progressId, $uid, $seed, $secret['fields']['length'], $secret['fields']['answer']);
+    if (!$progress) $progress = newProgress(
+        $config,
+        $token,
+        $progressId,
+        $uid,
+        $seed,
+        $secret['fields']['length'],
+        $secret['fields']['answer'],
+        realtimeChallenge($secret) ? ($secret['fields']['startedAt'] ?? null) : null,
+    );
     $liveProgress = challengeHasLiveProgress($secret);
     if ($liveProgress) {
         $publicProgress = ensureChallengeProgress($config, $token, $groupId, $uid, $viewers, $secret['fields']['length']);
         if ($status === 'pending' && empty($publicProgress['fields']['started'])) {
             firestorePatch($config, $token, 'wordleChallengeProgress', challengeProgressId($groupId, $uid), [
                 'started' => true,
+                'startedAt' => $progress['fields']['startedAt'],
                 'updatedAt' => gmdate('Y-m-d\TH:i:s\Z'),
             ]);
         }
@@ -535,8 +716,53 @@ function activeWordleChallenge($config, $token, $uid, $challengeId) {
     return [$challenge, $secret, $groupId, $participants];
 }
 
+function markRealtimeWordleReady($config, $token, $uid, $challengeId) {
+    [$challenge, $secret, $groupId, $participants] = activeWordleChallenge($config, $token, $uid, $challengeId);
+    if (!realtimeChallenge($secret)) fail(400, 'This Wordle challenge does not have a ready lobby.');
+    $secret = realtimeLobbyState($config, $token, $groupId);
+    if (($secret['fields']['lobbyStatus'] ?? '') !== 'waiting') {
+        return challengeState($config, $token, $uid, $challengeId);
+    }
+    $progress = ensureChallengeProgress(
+        $config,
+        $token,
+        $groupId,
+        $uid,
+        $participants,
+        (int) $secret['fields']['length'],
+        'waiting',
+    );
+    if (empty($progress['fields']['ready'])) {
+        firestoreTryPatch($config, $token, 'wordleChallengeProgress', challengeProgressId($groupId, $uid), [
+            'ready' => true,
+            'updatedAt' => gmdate('Y-m-d\TH:i:s\Z'),
+        ], $progress['updateTime']);
+    }
+    maybeStartRealtimeLobby($config, $token, $secret);
+    return challengeState($config, $token, $uid, $challengeId);
+}
+
+function cancelRealtimeWordleLobby($config, $token, $uid, $challengeId) {
+    [$challenge, $secret, $groupId] = activeWordleChallenge($config, $token, $uid, $challengeId);
+    if (!realtimeChallenge($secret)) fail(400, 'This Wordle challenge does not have a ready lobby.');
+    $secret = realtimeLobbyState($config, $token, $groupId);
+    if (($secret['fields']['lobbyStatus'] ?? '') === 'waiting') {
+        $latest = firestoreGet($config, $token, 'wordleSecrets', 'custom_' . $groupId);
+        if ($latest && ($latest['fields']['lobbyStatus'] ?? '') === 'waiting'
+            && firestoreTryPatch($config, $token, 'wordleSecrets', 'custom_' . $groupId, [
+                'lobbyStatus' => 'cancelled',
+                'completedAt' => gmdate('Y-m-d\TH:i:s\Z'),
+            ], $latest['updateTime'])) {
+            $secret = firestoreGet($config, $token, 'wordleSecrets', 'custom_' . $groupId);
+            publishRealtimeLobby($config, $token, $secret, 'cancelled');
+        }
+    }
+    return challengeState($config, $token, $uid, $challengeId);
+}
+
 function declineWordleChallenge($config, $token, $uid, $challengeId) {
     [$challenge, $secret, $groupId, $participants] = activeWordleChallenge($config, $token, $uid, $challengeId);
+    if (realtimeChallenge($secret)) return cancelRealtimeWordleLobby($config, $token, $uid, $challengeId);
     if (($challenge['fields']['status'] ?? '') !== 'pending') fail(409, 'This Wordle challenge has already started.');
     if (challengeHasLiveProgress($secret)) {
         $progress = ensureChallengeProgress($config, $token, $groupId, $uid, $participants, (int) $secret['fields']['length']);
@@ -556,6 +782,9 @@ function declineWordleChallenge($config, $token, $uid, $challengeId) {
 
 function abandonWordleChallenge($config, $token, $uid, $challengeId) {
     [$challenge, $secret, $groupId, $participants] = activeWordleChallenge($config, $token, $uid, $challengeId);
+    if (realtimeChallenge($secret) && ($secret['fields']['lobbyStatus'] ?? '') !== 'playing') {
+        fail(409, 'Cancel the real-time lobby before the game starts.');
+    }
     $seed = 'custom-' . $groupId;
     $progressId = 'custom_' . $challengeId;
     $progress = firestoreGet($config, $token, 'wordleProgress', $progressId);
@@ -616,13 +845,13 @@ function submitGuess($config, $token, $progressId, $progress, $guess, $uid, $see
     $guesses[] = ['word' => $guess, 'marks' => $marks];
     $solved = $guess === strtoupper($fields['answer']);
     $complete = $solved || count($guesses) >= 6;
-    $elapsed = $complete ? elapsedMs($fields['startedAt']) : null;
+    $elapsed = elapsedMs($fields['startedAt']);
     $updates = [
         'guessesJson' => json_encode($guesses),
         'complete' => $complete,
         'solved' => $solved,
+           'elapsedMs' => $elapsed,
     ];
-    if ($complete) $updates['elapsedMs'] = $elapsed;
     firestorePatch($config, $token, 'wordleProgress', $progressId, $updates, $progress['updateTime']);
     if ($challengeId !== null && $groupId !== null) {
         $publicProgress = ensureChallengeProgress($config, $token, $groupId, $uid, $participants, (int) $fields['length']);
@@ -634,7 +863,8 @@ function submitGuess($config, $token, $progressId, $progress, $guess, $uid, $see
             'complete' => $complete,
             'solved' => $solved,
             'started' => true,
-            'elapsedMs' => $complete ? $elapsed : null,
+            'startedAt' => $fields['startedAt'],
+            'elapsedMs' => $elapsed,
             'updatedAt' => gmdate('Y-m-d\TH:i:s\Z'),
         ], $publicProgress['updateTime']);
     }
@@ -661,10 +891,10 @@ function submitGuess($config, $token, $progressId, $progress, $guess, $uid, $see
 
 function createCustomChallenges($config, $token, $uid, $body) {
     $challengeType = $body['challengeType'] ?? (($body['randomWord'] ?? false) === true ? 'random-live' : 'invite');
-    if (!in_array($challengeType, ['invite', 'live-chosen', 'random-live'], true)) {
+    if (!in_array($challengeType, ['invite', 'live-chosen', 'random-live', 'realtime-live'], true)) {
         fail(400, 'Choose a valid Wordle challenge type.');
     }
-    $randomWord = $challengeType === 'random-live';
+    $randomWord = in_array($challengeType, ['random-live', 'realtime-live'], true);
     $liveProgress = $challengeType !== 'invite';
     $word = $randomWord
         ? $config['answerWords'][random_int(0, count($config['answerWords']) - 1)]
@@ -692,19 +922,29 @@ function createCustomChallenges($config, $token, $uid, $body) {
     }
     $groupId = bin2hex(random_bytes(16));
     $seed = 'custom-' . $groupId;
+    $challengeIds = [];
+    foreach ($players as $to) $challengeIds[$to] = bin2hex(random_bytes(16));
+    $lobbyExpiresAt = $challengeType === 'realtime-live'
+        ? gmdate('Y-m-d\TH:i:s\Z', time() + 15 * 60)
+        : null;
     firestoreCreate($config, $token, 'wordleSecrets', 'custom_' . $groupId, [
         'mode' => 'custom',
+        'groupId' => $groupId,
         'answer' => $word,
         'length' => strlen($word),
         'challengeType' => $challengeType,
         'from' => $uid,
         'recipients' => $players,
         'participants' => $viewers,
+        'challengeIds' => $challengeIds,
+        'lobbyStatus' => $challengeType === 'realtime-live' ? 'waiting' : null,
+        'lobbyExpiresAt' => $lobbyExpiresAt,
+        'readyPlayers' => [],
         'createdAt' => gmdate('Y-m-d\TH:i:s\Z'),
     ]);
     $ownChallengeId = null;
     foreach ($players as $to) {
-        $challengeId = bin2hex(random_bytes(16));
+        $challengeId = $challengeIds[$to];
         if ($to === $uid) $ownChallengeId = $challengeId;
         $challenge = [
             'gameId' => 'wordle',
@@ -718,7 +958,17 @@ function createCustomChallenges($config, $token, $uid, $body) {
         $challenge['participants'] = $viewers;
         $challenge['players'] = $players;
         firestoreCreate($config, $token, 'gameChallenges', $challengeId, $challenge);
-        if ($liveProgress) ensureChallengeProgress($config, $token, $groupId, $to, $viewers, strlen($word));
+        if ($liveProgress) {
+            ensureChallengeProgress(
+                $config,
+                $token,
+                $groupId,
+                $to,
+                $viewers,
+                strlen($word),
+                $challengeType === 'realtime-live' ? 'waiting' : null,
+            );
+        }
     }
     $result = [
         'invited' => count(array_filter($players, static fn($to) => $to !== $uid)),
@@ -764,6 +1014,10 @@ try {
             reply(200, challengeState($config, $token, $uid, $body['challengeId'] ?? null));
         case 'challenge_guess':
             reply(200, challengeState($config, $token, $uid, $body['challengeId'] ?? null, $body['guess'] ?? null));
+        case 'challenge_ready':
+            reply(200, markRealtimeWordleReady($config, $token, $uid, $body['challengeId'] ?? null));
+        case 'challenge_cancel':
+            reply(200, cancelRealtimeWordleLobby($config, $token, $uid, $body['challengeId'] ?? null));
         case 'challenge_decline':
             reply(200, declineWordleChallenge($config, $token, $uid, $body['challengeId'] ?? null));
         case 'challenge_abandon':

@@ -3,9 +3,11 @@ import {
   createWordleChallenge,
   abandonDailyWordle,
   abandonWordleChallenge,
+  cancelWordleChallenge,
   getDailyWordlePreview,
   getDailyWordle,
   getWordleChallenge,
+  readyWordleChallenge,
   guessDailyWordle,
   guessWordleChallenge,
   type DailyWordlePreview,
@@ -32,6 +34,8 @@ function challengeNotification(
     ? wordleChallengeFinished(challenge.players ?? [challenge.to], progress)
     : false
   if (game.complete) {
+    if (game.challengeStatus === 'cancelled') return 'This real-time challenge was cancelled.'
+    if (game.challengeStatus === 'expired') return 'The real-time lobby timed out.'
     const others = challenge ? allPlayersFinished ? ' Challenge complete.' : ' Other players can keep going.' : ''
     if (game.solved) return `You solved it!${others}`
     if (game.abandoned) return `You gave up.${others}`
@@ -60,6 +64,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   const [dailyPreview, setDailyPreview] = useState<DailyWordlePreview | null>(null)
   const [receivedAt, setReceivedAt] = useState(0)
   const [elapsed, setElapsed] = useState(0)
+  const [lobbyNow, setLobbyNow] = useState(0)
   const [guess, setGuess] = useState('')
   const [loading, setLoading] = useState(!!challenge)
   const [submitting, setSubmitting] = useState(false)
@@ -77,21 +82,27 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   const { progress: challengeProgress, error: challengeProgressError, loaded: challengeProgressLoaded } = useWordleChallengeProgress(app.uid, app.isMember && !!challenge)
   const celebratedProgress = useRef(new Set<string>())
   const progressInitialized = useRef(false)
+  const lobbyRefreshAt = useRef(0)
+  const realtimeTransitionLoading = useRef(false)
   const people = Object.entries(app.household.members)
     .filter(([id, member]) => id !== app.uid && member.role === 'member' && !member.bot)
     .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
-  const challengePlayers = challengeType === 'random-live'
+  const isRandomChallenge = challengeType === 'random-live' || challengeType === 'realtime-live'
+  const challengePlayers = isRandomChallenge
     ? Object.entries(app.household.members)
       .filter(([, member]) => member.role === 'member' && !member.bot)
       .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
     : people
-  const canSendChallenge = selected.length >= (challengeType === 'random-live' ? 2 : 1)
-    && (challengeType !== 'random-live' || selected.includes(app.uid))
-    && (challengeType === 'random-live' || validWord(word))
+  const canSendChallenge = selected.length >= (isRandomChallenge ? 2 : 1)
+    && (!isRandomChallenge || selected.includes(app.uid))
+    && (isRandomChallenge || validWord(word))
     && !inviting
   const keyboardMarks = useMemo(() => wordleKeyboardMarks(game?.guesses ?? []), [game])
 
   const challengeId = challenge?.id
+  const isRealtimeChallenge = challenge?.challengeType === 'realtime-live'
+  const waitingForPlayers = isRealtimeChallenge && game?.challengeStatus === 'waiting'
+  const realtimeEnded = isRealtimeChallenge && (game?.challengeStatus === 'cancelled' || game?.challengeStatus === 'expired')
   const activeChallengeProgress = useMemo(
     () => {
       const puzzleId = challenge?.payload?.puzzleId
@@ -115,6 +126,23 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   }, [challenge, activeChallengeProgress, challengeProgressLoaded, app.household.members])
 
   useEffect(() => {
+    if (!waitingForPlayers || !challengeId || realtimeTransitionLoading.current) return
+    if (!activeChallengeProgress.some((player) =>
+      player.lobbyStatus === 'playing' || player.lobbyStatus === 'cancelled' || player.lobbyStatus === 'expired',
+    )) return
+    realtimeTransitionLoading.current = true
+    void getWordleChallenge(challengeId)
+      .then((state) => {
+        setGame(state)
+        setElapsed(state.elapsedMs)
+        setReceivedAt(Date.now())
+        setError(null)
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .finally(() => { realtimeTransitionLoading.current = false })
+  }, [waitingForPlayers, challengeId, activeChallengeProgress])
+
+  useEffect(() => {
     let cancelled = false
     async function loadDailyPreview() {
       try {
@@ -134,6 +162,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
         setGame(state)
         setElapsed(state.elapsedMs)
         setReceivedAt(Date.now())
+        setLobbyNow(Date.now())
         setError(null)
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err))
@@ -147,10 +176,30 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   }, [challengeId])
 
   useEffect(() => {
-    if (!game || game.complete) return
+    if (!game || game.complete || game.challengeStatus === 'waiting') return
     const timer = window.setInterval(() => setElapsed(game.elapsedMs + Date.now() - receivedAt), 1000)
     return () => window.clearInterval(timer)
   }, [game, receivedAt])
+
+  useEffect(() => {
+    if (!waitingForPlayers || !game?.lobbyExpiresAt || !challengeId) return
+    const expiresAt = Date.parse(game.lobbyExpiresAt)
+    const timer = window.setInterval(() => {
+      const now = Date.now()
+      setLobbyNow(now)
+      if (now < expiresAt || now - lobbyRefreshAt.current < 5000) return
+      lobbyRefreshAt.current = now
+      void getWordleChallenge(challengeId)
+        .then((state) => {
+          setGame(state)
+          setElapsed(state.elapsedMs)
+          setReceivedAt(Date.now())
+          setError(null)
+        })
+        .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [waitingForPlayers, game?.lobbyExpiresAt, challengeId])
 
   async function submitGuess() {
     if (!game || game.complete || submitting || ending) return
@@ -245,19 +294,21 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     setMessage(null)
     try {
       const result = await createWordleChallenge(
-        challengeType === 'random-live' ? null : normalizeWord(word),
+        isRandomChallenge ? null : normalizeWord(word),
         selected,
         challengeType,
       )
       setWord('')
       setSelected([])
-      if (challengeType === 'random-live' && result.challengeId) {
+      if (isRandomChallenge && result.challengeId) {
         app.navigate({ view: 'games', challengeId: result.challengeId })
       } else {
         setMessage(
           challengeType === 'live-chosen'
             ? `Live challenge started with ${result.invited} ${result.invited === 1 ? 'player' : 'players'}.`
-            : `Word invite sent to ${result.invited} ${result.invited === 1 ? 'person' : 'people'}.`,
+            : challengeType === 'realtime-live'
+              ? `Real-time challenge invitations sent to ${result.invited} ${result.invited === 1 ? 'player' : 'players'}.`
+              : `Word invite sent to ${result.invited} ${result.invited === 1 ? 'person' : 'people'}.`,
         )
       }
     } catch (err) {
@@ -287,6 +338,37 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     }
   }
 
+  async function markReady() {
+    if (!challengeId || !game || !waitingForPlayers || game.ready || ending) return
+    setEnding(true)
+    setError(null)
+    try {
+      const state = await readyWordleChallenge(challengeId)
+      setGame(state)
+      setElapsed(state.elapsedMs)
+      setReceivedAt(Date.now())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setEnding(false)
+    }
+  }
+
+  async function cancelLobby() {
+    if (!challengeId || !waitingForPlayers || ending) return
+    if (!window.confirm('Cancel this real-time Wordle for everyone?')) return
+    setEnding(true)
+    setError(null)
+    try {
+      const state = await cancelWordleChallenge(challengeId)
+      setGame(state)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setEnding(false)
+    }
+  }
+
   if (!app.isMember) return <p className="muted">Wordle is for household members.</p>
 
   return (
@@ -295,7 +377,9 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
         <h2><Icon name="sparkle" /> Wordle</h2>
         <span className="muted small">
           {challenge
-            ? challenge.from === app.uid ? 'Your live challenge' : `Challenge from ${app.household.members[challenge.from]?.displayName ?? 'a family member'}`
+            ? isRealtimeChallenge
+              ? 'Real-time Live Wordle'
+              : challenge.from === app.uid ? 'Your live challenge' : `Challenge from ${app.household.members[challenge.from]?.displayName ?? 'a family member'}`
             : 'A shared daily word, or a word challenge you create.'}
         </span>
         <button type="button" className="secondary small" onClick={onBack}>Show All Games</button>
@@ -359,8 +443,20 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                     <span className="muted small">Play with one or more others. Select yourself and at least one other player.</span>
                   </span>
                 </label>
+                <label className="wordle-challenge-option">
+                  <input
+                    type="radio"
+                    name="wordle-challenge-type"
+                    checked={challengeType === 'realtime-live'}
+                    onChange={() => setChallengeType('realtime-live')}
+                  />
+                  <span>
+                    <strong>Real-time Live Wordle</strong>
+                    <span className="muted small">Everyone marks Ready before the shared timer and game begin. The lobby cancels after 15 minutes if everyone has not joined.</span>
+                  </span>
+                </label>
               </fieldset>
-              {challengeType !== 'random-live' && (
+              {!isRandomChallenge && (
                 <>
                   <p className="muted small">Choose a 2–12 letter word. Five-letter answers must be accepted Wordle words, and every five-letter game uses hard mode. The answer is stored privately and isn’t sent with the invitation.</p>
                   <div className="row wrap">
@@ -380,7 +476,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                   </div>
                 </>
               )}
-              <p className="muted small">{challengeType === 'random-live' ? 'Players (include yourself)' : 'Invite family members'}</p>
+              <p className="muted small">{isRandomChallenge ? 'Players (include yourself)' : 'Invite family members'}</p>
               <div className="chips">
                 {challengePlayers.map(([id, member]) => (
                   <label className={`chip-toggle${selected.includes(id) ? ' on' : ''}`} key={id}>
@@ -392,8 +488,10 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
               <button type="submit" className="small" disabled={!canSendChallenge}>
                 {inviting
                   ? 'Starting…'
-                  : challengeType === 'random-live'
-                    ? `Start live challenge${selected.length ? ` with ${selected.filter((id) => id !== app.uid).length}` : ''}`
+                  : challengeType === 'realtime-live'
+                    ? `Start real-time challenge${selected.length ? ` with ${selected.filter((id) => id !== app.uid).length}` : ''}`
+                    : challengeType === 'random-live'
+                      ? `Start live challenge${selected.length ? ` with ${selected.filter((id) => id !== app.uid).length}` : ''}`
                     : challengeType === 'live-chosen'
                       ? `Start live challenge${selected.length ? ` with ${selected.length}` : ''}`
                       : `Send word invite${selected.length ? ` to ${selected.length}` : ''}`}
@@ -438,9 +536,49 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                   {' · '}fewest guesses, then fastest time
                 </p>
               </div>
-              <div className="wordle-clock" aria-label="Elapsed time">{seconds(elapsed)}</div>
+              <div className="wordle-clock" aria-label={waitingForPlayers ? 'Lobby time remaining' : 'Elapsed time'}>
+                {waitingForPlayers && game.lobbyExpiresAt
+                  ? seconds(Math.max(0, Date.parse(game.lobbyExpiresAt) - lobbyNow))
+                  : seconds(elapsed)}
+              </div>
             </header>
 
+            {waitingForPlayers ? (
+              <div className="wordle-ready-lobby">
+                <h4>Waiting for everyone to be ready</h4>
+                <p className="muted small">
+                  The shared timer and game start when every player is ready. The lobby expires after 15 minutes.
+                </p>
+                <WordleProgressBoard
+                  participants={challenge?.players ?? [challenge?.to ?? app.uid]}
+                  progress={activeChallengeProgress}
+                  members={app.household.members}
+                />
+                <div className="row wrap">
+                  <button type="button" onClick={() => void markReady()} disabled={game.ready || ending}>
+                    {ending ? 'Updating…' : game.ready ? 'You’re ready' : 'I’m ready'}
+                  </button>
+                  <button type="button" className="secondary small" onClick={() => void cancelLobby()} disabled={ending}>
+                    Cancel challenge
+                  </button>
+                </div>
+              </div>
+            ) : realtimeEnded ? (
+              <div className="wordle-ready-lobby">
+                <p className="wordle-result" role="status">
+                  {game.challengeStatus === 'expired'
+                    ? 'The lobby expired because not everyone was ready within 15 minutes.'
+                    : 'This real-time challenge was cancelled for everyone.'}
+                </p>
+                <WordleProgressBoard
+                  participants={challenge?.players ?? [challenge?.to ?? app.uid]}
+                  progress={activeChallengeProgress}
+                  members={app.household.members}
+                />
+                <button type="button" className="secondary small" onClick={onBack}>Return to games</button>
+              </div>
+            ) : (
+            <>
             {challenge?.payload?.puzzleId
               && challenge.challengeType !== 'invite'
               && !game.complete
@@ -570,6 +708,8 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                   </button>
                 )}
               </>
+            )}
+            </>
             )}
           </article>
 

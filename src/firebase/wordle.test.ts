@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('./config', () => ({ auth: mocks.auth }))
 
-import { abandonDailyWordle, abandonWordleChallenge, createWordleChallenge, declineWordleChallenge, getDailyWordle, getDailyWordlePreview } from './wordle'
+import { abandonDailyWordle, abandonWordleChallenge, cancelWordleChallenge, createWordleChallenge, declineWordleChallenge, getDailyWordle, getDailyWordlePreview, readyWordleChallenge } from './wordle'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -90,6 +90,37 @@ describe('Wordle API responses', () => {
     })
   })
 
+  it('sends authenticated ready and cancel actions for a real-time lobby', async () => {
+    const state = {
+      mode: 'custom',
+      seed: 'custom-group',
+      length: 5,
+      guesses: [],
+      startedAt: '2026-11-10T12:00:00Z',
+      elapsedMs: 0,
+      complete: false,
+      solved: false,
+      challengeStatus: 'waiting',
+      ready: true,
+      lobbyExpiresAt: '2026-11-10T12:15:00Z',
+    }
+    const fetchMock = vi.fn().mockImplementation(() =>
+      new Response(JSON.stringify(state), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(readyWordleChallenge('challenge-id')).resolves.toEqual(state)
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      action: 'challenge_ready',
+      challengeId: 'challenge-id',
+    })
+    await expect(cancelWordleChallenge('challenge-id')).resolves.toEqual(state)
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+      action: 'challenge_cancel',
+      challengeId: 'challenge-id',
+    })
+  })
+
   it('sends the selected Wordle challenge type with its players', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ invited: 2, participants: 2 }), {
@@ -108,6 +139,27 @@ describe('Wordle API responses', () => {
       word: 'APPLE',
       recipients: ['wife', 'daughter'],
       challengeType: 'live-chosen',
+    })
+  })
+
+  it('sends a real-time challenge with the selected participants', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ invited: 1, participants: 2, challengeId: 'own-challenge' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createWordleChallenge(null, ['steve', 'wife'], 'realtime-live')).resolves.toEqual({
+      invited: 1,
+      participants: 2,
+      challengeId: 'own-challenge',
+    })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      action: 'custom_create',
+      recipients: ['steve', 'wife'],
+      challengeType: 'realtime-live',
     })
   })
 

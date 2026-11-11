@@ -750,14 +750,14 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'completedAt'])
             && request.resource.data.status == 'declined'
             && request.resource.data.completedAt is timestamp)
-          || (resource.data.status in ['completed', 'declined', 'abandoned']
+          || (resource.data.status in ['completed', 'declined', 'abandoned', 'cancelled', 'expired']
             && (!('dismissed' in resource.data) || resource.data.dismissed == false)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dismissed'])
             && request.resource.data.dismissed == true)
         );
       allow update: if isMember() && resource.data.gameId == 'wordle'
         && resource.data.to == request.auth.uid
-        && (resource.data.status in ['completed', 'declined', 'abandoned'] || ownWordleProgressComplete())
+        && (resource.data.status in ['completed', 'declined', 'abandoned', 'cancelled', 'expired'] || ownWordleProgressComplete())
         && (!('dismissed' in resource.data) || resource.data.dismissed == false)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dismissed'])
         && request.resource.data.dismissed == true;

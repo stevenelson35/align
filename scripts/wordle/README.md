@@ -76,9 +76,13 @@ clients writing Wordle scores or invitations, and permit only challenge particip
 That collection contains six rows of color marks and finish status, never guess text. Progress updates live for the
 sender and all invitees. Invitees can decline, and a player can give up; both outcomes appear in the live challenge
 panel for the other players. Daily Wordle can also be ended by giving up. Each player's timer starts when they open
-their own game; there is no synchronized countdown.
+their own game except in Real-time Live Wordle.
 
-Word challenges have three types: a chosen-word invite (players solve separately), a live chosen-word challenge
-(the sender watches while invitees solve), and a live random-word challenge (the sender joins the invited players).
-Only live types publish colored guess rows; all challenge types update invite statuses and completion results.
+Word challenges have four types: a chosen-word invite (players solve separately), a live chosen-word challenge
+(the sender watches while invitees solve), a live random-word challenge (the sender joins the invited players), and
+Real-time Live Wordle. In the real-time lobby each participant opens their invitation and taps Ready. The shared
+timer and game start only after everyone is ready; any participant can cancel while it is waiting. The lobby expires
+15 minutes after creation, but with no scheduled backend the timeout is applied on the next endpoint request after
+the deadline, not at an exact instant while everyone is offline. Only live types publish colored guess rows; all
+challenge types update invite statuses and completion results.
 The service account uses IAM on the server and is not subject to client Firestore rules.

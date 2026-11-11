@@ -591,6 +591,25 @@ describe('games', () => {
     await assertFails(updateDoc(doc(db('wife'), 'gameChallenges/wordle-progress-complete'), { dismissed: true }))
   })
 
+  it('lets recipients clear cancelled or expired real-time Wordle challenges', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const admin = ctx.firestore() as unknown as Firestore
+      for (const status of ['cancelled', 'expired']) {
+        await setDoc(doc(admin, `gameChallenges/wordle-${status}`), {
+          gameId: 'wordle',
+          from: 'wife',
+          to: 'steve',
+          challengeType: 'realtime-live',
+          status,
+          createdAt: new Date(),
+        })
+      }
+    })
+    await assertSucceeds(updateDoc(doc(db('steve'), 'gameChallenges/wordle-cancelled'), { dismissed: true }))
+    await assertSucceeds(updateDoc(doc(db('steve'), 'gameChallenges/wordle-expired'), { dismissed: true }))
+    await assertFails(updateDoc(doc(db('wife'), 'gameChallenges/wordle-cancelled'), { dismissed: true }))
+  })
+
   it('lets the sender and every Wordle challenge participant read group progress', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       const admin = ctx.firestore() as unknown as Firestore

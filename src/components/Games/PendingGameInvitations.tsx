@@ -2,7 +2,7 @@ import { useState, type MouseEvent } from 'react'
 import { Timestamp } from 'firebase/firestore'
 import { useApp } from '../../hooks/useApp'
 import { declineGameChallenge, dismissGameChallenge, type GameChallenge, type WordleChallengeProgress } from '../../firebase/games'
-import { declineWordleChallenge } from '../../firebase/wordle'
+import { cancelWordleChallenge, declineWordleChallenge } from '../../firebase/wordle'
 import { Icon } from '../UI/Icon'
 import { gameById } from '../../games/catalog'
 import { WordleProgressBoard } from './WordleProgressBoard'
@@ -23,6 +23,11 @@ function challengeStatus(challenge: GameChallenge, progress: WordleChallengeProg
   const playerProgress = challengeProgress(challenge, progress)
   if (playerProgress?.status === 'declined') return 'Declined'
   if (playerProgress?.status === 'abandoned') return 'Gave up'
+  if (challenge.status === 'cancelled' || playerProgress?.status === 'cancelled') return 'Cancelled'
+  if (challenge.status === 'expired' || playerProgress?.status === 'expired') return 'Expired'
+  if (challenge.challengeType === 'realtime-live' && playerProgress?.lobbyStatus === 'waiting') {
+    return playerProgress.ready ? 'Ready' : 'Waiting'
+  }
   if (playerProgress?.complete) return playerProgress.solved ? 'Won' : 'Lost'
   if (challenge.status === 'playing') return 'Playing'
   if (challenge.status === 'declined') return 'Declined'
@@ -99,7 +104,8 @@ export function PendingGameInvitations({
     setActionId(challenge.id)
     setActionError(null)
     try {
-      if (challenge.gameId === 'wordle') await declineWordleChallenge(challenge.id)
+      if (challenge.gameId === 'wordle' && challenge.challengeType === 'realtime-live') await cancelWordleChallenge(challenge.id)
+      else if (challenge.gameId === 'wordle') await declineWordleChallenge(challenge.id)
       else await declineGameChallenge(challenge.id)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : String(err))
@@ -147,7 +153,15 @@ export function PendingGameInvitations({
                     <span className={`game-invitation-status ${status.toLowerCase().replaceAll(' ', '-')}`}>{status}</span>
                   </summary>
                   <div className="game-invitation-details">
-                    {challenge.challengeType && <p className="muted small">{challenge.challengeType === 'invite' ? 'Separate word invite' : 'Live Wordle challenge'}</p>}
+                    {challenge.challengeType && (
+                      <p className="muted small">
+                        {challenge.challengeType === 'invite'
+                          ? 'Separate word invite'
+                          : challenge.challengeType === 'realtime-live'
+                            ? 'Real-time Live Wordle · everyone must be ready before play starts'
+                            : 'Live Wordle challenge'}
+                      </p>
+                    )}
                     {result && (
                       <p className="muted small">
                         {result.abandoned
@@ -184,7 +198,9 @@ export function PendingGameInvitations({
                     onClick={() => void declineChallenge(challenge)}
                     disabled={actionId !== null}
                   >
-                    {actionId === challenge.id ? 'Declining…' : 'Decline'}
+                    {actionId === challenge.id
+                      ? challenge.challengeType === 'realtime-live' ? 'Cancelling…' : 'Declining…'
+                      : challenge.challengeType === 'realtime-live' ? 'Cancel challenge' : 'Decline'}
                   </button>
                 )}
               </div>
@@ -205,7 +221,11 @@ export function PendingGameInvitations({
               <details className="wordle-challenge-update" key={first.payload?.puzzleId}>
                 <summary className="wordle-challenge-update-heading">
                   <span>{challengeDate(first.createdAt)}</span>
-                  <span>{first.challengeType === 'random-live' ? 'Live random word' : 'Live chosen word'}</span>
+                  <span>
+                    {first.challengeType === 'random-live'
+                      ? 'Live random word'
+                      : first.challengeType === 'realtime-live' ? 'Real-time Live Wordle' : 'Live chosen word'}
+                  </span>
                   <span>{players.length} {players.length === 1 ? 'player' : 'players'} · {finished}/{players.length} finished</span>
                   <span className="wordle-challenge-update-status" aria-label={complete ? 'Complete' : 'In progress'}>
                     <Icon name={complete ? 'check' : 'clock'} />
