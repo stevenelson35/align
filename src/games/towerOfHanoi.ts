@@ -2,7 +2,18 @@ export type HanoiRod = 'A' | 'B' | 'C'
 export type HanoiBoard = Record<HanoiRod, number[]>
 
 export const HANOI_DISKS = 3
+export const HANOI_DISK_OPTIONS = [3, 4, 5, 6] as const
+export type HanoiDiskCount = (typeof HANOI_DISK_OPTIONS)[number]
 export const HANOI_RODS: HanoiRod[] = ['A', 'B', 'C']
+
+export function isHanoiDiskCount(value: unknown): value is HanoiDiskCount {
+  return HANOI_DISK_OPTIONS.some((count) => count === value)
+}
+
+export function hanoiOptimalMoves(disks: number): number {
+  if (!Number.isInteger(disks) || disks < 1) throw new Error('Tower of Hanoi needs at least one disk.')
+  return 2 ** disks - 1
+}
 
 export function newHanoiBoard(disks = HANOI_DISKS): HanoiBoard {
   return { A: Array.from({ length: disks }, (_, i) => disks - i), B: [], C: [] }

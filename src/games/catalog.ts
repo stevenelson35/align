@@ -18,7 +18,7 @@ export const GAMES = [
   {
     id: 'tower-of-hanoi',
     name: 'Tower of Hanoi',
-    description: 'Move the whole tower to another rod. Move one disk at a time; never place a larger disk on a smaller one.',
+    description: 'Choose 3–6 disks and move the whole tower to another rod. Move one disk at a time; never place a larger disk on a smaller one.',
     scoreOrder: ['moves', 'ms'],
   },
   {

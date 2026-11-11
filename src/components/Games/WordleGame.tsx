@@ -119,7 +119,9 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     async function loadDailyPreview() {
       try {
         const preview = await getDailyWordlePreview()
-        if (!cancelled) setDailyPreview(preview)
+        if (!cancelled) {
+          setDailyPreview((current) => current?.complete && !preview.complete ? current : preview)
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err))
       }
@@ -207,6 +209,17 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   }
 
   function quitDailyGame() {
+    if (game?.mode === 'daily') {
+      setDailyPreview((current) => ({
+        date: current?.date ?? game.date ?? '',
+        seed: current?.seed ?? game.seed,
+        ...current,
+        complete: game.complete,
+        solved: game.solved,
+        abandoned: !!game.abandoned,
+        guessCount: game.guesses.length,
+      }))
+    }
     setGame(null)
     setGuess('')
     setGuessError(null)
@@ -396,10 +409,18 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
           <div className="row">
             <div className="grow">
               <h3>Daily word{dailyPreview ? ` · ${dailyPreview.date}` : ''}</h3>
-              <p className="muted small">Five letters · six guesses · hard mode</p>
+              <p className="muted small">
+                {dailyPreview?.complete
+                  ? dailyPreview.solved
+                    ? `Solved in ${dailyPreview.guessCount} ${dailyPreview.guessCount === 1 ? 'guess' : 'guesses'}.`
+                    : dailyPreview.abandoned
+                      ? `You gave up after ${dailyPreview.guessCount} ${dailyPreview.guessCount === 1 ? 'guess' : 'guesses'}.`
+                      : 'You used all six guesses.'
+                  : 'Five letters · six guesses · hard mode'}
+              </p>
             </div>
             <button type="button" className="small" onClick={() => void startDailyGame()} disabled={loading}>
-              {loading ? 'Opening…' : 'Play daily Wordle'}
+              {loading ? 'Opening…' : dailyPreview?.complete ? 'Show daily Wordle' : 'Play daily Wordle'}
             </button>
           </div>
         </article>
@@ -407,7 +428,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
 
       {game && (
         <>
-          <article className="game-card card wordle-game">
+          <article className={`game-card card wordle-game${!game.complete ? ' wordle-game-playing' : ''}`}>
             <header className="row wrap">
               <div className="grow">
                 <h3>{game.mode === 'daily' ? `Daily word · ${game.date}` : `${game.length}-letter challenge`}</h3>
@@ -514,7 +535,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
 
             {!challenge && (
               <button type="button" className="secondary small" onClick={quitDailyGame}>
-                Quit
+                {game.complete ? 'Return to Wordle' : 'Quit'}
               </button>
             )}
 

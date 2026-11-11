@@ -47,6 +47,7 @@ export interface GameChallengePayload {
   puzzleId?: string
   imageId?: string
   boardSize?: number
+  diskCount?: number
   wordLength?: number
   version: number
 }

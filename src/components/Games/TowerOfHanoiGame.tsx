@@ -4,16 +4,18 @@ import { completeGameChallenge, inviteToGame, recordGameScore, useGameScores, ty
 import { useApp } from '../../hooks/useApp'
 import { celebrate } from '../../utils/celebrate'
 import { compareGameResults, formatGameResult } from '../../games/catalog'
-import { HANOI_DISKS, HANOI_RODS, hanoiSolved, moveHanoiDisk, newHanoiBoard, type HanoiBoard, type HanoiRod } from '../../games/towerOfHanoi'
+import { HANOI_DISKS, HANOI_DISK_OPTIONS, HANOI_RODS, hanoiOptimalMoves, hanoiSolved, isHanoiDiskCount, moveHanoiDisk, newHanoiBoard, type HanoiBoard, type HanoiRod } from '../../games/towerOfHanoi'
 import { Icon } from '../UI/Icon'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 
 export function TowerOfHanoiGame({ challenge, onBack, onSolved }: { challenge?: GameChallenge; onBack: () => void; onSolved: () => void }) {
   const app = useApp()
-  const seed = challenge?.payload?.puzzleId ?? challenge?.seed ?? today()
+  const challengeDisks = isHanoiDiskCount(challenge?.payload?.diskCount) ? challenge.payload.diskCount : HANOI_DISKS
+  const [disks, setDisks] = useState(challengeDisks)
+  const seed = challenge?.payload?.puzzleId ?? challenge?.seed ?? (disks === HANOI_DISKS ? today() : `hanoi-${disks}-${today()}`)
   const { scores, error: scoreError } = useGameScores('tower-of-hanoi', seed, app.isMember)
-  const [board, setBoard] = useState<HanoiBoard>(() => newHanoiBoard())
+  const [board, setBoard] = useState<HanoiBoard>(() => newHanoiBoard(challengeDisks))
   const [source, setSource] = useState<HanoiRod | null>(null)
   const [moves, setMoves] = useState(0)
   const [elapsed, setElapsed] = useState(0)
@@ -29,13 +31,13 @@ export function TowerOfHanoiGame({ challenge, onBack, onSolved }: { challenge?: 
     .filter(([id, member]) => id !== app.uid && member.role === 'member' && !member.bot)
     .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
 
-  useEffect(() => { startedAt.current = Date.now() }, [])
+  useEffect(() => { startedAt.current = Date.now() }, [disks])
 
   useEffect(() => {
     if (solved) return
     const timer = window.setInterval(() => setElapsed(Date.now() - startedAt.current), 250)
     return () => window.clearInterval(timer)
-  }, [solved])
+  }, [disks, solved])
 
   const saveResult = useCallback(async (resultMoves: number, resultMs: number) => {
     if (saving || saved) return
@@ -83,21 +85,34 @@ export function TowerOfHanoiGame({ challenge, onBack, onSolved }: { challenge?: 
     setBoard(next)
     setMoves(count)
     setMessage(null)
-    if (hanoiSolved(next)) {
+    if (hanoiSolved(next, disks)) {
       const time = Math.max(1, Date.now() - startedAt.current)
       setElapsed(time)
       setSolved(true)
       onSolved()
       void saveResult(count, time)
     }
-  }, [board, moves, onSolved, saveResult, solved, source])
+  }, [board, disks, moves, onSolved, saveResult, solved, source])
+
+  function chooseDiskCount(value: number) {
+    if (challenge || !isHanoiDiskCount(value)) return
+    setDisks(value)
+    setBoard(newHanoiBoard(value))
+    setSource(null)
+    setMoves(0)
+    setElapsed(0)
+    setSolved(false)
+    setSaved(false)
+    setMessage(null)
+    setError(null)
+  }
 
   function reset() {
     if (challenge && solved) {
       onBack()
       return
     }
-    setBoard(newHanoiBoard())
+    setBoard(newHanoiBoard(disks))
     setSource(null)
     setMoves(0)
     setElapsed(0)
@@ -113,7 +128,7 @@ export function TowerOfHanoiGame({ challenge, onBack, onSolved }: { challenge?: 
     setError(null)
     setMessage(null)
     try {
-      await inviteToGame(app.uid, selected, 'tower-of-hanoi', { puzzleId: seed, version: 1 })
+      await inviteToGame(app.uid, selected, 'tower-of-hanoi', { puzzleId: seed, diskCount: disks, version: 1 })
       setMessage(`Challenge sent to ${selected.length} ${selected.length === 1 ? 'person' : 'people'}.`)
       setSelected([])
     } catch (err) {
@@ -132,6 +147,18 @@ export function TowerOfHanoiGame({ challenge, onBack, onSolved }: { challenge?: 
       </header>
       <article className="game-card card hanoi-game">
         <p className="muted small">Move one disk at a time. A larger disk may never sit on a smaller one.</p>
+        {!challenge ? (
+          <label className="inline small">
+            Number of disks
+            <select value={disks} onChange={(event) => chooseDiskCount(Number(event.target.value))}>
+              {HANOI_DISK_OPTIONS.map((count) => (
+                <option key={count} value={count}>{count} disks · {hanoiOptimalMoves(count)} minimum moves</option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <p className="muted small">{disks} disks · {hanoiOptimalMoves(disks)} minimum moves</p>
+        )}
         <div className="game-status row" aria-live="polite">
           <strong>{moves} {moves === 1 ? 'move' : 'moves'}</strong>
           <span className="muted">·</span>
@@ -150,9 +177,9 @@ export function TowerOfHanoiGame({ challenge, onBack, onSolved }: { challenge?: 
             >
               <span className="hanoi-stack">
                 {board[rod].map((disk) => (
-                  <span key={disk} className={`hanoi-disk hanoi-disk-${disk}`} style={{ width: `${28 + disk * 19}%` }} aria-hidden="true" />
+                  <span key={disk} className={`hanoi-disk hanoi-disk-${disk}`} style={{ width: `${40 + disk * 9}%` }} aria-hidden="true" />
                 ))}
-                {Array.from({ length: HANOI_DISKS - board[rod].length }, (_, i) => <span key={`space-${i}`} className="hanoi-space" aria-hidden="true" />)}
+                {Array.from({ length: disks - board[rod].length }, (_, i) => <span key={`space-${i}`} className="hanoi-space" aria-hidden="true" />)}
               </span>
               <strong>Rod {rod}</strong>
             </button>
@@ -163,7 +190,7 @@ export function TowerOfHanoiGame({ challenge, onBack, onSolved }: { challenge?: 
         <button type="button" className="secondary small" onClick={reset}>{challenge && solved ? 'Return to games' : solved ? 'Play again' : 'Restart puzzle'}</button>
       </article>
       <article className="card game-leaderboard">
-        <h3>Family leaderboard</h3>
+        <h3>Family leaderboard · {disks} disks</h3>
         {scoreError && <p className="error small">{scoreError}</p>}
         {!scores.length ? <p className="muted small">Solve the puzzle to set the first family score.</p> : (
           <ol>
@@ -179,7 +206,7 @@ export function TowerOfHanoiGame({ challenge, onBack, onSolved }: { challenge?: 
       </article>
       {solved && !challenge && people.length > 0 && (
         <article className="card game-invite-form">
-          <h3>Challenge someone with this puzzle</h3>
+          <h3>Challenge someone with this {disks}-disk puzzle</h3>
           <div className="chips">
             {people.map(([id, member]) => (
               <label className={`chip-toggle${selected.includes(id) ? ' on' : ''}`} key={id}>

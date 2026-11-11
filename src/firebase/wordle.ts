@@ -19,6 +19,10 @@ export interface WordleGameState {
 export interface DailyWordlePreview {
   date: string
   seed: string
+  complete: boolean
+  solved: boolean
+  abandoned: boolean
+  guessCount: number
 }
 
 export type WordleChallengeType = 'invite' | 'live-chosen' | 'random-live'

@@ -400,9 +400,21 @@ function dailyState($config, $token, $uid, $guess = null) {
     return stateResponse('daily', $seed, 5, $progress, $date);
 }
 
-function dailyPreview() {
+function dailyPreview($config, $token, $uid) {
     $date = currentDate()->format('Y-m-d');
-    return ['date' => $date, 'seed' => 'daily-' . $date];
+    $progressId = 'daily_' . str_replace('-', '', $date) . '_' . $uid;
+    $progress = firestoreGet($config, $token, 'wordleProgress', $progressId);
+    $fields = $progress['fields'] ?? [];
+    $guesses = json_decode($fields['guessesJson'] ?? '[]', true);
+    if (!is_array($guesses)) $guesses = [];
+    return [
+        'date' => $date,
+        'seed' => 'daily-' . $date,
+        'complete' => (bool) ($fields['complete'] ?? false),
+        'solved' => (bool) ($fields['solved'] ?? false),
+        'abandoned' => (bool) ($fields['abandoned'] ?? false),
+        'guessCount' => count($guesses),
+    ];
 }
 
 function abandonDailyWordle($config, $token, $uid) {
@@ -741,7 +753,7 @@ try {
     $action = $body['action'] ?? '';
     switch ($action) {
         case 'daily_preview':
-            reply(200, dailyPreview());
+            reply(200, dailyPreview($config, $token, $uid));
         case 'daily_status':
             reply(200, dailyState($config, $token, $uid));
         case 'daily_guess':

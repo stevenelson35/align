@@ -19,7 +19,14 @@ afterEach(() => vi.unstubAllGlobals())
 describe('Wordle API responses', () => {
   it('fetches the daily puzzle date without starting a game', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ date: '2026-11-11', seed: 'daily-2026-11-11' }), {
+      new Response(JSON.stringify({
+        date: '2026-11-11',
+        seed: 'daily-2026-11-11',
+        complete: true,
+        solved: true,
+        abandoned: false,
+        guessCount: 4,
+      }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       }),
@@ -29,6 +36,10 @@ describe('Wordle API responses', () => {
     await expect(getDailyWordlePreview()).resolves.toEqual({
       date: '2026-11-11',
       seed: 'daily-2026-11-11',
+      complete: true,
+      solved: true,
+      abandoned: false,
+      guessCount: 4,
     })
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ action: 'daily_preview' })
   })

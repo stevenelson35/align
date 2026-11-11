@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hanoiSolved, moveHanoiDisk, newHanoiBoard } from './towerOfHanoi'
+import { hanoiOptimalMoves, hanoiSolved, isHanoiDiskCount, moveHanoiDisk, newHanoiBoard } from './towerOfHanoi'
 
 describe('Tower of Hanoi', () => {
   it('starts with all disks on the first rod', () => {
@@ -27,5 +27,19 @@ describe('Tower of Hanoi', () => {
     }
     expect(hanoiSolved(board)).toBe(true)
     expect(board).toEqual({ A: [], B: [], C: [3, 2, 1] })
+  })
+
+  it('calculates the optimal move count for each supported difficulty', () => {
+    expect([3, 4, 5, 6].map(hanoiOptimalMoves)).toEqual([7, 15, 31, 63])
+    expect(isHanoiDiskCount(3)).toBe(true)
+    expect(isHanoiDiskCount(6)).toBe(true)
+    expect(isHanoiDiskCount(2)).toBe(false)
+  })
+
+  it('creates and solves boards with different disk counts', () => {
+    for (const disks of [3, 4, 5, 6]) {
+      expect(newHanoiBoard(disks).A).toHaveLength(disks)
+      expect(hanoiSolved({ A: [], B: [], C: Array.from({ length: disks }, (_, i) => disks - i) }, disks)).toBe(true)
+    }
   })
 })
