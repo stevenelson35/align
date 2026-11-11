@@ -4508,6 +4508,20 @@ input.ladder-sparks {
 .wordle-result {
   text-align: center;
 }
+.wordle-notification-row {
+  display: flex;
+  height: 2.5rem;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding-inline: 0.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .wordle-mode {
   display: block;
   color: var(--muted);
@@ -4538,16 +4552,21 @@ input.ladder-sparks {
   padding: 0 0.25rem;
 }
 .wordle-challenge-option {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1.1rem minmax(0, 1fr);
   align-items: flex-start;
   gap: 0.55rem;
 }
 .wordle-challenge-option input {
-  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: 0;
   margin-top: 0.2rem;
 }
 .wordle-challenge-option > span {
   display: grid;
+  min-width: 0;
   gap: 0.12rem;
 }
 .wordle-challenge-option .small {
@@ -4576,7 +4595,10 @@ input.ladder-sparks {
   border-radius: var(--radius);
 }
 .wordle-live-player[data-layout="single"] {
-  display: flex;
+  display: grid;
+  width: min(100%, 22rem);
+  grid-template-columns: minmax(0, 1fr) 5rem;
+  justify-self: center;
   align-items: center;
   gap: 0.65rem;
   padding: 0.4rem 0.65rem;
@@ -4584,6 +4606,7 @@ input.ladder-sparks {
 .wordle-live-player-heading {
   display: flex;
   flex-wrap: wrap;
+  width: 100%;
   min-width: 0;
   align-items: baseline;
   justify-content: center;
@@ -4595,6 +4618,7 @@ input.ladder-sparks {
 .wordle-live-player[data-layout="single"] .wordle-live-player-heading {
   display: grid;
   justify-content: start;
+  justify-items: start;
   gap: 0.15rem;
 }
 .wordle-live-player-heading strong {
@@ -4883,35 +4907,71 @@ input.ladder-sparks {
 .today-panel-style select {
   max-width: 6rem;
 }
-.game-invitations {
-  margin-bottom: 0.75rem;
-  border-color: color-mix(in srgb, var(--brand) 38%, var(--border));
-}
-.game-invitations details > summary {
-  display: flex;
-  min-height: 1.75rem;
-  align-items: center;
+.game-invitations-list {
+  display: grid;
   gap: 0.45rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--brand) 38%, var(--border));
+  border-radius: var(--radius);
+}
+.game-invitations-list h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+.game-invitation-row {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding-block: 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+.game-invitation-row:last-of-type {
+  border-bottom: 0;
+}
+.game-invitation-row details {
+  min-width: 0;
+}
+.game-invitation-row summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
   cursor: pointer;
-  font-weight: 700;
   list-style-position: inside;
 }
-.game-invitations details > summary::marker {
+.game-invitation-status {
+  flex: none;
+  padding: 0 0.4rem;
+  border-radius: 999px;
   color: var(--muted);
-}
-.game-invitations-count {
-  color: var(--brand);
-  font-size: 0.8rem;
+  background: var(--bg);
+  font-size: 0.75rem;
   font-weight: 700;
 }
-.game-invitations-content {
-  display: grid;
-  gap: 0.5rem;
-  padding-top: 0.55rem;
+.game-invitation-status.new,
+.game-invitation-status.playing,
+.game-invitation-status.won {
+  color: var(--highlight);
 }
-.game-invitations .row {
+.game-invitation-details {
+  padding: 0.35rem 0.25rem 0;
+}
+.game-invitation-details p {
   margin: 0;
-  flex-wrap: wrap;
+}
+.game-invitation-row .small {
+  white-space: nowrap;
+}
+.game-invitations-list > p {
+  margin: 0;
+}
+.game-invitations-list .wordle-challenge-updates {
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
 }
 @media (max-width: 360px) {
   .today-panel-style {

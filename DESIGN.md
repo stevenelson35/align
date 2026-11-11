@@ -524,21 +524,22 @@ firestore.rules, firestore.indexes.json
 - Games includes a shared daily puzzle, sender-authored 2–12 letter challenges, and live group challenges with a
   server-random five-letter answer. The server keeps answers and guessed words private; live progress shares only
   compact colored mark rows in six-row mini-boards above the active player's full board, with ready/playing/completion
-  states. Invitees can decline, and players can give up; live challenge panels show those outcomes to other players.
+  states. Live completion never ends another player's game; each player can keep guessing or give up.
   Daily play can also be ended by giving up. Word challenges distinguish separate chosen-word invites, live chosen-word
   challenges where the sender watches, and live random-word challenges where the sender plays. Challenge notifications
-  are collapsible with invitation/update counts visible while closed. Opponent boards keep a stable six-row layout;
-  one, two, or three opponents are arranged for their count. Each player's timer starts when they open their own game.
+  live in the Today Games section, with a pending-invitation count on its closed row and per-invite status and dismissal.
+  Opponent boards keep a stable six-row layout; one, two, or three opponents are arranged for their count. The active
+  game reserves a message row and hides the leaderboard. Each player's timer starts when they open their own game.
 - Five-letter games use server-installed answer and accepted-guess text files, enforce accepted guesses and hard
   mode, and mark hard-mode leaderboard scores.
 - The list files must be downloaded from the sources in `scripts/wordle/README.md` and placed outside the document
   root; they are intentionally not included in the repository.
 - The endpoint is built to `dist/wordle.php`; private service-account credentials and the daily HMAC secret must be
   installed outside the document root as described in `scripts/wordle/README.md`.
-- Verified locally: 297 unit tests, 89 Firestore rule tests, TypeScript build checks, lint, and PHP 8.3 syntax validation
-  with cURL/OpenSSL. Phone-sized emulator browser checks verified the six-row opponent board and statuses, the decline
-  control, and the give-up completion UI with a mocked Wordle API; Turbify PHP support and live endpoint behavior are
-  not yet verified.
+- Verified locally: 298 unit tests, 89 Firestore rule tests, TypeScript build checks, lint, and PHP syntax validation.
+  At 390 px, emulator browser checks verified the Today Games invitation count and expanded sections, readable
+  challenge options, one- and two-opponent mini-board layouts, the reserved completion notice, and no leaderboard
+  during live play. Live endpoint behavior and Turbify PHP support are not yet verified.
 - Before release, install the private server config, check that GET returns JSON 405 and unauthenticated POST returns
   JSON 401, deploy Firestore rules, then deploy the web app and test daily play plus a custom invitation.
 

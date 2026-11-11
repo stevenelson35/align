@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { today } from '../../engine/dates'
-import { completeGameChallenge, inviteToGame, recordGameScore, useGameChallenge, useGameScores, type GameChallenge } from '../../firebase/games'
+import { completeGameChallenge, inviteToGame, recordGameScore, startGameChallenge, useGameChallenge, useGameScores, type GameChallenge } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
 import { isLightsOutSolved, lightsOutBoard, toggleLights } from '../../games/lightsOut'
 import { celebrate } from '../../utils/celebrate'
@@ -32,6 +32,7 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
   const [error, setError] = useState<string | null>(null)
   const startedAt = useRef(0)
   const challengeLoaded = useRef('')
+  const startedChallenge = useRef('')
 
   useEffect(() => {
     if (selectedGame === 'lights-out') startedAt.current = Date.now()
@@ -60,9 +61,16 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
     startedAt.current = Date.now()
   }, [challengeId, challenge])
 
+  useEffect(() => {
+    if (!challengeId || !challenge || challenge.gameId === 'wordle' || challenge.status !== 'pending'
+      || startedChallenge.current === challenge.id) return
+    startedChallenge.current = challenge.id
+    startGameChallenge(challenge.id).catch((err) => setError(err instanceof Error ? err.message : String(err)))
+  }, [challengeId, challenge])
+
   const validChallenge = !challengeId || (
     !!selectedGame && !!gameById(selectedGame) && challenge?.to === app.uid && challenge.gameId === selectedGame
-    && (challenge.status === 'pending'
+    && (challenge.status === 'pending' || challenge.status === 'playing'
       || (challenge.status === 'completed' && (solved || selectedGame === 'wordle'))
       || (challenge.status === 'abandoned' && selectedGame === 'wordle'))
   )

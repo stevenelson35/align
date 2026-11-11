@@ -10,15 +10,43 @@ import {
   type WordleGameState,
   type WordleChallengeType,
 } from '../../firebase/wordle'
-import { useGameScores, useWordleChallengeProgress, type GameChallenge } from '../../firebase/games'
+import { useGameScores, useWordleChallengeProgress, type GameChallenge, type WordleChallengeProgress } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
-import { compareGameResults, formatGameResult } from '../../games/catalog'
+import { formatGameResult } from '../../games/catalog'
 import { hardModeError, normalizeWord, validWord, wordleKeyboardMarks, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES } from '../../games/wordle'
 import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
 import { WordleProgressBoard } from './WordleProgressBoard'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
+
+function challengeNotification(
+  game: WordleGameState,
+  challenge: GameChallenge | undefined,
+  progress: WordleChallengeProgress[],
+  members: Record<string, { displayName: string }>,
+) {
+  if (game.complete) {
+    if (game.solved) return `You solved it!${challenge ? ' Other players can keep going.' : ''}`
+    if (game.abandoned) return 'You gave up. Other players can keep going.'
+    return 'No guesses left. Other players can keep going.'
+  }
+  if (challenge) {
+    const finished = progress
+      .filter((item) => item.complete)
+      .sort((a, b) => (a.updatedAt ?? '').localeCompare(b.updatedAt ?? ''))
+    const latest = finished[finished.length - 1]
+    if (latest) {
+      const name = members[latest.uid]?.displayName ?? 'A family member'
+      if (latest.status === 'declined') return `${name} declined. You can keep playing or give up.`
+      if (latest.status === 'abandoned') return `${name} gave up. You can keep playing or give up.`
+      if (!latest.solved) return `${name} ran out of guesses. You can keep playing or give up.`
+      const solved = finished.filter((item) => item.solved).length
+      return `${name} ${solved === 1 ? 'solved first' : `solved (${solved} finished)`}! Keep playing or give up.`
+    }
+  }
+  return game.length === 5 ? 'Hard mode: use every revealed hint.' : ' '
+}
 
 export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; onBack: () => void }) {
   const app = useApp()
@@ -40,7 +68,9 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   const [message, setMessage] = useState<string | null>(null)
   const seed = game?.seed ?? ''
   const { scores, error: scoreError } = useGameScores('wordle', seed, !!game && app.isMember)
-  const { progress: challengeProgress, error: challengeProgressError } = useWordleChallengeProgress(app.uid, app.isMember && !!challenge)
+  const { progress: challengeProgress, error: challengeProgressError, loaded: challengeProgressLoaded } = useWordleChallengeProgress(app.uid, app.isMember && !!challenge)
+  const celebratedProgress = useRef(new Set<string>())
+  const progressInitialized = useRef(false)
   const people = Object.entries(app.household.members)
     .filter(([id, member]) => id !== app.uid && member.role === 'member' && !member.bot)
     .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
@@ -56,6 +86,28 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   const keyboardMarks = useMemo(() => wordleKeyboardMarks(game?.guesses ?? []), [game])
 
   const challengeId = challenge?.id
+  const activeChallengeProgress = useMemo(
+    () => {
+      const puzzleId = challenge?.payload?.puzzleId
+      return puzzleId ? challengeProgress.filter((item) => item.groupId === puzzleId) : []
+    },
+    [challenge, challengeProgress],
+  )
+  useEffect(() => {
+    if (!challenge || !challengeProgressLoaded) return
+    if (!progressInitialized.current) {
+      activeChallengeProgress.filter((item) => item.complete).forEach((item) => celebratedProgress.current.add(item.uid))
+      progressInitialized.current = true
+      return
+    }
+    activeChallengeProgress.forEach((item) => {
+      if (!item.complete || !item.solved || celebratedProgress.current.has(item.uid)) return
+      celebratedProgress.current.add(item.uid)
+      const name = app.household.members[item.uid]?.displayName ?? 'A family member'
+      celebrate({ done: 1, total: 1, message: `${name} solved the Wordle!` })
+    })
+  }, [challenge, activeChallengeProgress, challengeProgressLoaded, app.household.members])
+
   useEffect(() => {
     let cancelled = false
     async function loadGame() {
@@ -112,13 +164,8 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
       setReceivedAt(Date.now())
       setGuess('')
       if (next.solved) {
-        const result = { guesses: next.guesses.length, ms: next.elapsedMs }
-        const personalBest = !scores.some((score) => score.uid === app.uid)
-          || compareGameResults('wordle', result, scores.find((score) => score.uid === app.uid)!.best) < 0
-        if (personalBest) {
-          const familyBest = !scores.length || compareGameResults('wordle', result, scores[0].best) < 0
-          celebrate({ done: 1, total: 1, message: familyBest ? 'New family Wordle best!' : 'New personal Wordle best!' })
-        }
+        celebratedProgress.current.add(app.uid)
+        celebrate({ done: 1, total: 1, message: 'You solved the Wordle!' })
       }
     } catch (err) {
       setGuessError(err instanceof Error ? err.message : String(err))
@@ -216,9 +263,9 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
       {!challenge && (
         <article className="card game-invite-form">
           <div className="row">
-            <h3 className="grow">Wordle challenge</h3>
+            <h3 className="grow">Create challenge</h3>
             <button type="button" className="secondary small" aria-expanded={showCreate} onClick={() => setShowCreate((open) => !open)}>
-              {showCreate ? 'Hide' : 'Create'}
+              {showCreate ? 'Hide' : 'Create challenge'}
             </button>
           </div>
           {showCreate && (
@@ -332,7 +379,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
               && (challenge.players ?? [challenge.to]).some((uid) => uid !== app.uid) && (
               <WordleProgressBoard
                 participants={(challenge.players ?? [challenge.to]).filter((uid) => uid !== app.uid)}
-                progress={challengeProgress.filter((item) => item.groupId === challenge.payload?.puzzleId)}
+                progress={activeChallengeProgress}
                 members={app.household.members}
               />
             )}
@@ -352,6 +399,10 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                   </div>
                 )
               })}
+            </div>
+
+            <div className="wordle-notification-row" role="status" aria-live="polite" aria-atomic="true">
+              {challengeNotification(game, challenge, activeChallengeProgress, app.household.members)}
             </div>
 
             {!game.complete && (
@@ -445,12 +496,12 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                     : 'Out of guesses.'}
                 {' '}The word was <strong>{game.answer}</strong>.
                 {game.solved && ` Time: ${seconds(game.elapsedMs)}.`}
-                {game.challengeStatus === 'completed' && ' Challenge complete.'}
+                {challenge && ' Other players can keep going.'}
               </p>
             )}
           </article>
 
-          <article className="card game-leaderboard">
+          {!challenge && <article className="card game-leaderboard">
             <h3>Family leaderboard</h3>
             <p className="muted small">Solved puzzles · fewest guesses, then fastest time</p>
             {scoreError && <p className="error small">{scoreError}</p>}
@@ -471,7 +522,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                 ))}
               </ol>
             )}
-          </article>
+          </article>}
         </>
       )}
     </section>

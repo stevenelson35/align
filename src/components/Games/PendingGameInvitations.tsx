@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../../hooks/useApp'
-import { usePendingGameChallenges, useWordleChallengeUpdates, useWordleChallengeProgress, type GameChallenge } from '../../firebase/games'
+import { declineGameChallenge, dismissGameChallenge, type GameChallenge, type WordleChallengeProgress } from '../../firebase/games'
 import { declineWordleChallenge } from '../../firebase/wordle'
 import { Icon } from '../UI/Icon'
 import { gameById } from '../../games/catalog'
@@ -8,142 +8,172 @@ import { WordleProgressBoard } from './WordleProgressBoard'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 
-/** A small, app-wide inbox for game invitations and live Wordle progress. */
-export function PendingGameInvitations({ activeChallengeId }: { activeChallengeId?: string }) {
+function challengeStatus(challenge: GameChallenge) {
+  if (challenge.status === 'playing') return 'Playing'
+  if (challenge.status === 'declined') return 'Declined'
+  if (challenge.status === 'abandoned' || challenge.result?.abandoned) return 'Gave up'
+  if (challenge.status === 'completed') {
+    if (challenge.gameId === 'wordle') return challenge.result?.solved ? 'Won' : 'Lost'
+    return 'Played'
+  }
+  return 'New'
+}
+
+export function PendingGameInvitations({
+  challenges,
+  wordleChallenges,
+  progress,
+  loaded,
+  errors,
+}: {
+  challenges: GameChallenge[]
+  wordleChallenges: GameChallenge[]
+  progress: WordleChallengeProgress[]
+  loaded: boolean
+  errors: string[]
+}) {
   const app = useApp()
-  const [expanded, setExpanded] = useState(false)
-  const [decliningId, setDecliningId] = useState<string | null>(null)
-  const [declineError, setDeclineError] = useState<string | null>(null)
-  const { challenges, error } = usePendingGameChallenges(app.uid, app.isMember)
-  const { challenges: wordleChallenges, error: wordleError } = useWordleChallengeUpdates(app.uid, app.isMember)
-  const { progress, error: progressError } = useWordleChallengeProgress(app.uid, app.isMember)
-  const visibleChallenges = challenges.filter((challenge) => challenge.id !== activeChallengeId)
+  const [actionId, setActionId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const invitations = challenges.filter((challenge) => !challenge.dismissed)
+  const dismissedGroups = new Set(
+    wordleChallenges
+      .filter((challenge) => challenge.to === app.uid && challenge.dismissed)
+      .map((challenge) => challenge.payload?.puzzleId)
+      .filter((puzzleId): puzzleId is string => !!puzzleId),
+  )
   const groups = new Map<string, GameChallenge[]>()
   for (const challenge of wordleChallenges) {
     const puzzleId = challenge.payload?.puzzleId
-    if (!puzzleId) continue
+    if (!puzzleId || dismissedGroups.has(puzzleId) || challenge.challengeType === 'invite') continue
     const group = groups.get(puzzleId) ?? []
     group.push(challenge)
     groups.set(puzzleId, group)
   }
-  const liveGroups = [...groups.values()].filter((group) => (
-    !group.some((challenge) => challenge.id === activeChallengeId)
-    && !(group[0].challengeType === 'invite' && group.some((challenge) => challenge.to === app.uid && challenge.status === 'pending'))
-  ))
-  const hasError = !!error || !!wordleError || !!progressError || !!declineError
-  if (!visibleChallenges.length && !hasError && !liveGroups.length) return null
+  const liveGroups = [...groups.values()]
 
-  async function declineChallenge(challengeId: string) {
-    setDecliningId(challengeId)
-    setDeclineError(null)
+  async function declineChallenge(challenge: GameChallenge) {
+    setActionId(challenge.id)
+    setActionError(null)
     try {
-      await declineWordleChallenge(challengeId)
+      if (challenge.gameId === 'wordle') await declineWordleChallenge(challenge.id)
+      else await declineGameChallenge(challenge.id)
     } catch (err) {
-      setDeclineError(err instanceof Error ? err.message : String(err))
+      setActionError(err instanceof Error ? err.message : String(err))
     } finally {
-      setDecliningId(null)
+      setActionId(null)
+    }
+  }
+
+  async function dismissChallenge(challengeId: string) {
+    setActionId(challengeId)
+    setActionError(null)
+    try {
+      await dismissGameChallenge(challengeId)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setActionId(null)
     }
   }
 
   return (
-    <section className="game-invitations card" aria-label="Game invitations">
-      <details
-        open={expanded}
-        onToggle={(event) => setExpanded(event.currentTarget.open)}
-      >
-        <summary>
-          <Icon name="sparkle" /> Game invitations &amp; updates
-          {visibleChallenges.length > 0 && <span className="game-invitations-count">{visibleChallenges.length} invitation{visibleChallenges.length === 1 ? '' : 's'}</span>}
-          {!!liveGroups.length && <span className="muted small">{liveGroups.length} Wordle update{liveGroups.length === 1 ? '' : 's'}</span>}
-        </summary>
-        <div className="game-invitations-content">
-          {error && <p className="error small">{error}</p>}
-          {wordleError && <p className="error small">{wordleError}</p>}
-          {progressError && <p className="error small">{progressError}</p>}
-          {declineError && <p className="error small" role="alert">{declineError}</p>}
-          {visibleChallenges.map((challenge) => (
-            <div className="row" key={challenge.id}>
-              <span className="grow small">
-                {`${app.household.members[challenge.from]?.displayName ?? 'Someone'} challenged you to ${gameById(challenge.gameId)?.name ?? challenge.gameId}.`}
-              </span>
+    <section className="game-invitations-list" aria-label="Invitations">
+      <h4 className="small"><Icon name="sparkle" /> Invitations</h4>
+      {errors.map((error) => <p className="error small" key={error}>{error}</p>)}
+      {actionError && <p className="error small" role="alert">{actionError}</p>}
+      {!loaded && <p className="muted small">Loading invitations…</p>}
+      {loaded && !invitations.length && !errors.length && <p className="muted small">No invitations right now.</p>}
+      {invitations.map((challenge) => {
+        const status = challengeStatus(challenge)
+        const sender = app.household.members[challenge.from]?.displayName ?? 'A family member'
+        const result = challenge.result
+        return (
+          <div className="game-invitation-row" key={challenge.id}>
+            <details className="grow">
+              <summary>
+                <span>{sender} · {gameById(challenge.gameId)?.name ?? challenge.gameId}</span>
+                <span className={`game-invitation-status ${status.toLowerCase().replaceAll(' ', '-')}`}>{status}</span>
+              </summary>
+              <div className="game-invitation-details">
+                {challenge.challengeType && <p className="muted small">{challenge.challengeType === 'invite' ? 'Separate word invite' : 'Live Wordle challenge'}</p>}
+                {result && (
+                  <p className="muted small">
+                    {result.abandoned
+                      ? `Gave up after ${result.guesses ?? 0} ${result.guesses === 1 ? 'guess' : 'guesses'}.`
+                      : challenge.gameId === 'wordle'
+                        ? result.solved
+                          ? `Solved in ${result.guesses ?? '?'} ${result.guesses === 1 ? 'guess' : 'guesses'}.`
+                          : `Finished after ${result.guesses ?? '?'} guesses without solving.`
+                        : 'Game completed.'}
+                    {result.ms ? ` Time: ${seconds(result.ms)}.` : ''}
+                    {result.hardMode === true ? ' Hard mode.' : ''}
+                  </p>
+                )}
+              </div>
+            </details>
+            {challenge.status === 'pending' || challenge.status === 'playing' ? (
               <button type="button" className="small" onClick={() => app.navigate({ view: 'games', challengeId: challenge.id })}>
-                Play
+                {challenge.status === 'playing' ? 'Continue' : 'Play'}
               </button>
-              {challenge.gameId === 'wordle' && (
-                <button
-                  type="button"
-                  className="secondary small"
-                  onClick={() => void declineChallenge(challenge.id)}
-                  disabled={decliningId !== null}
-                >
-                  {decliningId === challenge.id ? 'Declining…' : 'Decline'}
-                </button>
-              )}
-            </div>
-          ))}
-          {!!liveGroups.length && (
-            <div className="wordle-challenge-updates">
-              <strong className="small">Wordle challenge updates</strong>
-              {liveGroups.map((group) => {
-                const first = group[0]
-                const inviteOnly = first.challengeType === 'invite'
-                const completed = group.filter((item) => item.status === 'completed')
-                const declined = group.filter((item) => item.status === 'declined')
-                const abandoned = group.filter((item) => item.status === 'abandoned')
-                const players = first.players ?? group.map((item) => item.to)
-                const groupProgress = progress.filter((item) => item.groupId === first.payload?.puzzleId)
-                const finished = inviteOnly
-                  ? completed.length + abandoned.length
-                  : groupProgress.filter((item) => item.complete && item.status !== 'declined').length
-                const ownChallenge = group.find((item) => item.to === app.uid)
-                return (
-                  <div className="wordle-challenge-update" key={first.payload?.puzzleId}>
-                    <div className="row wrap">
-                      <strong className="grow small">
-                        {inviteOnly ? 'Word invite' : 'Live Wordle'}
-                        {' · '}{finished} of {players.length} players finished
-                        {declined.length ? ` · ${declined.length} declined` : ''}
-                        {abandoned.length ? ` · ${abandoned.length} gave up` : ''}
-                        {' · '}challenge from{' '}
-                        {app.household.members[first.from]?.displayName ?? 'a family member'}
-                      </strong>
-                      {ownChallenge?.status === 'pending' && (
-                        <button type="button" className="small" onClick={() => app.navigate({ view: 'games', challengeId: ownChallenge.id })}>
-                          Play
-                        </button>
-                      )}
-                    </div>
-                    {!inviteOnly && <WordleProgressBoard participants={players} progress={groupProgress} members={app.household.members} />}
-                    {declined.map((item) => (
-                      <p className="muted small" role="status" key={item.id}>
-                        {app.household.members[item.to]?.displayName ?? 'A family member'} declined the Wordle challenge.
-                      </p>
-                    ))}
-                    {[...completed, ...abandoned].map((item) => {
-                      const result = item.result
-                      if (!result) return null
-                      const name = app.household.members[item.to]?.displayName ?? 'A family member'
-                      const outcome = result.abandoned
-                        ? `gave up after ${result.guesses ?? 0} ${result.guesses === 1 ? 'guess' : 'guesses'}`
-                        : result.solved === false
-                          ? `finished in ${result.guesses ?? '?'} guesses`
-                          : `solved in ${result.guesses ?? '?'} ${result.guesses === 1 ? 'guess' : 'guesses'}`
-                      const mode = result.hardMode === true
-                        ? 'Hard mode'
-                        : result.hardMode === false ? 'Standard mode' : 'Mode unknown'
-                      return (
-                        <p className="muted small" key={item.id}>
-                          {name} {outcome} ({result.ms ? seconds(result.ms) : 'time unavailable'} · {mode}).
-                        </p>
-                      )
-                    })}
-                  </div>
-                )
-              })}
-            </div>
-          )}
+            ) : (
+              <button
+                type="button"
+                className="secondary small"
+                onClick={() => void dismissChallenge(challenge.id)}
+                disabled={actionId !== null}
+              >
+                {actionId === challenge.id ? 'Clearing…' : 'Clear'}
+              </button>
+            )}
+            {challenge.status === 'pending' && (
+              <button
+                type="button"
+                className="secondary small"
+                onClick={() => void declineChallenge(challenge)}
+                disabled={actionId !== null}
+              >
+                {actionId === challenge.id ? 'Declining…' : 'Decline'}
+              </button>
+            )}
+          </div>
+        )
+      })}
+      {!!liveGroups.length && (
+        <div className="wordle-challenge-updates">
+          <strong className="small">Live Wordle updates</strong>
+          {liveGroups.map((group) => {
+            const first = group[0]
+            const players = first.players ?? group.map((item) => item.to)
+            const groupProgress = progress.filter((item) => item.groupId === first.payload?.puzzleId)
+            const finished = groupProgress.filter((item) => item.complete).length
+            return (
+              <div className="wordle-challenge-update" key={first.payload?.puzzleId}>
+                <strong className="small">
+                  {first.challengeType === 'random-live' ? 'Live random word' : 'Live chosen word'}
+                  {' · '}{finished} of {players.length} players finished
+                </strong>
+                <WordleProgressBoard
+                  participants={players.filter((uid) => uid !== app.uid)}
+                  progress={groupProgress}
+                  members={app.household.members}
+                />
+                {groupProgress.filter((item) => item.complete).map((item) => {
+                  const name = app.household.members[item.uid]?.displayName ?? 'A family member'
+                  const outcome = item.status === 'declined'
+                    ? 'declined'
+                    : item.status === 'abandoned'
+                      ? 'gave up'
+                      : item.solved
+                        ? `solved in ${item.rows.length} ${item.rows.length === 1 ? 'guess' : 'guesses'}`
+                        : 'ran out of guesses'
+                  return <p className="muted small" key={item.uid}>{name} {outcome}.</p>
+                })}
+              </div>
+            )
+          })}
         </div>
-      </details>
+      )}
     </section>
   )
 }

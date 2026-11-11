@@ -457,7 +457,7 @@ function challengeState($config, $token, $uid, $challengeId, $guess = null) {
     }
     $fields = $challenge['fields'];
     $status = $fields['status'] ?? '';
-    if (!in_array($status, ['pending', 'completed', 'abandoned'], true)) fail(409, 'That Wordle challenge is no longer available.');
+    if (!in_array($status, ['pending', 'playing', 'completed', 'abandoned'], true)) fail(409, 'That Wordle challenge is no longer available.');
     $groupId = $fields['payload']['puzzleId'] ?? '';
     if (!is_string($groupId) || !preg_match('/^[a-f0-9]{32}$/', $groupId)) fail(502, 'The Wordle challenge data is invalid.');
     $secret = firestoreGet($config, $token, 'wordleSecrets', 'custom_' . $groupId);
@@ -478,6 +478,10 @@ function challengeState($config, $token, $uid, $challengeId, $guess = null) {
             ]);
         }
     }
+    if ($status === 'pending') {
+        firestorePatch($config, $token, 'gameChallenges', $challengeId, ['status' => 'playing'], $challenge['updateTime']);
+        $status = 'playing';
+    }
     if ($guess !== null) {
         $progress = submitGuess(
             $config,
@@ -496,13 +500,13 @@ function challengeState($config, $token, $uid, $challengeId, $guess = null) {
     return stateResponse('custom', $seed, $secret['fields']['length'], $progress, null, $latestChallenge['fields']['status'] ?? $status);
 }
 
-function pendingWordleChallenge($config, $token, $uid, $challengeId) {
+function activeWordleChallenge($config, $token, $uid, $challengeId) {
     if (!is_string($challengeId) || !preg_match('/^[a-f0-9]{32}$/', $challengeId)) fail(400, 'That Wordle challenge link is invalid.');
     $challenge = firestoreGet($config, $token, 'gameChallenges', $challengeId);
     if (!$challenge || ($challenge['fields']['gameId'] ?? '') !== 'wordle' || ($challenge['fields']['to'] ?? '') !== $uid) {
         fail(404, 'That Wordle challenge is unavailable for this account.');
     }
-    if (($challenge['fields']['status'] ?? '') !== 'pending') fail(409, 'That Wordle challenge is no longer available.');
+    if (!in_array($challenge['fields']['status'] ?? '', ['pending', 'playing'], true)) fail(409, 'That Wordle challenge is no longer available.');
     $groupId = $challenge['fields']['payload']['puzzleId'] ?? '';
     if (!is_string($groupId) || !preg_match('/^[a-f0-9]{32}$/', $groupId)) fail(502, 'The Wordle challenge data is invalid.');
     $secret = firestoreGet($config, $token, 'wordleSecrets', 'custom_' . $groupId);
@@ -515,7 +519,8 @@ function pendingWordleChallenge($config, $token, $uid, $challengeId) {
 }
 
 function declineWordleChallenge($config, $token, $uid, $challengeId) {
-    [$challenge, $secret, $groupId, $participants] = pendingWordleChallenge($config, $token, $uid, $challengeId);
+    [$challenge, $secret, $groupId, $participants] = activeWordleChallenge($config, $token, $uid, $challengeId);
+    if (($challenge['fields']['status'] ?? '') !== 'pending') fail(409, 'This Wordle challenge has already started.');
     if (challengeHasLiveProgress($secret)) {
         $progress = ensureChallengeProgress($config, $token, $groupId, $uid, $participants, (int) $secret['fields']['length']);
         firestorePatch($config, $token, 'wordleChallengeProgress', challengeProgressId($groupId, $uid), [
@@ -533,7 +538,7 @@ function declineWordleChallenge($config, $token, $uid, $challengeId) {
 }
 
 function abandonWordleChallenge($config, $token, $uid, $challengeId) {
-    [$challenge, $secret, $groupId, $participants] = pendingWordleChallenge($config, $token, $uid, $challengeId);
+    [$challenge, $secret, $groupId, $participants] = activeWordleChallenge($config, $token, $uid, $challengeId);
     $seed = 'custom-' . $groupId;
     $progressId = 'custom_' . $challengeId;
     $progress = firestoreGet($config, $token, 'wordleProgress', $progressId);

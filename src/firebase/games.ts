@@ -23,7 +23,8 @@ export interface GameChallenge {
   participants?: string[]
   players?: string[]
   challengeType?: 'invite' | 'live-chosen' | 'random-live'
-  status: 'pending' | 'completed' | 'declined' | 'abandoned'
+  status: 'pending' | 'playing' | 'completed' | 'declined' | 'abandoned'
+  dismissed?: boolean
   result?: GameResult & { solved?: boolean; hardMode?: boolean; abandoned?: boolean }
 }
 
@@ -39,6 +40,7 @@ export interface WordleChallengeProgress {
   solved: boolean
   status?: 'declined' | 'abandoned'
   elapsedMs?: number
+  updatedAt?: string
 }
 
 export interface GameChallengePayload {
@@ -80,6 +82,29 @@ export function useGameScores(gameId: GameId, seed: string, enabled = true) {
     )
   }, [gameId, seed, enabled])
   return { scores, error }
+}
+
+export function useGameChallenges(uid: string, enabled = true) {
+  const [challenges, setChallenges] = useState<GameChallenge[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => {
+    if (!enabled) return
+    const q = query(collection(db, 'gameChallenges'), where('to', '==', uid))
+    return onSnapshot(
+      q,
+      (snap) => {
+        setChallenges(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as GameChallenge))
+        setError(null)
+        setLoaded(true)
+      },
+      (err) => {
+        setError(err.message)
+        setLoaded(true)
+      },
+    )
+  }, [uid, enabled])
+  return { challenges, error, loaded: !enabled || loaded }
 }
 
 export function usePendingGameChallenges(uid: string, enabled = true) {
@@ -125,6 +150,7 @@ export function useWordleChallengeUpdates(uid: string, enabled = true) {
 export function useWordleChallengeProgress(uid: string, enabled = true) {
   const [progress, setProgress] = useState<WordleChallengeProgress[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [loadedUid, setLoadedUid] = useState<string | null>(null)
   useEffect(() => {
     if (!enabled) return
     const q = query(collection(db, 'wordleChallengeProgress'), where('participants', 'array-contains', uid))
@@ -133,11 +159,15 @@ export function useWordleChallengeProgress(uid: string, enabled = true) {
       (snap) => {
         setProgress(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WordleChallengeProgress))
         setError(null)
+        setLoadedUid(uid)
       },
-      (err) => setError(err.message),
+      (err) => {
+        setError(err.message)
+        setLoadedUid(uid)
+      },
     )
   }, [uid, enabled])
-  return { progress, error }
+  return { progress, error, loaded: !enabled || loadedUid === uid }
 }
 
 export function useGameChallenge(id: string | undefined) {
@@ -190,4 +220,16 @@ export async function recordGameScore(uid: string, gameId: GameId, seed: string,
 
 export function completeGameChallenge(id: string, result: GameResult) {
   return updateDoc(doc(db, 'gameChallenges', id), { status: 'completed', result, completedAt: serverTimestamp() })
+}
+
+export function startGameChallenge(id: string) {
+  return updateDoc(doc(db, 'gameChallenges', id), { status: 'playing' })
+}
+
+export function declineGameChallenge(id: string) {
+  return updateDoc(doc(db, 'gameChallenges', id), { status: 'declined', completedAt: serverTimestamp() })
+}
+
+export function dismissGameChallenge(id: string) {
+  return updateDoc(doc(db, 'gameChallenges', id), { dismissed: true })
 }

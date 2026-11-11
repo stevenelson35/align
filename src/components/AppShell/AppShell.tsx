@@ -23,7 +23,6 @@ import { TopBar } from './TopBar'
 import { routeHash } from '../../utils/routes'
 import { MENU_OPEN_KEY, MENU_SCROLL_KEY } from '../../utils/menu'
 import { WallView } from '../Wall/WallView'
-import { PendingGameInvitations } from '../Games/PendingGameInvitations'
 
 interface Props {
   uid: string
@@ -197,7 +196,6 @@ export function AppShell({ uid, household, member }: Props) {
             {data.loaded && !['today', 'list', 'task'].includes(route.view) && <PageBar crumbs={pageCrumbs} />}
             {data.loaded ? (
               <>
-                {app.isMember && <PendingGameInvitations activeChallengeId={route.view === 'games' ? route.challengeId : undefined} />}
                 <MainView />
               </>
             ) : <AppSkeleton note="Loading your lists…" />}

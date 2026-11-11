@@ -538,6 +538,12 @@ describe('games', () => {
       gameId: 'wordle', from: 'steve', to: 'wife', payload: { puzzleId: '0123456789abcdef0123456789abcdef', wordLength: 5, version: 1 }, status: 'pending', createdAt: new Date(),
     }))
     await assertFails(updateDoc(challengeRef, { status: 'completed', result: { guesses: 3, ms: 20000 }, completedAt: new Date() }))
+    await assertFails(updateDoc(doc(db('steve'), 'gameChallenges/wordle-server-created'), { dismissed: true }))
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore() as unknown as Firestore, 'gameChallenges/wordle-server-created'), { status: 'completed' })
+    })
+    await assertSucceeds(updateDoc(doc(db('steve'), 'gameChallenges/wordle-server-created'), { dismissed: true }))
+    await assertFails(updateDoc(doc(db('wife'), 'gameChallenges/wordle-server-created'), { dismissed: true }))
   })
 
   it('lets the sender and every Wordle challenge participant read group progress', async () => {
@@ -685,7 +691,18 @@ describe('games', () => {
     await assertFails(setDoc(doc(db('daughter'), 'gameChallenges/ch2'), { ...challenge, from: 'steve', to: 'daughter' }))
     await assertFails(setDoc(doc(db('grandma'), 'gameChallenges/ch3'), { ...challenge, from: 'grandma', to: 'wife' }))
     await assertFails(updateDoc(doc(db('steve'), 'gameChallenges/ch1'), { status: 'completed', moves: 10, ms: 5000, completedAt: new Date() }))
+    await assertFails(updateDoc(doc(db('wife'), 'gameChallenges/ch1'), { dismissed: true }))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'gameChallenges/ch1'), { status: 'playing' }))
     await assertSucceeds(updateDoc(doc(db('wife'), 'gameChallenges/ch1'), { status: 'completed', moves: 10, ms: 5000, completedAt: new Date() }))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'gameChallenges/ch1'), { dismissed: true }))
+    await assertFails(updateDoc(doc(db('steve'), 'gameChallenges/ch1'), { dismissed: true }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'gameChallenges/ch-declined'), {
+      ...challenge, to: 'daughter',
+    }))
+    await assertSucceeds(updateDoc(doc(db('daughter'), 'gameChallenges/ch-declined'), {
+      status: 'declined', completedAt: new Date(),
+    }))
+    await assertSucceeds(updateDoc(doc(db('daughter'), 'gameChallenges/ch-declined'), { dismissed: true }))
   })
 
   it('accepts versioned replay payloads and metric-based challenge results', async () => {

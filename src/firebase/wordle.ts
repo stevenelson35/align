@@ -13,7 +13,7 @@ export interface WordleGameState {
   solved: boolean
   abandoned?: boolean
   answer?: string
-  challengeStatus?: 'pending' | 'completed' | 'abandoned'
+  challengeStatus?: 'pending' | 'playing' | 'completed' | 'declined' | 'abandoned'
 }
 
 export type WordleChallengeType = 'invite' | 'live-chosen' | 'random-live'
