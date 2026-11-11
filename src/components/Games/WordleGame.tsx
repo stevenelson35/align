@@ -428,7 +428,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
 
       {game && (
         <>
-          <article className={`game-card card wordle-game${!game.complete ? ' wordle-game-playing' : ''}`}>
+          <article className={`game-card card wordle-game${!game.complete ? ' wordle-game-playing' : ''}${challenge ? ' wordle-game-challenge' : ''}`}>
             <header className="row wrap">
               <div className="grow">
                 <h3>{game.mode === 'daily' ? `Daily word · ${game.date}` : `${game.length}-letter challenge`}</h3>
@@ -443,6 +443,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
 
             {challenge?.payload?.puzzleId
               && challenge.challengeType !== 'invite'
+              && !game.complete
               && (challenge.players ?? [challenge.to]).some((uid) => uid !== app.uid) && (
               <WordleProgressBoard
                 participants={(challenge.players ?? [challenge.to]).filter((uid) => uid !== app.uid)}
@@ -540,18 +541,35 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
             )}
 
             {game.complete && (
-              <p className="wordle-result" role="status">
-                {game.abandoned
-                  ? `You gave up after ${game.guesses.length} ${game.guesses.length === 1 ? 'guess' : 'guesses'}.`
-                  : game.solved
-                    ? `Solved in ${game.guesses.length} ${game.guesses.length === 1 ? 'guess' : 'guesses'}!`
-                    : 'Out of guesses.'}
-                {' '}The word was <strong>{game.answer}</strong>.
-                {game.solved && ` Time: ${seconds(game.elapsedMs)}.`}
-                {challenge
-                  && !wordleChallengeFinished(challenge.players ?? [challenge.to], activeChallengeProgress)
-                  && ' Other players can keep going.'}
-              </p>
+              <>
+                <p className="wordle-result" role="status">
+                  {game.abandoned
+                    ? `You gave up after ${game.guesses.length} ${game.guesses.length === 1 ? 'guess' : 'guesses'}.`
+                    : game.solved
+                      ? `Solved in ${game.guesses.length} ${game.guesses.length === 1 ? 'guess' : 'guesses'}!`
+                      : 'Out of guesses.'}
+                  {' '}The word was <strong>{game.answer}</strong>.
+                  {game.solved && ` Time: ${seconds(game.elapsedMs)}.`}
+                  {challenge
+                    && !wordleChallengeFinished(challenge.players ?? [challenge.to], activeChallengeProgress)
+                    && ' Other players can keep going.'}
+                </p>
+                {challenge?.challengeType !== 'invite' && challenge?.payload?.puzzleId && (
+                  <div className="wordle-challenge-summary">
+                    <strong>Challenge player results</strong>
+                    <WordleProgressBoard
+                      participants={(challenge.players ?? [challenge.to]).filter((uid) => uid !== app.uid)}
+                      progress={activeChallengeProgress}
+                      members={app.household.members}
+                    />
+                  </div>
+                )}
+                {challenge && (
+                  <button type="button" className="secondary small" onClick={onBack}>
+                    Return to games
+                  </button>
+                )}
+              </>
             )}
           </article>
 

@@ -35,7 +35,8 @@ describe('Wordle rules', () => {
     expect(wordleProgressLabel({ rows: ['ACPAA'], started: true, complete: false, solved: false })).toBe('Playing · 1/6')
     expect(wordleProgressLabel({ rows: ['ACPAA'], complete: true, solved: false, status: 'abandoned' })).toBe('Gave up · 1/6')
     expect(wordleProgressLabel({ rows: [], complete: true, solved: false, status: 'declined' })).toBe('Declined')
-    expect(wordleProgressLabel({ rows: ['CCCCC'], complete: true, solved: true })).toBe('Solved · 1')
+    expect(wordleProgressLabel({ rows: ['CCCCC'], complete: true, solved: true })).toBe('Solved · 1 guess')
+    expect(wordleProgressLabel({ rows: ['ACPAA', 'ACPAA'], complete: true, solved: false })).toBe('Out of guesses · 2/6')
   })
 
   it('ends a live challenge when every player has completed or abandoned it', () => {

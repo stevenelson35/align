@@ -28,7 +28,9 @@ export function wordleProgressLabel(progress?: {
   if (!progress) return 'Invited · 0/6'
   if (progress.status === 'declined') return 'Declined'
   if (progress.status === 'abandoned') return `Gave up · ${progress.rows.length}/6`
-  if (progress.complete) return progress.solved ? `Solved · ${progress.rows.length}` : 'Out of guesses'
+  if (progress.complete) return progress.solved
+    ? `Solved · ${progress.rows.length} ${progress.rows.length === 1 ? 'guess' : 'guesses'}`
+    : `Out of guesses · ${progress.rows.length}/6`
   return `${progress.started || progress.rows.length ? 'Playing' : 'Ready'} · ${progress.rows.length}/6`
 }
 
