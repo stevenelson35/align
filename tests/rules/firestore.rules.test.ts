@@ -546,6 +546,51 @@ describe('games', () => {
     await assertFails(updateDoc(doc(db('wife'), 'gameChallenges/wordle-server-created'), { dismissed: true }))
   })
 
+  it('lets recipients clear a Wordle challenge once their server progress is complete', async () => {
+    const groupId = '0123456789abcdef0123456789abcdef'
+    const challengeRef = doc(db('steve'), 'gameChallenges/wordle-progress-complete')
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const admin = ctx.firestore() as unknown as Firestore
+      await setDoc(doc(admin, 'gameChallenges/wordle-progress-complete'), {
+        gameId: 'wordle',
+        from: 'wife',
+        to: 'steve',
+        payload: { puzzleId: groupId, wordLength: 5, version: 1 },
+        status: 'playing',
+        createdAt: new Date(),
+      })
+      await setDoc(doc(admin, `wordleChallengeProgress/custom_${groupId}_steve`), {
+        groupId,
+        uid: 'steve',
+        participants: ['steve', 'wife'],
+        length: 5,
+        rows: ['CCCCC'],
+        complete: true,
+        solved: true,
+      })
+      await setDoc(doc(admin, 'gameChallenges/wordle-progress-incomplete'), {
+        gameId: 'wordle',
+        from: 'wife',
+        to: 'steve',
+        payload: { puzzleId: 'fedcba9876543210fedcba9876543210', wordLength: 5, version: 1 },
+        status: 'playing',
+        createdAt: new Date(),
+      })
+      await setDoc(doc(admin, 'wordleChallengeProgress/custom_fedcba9876543210fedcba9876543210_steve'), {
+        groupId: 'fedcba9876543210fedcba9876543210',
+        uid: 'steve',
+        participants: ['steve', 'wife'],
+        length: 5,
+        rows: ['CCAAA'],
+        complete: false,
+        solved: false,
+      })
+    })
+    await assertSucceeds(updateDoc(challengeRef, { dismissed: true }))
+    await assertFails(updateDoc(doc(db('steve'), 'gameChallenges/wordle-progress-incomplete'), { dismissed: true }))
+    await assertFails(updateDoc(doc(db('wife'), 'gameChallenges/wordle-progress-complete'), { dismissed: true }))
+  })
+
   it('lets the sender and every Wordle challenge participant read group progress', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       const admin = ctx.firestore() as unknown as Firestore

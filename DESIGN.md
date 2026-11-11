@@ -527,8 +527,11 @@ firestore.rules, firestore.indexes.json
   states. Live completion never ends another player's game; each player can keep guessing or give up.
   Daily play can also be ended by giving up. Word challenges distinguish separate chosen-word invites, live chosen-word
   challenges where the sender watches, and live random-word challenges where the sender plays. Challenge notifications
-  live in the Today Games section, with a pending-invitation count on its closed row and per-invite status and dismissal.
-  Opponent boards keep a stable six-row layout; one, two, or three opponents are arranged for their count. The active
+  live in the Today Games section, with open and complete invitation counts on one line, collapsible invitation/pinned
+  sections, and per-invite status and dismissal. Live updates do not expire automatically; clearing a completed
+  invitation hides its associated recap for that recipient. Live updates and each challenge recap are collapsible;
+  each player, including the current user when they play, has a status, guess count, time, and stable six-row board.
+  One, two, or three player boards are arranged for their count. The active
   game reserves a message row and hides the leaderboard. Each player's timer starts when they open their own game.
 - Five-letter games use server-installed answer and accepted-guess text files, enforce accepted guesses and hard
   mode, and mark hard-mode leaderboard scores.

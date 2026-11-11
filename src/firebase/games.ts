@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, query, runTransaction, serverTimestamp, updateDoc, where, writeBatch } from 'firebase/firestore'
+import { Timestamp, collection, doc, onSnapshot, query, runTransaction, serverTimestamp, updateDoc, where, writeBatch } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { db } from './config'
 import { compareGameResults, type GameId, type GameResult } from '../games/catalog'
@@ -25,6 +25,7 @@ export interface GameChallenge {
   challengeType?: 'invite' | 'live-chosen' | 'random-live'
   status: 'pending' | 'playing' | 'completed' | 'declined' | 'abandoned'
   dismissed?: boolean
+  createdAt?: Timestamp | string | Date
   result?: GameResult & { solved?: boolean; hardMode?: boolean; abandoned?: boolean }
 }
 

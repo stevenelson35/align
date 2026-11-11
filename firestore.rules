@@ -700,6 +700,18 @@ service cloud.firestore {
           && d.ms is int && d.ms > 0 && d.ms <= 3600000);
     }
 
+    function ownWordleProgressComplete() {
+      let progressId = 'custom_' + resource.data.payload.puzzleId + '_' + request.auth.uid;
+      let progressPath = /databases/$(database)/documents/wordleChallengeProgress/$(progressId);
+      return 'payload' in resource.data
+        && resource.data.payload is map
+        && 'puzzleId' in resource.data.payload
+        && resource.data.payload.puzzleId is string
+        && exists(progressPath)
+        && get(progressPath).data.uid == request.auth.uid
+        && get(progressPath).data.complete == true;
+    }
+
     match /gameChallenges/{id} {
       allow read: if isMember() && (
         resource.data.from == request.auth.uid
@@ -745,7 +757,7 @@ service cloud.firestore {
         );
       allow update: if isMember() && resource.data.gameId == 'wordle'
         && resource.data.to == request.auth.uid
-        && resource.data.status in ['completed', 'declined', 'abandoned']
+        && (resource.data.status in ['completed', 'declined', 'abandoned'] || ownWordleProgressComplete())
         && (!('dismissed' in resource.data) || resource.data.dismissed == false)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dismissed'])
         && request.resource.data.dismissed == true;

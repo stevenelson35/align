@@ -4338,6 +4338,16 @@ input.ladder-sparks {
 .games-search input {
   width: 100%;
 }
+.games-today-search {
+  display: grid;
+  gap: 0.4rem;
+}
+.games-today-search h4 {
+  margin: 0;
+}
+.games-today-show-all {
+  margin-top: 0.4rem;
+}
 .game-mini-list {
   display: grid;
   gap: 0.65rem;
@@ -4958,22 +4968,45 @@ input.ladder-sparks {
 }
 .game-invitations-list {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.6rem;
   margin-bottom: 0.75rem;
   padding: 0.6rem;
   border: 1px solid color-mix(in srgb, var(--brand) 38%, var(--border));
   border-radius: var(--radius);
 }
-.game-invitations-list h4 {
+.game-invitations-disclosure,
+.game-invitations-content {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.game-invitations-heading {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  white-space: nowrap;
+  cursor: pointer;
+  list-style-position: inside;
+}
+.game-invitations-title {
+  display: inline-flex;
+  align-items: center;
   gap: 0.35rem;
-  margin: 0;
+  flex: none;
+}
+.game-invitations-count {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-size: 0.8rem;
 }
 .game-invitation-row {
   display: flex;
   min-width: 0;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.4rem;
   padding-block: 0.35rem;
   border-bottom: 1px solid var(--border);
@@ -5015,12 +5048,46 @@ input.ladder-sparks {
 .game-invitation-row .small {
   white-space: nowrap;
 }
-.game-invitations-list > p {
+.game-invitations-content > p {
   margin: 0;
 }
+.games-pinned-section {
+  display: grid;
+  gap: 0.5rem;
+}
+.games-pinned-section > summary,
+.wordle-challenge-updates > summary,
+.wordle-challenge-update-heading {
+  cursor: pointer;
+}
+.games-pinned-section > summary {
+  font-weight: 600;
+}
 .game-invitations-list .wordle-challenge-updates {
+  display: grid;
+  gap: 0.45rem;
   padding-top: 0.6rem;
   border-top: 1px solid var(--border);
+}
+.wordle-challenge-update {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--border);
+}
+.wordle-challenge-update-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.65rem;
+}
+.wordle-challenge-update-status {
+  display: inline-flex;
+  margin-left: auto;
+}
+.wordle-live-player-meta,
+.wordle-live-player-status {
+  font-size: 0.65rem;
 }
 @media (max-width: 360px) {
   .today-panel-style {
