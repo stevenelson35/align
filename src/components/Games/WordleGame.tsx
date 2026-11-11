@@ -1,19 +1,21 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   createWordleChallenge,
   abandonDailyWordle,
   abandonWordleChallenge,
+  getDailyWordlePreview,
   getDailyWordle,
   getWordleChallenge,
   guessDailyWordle,
   guessWordleChallenge,
+  type DailyWordlePreview,
   type WordleGameState,
   type WordleChallengeType,
 } from '../../firebase/wordle'
 import { useGameScores, useWordleChallengeProgress, type GameChallenge, type WordleChallengeProgress } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
 import { formatGameResult } from '../../games/catalog'
-import { hardModeError, normalizeWord, validWord, wordleKeyboardMarks, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES } from '../../games/wordle'
+import { hardModeError, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES } from '../../games/wordle'
 import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
 import { WordleProgressBoard } from './WordleProgressBoard'
@@ -26,10 +28,14 @@ function challengeNotification(
   progress: WordleChallengeProgress[],
   members: Record<string, { displayName: string }>,
 ) {
+  const allPlayersFinished = challenge
+    ? wordleChallengeFinished(challenge.players ?? [challenge.to], progress)
+    : false
   if (game.complete) {
-    if (game.solved) return `You solved it!${challenge ? ' Other players can keep going.' : ''}`
-    if (game.abandoned) return 'You gave up. Other players can keep going.'
-    return 'No guesses left. Other players can keep going.'
+    const others = challenge ? allPlayersFinished ? ' Challenge complete.' : ' Other players can keep going.' : ''
+    if (game.solved) return `You solved it!${others}`
+    if (game.abandoned) return `You gave up.${others}`
+    return `No guesses left.${others}`
   }
   if (challenge) {
     const finished = progress
@@ -51,23 +57,23 @@ function challengeNotification(
 export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; onBack: () => void }) {
   const app = useApp()
   const [game, setGame] = useState<WordleGameState | null>(null)
+  const [dailyPreview, setDailyPreview] = useState<DailyWordlePreview | null>(null)
   const [receivedAt, setReceivedAt] = useState(0)
   const [elapsed, setElapsed] = useState(0)
   const [guess, setGuess] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!!challenge)
   const [submitting, setSubmitting] = useState(false)
   const [ending, setEnding] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [guessError, setGuessError] = useState<string | null>(null)
-  const guessInput = useRef<HTMLInputElement>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [word, setWord] = useState('')
   const [challengeType, setChallengeType] = useState<WordleChallengeType>('invite')
   const [selected, setSelected] = useState<string[]>([])
   const [inviting, setInviting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  const seed = game?.seed ?? ''
-  const { scores, error: scoreError } = useGameScores('wordle', seed, !!game && app.isMember)
+  const scoreSeed = game?.seed ?? dailyPreview?.seed ?? ''
+  const { scores, error: scoreError } = useGameScores('wordle', scoreSeed, !challenge && !!scoreSeed && app.isMember)
   const { progress: challengeProgress, error: challengeProgressError, loaded: challengeProgressLoaded } = useWordleChallengeProgress(app.uid, app.isMember && !!challenge)
   const celebratedProgress = useRef(new Set<string>())
   const progressInitialized = useRef(false)
@@ -110,9 +116,18 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
 
   useEffect(() => {
     let cancelled = false
-    async function loadGame() {
+    async function loadDailyPreview() {
       try {
-        const state = challengeId ? await getWordleChallenge(challengeId) : await getDailyWordle()
+        const preview = await getDailyWordlePreview()
+        if (!cancelled) setDailyPreview(preview)
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err))
+      }
+    }
+    async function loadChallenge() {
+      try {
+        if (!challengeId) return
+        const state = await getWordleChallenge(challengeId)
         if (cancelled) return
         setGame(state)
         setElapsed(state.elapsedMs)
@@ -124,7 +139,8 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
         if (!cancelled) setLoading(false)
       }
     }
-    void loadGame()
+    if (challengeId) void loadChallenge()
+    else void loadDailyPreview()
     return () => { cancelled = true }
   }, [challengeId])
 
@@ -139,14 +155,12 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     const normalized = normalizeWord(guess)
     if (!validWord(normalized, game.length)) {
       setGuessError(`Enter a ${game.length}-letter word.`)
-      requestAnimationFrame(() => guessInput.current?.focus())
       return
     }
     if (game.length === 5) {
       const violation = hardModeError(game.guesses, normalized)
       if (violation) {
         setGuessError(`Hard mode: ${violation}`)
-        requestAnimationFrame(() => guessInput.current?.focus())
         return
       }
     }
@@ -171,25 +185,43 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
       setGuessError(err instanceof Error ? err.message : String(err))
     } finally {
       setSubmitting(false)
-      requestAnimationFrame(() => guessInput.current?.focus())
     }
   }
 
-  function onGuessKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      event.currentTarget.form?.requestSubmit()
+  async function startDailyGame() {
+    if (loading) return
+    setLoading(true)
+    setError(null)
+    try {
+      const state = await getDailyWordle()
+      setGame(state)
+      setElapsed(state.elapsedMs)
+      setReceivedAt(Date.now())
+      setGuess('')
+      setGuessError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
     }
+  }
+
+  function quitDailyGame() {
+    setGame(null)
+    setGuess('')
+    setGuessError(null)
   }
 
   function addLetter(letter: string) {
     if (!game || game.complete || submitting || ending) return
     setGuess((current) => current.length < game.length ? current + letter : current)
+    setGuessError(null)
   }
 
   function removeLetter() {
     if (!game || game.complete || submitting || ending) return
     setGuess((current) => current.slice(0, -1))
+    setGuessError(null)
   }
 
   async function sendChallenge(event: FormEvent) {
@@ -359,6 +391,20 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
         </article>
       )}
 
+      {!challenge && !game && (
+        <article className="card game-invite-form">
+          <div className="row">
+            <div className="grow">
+              <h3>Daily word{dailyPreview ? ` · ${dailyPreview.date}` : ''}</h3>
+              <p className="muted small">Five letters · six guesses · hard mode</p>
+            </div>
+            <button type="button" className="small" onClick={() => void startDailyGame()} disabled={loading}>
+              {loading ? 'Opening…' : 'Play daily Wordle'}
+            </button>
+          </div>
+        </article>
+      )}
+
       {game && (
         <>
           <article className="game-card card wordle-game">
@@ -406,31 +452,10 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
             </div>
 
             {!game.complete && (
-              <form className="wordle-guess-form" onSubmit={(event) => { event.preventDefault(); void submitGuess() }}>
+              <>
                 {guessError && <p className="wordle-guess-error" role="alert">{guessError}</p>}
-                <label className="small">
-                  Guess {game.guesses.length + 1} of {WORDLE_MAX_GUESSES}
-                  <input
-                    ref={guessInput}
-                    type="text"
-                    autoComplete="off"
-                    autoCapitalize="characters"
-                    spellCheck={false}
-                    maxLength={game.length}
-                    value={guess}
-                    onChange={(event) => {
-                      setGuess(event.target.value.replace(/[^a-z]/gi, '').slice(0, game.length).toUpperCase())
-                      setGuessError(null)
-                    }}
-                    onKeyDown={onGuessKeyDown}
-                    aria-label={`${game.length}-letter guess`}
-                    disabled={submitting || ending}
-                  />
-                </label>
-                <button type="submit" disabled={submitting || ending || !validWord(guess, game.length)}>
-                  {submitting ? 'Checking…' : 'Submit guess'}
-                </button>
-              </form>
+                <p className="muted small">Guess {game.guesses.length + 1} of {WORDLE_MAX_GUESSES}</p>
+              </>
             )}
 
             {!game.complete && (
@@ -487,6 +512,12 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
               </button>
             )}
 
+            {!challenge && (
+              <button type="button" className="secondary small" onClick={quitDailyGame}>
+                Quit
+              </button>
+            )}
+
             {game.complete && (
               <p className="wordle-result" role="status">
                 {game.abandoned
@@ -496,35 +527,36 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                     : 'Out of guesses.'}
                 {' '}The word was <strong>{game.answer}</strong>.
                 {game.solved && ` Time: ${seconds(game.elapsedMs)}.`}
-                {challenge && ' Other players can keep going.'}
+                {challenge
+                  && !wordleChallengeFinished(challenge.players ?? [challenge.to], activeChallengeProgress)
+                  && ' Other players can keep going.'}
               </p>
             )}
           </article>
 
-          {!challenge && <article className="card game-leaderboard">
-            <h3>Family leaderboard</h3>
-            <p className="muted small">Solved puzzles · fewest guesses, then fastest time</p>
-            {scoreError && <p className="error small">{scoreError}</p>}
-            {!scores.length ? <p className="muted small">Solve the word to set the first family score.</p> : (
-              <ol>
-                {scores.map((score) => (
-                  <li key={score.uid} className={score.uid === app.uid ? 'game-score-me' : ''}>
-                    <strong>{app.household.members[score.uid]?.displayName ?? 'Family member'}</strong>
-                    <span>
-                      {formatGameResult('wordle', score.best)}
-                      {game.length === 5 && (
-                        <small className="wordle-mode">
-                          {score.best.hardMode === true ? 'Hard mode' : 'Mode unknown'}
-                        </small>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </article>}
         </>
       )}
+
+      {!challenge && !game && <article className="card game-leaderboard">
+        <h3>Family leaderboard</h3>
+        <p className="muted small">Solved puzzles · fewest guesses, then fastest time</p>
+        {scoreError && <p className="error small">{scoreError}</p>}
+        {!scores.length ? <p className="muted small">Solve the word to set the first family score.</p> : (
+          <ol>
+            {scores.map((score) => (
+              <li key={score.uid} className={score.uid === app.uid ? 'game-score-me' : ''}>
+                <strong>{app.household.members[score.uid]?.displayName ?? 'Family member'}</strong>
+                <span>
+                  {formatGameResult('wordle', score.best)}
+                  <small className="wordle-mode">
+                    {score.best.hardMode === true ? 'Hard mode' : 'Mode unknown'}
+                  </small>
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </article>}
     </section>
   )
 }

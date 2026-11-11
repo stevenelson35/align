@@ -16,6 +16,11 @@ export interface WordleGameState {
   challengeStatus?: 'pending' | 'playing' | 'completed' | 'declined' | 'abandoned'
 }
 
+export interface DailyWordlePreview {
+  date: string
+  seed: string
+}
+
 export type WordleChallengeType = 'invite' | 'live-chosen' | 'random-live'
 
 async function wordleRequest<T>(action: string, values: Record<string, unknown> = {}): Promise<T> {
@@ -35,6 +40,8 @@ async function wordleRequest<T>(action: string, values: Record<string, unknown> 
   if (!response.ok) throw new Error(`Wordle service returned ${response.status}.`)
   return result
 }
+
+export const getDailyWordlePreview = () => wordleRequest<DailyWordlePreview>('daily_preview')
 
 export const getDailyWordle = () => wordleRequest<WordleGameState>('daily_status')
 

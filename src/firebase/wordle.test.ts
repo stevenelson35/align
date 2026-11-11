@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('./config', () => ({ auth: mocks.auth }))
 
-import { abandonDailyWordle, abandonWordleChallenge, createWordleChallenge, declineWordleChallenge, getDailyWordle } from './wordle'
+import { abandonDailyWordle, abandonWordleChallenge, createWordleChallenge, declineWordleChallenge, getDailyWordle, getDailyWordlePreview } from './wordle'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -17,6 +17,22 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Wordle API responses', () => {
+  it('fetches the daily puzzle date without starting a game', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ date: '2026-11-11', seed: 'daily-2026-11-11' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getDailyWordlePreview()).resolves.toEqual({
+      date: '2026-11-11',
+      seed: 'daily-2026-11-11',
+    })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ action: 'daily_preview' })
+  })
+
   it('surfaces JSON errors even when the host returns HTTP 200', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ error: 'Wordle is not configured on this server yet.' }), {

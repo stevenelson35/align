@@ -4408,6 +4408,7 @@ input.ladder-sparks {
 }
 .wordle-board {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.35rem;
   justify-content: center;
   width: min(100%, 28rem);
@@ -4416,6 +4417,8 @@ input.ladder-sparks {
 .wordle-row {
   display: grid;
   gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
 }
 .wordle-cell {
   display: grid;
@@ -4445,31 +4448,13 @@ input.ladder-sparks {
   color: white;
   background: var(--wordle-key-absent);
 }
-.wordle-guess-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  justify-content: center;
-  gap: 0.65rem;
-}
 .wordle-guess-error {
-  grid-column: 1 / -1;
   max-width: 100%;
   margin: 0;
   color: var(--danger);
   text-align: center;
   text-wrap: balance;
   overflow-wrap: anywhere;
-}
-.wordle-guess-form label,
-.wordle-guess-form input {
-  width: min(100%, 16rem);
-}
-.wordle-guess-form label {
-  min-width: 0;
-}
-.wordle-guess-form button {
-  white-space: nowrap;
 }
 .wordle-keyboard {
   display: grid;

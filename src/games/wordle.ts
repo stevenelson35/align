@@ -32,6 +32,13 @@ export function wordleProgressLabel(progress?: {
   return `${progress.started || progress.rows.length ? 'Playing' : 'Ready'} · ${progress.rows.length}/6`
 }
 
+export function wordleChallengeFinished(
+  players: readonly string[],
+  progress: readonly { uid: string; complete: boolean }[],
+): boolean {
+  return players.length > 0 && players.every((uid) => progress.some((item) => item.uid === uid && item.complete))
+}
+
 export function normalizeWord(value: string): string {
   return value.trim().toUpperCase()
 }

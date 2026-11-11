@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareWordleResults, decodeWordleProgressRow, hardModeError, markGuess, normalizeWord, validWord, wordleKeyboardMarks, wordleProgressLabel, type WordleGuess } from './wordle'
+import { compareWordleResults, decodeWordleProgressRow, hardModeError, markGuess, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, wordleProgressLabel, type WordleGuess } from './wordle'
 
 describe('Wordle rules', () => {
   it('marks exact, present and absent letters', () => {
@@ -36,6 +36,19 @@ describe('Wordle rules', () => {
     expect(wordleProgressLabel({ rows: ['ACPAA'], complete: true, solved: false, status: 'abandoned' })).toBe('Gave up · 1/6')
     expect(wordleProgressLabel({ rows: [], complete: true, solved: false, status: 'declined' })).toBe('Declined')
     expect(wordleProgressLabel({ rows: ['CCCCC'], complete: true, solved: true })).toBe('Solved · 1')
+  })
+
+  it('ends a live challenge when every player has completed or abandoned it', () => {
+    const players = ['alex', 'camilla']
+    expect(wordleChallengeFinished(players, [
+      { uid: 'alex', complete: true },
+      { uid: 'camilla', complete: false },
+    ])).toBe(false)
+    expect(wordleChallengeFinished(players, [
+      { uid: 'alex', complete: true },
+      { uid: 'camilla', complete: true },
+    ])).toBe(true)
+    expect(wordleChallengeFinished([], [])).toBe(false)
   })
 
   it('normalizes and validates supported custom word lengths', () => {
