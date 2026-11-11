@@ -18,7 +18,7 @@ export function PageBar({ crumbs }: { crumbs?: ReactNode }) {
         <span />
       )}
       <button type="button" className="link small today-button" onClick={() => navigate({ view: 'today' })} title="Back to Today" aria-label="Back to Today">
-        <Icon name="calendar" /> Today <Icon name="close" />
+        <Icon name="calendar" /> Back to Today
       </button>
     </div>
   )

@@ -60,7 +60,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'today',
     title: 'Today',
-    tip: 'The place to start: Goals, Family Map, Contacts, Gifts, Lists, Projects, Flashcards, Archive Pics, The Daily and To Do. Every other page has Today ✕ at the top right to come back.',
+    tip: 'The place to start: Goals, Family Map, Contacts, Gifts, Lists, Projects, Flashcards, Archive Pics, The Daily and To Do. Every other page has a Back to Today button at the top right.',
     body: [
       'Today shows one day; ‹ and › go to other days (past days show what was done, skipped or pushed then). From top to bottom:',
       '• Goals: a summary of the goals you log: where each stands (“4 to go”, Done) and a small trend chart. The pencil beside a goal opens logging for just that one; Log all shows every goal ready to log (remembered on this device). Goals that don’t run that day (a weekdays-only walk on Saturday) show greyed as “Not today”. Folded each morning.',
@@ -316,7 +316,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Wordle gives the family the same daily five-letter word, or lets you choose a 2–12 letter word and invite members to guess it. Five-letter games accept the Wordle guess list and require hard mode; other word lengths accept any letters-only guess. Leaderboards rank fewest guesses, then fastest time, and identify hard-mode scores.',
       'Wordle offers three challenge types: a chosen-word invite for others to play separately, a live chosen-word challenge where you watch others play your word, and a live random-word challenge where you play too. For a live random game, select yourself and at least one other player. Live challenge updates show each player’s status, guess count, time and fixed-size six-row board; letters and answers stay private. Each player’s timer starts when they open the challenge.',
       'Leaderboards compare fewest moves or guesses first, then fastest time, for the same puzzle. Solving a Wordle brings a celebration. You can invite someone to replay the same puzzle from the game.',
-      'Game invitations appear at the top of the expanded Today Games panel, with open and complete counts on one line. Expand or collapse Invitations, Pinned games and Live Wordle Updates by tapping their headings; each live challenge update opens to show every player’s progress. Updates do not expire automatically: clear a completed invitation to hide its update on your account. Expand Games to play or decline new invitations, review results, and clear old invitations. In a live Wordle, a player who finishes does not end anyone else’s game. Everyone can keep guessing or give up, and the fixed player boards and message row show progress without a leaderboard during play.',
+      'Game invitations appear at the top of the expanded Today Games panel, with open and complete counts on one line. Expand or collapse Invitations, Pinned Games, Search Games and Live Wordle Updates by tapping their headings; only one section stays open, and your last choice is remembered on this device. Each live challenge update opens to show every player’s progress. Updates do not expire automatically: clear a completed invitation to hide its update on your account. Expand Games to play or decline new invitations, review results, and clear old invitations. In a live Wordle, a player who finishes does not end anyone else’s game. Everyone can keep guessing or give up, and the fixed player boards and message row show progress without a leaderboard during play.',
     ],
   },
   {

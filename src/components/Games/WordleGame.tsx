@@ -298,7 +298,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
             ? challenge.from === app.uid ? 'Your live challenge' : `Challenge from ${app.household.members[challenge.from]?.displayName ?? 'a family member'}`
             : 'A shared daily word, or a word challenge you create.'}
         </span>
-        <button type="button" className="secondary small" onClick={onBack}>Show all games</button>
+        <button type="button" className="secondary small" onClick={onBack}>Show All Games</button>
       </header>
 
       {loading && <p className="muted">Opening Wordle…</p>}

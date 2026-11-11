@@ -4338,13 +4338,6 @@ input.ladder-sparks {
 .games-search input {
   width: 100%;
 }
-.games-today-search {
-  display: grid;
-  gap: 0.4rem;
-}
-.games-today-search h4 {
-  margin: 0;
-}
 .games-today-show-all {
   margin-top: 0.4rem;
 }
@@ -5051,16 +5044,15 @@ input.ladder-sparks {
 .game-invitations-content > p {
   margin: 0;
 }
-.games-pinned-section {
+.games-today-disclosure {
   display: grid;
   gap: 0.5rem;
 }
-.games-pinned-section > summary,
-.wordle-challenge-updates > summary,
+.games-today-disclosure > summary,
 .wordle-challenge-update-heading {
   cursor: pointer;
 }
-.games-pinned-section > summary {
+.games-today-disclosure > summary {
   font-weight: 600;
 }
 .game-invitations-list .wordle-challenge-updates {

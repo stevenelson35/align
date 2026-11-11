@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { Timestamp } from 'firebase/firestore'
 import { useApp } from '../../hooks/useApp'
 import { declineGameChallenge, dismissGameChallenge, type GameChallenge, type WordleChallengeProgress } from '../../firebase/games'
@@ -53,12 +53,20 @@ export function PendingGameInvitations({
   progress,
   loaded,
   errors,
+  invitationsOpen,
+  liveUpdatesOpen,
+  onToggleInvitations,
+  onToggleLiveUpdates,
 }: {
   challenges: GameChallenge[]
   wordleChallenges: GameChallenge[]
   progress: WordleChallengeProgress[]
   loaded: boolean
   errors: string[]
+  invitationsOpen: boolean
+  liveUpdatesOpen: boolean
+  onToggleInvitations: () => void
+  onToggleLiveUpdates: () => void
 }) {
   const app = useApp()
   const [actionId, setActionId] = useState<string | null>(null)
@@ -81,6 +89,11 @@ export function PendingGameInvitations({
     groups.set(puzzleId, group)
   }
   const liveGroups = [...groups.values()]
+
+  function toggleDisclosure(event: MouseEvent<HTMLElement>, toggle: () => void) {
+    event.preventDefault()
+    toggle()
+  }
 
   async function declineChallenge(challenge: GameChallenge) {
     setActionId(challenge.id)
@@ -108,9 +121,9 @@ export function PendingGameInvitations({
   }
 
   return (
-    <section className="game-invitations-list" aria-label="Invitations">
-      <details className="game-invitations-disclosure" open>
-        <summary className="game-invitations-heading">
+    <section className="game-invitations-list" aria-label="Game invitations and live Wordle updates">
+      <details className="game-invitations-disclosure games-today-disclosure" open={invitationsOpen}>
+        <summary className="game-invitations-heading" onClick={(event) => toggleDisclosure(event, onToggleInvitations)}>
           <span className="game-invitations-title"><Icon name="sparkle" /> Invitations</span>
           <span className="game-invitations-count">
             {loaded ? `${openCount} open, ${completeCount} complete` : 'Loading…'}
@@ -179,9 +192,9 @@ export function PendingGameInvitations({
           })}
         </div>
       </details>
-      {!!liveGroups.length && (
-        <details className="wordle-challenge-updates" open>
-          <summary className="small">Live Wordle Updates</summary>
+      <details className="wordle-challenge-updates games-today-disclosure" open={liveUpdatesOpen}>
+          <summary className="small" onClick={(event) => toggleDisclosure(event, onToggleLiveUpdates)}>Live Wordle Updates</summary>
+          {!liveGroups.length && <p className="muted small">No live Wordle updates right now.</p>}
           {liveGroups.map((group) => {
             const first = group[0]
             const players = [...new Set(first.players ?? group.map((item) => item.to))]
@@ -206,8 +219,7 @@ export function PendingGameInvitations({
               </details>
             )
           })}
-        </details>
-      )}
+      </details>
     </section>
   )
 }

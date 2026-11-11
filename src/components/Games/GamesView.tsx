@@ -175,8 +175,13 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
           <span className="muted small">Find a game to play or pin</span>
         </header>
         <label className="games-search">
-          <span className="sr-only">Search games</span>
-          <input type="search" value={gameSearch} onChange={(e) => setGameSearch(e.target.value)} placeholder="Search games…" />
+          <input
+            type="search"
+            aria-label="Search games"
+            value={gameSearch}
+            onChange={(e) => setGameSearch(e.target.value)}
+            placeholder="Search games…"
+          />
         </label>
         <div className="game-library">
           {visibleGames.map((game) => (
@@ -200,7 +205,7 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
       <header className="view-header">
         <h2><Icon name="sparkle" /> Games</h2>
         <span className="muted small">Quick puzzles for the family</span>
-        {!challengeId && <button type="button" className="secondary small" onClick={() => app.navigate({ view: 'games' })}>Show all games</button>}
+        {!challengeId && <button type="button" className="secondary small" onClick={() => app.navigate({ view: 'games' })}>Show All Games</button>}
       </header>
       <article className="game-card card">
         <header className="row">

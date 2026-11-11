@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { setPinnedGames } from '../../firebase/db'
 import { useGameChallenges, useWordleChallengeProgress, useWordleChallengeUpdates } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
+import { useStoredChoice } from '../../hooks/useStoredChoice'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { useTodayExpansion } from '../../hooks/useTodaySection'
 import { DEFAULT_PINNED_GAMES, GAMES } from '../../games/catalog'
@@ -9,10 +10,18 @@ import { SectionHeader } from '../UI/SectionHeader'
 import { GameTile } from './GameTile'
 import { PendingGameInvitations } from './PendingGameInvitations'
 
+const GAMES_PANEL_SECTIONS = ['invitations', 'live-updates', 'pinned-games', 'search-games', 'none'] as const
+type GamesPanelSection = typeof GAMES_PANEL_SECTIONS[number]
+
 export function GamesTodaySection() {
   const app = useApp()
   const [open, saveOpen] = useStoredFlag('align-today-games', false)
   const setOpen = useTodayExpansion(open, saveOpen)
+  const [expandedSection, setExpandedSection] = useStoredChoice<GamesPanelSection>(
+    'align-today-games-panel-section',
+    GAMES_PANEL_SECTIONS,
+    'invitations',
+  )
   const { challenges, error: challengeError, loaded: challengesLoaded } = useGameChallenges(app.uid, app.isMember && open)
   const { challenges: wordleChallenges, error: wordleError } = useWordleChallengeUpdates(app.uid, app.isMember && open)
   const { progress, error: progressError } = useWordleChallengeProgress(app.uid, app.isMember && open)
@@ -40,9 +49,21 @@ export function GamesTodaySection() {
             progress={progress}
             loaded={challengesLoaded}
             errors={[challengeError, wordleError, progressError].filter((message): message is string => !!message)}
+            invitationsOpen={expandedSection === 'invitations'}
+            liveUpdatesOpen={expandedSection === 'live-updates'}
+            onToggleInvitations={() => setExpandedSection(expandedSection === 'invitations' ? 'none' : 'invitations')}
+            onToggleLiveUpdates={() => setExpandedSection(expandedSection === 'live-updates' ? 'none' : 'live-updates')}
           />
-          <details className="games-pinned-section" open>
-            <summary className="small">Pinned games</summary>
+          <details className="games-today-disclosure games-pinned-section" open={expandedSection === 'pinned-games'}>
+            <summary
+              className="small"
+              onClick={(event) => {
+                event.preventDefault()
+                setExpandedSection(expandedSection === 'pinned-games' ? 'none' : 'pinned-games')
+              }}
+            >
+              Pinned Games
+            </summary>
             {pinned.length ? (
               <div className="game-mini-list">
                 {pinned.map((game) => (
@@ -56,14 +77,27 @@ export function GamesTodaySection() {
                 ))}
               </div>
             ) : (
-              <p className="muted small">No games pinned yet. Search for a game or show all games to pin one.</p>
+              <p className="muted small">No games pinned yet. Search for a game or choose Show All Games to pin one.</p>
             )}
           </details>
-          <div className="games-today-search">
-            <h4 className="small">Search games</h4>
+          <details className="games-today-disclosure games-today-search" open={expandedSection === 'search-games'}>
+            <summary
+              className="small"
+              onClick={(event) => {
+                event.preventDefault()
+                setExpandedSection(expandedSection === 'search-games' ? 'none' : 'search-games')
+              }}
+            >
+              Search Games
+            </summary>
             <label className="games-search">
-              <span className="sr-only">Search games</span>
-              <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a game…" />
+              <input
+                type="search"
+                aria-label="Search games"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Find a game…"
+              />
             </label>
             {!!query.trim() && (matches.length ? (
               <div className="game-mini-list">
@@ -80,9 +114,9 @@ export function GamesTodaySection() {
             ) : (
               <p className="muted small">No games match that search.</p>
             ))}
-          </div>
+          </details>
           <div className="games-today-show-all">
-            <button type="button" className="secondary small" onClick={() => app.navigate({ view: 'games' })}>Show all games</button>
+            <button type="button" className="secondary small" onClick={() => app.navigate({ view: 'games' })}>Show All Games</button>
           </div>
           {error && <p className="error small">{error}</p>}
         </div>

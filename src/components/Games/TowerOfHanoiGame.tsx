@@ -143,7 +143,7 @@ export function TowerOfHanoiGame({ challenge, onBack, onSolved }: { challenge?: 
       <header className="view-header">
         <h2><Icon name="sparkle" /> Tower of Hanoi</h2>
         <span className="muted small">{challenge ? `Challenge from ${app.household.members[challenge.from]?.displayName ?? 'a family member'}` : 'Move the whole tower to the right rod.'}</span>
-        <button type="button" className="secondary small" onClick={onBack}>Show all games</button>
+        <button type="button" className="secondary small" onClick={onBack}>Show All Games</button>
       </header>
       <article className="game-card card hanoi-game">
         <p className="muted small">Move one disk at a time. A larger disk may never sit on a smaller one.</p>
