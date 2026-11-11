@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareWordleResults, decodeWordleProgressRow, hardModeError, markGuess, normalizeWord, validWord, wordleKeyboardMarks, type WordleGuess } from './wordle'
+import { compareWordleResults, decodeWordleProgressRow, hardModeError, markGuess, normalizeWord, validWord, wordleKeyboardMarks, wordleProgressLabel, type WordleGuess } from './wordle'
 
 describe('Wordle rules', () => {
   it('marks exact, present and absent letters', () => {
@@ -27,6 +27,15 @@ describe('Wordle rules', () => {
   it('decodes the compact marks used for shared challenge progress', () => {
     expect(decodeWordleProgressRow('ACPAA')).toEqual(['absent', 'correct', 'present', 'absent', 'absent'])
     expect(decodeWordleProgressRow(undefined)).toEqual([])
+  })
+
+  it('labels live progress before and during play, including decline and give-up', () => {
+    expect(wordleProgressLabel()).toBe('Invited · 0/6')
+    expect(wordleProgressLabel({ rows: [], started: false, complete: false, solved: false })).toBe('Ready · 0/6')
+    expect(wordleProgressLabel({ rows: ['ACPAA'], started: true, complete: false, solved: false })).toBe('Playing · 1/6')
+    expect(wordleProgressLabel({ rows: ['ACPAA'], complete: true, solved: false, status: 'abandoned' })).toBe('Gave up · 1/6')
+    expect(wordleProgressLabel({ rows: [], complete: true, solved: false, status: 'declined' })).toBe('Declined')
+    expect(wordleProgressLabel({ rows: ['CCCCC'], complete: true, solved: true })).toBe('Solved · 1')
   })
 
   it('normalizes and validates supported custom word lengths', () => {

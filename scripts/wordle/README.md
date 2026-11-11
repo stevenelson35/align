@@ -74,5 +74,11 @@ Update the private config and install both word-list files before uploading the 
 Firestore rules before the web app. The rules deny all client access to `wordleSecrets` and `wordleProgress`, deny
 clients writing Wordle scores or invitations, and permit only challenge participants to read `wordleChallengeProgress`.
 That collection contains six rows of color marks and finish status, never guess text. Progress updates live for the
-sender and all invitees. Each player's timer starts when they open their own game; there is no synchronized countdown.
+sender and all invitees. Invitees can decline, and a player can give up; both outcomes appear in the live challenge
+panel for the other players. Daily Wordle can also be ended by giving up. Each player's timer starts when they open
+their own game; there is no synchronized countdown.
+
+Word challenges have three types: a chosen-word invite (players solve separately), a live chosen-word challenge
+(the sender watches while invitees solve), and a live random-word challenge (the sender joins the invited players).
+Only live types publish colored guess rows; all challenge types update invite statuses and completion results.
 The service account uses IAM on the server and is not subject to client Firestore rules.

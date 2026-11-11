@@ -62,7 +62,9 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
 
   const validChallenge = !challengeId || (
     !!selectedGame && !!gameById(selectedGame) && challenge?.to === app.uid && challenge.gameId === selectedGame
-    && (challenge.status === 'pending' || (challenge.status === 'completed' && (solved || selectedGame === 'wordle')))
+    && (challenge.status === 'pending'
+      || (challenge.status === 'completed' && (solved || selectedGame === 'wordle'))
+      || (challenge.status === 'abandoned' && selectedGame === 'wordle'))
   )
   const setupError = challengeError
     ?? (challengeId && challenge === null ? 'This challenge is no longer available.' : null)

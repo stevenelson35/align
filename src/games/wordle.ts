@@ -18,6 +18,20 @@ export const WORDLE_MAX_GUESSES = 6
 export const WORDLE_MIN_LENGTH = 2
 export const WORDLE_MAX_LENGTH = 12
 
+export function wordleProgressLabel(progress?: {
+  started?: boolean
+  rows: readonly string[]
+  complete: boolean
+  solved: boolean
+  status?: 'declined' | 'abandoned'
+}): string {
+  if (!progress) return 'Invited · 0/6'
+  if (progress.status === 'declined') return 'Declined'
+  if (progress.status === 'abandoned') return `Gave up · ${progress.rows.length}/6`
+  if (progress.complete) return progress.solved ? `Solved · ${progress.rows.length}` : 'Out of guesses'
+  return `${progress.started || progress.rows.length ? 'Playing' : 'Ready'} · ${progress.rows.length}/6`
+}
+
 export function normalizeWord(value: string): string {
   return value.trim().toUpperCase()
 }

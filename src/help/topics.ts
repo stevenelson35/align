@@ -314,9 +314,9 @@ export const HELP_TOPICS: HelpTopic[] = [
     body: [
       'Games has Lights Out, Tower of Hanoi, Picture Slider and Wordle. Choose a favorite photo and a 3 × 3, 4 × 4 or 5 × 5 slider board; invitations replay the same picture and board size.',
       'Wordle gives the family the same daily five-letter word, or lets you choose a 2–12 letter word and invite members to guess it. Five-letter games accept the Wordle guess list and require hard mode; other word lengths accept any letters-only guess. Leaderboards rank fewest guesses, then fastest time, and identify hard-mode scores.',
-      'A live Wordle challenge uses a random five-letter answer and lets you pick the players, including yourself. During play, your board stays full size and each opponent appears once in a compact colored-square status board above it; letters and the answer stay private. It’s an asynchronous race: each timer starts when that player opens the challenge.',
+      'Wordle offers three challenge types: a chosen-word invite for others to play separately, a live chosen-word challenge where you watch others play your word, and a live random-word challenge where you play too. For a live random game, select yourself and at least one other player. Live challenges show fixed-size six-row opponent boards and status above your board; letters and answers stay private. Each player’s timer starts when they open the challenge.',
       'Leaderboards compare fewest moves or guesses first, then fastest time, for the same puzzle. Beat your personal best for a celebration. You can invite someone to replay the same puzzle from the game.',
-      'Game invitations appear in Align until they play; open one to try the shared puzzle.',
+      'Game invitations and challenge updates are collected in a collapsible panel above the current page; its invitation count remains visible while collapsed. Wordle invitations can be declined, and the sender sees the update there. Give up ends your Wordle and shares that status with the other players. Daily games can also be ended this way. Open an invitation to try the shared puzzle.',
     ],
   },
   {

@@ -4527,9 +4527,8 @@ input.ladder-sparks {
   margin: 0;
 }
 .wordle-challenge-mode {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  display: grid;
+  gap: 0.55rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   margin: 0;
@@ -4538,31 +4537,65 @@ input.ladder-sparks {
 .wordle-challenge-mode legend {
   padding: 0 0.25rem;
 }
-.wordle-challenge-mode label {
+.wordle-challenge-option {
   display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+.wordle-challenge-option input {
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+}
+.wordle-challenge-option > span {
+  display: grid;
+  gap: 0.12rem;
+}
+.wordle-challenge-option .small {
+  line-height: 1.35;
 }
 .wordle-live-players {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
-  gap: 0.4rem;
+  gap: 0.55rem;
+}
+.wordle-live-players[data-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.wordle-live-players[data-count="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.wordle-live-players[data-count="1"] {
+  justify-items: center;
 }
 .wordle-live-player {
-  display: flex;
+  display: grid;
   min-width: 0;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.4rem;
+  justify-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
+.wordle-live-player[data-layout="single"] {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.4rem 0.65rem;
+}
 .wordle-live-player-heading {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   min-width: 0;
-  gap: 0.1rem;
+  align-items: baseline;
+  justify-content: center;
+  column-gap: 0.35rem;
+  row-gap: 0.1rem;
   font-size: 0.7rem;
   line-height: 1.15;
+}
+.wordle-live-player[data-layout="single"] .wordle-live-player-heading {
+  display: grid;
+  justify-content: start;
+  gap: 0.15rem;
 }
 .wordle-live-player-heading strong {
   overflow: hidden;
@@ -4571,20 +4604,19 @@ input.ladder-sparks {
 }
 .wordle-live-player-heading span {
   font-size: 0.65rem;
-  white-space: nowrap;
 }
 .wordle-live-board {
   display: grid;
   flex: 0 0 auto;
   gap: 0.08rem;
-  width: 3.5rem;
+  width: min(100%, 5rem);
 }
 .wordle-live-row {
   display: grid;
   gap: 0.08rem;
 }
 .wordle-live-cell {
-  height: 0.55rem;
+  height: 0.5rem;
   min-width: 0;
   border-radius: 0.08rem;
   background: color-mix(in srgb, var(--text) 8%, var(--surface));
@@ -4852,10 +4884,30 @@ input.ladder-sparks {
   max-width: 6rem;
 }
 .game-invitations {
-  display: grid;
-  gap: 0.5rem;
   margin-bottom: 0.75rem;
   border-color: color-mix(in srgb, var(--brand) 38%, var(--border));
+}
+.game-invitations details > summary {
+  display: flex;
+  min-height: 1.75rem;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.game-invitations details > summary::marker {
+  color: var(--muted);
+}
+.game-invitations-count {
+  color: var(--brand);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.game-invitations-content {
+  display: grid;
+  gap: 0.5rem;
+  padding-top: 0.55rem;
 }
 .game-invitations .row {
   margin: 0;

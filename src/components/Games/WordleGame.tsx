@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import {
   createWordleChallenge,
+  abandonDailyWordle,
+  abandonWordleChallenge,
   getDailyWordle,
   getWordleChallenge,
   guessDailyWordle,
   guessWordleChallenge,
   type WordleGameState,
+  type WordleChallengeType,
 } from '../../firebase/wordle'
 import { useGameScores, useWordleChallengeProgress, type GameChallenge } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
@@ -25,12 +28,13 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   const [guess, setGuess] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [ending, setEnding] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [guessError, setGuessError] = useState<string | null>(null)
   const guessInput = useRef<HTMLInputElement>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [word, setWord] = useState('')
-  const [randomWord, setRandomWord] = useState(false)
+  const [challengeType, setChallengeType] = useState<WordleChallengeType>('invite')
   const [selected, setSelected] = useState<string[]>([])
   const [inviting, setInviting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -40,13 +44,14 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   const people = Object.entries(app.household.members)
     .filter(([id, member]) => id !== app.uid && member.role === 'member' && !member.bot)
     .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
-  const challengePlayers = randomWord
+  const challengePlayers = challengeType === 'random-live'
     ? Object.entries(app.household.members)
       .filter(([, member]) => member.role === 'member' && !member.bot)
       .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
     : people
-  const canSendChallenge = selected.length >= (randomWord ? 2 : 1)
-    && (randomWord || validWord(word))
+  const canSendChallenge = selected.length >= (challengeType === 'random-live' ? 2 : 1)
+    && (challengeType !== 'random-live' || selected.includes(app.uid))
+    && (challengeType === 'random-live' || validWord(word))
     && !inviting
   const keyboardMarks = useMemo(() => wordleKeyboardMarks(game?.guesses ?? []), [game])
 
@@ -78,7 +83,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   }, [game, receivedAt])
 
   async function submitGuess() {
-    if (!game || game.complete || submitting) return
+    if (!game || game.complete || submitting || ending) return
     const normalized = normalizeWord(guess)
     if (!validWord(normalized, game.length)) {
       setGuessError(`Enter a ${game.length}-letter word.`)
@@ -131,12 +136,12 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   }
 
   function addLetter(letter: string) {
-    if (!game || game.complete || submitting) return
+    if (!game || game.complete || submitting || ending) return
     setGuess((current) => current.length < game.length ? current + letter : current)
   }
 
   function removeLetter() {
-    if (!game || game.complete || submitting) return
+    if (!game || game.complete || submitting || ending) return
     setGuess((current) => current.slice(0, -1))
   }
 
@@ -147,18 +152,46 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     setError(null)
     setMessage(null)
     try {
-      const result = await createWordleChallenge(randomWord ? null : normalizeWord(word), selected, randomWord)
+      const result = await createWordleChallenge(
+        challengeType === 'random-live' ? null : normalizeWord(word),
+        selected,
+        challengeType,
+      )
       setWord('')
       setSelected([])
-      if (randomWord && result.challengeId) {
+      if (challengeType === 'random-live' && result.challengeId) {
         app.navigate({ view: 'games', challengeId: result.challengeId })
       } else {
-        setMessage(`Challenge sent to ${result.invited} ${result.invited === 1 ? 'person' : 'people'}.`)
+        setMessage(
+          challengeType === 'live-chosen'
+            ? `Live challenge started with ${result.invited} ${result.invited === 1 ? 'player' : 'players'}.`
+            : `Word invite sent to ${result.invited} ${result.invited === 1 ? 'person' : 'people'}.`,
+        )
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setInviting(false)
+    }
+  }
+
+  async function giveUp() {
+    if (!game || game.complete || submitting || ending) return
+    if (!window.confirm('Give up on this Wordle? This ends the game and shares that you gave up.')) return
+    setEnding(true)
+    setError(null)
+    try {
+      let next: WordleGameState
+      if (game.mode === 'daily') next = await abandonDailyWordle()
+      else if (challengeId) next = await abandonWordleChallenge(challengeId)
+      else throw new Error('This Wordle challenge is unavailable.')
+      setGame(next)
+      setElapsed(next.elapsedMs)
+      setReceivedAt(Date.now())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setEnding(false)
     }
   }
 
@@ -192,31 +225,52 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
             <form onSubmit={(event) => void sendChallenge(event)}>
               <fieldset className="wordle-challenge-mode">
                 <legend className="small">Challenge type</legend>
-                <label className="small">
+                <label className="wordle-challenge-option">
                   <input
                     type="radio"
                     name="wordle-challenge-type"
-                    checked={!randomWord}
+                    checked={challengeType === 'invite'}
                     onChange={() => {
-                      setRandomWord(false)
+                      setChallengeType('invite')
                       setSelected((current) => current.filter((id) => id !== app.uid))
                     }}
                   />
-                  Choose a word
+                  <span>
+                    <strong>Choose a word invite</strong>
+                    <span className="muted small">Invite one or more others to play your word separately. You don’t play.</span>
+                  </span>
                 </label>
-                <label className="small">
-                  <input type="radio" name="wordle-challenge-type" checked={randomWord} onChange={() => setRandomWord(true)} />
-                  Live random Wordle challenge
+                <label className="wordle-challenge-option">
+                  <input
+                    type="radio"
+                    name="wordle-challenge-type"
+                    checked={challengeType === 'live-chosen'}
+                    onChange={() => {
+                      setChallengeType('live-chosen')
+                      setSelected((current) => current.filter((id) => id !== app.uid))
+                    }}
+                  />
+                  <span>
+                    <strong>Live chosen word</strong>
+                    <span className="muted small">Challenge one or more others to play your word live. You know the answer, so you don’t play.</span>
+                  </span>
+                </label>
+                <label className="wordle-challenge-option">
+                  <input
+                    type="radio"
+                    name="wordle-challenge-type"
+                    checked={challengeType === 'random-live'}
+                    onChange={() => setChallengeType('random-live')}
+                  />
+                  <span>
+                    <strong>Live random word</strong>
+                    <span className="muted small">Play with one or more others. Select yourself and at least one other player.</span>
+                  </span>
                 </label>
               </fieldset>
-              {randomWord ? (
-                <p className="muted small">
-                  Everyone plays the same random five-letter answer from the Wordle answer list. Select yourself and at least one other player.
-                  Guess rows appear as colored squares for all participants; letters and the answer stay private.
-                </p>
-              ) : (
+              {challengeType !== 'random-live' && (
                 <>
-                  <p className="muted small">Choose a 2–12 letter word and invite family members. Five-letter answers must be accepted Wordle words, and every five-letter game uses hard mode. The answer is stored privately and isn’t sent with the invitation.</p>
+                  <p className="muted small">Choose a 2–12 letter word. Five-letter answers must be accepted Wordle words, and every five-letter game uses hard mode. The answer is stored privately and isn’t sent with the invitation.</p>
                   <div className="row wrap">
                     <label className="small">
                       Your word
@@ -234,7 +288,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                   </div>
                 </>
               )}
-              <p className="muted small">{randomWord ? 'Players' : 'Invite family members'}</p>
+              <p className="muted small">{challengeType === 'random-live' ? 'Players (include yourself)' : 'Invite family members'}</p>
               <div className="chips">
                 {challengePlayers.map(([id, member]) => (
                   <label className={`chip-toggle${selected.includes(id) ? ' on' : ''}`} key={id}>
@@ -244,7 +298,13 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                 ))}
               </div>
               <button type="submit" className="small" disabled={!canSendChallenge}>
-                {inviting ? 'Sending…' : randomWord ? `Start live challenge${selected.length ? ` with ${selected.length}` : ''}` : `Send challenge${selected.length ? ` to ${selected.length}` : ''}`}
+                {inviting
+                  ? 'Starting…'
+                  : challengeType === 'random-live'
+                    ? `Start live challenge${selected.length ? ` with ${selected.filter((id) => id !== app.uid).length}` : ''}`
+                    : challengeType === 'live-chosen'
+                      ? `Start live challenge${selected.length ? ` with ${selected.length}` : ''}`
+                      : `Send word invite${selected.length ? ` to ${selected.length}` : ''}`}
               </button>
               {message && <p className="muted small" role="status">{message}</p>}
             </form>
@@ -267,7 +327,9 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
               <div className="wordle-clock" aria-label="Elapsed time">{seconds(elapsed)}</div>
             </header>
 
-            {challenge?.payload?.puzzleId && (challenge.players ?? [challenge.to]).some((uid) => uid !== app.uid) && (
+            {challenge?.payload?.puzzleId
+              && challenge.challengeType !== 'invite'
+              && (challenge.players ?? [challenge.to]).some((uid) => uid !== app.uid) && (
               <WordleProgressBoard
                 participants={(challenge.players ?? [challenge.to]).filter((uid) => uid !== app.uid)}
                 progress={challengeProgress.filter((item) => item.groupId === challenge.payload?.puzzleId)}
@@ -311,10 +373,10 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                     }}
                     onKeyDown={onGuessKeyDown}
                     aria-label={`${game.length}-letter guess`}
-                    disabled={submitting}
+                    disabled={submitting || ending}
                   />
                 </label>
-                <button type="submit" disabled={submitting || !validWord(guess, game.length)}>
+                <button type="submit" disabled={submitting || ending || !validWord(guess, game.length)}>
                   {submitting ? 'Checking…' : 'Submit guess'}
                 </button>
               </form>
@@ -329,7 +391,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                         type="button"
                         className="wordle-key wordle-key-action"
                         onClick={() => void submitGuess()}
-                        disabled={submitting || !validWord(guess, game.length)}
+                        disabled={submitting || ending || !validWord(guess, game.length)}
                       >
                         Enter
                       </button>
@@ -343,7 +405,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                           className={`wordle-key${mark ? ` ${mark}` : ''}`}
                           key={letter}
                           onClick={() => addLetter(letter)}
-                          disabled={submitting || guess.length >= game.length}
+                          disabled={submitting || ending || guess.length >= game.length}
                           aria-label={`${letter}${markLabel}`}
                           title={mark ? `${letter}: ${mark}` : letter}
                         >
@@ -356,7 +418,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                         type="button"
                         className="wordle-key wordle-key-action"
                         onClick={removeLetter}
-                        disabled={submitting || !guess}
+                        disabled={submitting || ending || !guess}
                         aria-label="Delete last letter"
                         title="Delete last letter"
                       >
@@ -368,9 +430,19 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
               </div>
             )}
 
+            {!game.complete && (
+              <button type="button" className="secondary small" onClick={() => void giveUp()} disabled={submitting || ending}>
+                {ending ? 'Ending game…' : 'Give up'}
+              </button>
+            )}
+
             {game.complete && (
               <p className="wordle-result" role="status">
-                {game.solved ? `Solved in ${game.guesses.length} ${game.guesses.length === 1 ? 'guess' : 'guesses'}!` : 'Out of guesses.'}
+                {game.abandoned
+                  ? `You gave up after ${game.guesses.length} ${game.guesses.length === 1 ? 'guess' : 'guesses'}.`
+                  : game.solved
+                    ? `Solved in ${game.guesses.length} ${game.guesses.length === 1 ? 'guess' : 'guesses'}!`
+                    : 'Out of guesses.'}
                 {' '}The word was <strong>{game.answer}</strong>.
                 {game.solved && ` Time: ${seconds(game.elapsedMs)}.`}
                 {game.challengeStatus === 'completed' && ' Challenge complete.'}
