@@ -520,7 +520,10 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### Wordle: implemented locally; server setup and deployment remain
+### Wordle: implementation pushed; production setup and deployment remain
+- Real-time Live Wordle and the related Games panel updates are committed as `e281612` and pushed to `main`.
+  They have not been deployed. The user handles production deployment; deploy Firestore rules before uploading the
+  web app, and install the private PHP server configuration and word lists before that upload.
 - Games includes a shared daily puzzle, sender-authored 2–12 letter challenges, and live group challenges with a
   server-random five-letter answer. The server keeps answers and guessed words private; live progress shares only
   compact colored mark rows in six-row mini-boards above the active player's full board, with ready/playing/completion
@@ -550,7 +553,8 @@ firestore.rules, firestore.indexes.json
   challenge options, one- and two-opponent mini-board layouts, the reserved completion notice, and no leaderboard
   during live play. Live endpoint behavior and Turbify PHP support are not yet verified.
 - Before release, install the private server config, check that GET returns JSON 405 and unauthenticated POST returns
-  JSON 401, deploy Firestore rules, then deploy the web app and test daily play plus a custom invitation.
+  JSON 401, deploy Firestore rules, then deploy the web app and test daily play, a custom invitation, and a complete
+  real-time lobby (ready, shared start, guessing, cancellation, and timeout on a later check-in).
 
 ### Today panel layout: ready for web deployment
 - Goals and collection sections have a small inset and quiet left border; pinned rows are indented below Pinned.
