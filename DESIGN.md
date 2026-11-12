@@ -432,7 +432,7 @@ The chat panel runs a local, rule-based parser (`src/chat/parser.ts`, dates by `
 ### 10.3 Favorite photos (psort)
 psort's `publish-browse` puts the family's starred, non-private photos on Turbify for the blog's photo browser: web sizes at `https://www.itsallonesong.com/pics/browse/<size>/<id>-<size>.jpg` and `browse-manifest.json` (id, taken_at, people's names, event, top). psort's `.htaccess` lets the blog read the manifest, and lets Align read it too, but only for requests from Align. Align only reads it (`src/photos/favorites.ts`: fetched with `cache: 'no-cache'` so a new publish isn't hidden by a browser's guessed caching (Turbify sends only Last-Modified), kept for the session, and fetched again when Align comes back into view after an hour (`refreshFavoritesIfStale`, shared by every photo section); so newly published photos reach On this day the next time Align is opened or returned to):
 - **📷 Photos** (`#/photos`): a searchable grid (names, years, months, events; Top picks), a larger view, **Full size**, and **Text this photo** (sends the 2048px image link). It also links to the blog's photo browser.
-- **On this day** on the day view (`photosForDay`): favorites from the same date in earlier years ("6 years ago"); if none, **Near this day** (the nearest date within a week, wrapping at New Year); if still none, **From the archive** (3 picked at random, the same pick all day). Hide lasts for the rest of the day (`useDailyFlag`). It doesn't show if the list can't be reached.
+- **On this day** on the day view (`photosForDay`): favorites from the same date in earlier years ("6 years ago"); if none, **Near this day** (the nearest date within a week, wrapping at New Year); if still none, **From the archive** (3 picked at random, the same pick all day). Tap a picture and swipe or use Previous / Next to browse that strip. Hide lasts for the rest of the day (`useDailyFlag`). It doesn't show if the list can't be reached.
 - **From favorites** next to Upload in the blog composer (the 2048px copy; the blog's Action downloads it like a Cloudinary upload; alt text starts as the caption) and in every note/link/picture box (goal entries, voting items; the 1024px copy).
 - Dev servers (localhost) aren't allowed to read the manifest, so browser tests serve a copy with `page.route`.
 
@@ -520,6 +520,12 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
+### Location sign-in quota: local fix awaiting Apps Script deployment
+- The calendar/location script caches the Firebase bot ID token for up to 50 minutes and serializes cache misses,
+  reducing password-verification requests from frequent OwnTracks reports. Paste `scripts/apps-script/calendar-sync.gs`
+  into the existing Apps Script project and deploy a new version at the same URL. A quota already exhausted must
+  recover before the first sign-in succeeds. Both Android and iPhone setup use the PHP relay.
+
 ### Wordle: implementation pushed; production setup and deployment remain
 - Real-time Live Wordle and the related Games panel updates are committed as `e281612` and pushed to `main`.
   They have not been deployed. The user handles production deployment; deploy Firestore rules before uploading the
@@ -544,7 +550,8 @@ firestore.rules, firestore.indexes.json
   start time; other challenge types retain per-player timers. Completion notices order live progress using Firestore
   timestamps, including when a progress update arrives before the player's guess response.
 - Five-letter games use server-installed answer and accepted-guess text files, enforce accepted guesses and hard
-  mode, and mark hard-mode leaderboard scores.
+  mode, and mark hard-mode leaderboard scores. Hard mode keeps green letters fixed and requires revealed yellow
+  letters, but allows a yellow letter in the same position on later guesses.
 - The list files must be downloaded from the sources in `scripts/wordle/README.md` and placed outside the document
   root; they are intentionally not included in the repository.
 - The endpoint is built to `dist/wordle.php`; private service-account credentials and the daily HMAC secret must be

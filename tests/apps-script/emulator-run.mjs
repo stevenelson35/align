@@ -1,7 +1,7 @@
 // Runs the real Apps Script calendar sync against the local emulators, with stand-ins for Google's services.
 // Needs `npm run emulators` and `npm run seed` first. Usage: npm run test:calendar
 import { execFileSync } from 'node:child_process'
-import { createHmac, createSign, generateKeyPairSync } from 'node:crypto'
+import { createHash, createHmac, createSign, generateKeyPairSync } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { existsSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -46,12 +46,17 @@ const mails = []
 
 const cache = new Map()
 let lockHeld = false
+let userLockHeld = false
 const sandbox = createContext({
   console,
   LockService: {
     getScriptLock: () => ({
       tryLock: () => (lockHeld ? false : (lockHeld = true)),
       releaseLock: () => (lockHeld = false),
+    }),
+    getUserLock: () => ({
+      tryLock: () => (userLockHeld ? false : (userLockHeld = true)),
+      releaseLock: () => (userLockHeld = false),
     }),
   },
   CacheService: { getScriptCache: () => ({ get: (k) => cache.get(k) ?? null, put: (k, v) => cache.set(k, v) }) },
@@ -70,6 +75,8 @@ const sandbox = createContext({
   },
   Utilities: {
     // Apps Script returns signed bytes.
+    DigestAlgorithm: { SHA_256: 'sha256' },
+    computeDigest: (algorithm, value) => [...createHash(algorithm).update(value).digest()].map((b) => (b > 127 ? b - 256 : b)),
     computeRsaSha256Signature: (value, pem) => [...createSign('RSA-SHA256').update(value).sign(pem)].map((b) => (b > 127 ? b - 256 : b)),
     base64EncodeWebSafe: (v) => Buffer.from(typeof v === 'string' ? v : v.map((b) => b & 255)).toString('base64url') + '=',
     computeHmacSha256Signature: (value, key) => [...createHmac('sha256', key).update(value).digest()].map((b) => (b > 127 ? b - 256 : b)),

@@ -857,12 +857,32 @@ function http_(method, url, body, token) {
 }
 
 function signIn_(cfg) {
-  var res = http_('post', cfg.AUTH_URL + '/accounts:signInWithPassword?key=' + encodeURIComponent(cfg.FIREBASE_API_KEY), {
-    email: cfg.BOT_EMAIL,
-    password: cfg.BOT_PASSWORD,
-    returnSecureToken: true,
-  })
-  return { token: res.idToken, uid: res.localId }
+  var identity = JSON.stringify([cfg.AUTH_URL, cfg.FIREBASE_PROJECT_ID, cfg.FIREBASE_API_KEY, cfg.BOT_EMAIL, cfg.BOT_PASSWORD])
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, identity)
+  var key = 'firebaseBot_' + Utilities.base64EncodeWebSafe(digest).replace(/=+$/, '')
+  var cache = CacheService.getScriptCache()
+  var cached = cache.get(key)
+  if (cached) return JSON.parse(cached)
+
+  // Calendar sync holds the script lock already; use a separate user lock to avoid concurrent sign-in bursts.
+  var lock = LockService.getUserLock()
+  if (!lock.tryLock(30000)) throw new Error('Firebase sign-in is busy. Please try again.')
+  try {
+    cached = cache.get(key)
+    if (cached) return JSON.parse(cached)
+    var res = http_('post', cfg.AUTH_URL + '/accounts:signInWithPassword?key=' + encodeURIComponent(cfg.FIREBASE_API_KEY), {
+      email: cfg.BOT_EMAIL,
+      password: cfg.BOT_PASSWORD,
+      returnSecureToken: true,
+    })
+    if (!res.idToken || !res.localId) throw new Error('Firebase sign-in returned an incomplete response.')
+    var auth = { token: res.idToken, uid: res.localId }
+    var ttl = Math.min(3000, Math.floor(Number(res.expiresIn)) - 120)
+    if (ttl > 0) cache.put(key, JSON.stringify(auth), ttl)
+    return auth
+  } finally {
+    lock.releaseLock()
+  }
 }
 
 function firestoreApi_(cfg, auth) {

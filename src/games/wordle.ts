@@ -91,7 +91,6 @@ export function wordleKeyboardMarks(guesses: WordleGuess[]): Map<string, LetterM
 export function hardModeError(guesses: WordleGuess[], guess: string): string | null {
   const requiredLetters = new Map<string, number>()
   const fixedLetters = new Map<number, string>()
-  const excludedPositions = new Map<number, Set<string>>()
 
   for (const row of guesses) {
     const rowRequired = new Map<string, number>()
@@ -102,9 +101,6 @@ export function hardModeError(guesses: WordleGuess[], guess: string): string | n
         rowRequired.set(letter, (rowRequired.get(letter) ?? 0) + 1)
       } else if (mark === 'present') {
         rowRequired.set(letter, (rowRequired.get(letter) ?? 0) + 1)
-        const excluded = excludedPositions.get(index) ?? new Set<string>()
-        excluded.add(letter)
-        excludedPositions.set(index, excluded)
       }
     })
     for (const [letter, count] of rowRequired) {
@@ -115,9 +111,6 @@ export function hardModeError(guesses: WordleGuess[], guess: string): string | n
   const attempt = normalizeWord(guess)
   for (const [index, letter] of fixedLetters) {
     if (attempt[index] !== letter) return `Keep ${letter} in position ${index + 1}.`
-  }
-  for (const [index, letters] of excludedPositions) {
-    if (letters.has(attempt[index])) return `Move ${attempt[index]} from position ${index + 1}.`
   }
   for (const [letter, count] of requiredLetters) {
     if ([...attempt].filter((candidate) => candidate === letter).length < count) {

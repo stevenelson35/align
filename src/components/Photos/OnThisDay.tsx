@@ -25,6 +25,7 @@ export function OnThisDay({ day }: { day: string }) {
   const [open, setOpen] = useState<Favorite | null>(null)
   const found = manifest ? photosForDay(manifest.photos, day) : null
   const photos = found?.photos ?? []
+  const openIndex = open ? photos.findIndex((photo) => photo.id === open.id) : -1
   if (!photos.length) return null // while loading, or if the list can't be reached: it's a nice extra
   const title = found!.kind === 'same' ? 'On This Day' : found!.kind === 'near' ? 'Near This Day' : 'Archive Pics'
   const label = (p: Favorite) => {
@@ -51,7 +52,18 @@ export function OnThisDay({ day }: { day: string }) {
           ))}
         </div>
       )}
-      {open && <PhotoViewer photo={open} onClose={() => setOpen(null)} />}
+      {open && (
+        <PhotoViewer
+          photo={open}
+          onClose={() => setOpen(null)}
+          navigation={openIndex < 0 ? undefined : {
+            index: openIndex,
+            total: photos.length,
+            onPrevious: openIndex > 0 ? () => setOpen(photos[openIndex - 1]) : undefined,
+            onNext: openIndex < photos.length - 1 ? () => setOpen(photos[openIndex + 1]) : undefined,
+          }}
+        />
+      )}
     </div>
   )
 }

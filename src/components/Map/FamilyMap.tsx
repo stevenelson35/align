@@ -272,7 +272,14 @@ function MySharing({ mine }: { mine?: FamilyLocation }) {
           </button>
         )}
       </div>
-      {error && <p className="error small">{error}</p>}
+      {error && (
+        <div className="error small" role="alert">
+          {error.includes('QUOTA_EXCEEDED') && (
+            <p>Firebase sign-in is temporarily rate-limited. Try setup later. If this phone already has a personal OwnTracks URL, you can keep its private ?loc= key and change the address before it to https://align.itsallonesong.com/owntracks.php.</p>
+          )}
+          <p>{error}</p>
+        </div>
+      )}
       {link && (
         <div className="map-setup">
           <ol className="small">
@@ -285,7 +292,7 @@ function MySharing({ mine }: { mine?: FamilyLocation }) {
               <a className="button-link small" href={ownTracksSetupLink(link, name)}>
                 Set up OwnTracks
               </a>{' '}
-              (it fills in everything).
+              (it fills in the relay address for iPhone or Android).
             </li>
             <li>When asked, allow location <strong>Always</strong> (iPhone: “Always”; Android: “Allow all the time”), so it works with the app closed.</li>
           </ol>

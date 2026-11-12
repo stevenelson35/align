@@ -1,5 +1,6 @@
 // Unit tests for the pure helpers in the Apps Script calendar sync. The .gs file is plain JS, loaded into a sandbox.
 import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { createContext, runInContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
 
@@ -13,6 +14,70 @@ const fmt = {
   time: (d: Date) => d.toISOString().slice(11, 16),
 }
 const eventToTask = (ev: object) => (gs.eventToTask_ as (ev: object, f: typeof fmt) => { docId: string; fields: Record<string, unknown> })(ev, fmt)
+
+describe('Firebase bot sign-in cache', () => {
+  function setup() {
+    const cache = new Map<string, string>()
+    const writes: number[] = []
+    let calls = 0
+    let locked = false
+    let fail = false
+    const context = createContext({
+      CacheService: { getScriptCache: () => ({
+        get: (key: string) => cache.get(key) ?? null,
+        put: (key: string, value: string, ttl: number) => { cache.set(key, value); writes.push(ttl) },
+      }) },
+      LockService: { getUserLock: () => ({
+        tryLock: () => locked ? false : (locked = true),
+        releaseLock: () => { locked = false },
+      }) },
+      Utilities: {
+        DigestAlgorithm: { SHA_256: 'sha256' },
+        computeDigest: (algorithm: string, value: string) => createHash(algorithm).update(value).digest(),
+        base64EncodeWebSafe: (value: Uint8Array) => Buffer.from(value).toString('base64url'),
+      },
+      UrlFetchApp: { fetch: () => {
+        calls++
+        return {
+          getResponseCode: () => fail ? 400 : 200,
+          getContentText: () => JSON.stringify(fail
+            ? { error: { message: 'QUOTA_EXCEEDED' } }
+            : { idToken: `token-${calls}`, localId: 'bot', expiresIn: '3600' }),
+        }
+      } },
+    })
+    runInContext(readFileSync('scripts/apps-script/calendar-sync.gs', 'utf8'), context)
+    const cfg = { AUTH_URL: 'https://auth.example', FIREBASE_PROJECT_ID: 'test', FIREBASE_API_KEY: 'key', BOT_EMAIL: 'bot@example.com', BOT_PASSWORD: 'password' }
+    return {
+      signIn: (config = cfg) => context.signIn_(config) as { token: string; uid: string },
+      cfg,
+      cache,
+      writes,
+      calls: () => calls,
+      setFail: (value: boolean) => { fail = value },
+    }
+  }
+
+  it('reuses a token and makes a fresh sign-in after eviction or a credential change', () => {
+    const s = setup()
+    expect(s.signIn()).toEqual({ token: 'token-1', uid: 'bot' })
+    expect(s.signIn()).toEqual({ token: 'token-1', uid: 'bot' })
+    expect(s.calls()).toBe(1)
+    expect(s.writes).toEqual([3000])
+    expect(s.signIn({ ...s.cfg, BOT_PASSWORD: 'changed' }).token).toBe('token-2')
+    s.cache.clear()
+    expect(s.signIn().token).toBe('token-3')
+  })
+
+  it('surfaces sign-in failures, releases the lock and does not cache them', () => {
+    const s = setup()
+    s.setFail(true)
+    expect(() => s.signIn()).toThrow('QUOTA_EXCEEDED')
+    expect(s.cache.size).toBe(0)
+    s.setFail(false)
+    expect(s.signIn().token).toBe('token-2')
+  })
+})
 
 describe('eventToTask_', () => {
   it('maps a timed event with location', () => {

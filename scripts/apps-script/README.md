@@ -42,6 +42,11 @@
 
 To update the script later, paste the new `calendar-sync.gs` over `Code.gs`. The trigger keeps working. (If you set it up before the 15-minute schedule, run `installTrigger` once to switch from hourly. `installHourlyTrigger` still exists and does the same thing.)
 
+The script caches its Firebase bot ID token for up to 50 minutes, so location reports and calendar operations do not
+perform a password sign-in on every request. Cached tokens are kept in Apps Script's private script cache and are
+replaced after expiry or when the bot credentials change. A Firebase password-verification quota already exhausted
+must recover before the first sign-in can succeed.
+
 ## Optional: the "↻ Refresh calendar" button
 
 Align can ask the script to sync right away. The button appears on **Today** and on the **Family Calendar** list once Align knows the script's web address. It's free: the script runs as a small Google "web app".

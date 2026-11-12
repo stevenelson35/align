@@ -1662,6 +1662,16 @@ button:not(.secondary):not(.link):not(.row-action):not(.star):not(.nav-link):not
   border-radius: 6px;
   background: #000;
 }
+.photo-swipe {
+  touch-action: pan-y pinch-zoom;
+}
+.photo-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
 .photo-title {
   font-size: 1rem;
 }
@@ -4464,11 +4474,19 @@ input.ladder-sparks {
 }
 .wordle-guess-error {
   max-width: 100%;
+  height: 3.75rem;
   margin: 0;
+  overflow: auto;
   color: var(--danger);
   text-align: center;
   text-wrap: balance;
   overflow-wrap: anywhere;
+}
+.wordle-game-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 .wordle-keyboard {
   display: grid;

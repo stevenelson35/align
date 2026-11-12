@@ -546,6 +546,18 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
               </div>
             ) : (
             <>
+            {!game.complete && (
+              <div className="wordle-game-actions">
+                <button type="button" className="secondary small" onClick={() => void giveUp()} disabled={submitting || ending}>
+                  {ending ? 'Ending game…' : 'Give up'}
+                </button>
+                {!challenge && (
+                  <button type="button" className="secondary small" onClick={quitDailyGame} disabled={submitting || ending}>
+                    Quit
+                  </button>
+                )}
+              </div>
+            )}
             {challenge?.payload?.puzzleId
               && challenge.challengeType !== 'invite'
               && !game.complete
@@ -580,7 +592,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
 
             {!game.complete && (
               <>
-                {guessError && <p className="wordle-guess-error" role="alert">{guessError}</p>}
+                <p className="wordle-guess-error" role="alert">{guessError}</p>
                 <p className="muted small">Guess {game.guesses.length + 1} of {WORDLE_MAX_GUESSES}</p>
               </>
             )}
@@ -633,15 +645,9 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
               </div>
             )}
 
-            {!game.complete && (
-              <button type="button" className="secondary small" onClick={() => void giveUp()} disabled={submitting || ending}>
-                {ending ? 'Ending game…' : 'Give up'}
-              </button>
-            )}
-
-            {!challenge && (
+            {!challenge && game.complete && (
               <button type="button" className="secondary small" onClick={quitDailyGame}>
-                {game.complete ? 'Return to Wordle' : 'Quit'}
+                Return to Wordle
               </button>
             )}
 

@@ -52,6 +52,10 @@ quotas (Spark projects stop accepting requests at quota limits rather than silen
    HMAC picks a stable answer from the answer list for each date; live challenges select a random answer from that
    same list. Answers are saved in the server-only `wordleSecrets` collection. All five-letter games use accepted
    guesses only and enforce hard mode.
+
+   Hard mode keeps green letters in place and requires revealed yellow letters, including repeated letters, but permits
+   yellow letters in the same position in later guesses. Run `php tests/wordle/hard-mode.php` from the repository root
+   to check the PHP implementation.
 3. Confirm Turbify runs PHP 8.1+ with cURL and OpenSSL. After building and uploading, `GET
    https://align.itsallonesong.com/wordle.php` should return JSON `405`, never PHP source. A POST without a valid
    Firebase ID token should return JSON `401`.

@@ -33,6 +33,8 @@ seconds while travelling.
 ## How it works
 - The personal key is `uid.HMAC(secret, "location:"+uid)`, made by the script after it checks the person's Align
   sign-in; it can only post that person's location. Align never sees the secret.
+- Phone setup uses the same relay URL for Android and iPhone. The script reuses a short-lived Firebase bot token
+  rather than signing in with a password for every report; deploy a new version of `calendar-sync.gs` to use this.
 - `location_` keeps the latest point (lat, lon, accuracy, battery, time) and the last 24 hours (≤100 points) of trail.
 - **Pause sharing** sets `off: true`; the script then ignores that phone, and the rules stop the helper account from
   writing it or unpausing it. **Delete my location** removes the document.

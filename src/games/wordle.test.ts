@@ -74,11 +74,17 @@ describe('Wordle rules', () => {
     expect(hardModeError(guesses, 'CRISP')).toBeNull()
   })
 
-  it('keeps yellow letters and moves them from the known wrong position', () => {
+  it('requires yellow letters but allows them in their previous positions', () => {
     const guesses = [{ word: 'SLATE', marks: markGuess('CIGAR', 'SLATE') }]
     expect(hardModeError(guesses, 'CIGAR')).toBeNull()
-    expect(hardModeError(guesses, 'CIARS')).toContain('Move A from position 3')
+    expect(hardModeError(guesses, 'CIARS')).toBeNull()
     expect(hardModeError(guesses, 'CIGRS')).toContain('Use at least 1')
+  })
+
+  it('still requires all revealed copies of a letter', () => {
+    const guesses = [{ word: 'ALLOT', marks: markGuess('LABEL', 'ALLOT') }]
+    expect(hardModeError(guesses, 'LABLE')).toBeNull()
+    expect(hardModeError(guesses, 'LACED')).toContain('Use at least 2 Ls')
   })
 
   it('does not count the same revealed hint repeatedly across guesses', () => {

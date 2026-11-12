@@ -319,7 +319,6 @@ function wordleMarks($answer, $guess) {
 function hardModeError($previousGuesses, $guess) {
     $requiredLetters = [];
     $fixedLetters = [];
-    $excludedPositions = [];
     foreach ($previousGuesses as $row) {
         $rowRequired = [];
         foreach (str_split($row['word']) as $index => $letter) {
@@ -329,7 +328,6 @@ function hardModeError($previousGuesses, $guess) {
                 $rowRequired[$letter] = ($rowRequired[$letter] ?? 0) + 1;
             } elseif ($mark === 'present') {
                 $rowRequired[$letter] = ($rowRequired[$letter] ?? 0) + 1;
-                $excludedPositions[$index][$letter] = true;
             }
         }
         foreach ($rowRequired as $letter => $count) {
@@ -340,11 +338,6 @@ function hardModeError($previousGuesses, $guess) {
     $attempt = str_split($guess);
     foreach ($fixedLetters as $index => $letter) {
         if (($attempt[$index] ?? '') !== $letter) return 'Keep ' . $letter . ' in position ' . ($index + 1) . '.';
-    }
-    foreach ($excludedPositions as $index => $letters) {
-        if (isset($letters[$attempt[$index] ?? ''])) {
-            return 'Move ' . $attempt[$index] . ' from position ' . ($index + 1) . '.';
-        }
     }
     foreach ($requiredLetters as $letter => $count) {
         if (substr_count($guess, $letter) < $count) {
@@ -977,6 +970,8 @@ function createCustomChallenges($config, $token, $uid, $body) {
     if ($ownChallengeId !== null) $result['challengeId'] = $ownChallengeId;
     return $result;
 }
+
+if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') !== __FILE__) return;
 
 try {
     $config = config();
