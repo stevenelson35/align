@@ -5123,3 +5123,167 @@ input.ladder-sparks {
     transition: none;
   }
 }
+
+/* One entry row for every list kind (EntryRow): simple / medium / detail; tap the title to open in place; ⋯ or
+   press-and-hold for the actions menu. */
+.entry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+.entry-row {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  border-left: 4px solid var(--accent, var(--border));
+  -webkit-touch-callout: none;
+}
+.entry-row.selected {
+  box-shadow: 0 0 0 2px var(--brand);
+}
+.entry-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.4rem;
+  padding: 0.2rem 0.2rem 0.2rem 0.6rem;
+}
+.entry-row.size-simple .entry-line {
+  min-height: 2.1rem;
+}
+.entry-check {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+}
+.entry-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 0.1rem;
+}
+.entry-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  max-width: 100%;
+}
+.entry-title-text {
+  overflow-wrap: anywhere;
+}
+.entry-title .icon[aria-label='Has text'] {
+  color: var(--muted);
+  font-size: 0.85em;
+}
+.entry-row.checked .entry-title-text,
+.entry-row.finished .entry-title-text {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.entry-marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  color: var(--muted);
+}
+.entry-marks:empty {
+  display: none;
+}
+.entry-more {
+  flex: none;
+}
+.entry-detail {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0 0.75rem 0.6rem;
+}
+.entry-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.entry-actions {
+  gap: 0.35rem;
+}
+.entry-actions button {
+  padding: 0.2rem 0.55rem;
+}
+.entry-menu {
+  position: absolute;
+  right: 0.3rem;
+  top: 2.3rem;
+  z-index: 20;
+  display: grid;
+  min-width: 12rem;
+  padding: 0.3rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+}
+.entry-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.entry-menu-item:hover,
+.entry-menu-item:focus-visible {
+  background: var(--bg);
+}
+.entry-size-switch {
+  display: inline-flex;
+  gap: 0.15rem;
+}
+.entry-size-switch .on {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Tasks as entry rows: the same states the task card had. */
+.entry-row.conflict {
+  outline: 2px solid var(--danger);
+}
+.entry-row.color-done .entry-title-text {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.entry-row.waiting {
+  opacity: 0.75;
+  border-style: dashed;
+  border-left-style: solid;
+}
+.entry-check {
+  width: auto;
+}
+a.entry-title {
+  text-decoration: none;
+}
+a.entry-title .icon:last-child {
+  color: var(--muted);
+}
+.entry-marks .link-url {
+  overflow-wrap: anywhere;
+}
+.entry-row.resting {
+  opacity: 0.65;
+}

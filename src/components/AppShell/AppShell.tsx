@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AppContext, type AppState, type PendingShift } from '../../context/AppContext'
+import { AppContext, type PanelMode, type AppState, type PendingShift } from '../../context/AppContext'
 import { useData } from '../../hooks/useApp'
 import { useHashRoute } from '../../hooks/useHashRoute'
 import type { Household, HouseholdMember, List } from '../../types'
@@ -42,6 +42,8 @@ export function AppShell({ uid, household, member }: Props) {
   const [settingsOpen, setSettingsOpen] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [textingId, setTextingId] = useState<string | null>(null)
+  // How the entry panel opens (openEntry), and a counter so opening the same entry in a new mode starts fresh.
+  const [panel, setPanel] = useState<{ mode: PanelMode; n: number }>({ mode: 'view', n: 0 })
   // The breadcrumb's "Menu" / "Links": open the menu with that section expanded. The menu reads its open section
   // when it mounts, so it's stored and the menu remounted.
   const [menuKey, setMenuKey] = useState(0)
@@ -79,8 +81,16 @@ export function AppShell({ uid, household, member }: Props) {
       if (route.view === 'task') navigate(linked ? { view: 'list', listId: linked.listId, timeline: false } : { view: 'today' })
       selectTask(id)
       setTextingId(null)
+      setPanel((p) => ({ mode: 'view', n: p.n + 1 }))
     },
     [route.view, linked, navigate],
+  )
+  const openEntry = useCallback(
+    (id: string, mode: PanelMode = 'view') => {
+      choose(id)
+      setPanel((p) => ({ mode, n: p.n + 1 }))
+    },
+    [choose],
   )
   const textAbout = useCallback(
     (id: string) => {
@@ -101,6 +111,8 @@ export function AppShell({ uid, household, member }: Props) {
       selectedTaskId: shownTaskId,
       selectTask: choose,
       textAbout,
+      openEntry,
+      panelMode: panel.mode,
       textingId,
       openSettings,
       openMenu,
@@ -109,7 +121,7 @@ export function AppShell({ uid, household, member }: Props) {
       canEdit,
       openChat,
     }),
-    [uid, household, member, route, go, shownTaskId, choose, textAbout, textingId, openSettings, openMenu, canEdit, openChat],
+    [uid, household, member, route, go, shownTaskId, choose, textAbout, openEntry, panel.mode, textingId, openSettings, openMenu, canEdit, openChat],
   )
 
   const selectedTask = data.tasks.find((t) => t.id === shownTaskId)
@@ -208,7 +220,7 @@ export function AppShell({ uid, household, member }: Props) {
           )}
           {selectedItem && selectedItemList && (
             <aside className="right-panel">
-              <ItemDetails key={selectedItem.id} item={selectedItem} list={selectedItemList} />
+              <ItemDetails key={`${selectedItem.id}:${panel.n}`} item={selectedItem} list={selectedItemList} />
             </aside>
           )}
         </div>

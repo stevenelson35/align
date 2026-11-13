@@ -7,8 +7,8 @@ import { safeUrl } from '../../utils/links'
 import { colorKey, isFinished, PRIORITY_LABEL, STATUS_LABEL, targetName, waitingOn } from '../../utils/tasks'
 import { Icon } from '../UI/Icon'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
-import { DetailsMarks } from '../UI/Details'
-import { ItemIcon } from '../UI/ItemIcon'
+import { EntryRow } from '../Entries/EntryRow'
+import type { EntrySize } from '../../utils/entries'
 
 interface Props {
   task: Task
@@ -23,8 +23,8 @@ interface Props {
   note?: string
 }
 
-export function TaskCard({ task, showList = true, onTicked, day, dayActions, note }: Props) {
-  const { household, selectTask, selectedTaskId, canEdit, textAbout } = useApp()
+export function TaskCard({ task, showList = true, onTicked, day, dayActions, note, size = 'medium' }: Props & { size?: EntrySize }) {
+  const { household, canEdit } = useApp()
   const { lists, conflicts, taskById, dependents } = useData()
   const list = lists.find((l) => l.id === task.listId)
   const conflict = conflicts.get(task.id)
@@ -41,27 +41,17 @@ export function TaskCard({ task, showList = true, onTicked, day, dayActions, not
     updateTask(task.id, withStatus(task, checked ? 'done' : 'todo', day))
   }
 
+  const link = task.url ? safeUrl(task.url) : null
   return (
-    <article
-      className={`task-card color-${colorKey(task, list)}${selectedTaskId === task.id ? ' selected' : ''}${conflict ? ' conflict' : ''}${waiting.length ? ' waiting' : ''}`}
-      onClick={() => selectTask(task.id)}
-    >
-      <input
-        type="checkbox"
-        aria-label="Done"
-        checked={task.status === 'done'}
-        disabled={!editable}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => toggleDone(e.target.checked)}
-      />
-      <div className="grow">
-        <div className="task-title">
-          <ItemIcon value={task.customIcon} />
-          {task.title}
-          <DetailsMarks links={task.links} images={task.images} />
-        </div>
-        {note && <div className="muted small">{note}</div>}
-        <div className="chips">
+    <EntryRow
+      as="div"
+      entry={task}
+      size={size}
+      className={`task-row color-${colorKey(task, list)}${finished ? ' finished' : ''}${conflict ? ' conflict' : ''}${waiting.length ? ' waiting' : ''}`}
+      check={{ checked: task.status === 'done', disabled: !editable, label: `Done: ${task.title}`, onChange: toggleDone }}
+      chips={
+        <>
+          {note && <span className="muted small">{note}</span>}
           <span className={`badge priority-${task.priority}`}>{PRIORITY_LABEL[task.priority]}</span>
           {task.status === 'doing' && <span className="badge">{STATUS_LABEL.doing}</span>}
           {task.status === 'canceled' && <span className="badge canceled">✕ {STATUS_LABEL.canceled}</span>}
@@ -77,11 +67,12 @@ export function TaskCard({ task, showList = true, onTicked, day, dayActions, not
             </span>
           )}
           {showList && list && (
-            <span
-              className="badge"
-              title={`Who can see it: ${audienceLabel(audienceOf(list))}`}
-            >
-              {list.visibility !== 'family' && <><Icon name={AUDIENCE_ICON[audienceOf(list)]} />{' '}</>}
+            <span className="badge" title={`Who can see it: ${audienceLabel(audienceOf(list))}`}>
+              {list.visibility !== 'family' && (
+                <>
+                  <Icon name={AUDIENCE_ICON[audienceOf(list)]} />{' '}
+                </>
+              )}
               {list.name}
             </span>
           )}
@@ -109,64 +100,34 @@ export function TaskCard({ task, showList = true, onTicked, day, dayActions, not
               <Icon name="chain" /> {task.dependsOn.length}
             </span>
           )}
-          {conflict && <span className="badge danger"><Icon name="warning" /> {conflict}</span>}
-        </div>
-      </div>
-      {task.url && safeUrl(task.url) && (
-        <a
-          className="row-action"
-          href={safeUrl(task.url)!}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Open the link"
-          aria-label={`Open the link for ${task.title}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Icon name="external" />
-        </a>
-      )}
-      {dayActions && editable && !finished && (
-        <>
-          {dayActions.push && (
-          <button
-            type="button"
-            className="row-action"
-            title="Push to the next day"
-            aria-label={`Push ${task.title} to the next day`}
-            onClick={(e) => {
-              e.stopPropagation()
-              dayActions.push?.()
-            }}
-          >
-            <Icon name="skip" />
-          </button>
+          {conflict && (
+            <span className="badge danger">
+              <Icon name="warning" /> {conflict}
+            </span>
           )}
-          <button
-            type="button"
-            className="row-action"
-            title="Won't do (cancel it)"
-            aria-label={`Won't do ${task.title}`}
-            onClick={(e) => {
-              e.stopPropagation()
-              dayActions.skip()
-            }}
-          >
-            <Icon name="close" />
-          </button>
         </>
-      )}
-      <button
-        type="button"
-        className="row-action"
-        title="Text someone about this"
-        aria-label={`Text someone about ${task.title}`}
-        onClick={(e) => {
-          e.stopPropagation()
-          textAbout(task.id)
-        }}
-      >
-        <Icon name="message" />
-      </button>
-    </article>
+      }
+      trail={
+        <>
+          {link && (
+            <a className="row-action" href={link} target="_blank" rel="noopener noreferrer" title="Open the link" aria-label={`Open the link for ${task.title}`}>
+              <Icon name="external" />
+            </a>
+          )}
+          {dayActions && editable && !finished && (
+            <>
+              {dayActions.push && (
+                <button type="button" className="row-action" title="Push to the next day" aria-label={`Push ${task.title} to the next day`} onClick={() => dayActions.push?.()}>
+                  <Icon name="skip" />
+                </button>
+              )}
+              <button type="button" className="row-action" title="Won't do (cancel it)" aria-label={`Won't do ${task.title}`} onClick={() => dayActions.skip()}>
+                <Icon name="close" />
+              </button>
+            </>
+          )}
+        </>
+      }
+    />
   )
 }

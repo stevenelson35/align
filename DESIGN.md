@@ -579,6 +579,27 @@ notifications, game invites; 5 cleanup and docs.
   logins for real uids (password align-dev) for dry runs.
 - **Deploy order:** rules + indexes (wait until the indexes finish building), paste the Apps Script and deploy a new
   version, run the live migration, then the web app.
+- **Deployed 2026-11-13** (`55d8a6c`): rules + indexes (all 14 built), Apps Script new version, live migration (1
+  document), web; verified the live bundle.
+
+#### Phase 2 (built 2026-11-13; not yet committed)
+- **One entry row** (`components/Entries/EntryRow.tsx`) for every list kind: checklists, notes, task lists and
+  projects (`TaskCard` is now an EntryRow, so Today's To Do and the Tasks page use it too), links, pick lists,
+  contacts, gift lists and the flashcard list. Sizes (`utils/entries.ts`; `useEntrySize`, per list per device;
+  `EntrySizeSwitch` in each list's header): **simple** (check, icon, title, a text mark), **medium** (+ marks for
+  extra links / pictures and the kind's facts in `chips`: task badges and dates, link address and reading badge,
+  pick-list stars, a person's company and tags, gift summary / secret / claims, a card's answer), **detail** (text,
+  links, pictures, related notes and the kind's `more`, e.g. a person's numbers and addresses, in place). The old
+  per-kind toggles became sizes (links: Addresses / Notes; flashcards: Show answers).
+- **Same actions everywhere:** tap the title to open it in place (detail + buttons); ⋯ or press-and-hold (500 ms,
+  touch) opens a menu: Open, Edit, Move to another list, Comment, Send (text), Pin to Today. One-tap 💬 stays on the
+  row (not for people, who have their own call / text / email). Kinds keep their own quick actions in `trail` (a
+  task's ↗ / push / won't do, a person's call / text / email, a title's stars, a card's ✓ / ✗); a link's name still
+  opens the site.
+- **Panels open in a mode:** `app.openEntry(id, 'view' | 'edit' | 'comment')` (AppContext `panelMode`): Edit and Move
+  open the item form directly, Comment scrolls the panel to its comments (EntryExtras). Checklist items already had
+  links, pictures and note references in Edit; the menu makes that reachable from the row.
+- Today's sections, Shortcuts and search still use their own rows: Phase 3 rebuilds Today as tiles on this row.
 
 
 ### Location sign-in quota: local fix awaiting Apps Script deployment

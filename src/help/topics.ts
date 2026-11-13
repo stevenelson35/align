@@ -257,6 +257,8 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: 'Notes, links, pictures and comments',
     tip: 'Any entry can have a note, named links, pictures and comments, and “Text about this” sends someone a link to it.',
     body: [
+      'Every list shows its entries the same way. Simple / Medium / Detail (by the list’s name, remembered on this device) chooses how much each row shows: Simple is the title (and a checkbox where there is one); Medium adds marks for links and pictures and the entry’s own facts (a task’s dates, a link’s address, a title’s stars); Detail shows the text, links and pictures in place.',
+      'Tap a title to open it in place, with Open, Edit, Move, Comment, Send and Pin to Today. ⋯ at the end of the row (or pressing and holding the row) opens the same as a menu. 💬 texts someone about it in one tap. A link’s name opens the site; a person keeps call, text and email on the row.',
       'Tasks, checklist items, notes, links, vote options and goal days all share the same details:',
       '• Note: anything worth writing down.',
       '• Links: a name (shown) and an address (Show address reveals it); tapping opens it in a new tab.',

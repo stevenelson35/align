@@ -12,6 +12,8 @@ import { ListHeader } from './ListHeader'
 import { TaskCard } from './TaskCard'
 import { Icon } from '../UI/Icon'
 import { splitTitleNote } from '../../utils/quickAdd'
+import { EntrySizeSwitch } from '../Entries/EntrySizeSwitch'
+import { useEntrySize } from '../../hooks/useEntrySize'
 
 export function ListView({ list }: { list: List }) {
   const app = useApp()
@@ -26,6 +28,7 @@ export function ListView({ list }: { list: List }) {
   const [adding, setAdding] = useState(false)
   const [ordering, setOrdering] = useState(false)
   const [sequence, setSequence] = useState<string[]>([])
+  const [size, setSize] = useEntrySize(list)
 
   const listTasks = tasks.filter((t) => t.listId === list.id)
   const order = sort
@@ -103,6 +106,7 @@ export function ListView({ list }: { list: List }) {
   return (
     <section>
       <ListHeader list={list}>
+        <EntrySizeSwitch value={size} onChange={setSize} />
         {listTasks.some((t) => t.calendar) && <CalendarActions />}
         {list.kind === 'project' && (
           <>
@@ -169,7 +173,7 @@ export function ListView({ list }: { list: List }) {
               if (ordering && app.canEdit(t) && !isFinished(t)) {
                 e.preventDefault(); e.stopPropagation(); toggleSequence(t.id)
               }
-            }}><TaskCard task={t} showList={false} /></div>
+            }}><TaskCard task={t} showList={false} size={size} /></div>
           </div>
         ))}
         {shown.length === 0 && <p className="muted">{doneCount ? 'Nothing left to do.' : 'No tasks yet.'}</p>}

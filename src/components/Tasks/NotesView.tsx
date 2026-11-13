@@ -3,12 +3,14 @@ import { addTaskNow } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
 import { ListHeader } from './ListHeader'
-import { DetailsMarks } from '../UI/Details'
 import { Icon } from '../UI/Icon'
 import { splitTitleNote } from '../../utils/quickAdd'
-import { ItemIcon } from '../UI/ItemIcon'
+import { EntryRow } from '../Entries/EntryRow'
+import { EntrySizeSwitch } from '../Entries/EntrySizeSwitch'
+import { useEntrySize } from '../../hooks/useEntrySize'
 
-/** Notes: reference info (Wi-Fi password, sizes, the plumber's number). Alphabetical; tap one to read or edit it. */
+/** Notes: reference info (Wi-Fi password, sizes, the plumber's number). Alphabetical, as entry rows (Detail shows the
+ *  text in place). */
 export function NotesView({ list }: { list: List }) {
   const app = useApp()
   const { listItems } = useData()
@@ -16,6 +18,7 @@ export function NotesView({ list }: { list: List }) {
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
   const notes = listItems.filter((t) => t.listId === list.id).sort((a, b) => a.title.localeCompare(b.title))
+  const [size, setSize] = useEntrySize(list)
 
   function add(e: FormEvent) {
     e.preventDefault()
@@ -33,7 +36,9 @@ export function NotesView({ list }: { list: List }) {
 
   return (
     <section>
-      <ListHeader list={list} />
+      <ListHeader list={list}>
+        <EntrySizeSwitch value={size} onChange={setSize} />
+      </ListHeader>
       {editable && (
         <form className="row add-task" onSubmit={add}>
           <input placeholder="New note… (title: text)" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="New note title" />
@@ -43,23 +48,11 @@ export function NotesView({ list }: { list: List }) {
         </form>
       )}
       {error && <p className="error">{error}</p>}
-      <div className="note-list">
+      <ul className="entry-list">
         {notes.map((n) => (
-          <button
-            type="button"
-            key={n.id}
-            className={`note-card${app.selectedTaskId === n.id ? ' selected' : ''}`}
-            onClick={() => app.selectTask(n.id)}
-          >
-            <strong>
-              <ItemIcon value={n.customIcon} />
-              {n.title}
-              <DetailsMarks links={n.links} images={n.images} />
-            </strong>
-            {n.notes ? <span className="note-preview">{n.notes}</span> : <span className="muted small">Empty</span>}
-          </button>
+          <EntryRow key={n.id} entry={n} size={size} />
         ))}
-      </div>
+      </ul>
       {notes.length === 0 && <p className="muted">No notes yet.</p>}
     </section>
   )

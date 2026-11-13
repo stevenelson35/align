@@ -350,3 +350,12 @@ export const matches = (t: Task, query: string) =>
     .toLowerCase()
     .split(/\s+/)
     .every((w) => haystack(t).includes(w))
+
+/** "Apr 12, 1985" or "Apr 12" (no year). */
+export function birthdayText(b: string): string {
+  const m = b.match(/^(\d{4}|-)-?(\d{2})-(\d{2})$/)
+  if (!m) return b
+  const date = new Date(Date.UTC(2000, Number(m[2]) - 1, Number(m[3])))
+  const md = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  return /^\d{4}$/.test(m[1]) ? `${md}, ${m[1]}` : md
+}

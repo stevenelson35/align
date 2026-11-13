@@ -38,6 +38,9 @@ ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web   # the USER runs this
   updatedAt }`** (never `deleteDoc` them; rules `isTombstone`), and **a write that narrows who can see something also
   stamps `household.accessChangedAt`** (`audienceNarrows`). A write that skips these is invisible to other devices
   until their daily full load.
+- **List rows use `EntryRow`** (`components/Entries/`, refactor phase 2): sizes simple / medium / detail per list
+  (`useEntrySize`), the kind's facts in `chips`, quick actions in `trail`, extra detail in `more`; the actions menu
+  (Open, Edit, Move, Comment, Send, Pin) opens panels via `app.openEntry(id, mode)`. Don't add a new per-kind row.
 - **Checklist items, notes and links are task docs** kept in `DataState.listItems`, not `tasks`. They stay out of task views, chat task commands and scheduling.
 - Hash routing (static hosting on Turbify, no rewrites), including `#/task/<id>` links. No spaces in generated names.
 - Match the existing style: functional React components, typed Firestore data in `src/types.ts`, small modules, comments that explain *why*, plain user-facing wording.

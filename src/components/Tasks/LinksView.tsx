@@ -1,13 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import { addReadingTask, addTaskNow, READING_LIST, readingListFor, setPinnedLink } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
-import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { List, Task } from '../../types'
 import { allCategories, cleanCategory, defaultName, linkTree, safeUrl, type LinkNode } from '../../utils/links'
 import { ListHeader } from './ListHeader'
 import { Icon } from '../UI/Icon'
 import { parentsOf } from '../../utils/audience'
-import { DetailsMarks } from '../UI/Details'
+import { EntryRow } from '../Entries/EntryRow'
+import { EntrySizeSwitch } from '../Entries/EntrySizeSwitch'
+import { useEntrySize } from '../../hooks/useEntrySize'
 import { ItemIcon } from '../UI/ItemIcon'
 
 /** Links (bookmarks) in a collapsible category tree. Tapping a name opens it in a new tab; 💬 texts the address. */
@@ -16,8 +17,7 @@ export function LinksView({ list }: { list: List }) {
   const { listItems, lists, tasks } = useData()
   const editable = app.canEdit(list)
   const links = listItems.filter((t) => t.listId === list.id)
-  const [showUrls, setShowUrls] = useStoredFlag(`align-links-urls:${list.id}`, false)
-  const [showNotes, setShowNotes] = useStoredFlag(`align-links-notes:${list.id}`, true)
+  const [size, setSize] = useEntrySize(list)
   const closedKey = `align-links-closed:${list.id}`
   const [closed, setClosed] = useState<Set<string>>(() => new Set(JSON.parse(localStorage.getItem(closedKey) ?? '[]') as string[]))
   const [url, setUrl] = useState('')
@@ -80,39 +80,34 @@ export function LinksView({ list }: { list: List }) {
     }
   }
 
+  // One entry row per link (simple: the name; medium: + its address and reading badge; detail: + its note and
+  // the rest). The name opens the site; ⋯ has the rest.
   const row = (l: Task) => {
     const href = safeUrl(l.url)
+    const reading = readingTask.get(l.id)
     return (
-      <li key={l.id} className="link-row">
-        <div className="grow">
-          {href ? (
-            <a href={href} target="_blank" rel="noopener noreferrer" className="link-name">
-              <ItemIcon value={l.customIcon} /> {l.title} <span aria-hidden="true">↗</span>
+      <EntryRow
+        key={l.id}
+        entry={l}
+        size={size}
+        title={
+          href ? (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="entry-title link-name">
+              <ItemIcon value={l.customIcon} /> <span className="entry-title-text">{l.title}</span> <Icon name="external" />
             </a>
-          ) : (
-            <span className="link-name"><ItemIcon value={l.customIcon} /> {l.title}</span>
-          )}
-          <DetailsMarks links={l.links} images={l.images} />
-          {showUrls && l.url && <div className="muted small link-url">{l.url}</div>}
-          {showNotes && l.notes && <div className="small link-note">{l.notes}</div>}
-        </div>
-        {readingTask.has(l.id) && (
-          <button
-            type="button"
-            className={`badge reading${readingTask.get(l.id)!.status === 'done' ? ' read' : ''}`}
-            onClick={() => app.navigate({ view: 'task', taskId: readingTask.get(l.id)!.id })}
-            title="Open its reading-list task"
-          >
-            {readingTask.get(l.id)!.status === 'done' ? '✓ read' : <><Icon name="book" /> to read</>}
-          </button>
-        )}
-        <button type="button" className="row-action" title="Edit" aria-label={`Edit ${l.title}`} onClick={() => app.selectTask(l.id)}>
-          <Icon name="edit" />
-        </button>
-        <button type="button" className="row-action" title="Text someone this link" aria-label={`Text someone ${l.title}`} onClick={() => app.textAbout(l.id)}>
-          <Icon name="message" />
-        </button>
-      </li>
+          ) : undefined
+        }
+        chips={
+          <>
+            {l.url && <span className="link-url">{l.url}</span>}
+            {reading && (
+              <button type="button" className={`badge reading${reading.status === 'done' ? ' read' : ''}`} onClick={() => app.navigate({ view: 'task', taskId: reading.id })} title="Open its reading-list task">
+                {reading.status === 'done' ? '✓ read' : <><Icon name="book" /> to read</>}
+              </button>
+            )}
+          </>
+        }
+      />
     )
   }
   const node = (n: LinkNode, depth: number) => (
@@ -122,7 +117,7 @@ export function LinksView({ list }: { list: List }) {
       </button>
       {!closed.has(n.path) && (
         <>
-          <ul className="link-list">{n.links.map(row)}</ul>
+          <ul className="entry-list link-list">{n.links.map(row)}</ul>
           {n.children.map((c) => node(c, depth + 1))}
         </>
       )}
@@ -133,12 +128,7 @@ export function LinksView({ list }: { list: List }) {
   return (
     <section>
       <ListHeader list={list}>
-        <label className="inline small">
-          <input type="checkbox" checked={showUrls} onChange={(e) => setShowUrls(e.target.checked)} /> Addresses
-        </label>
-        <label className="inline small">
-          <input type="checkbox" checked={showNotes} onChange={(e) => setShowNotes(e.target.checked)} /> Notes
-        </label>
+        <EntrySizeSwitch value={size} onChange={setSize} />
       </ListHeader>
       {editable && (
         <form className="link-add" onSubmit={add}>
@@ -180,7 +170,7 @@ export function LinksView({ list }: { list: List }) {
         </form>
       )}
       {error && <p className="error">{error}</p>}
-      <ul className="link-list">{tree.links.map(row)}</ul>
+      <ul className="entry-list link-list">{tree.links.map(row)}</ul>
       {tree.children.map((c) => node(c, 0))}
       {links.length === 0 && <p className="muted">No links yet. Paste an address above; add a category like "Home/Utilities" to group them.</p>}
     </section>

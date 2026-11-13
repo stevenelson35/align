@@ -7,7 +7,9 @@ import type { List, Task } from '../../types'
 import { averageRating, lastDone, pickKind, pickOne, rankPicks, REST_DAYS, type Ranked } from '../../utils/picks'
 import { people, targetName } from '../../utils/tasks'
 import { ListHeader } from '../Tasks/ListHeader'
-import { DetailsMarks } from '../UI/Details'
+import { EntryRow } from '../Entries/EntryRow'
+import { EntrySizeSwitch } from '../Entries/EntrySizeSwitch'
+import { useEntrySize } from '../../hooks/useEntrySize'
 import { Icon } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { StarRating } from './StarRating'
@@ -28,6 +30,7 @@ export function PicksView({ list }: { list: List }) {
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [sort, setSort] = useState<Sort>('tonight')
+  const [size, setSize] = useEntrySize(list)
   const [picked, setPicked] = useState<string | null>(null)
   // Who's there tonight, remembered per list on this device; you're in it until you untick yourself.
   const [away, toggleAway] = useStoredSet(`align-picks-away:${list.id}`)
@@ -69,7 +72,9 @@ export function PicksView({ list }: { list: List }) {
 
   return (
     <section className="picks-view">
-      <ListHeader list={list} />
+      <ListHeader list={list}>
+        <EntrySizeSwitch value={size} onChange={setSize} />
+      </ListHeader>
 
       <div className="day-section picks-tonight">
         <SectionHeader icon="star" title="Tonight" help="picks" />
@@ -138,31 +143,33 @@ export function PicksView({ list }: { list: List }) {
           </form>
         )}
         {error && <p className="error small">{error}</p>}
-        <ul className="picks-list">
+        <ul className="entry-list picks-list">
           {sorted.map((t) => {
             const avg = averageRating(t)
             const count = Object.keys(t.ratings ?? {}).length
             const last = lastDone(t)
             const resting = last !== undefined && rankOf.get(t.id) === undefined && watching.length > 0
             return (
-              <li key={t.id} className={`pick-row${app.selectedTaskId === t.id ? ' selected' : ''}${resting ? ' resting' : ''}`}>
-                <div className="grow">
-                  <button type="button" className="link pick-title" onClick={() => app.selectTask(t.id)}>
-                    <ItemIcon value={t.customIcon} /> {t.title}
-                  </button>
-                  <DetailsMarks links={t.links} images={t.images} />
-                  <div className="muted small">
+              <EntryRow
+                key={t.id}
+                entry={t}
+                size={size}
+                className={resting ? 'resting' : ''}
+                chips={
+                  <span>
                     {avg !== undefined ? `★ ${avg} (${count})` : 'Not rated yet'}
                     {last && ` · ${watchedLine(t)}`}
                     {resting && ' · resting'}
-                  </div>
-                </div>
-                {app.isMember ? (
-                  <StarRating value={t.ratings?.[app.uid]} onChange={(stars) => ratePick(t.id, app.uid, stars).catch(fail)} label={`Your rating for ${t.title}`} />
-                ) : (
-                  <StarRating value={avg !== undefined ? Math.round(avg) : undefined} label={`${t.title}, average`} />
-                )}
-              </li>
+                  </span>
+                }
+                trail={
+                  app.isMember ? (
+                    <StarRating value={t.ratings?.[app.uid]} onChange={(stars) => ratePick(t.id, app.uid, stars).catch(fail)} label={`Your rating for ${t.title}`} />
+                  ) : (
+                    <StarRating value={avg !== undefined ? Math.round(avg) : undefined} label={`${t.title}, average`} />
+                  )
+                }
+              />
             )
           })}
         </ul>

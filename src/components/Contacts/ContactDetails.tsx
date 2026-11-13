@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { commentThread, deleteRemovedImages, deleteTask, updateTask } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List, Task } from '../../types'
-import { cleanTags, CONTACT_LABELS, mailUrl, mapUrl, tagsIn, telUrl, type ContactLabel, type Labeled } from '../../utils/contacts'
+import { cleanTags, CONTACT_LABELS, mailUrl, mapUrl, tagsIn, telUrl, type ContactLabel, type Labeled, birthdayText } from '../../utils/contacts'
 import { cleanLinks, cleanUrls, detailsOf, MAX_IMAGES, taskDetails } from '../../utils/details'
 import { smsUrl } from '../../utils/text'
 import { AutoTextarea } from '../UI/AutoTextarea'
@@ -15,15 +15,6 @@ import { usePinned } from '../../hooks/usePinned'
 import { useTodayItems } from '../../hooks/useTodayItems'
 
 type Contact = NonNullable<Task['contact']>
-
-/** "Apr 12, 1985" or "Apr 12" (no year). */
-function birthdayText(b: string): string {
-  const m = b.match(/^(\d{4}|-)-?(\d{2})-(\d{2})$/)
-  if (!m) return b
-  const date = new Date(Date.UTC(2000, Number(m[2]) - 1, Number(m[3])))
-  const md = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
-  return /^\d{4}$/.test(m[1]) ? `${md}, ${m[1]}` : md
-}
 
 /** A contact in the side panel: a view with tap-to-call / text / email / map, and Edit for the form. */
 export function ContactDetails({ item, list }: { item: Task; list: List }) {

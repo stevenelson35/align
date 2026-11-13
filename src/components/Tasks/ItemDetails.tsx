@@ -29,7 +29,8 @@ import { ItemIconPicker } from '../UI/ItemIcon'
 export function ItemDetails({ item, list }: { item: Task; list: List }) {
   const app = useApp()
   const { lists } = useData()
-  const [editing, setEditing] = useState(false)
+  // Opened with Edit or Move (a row's ⋯ menu): straight to the form.
+  const [editing, setEditing] = useState(app.panelMode === 'edit')
   const onToday = useTodayItems()
   if (list.kind === 'contacts') return <ContactDetails item={item} list={list} />
   if (editing) return <ItemEditForm item={item} list={list} onDone={() => setEditing(false)} />

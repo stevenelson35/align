@@ -7,7 +7,10 @@ import { canAddIdeas, canClaim, claimState, cleanGift, giftSummary, isRecipient,
 import { targetName } from '../../utils/tasks'
 import { ListHeader } from '../Tasks/ListHeader'
 import { Icon } from '../UI/Icon'
-import { ItemIcon } from '../UI/ItemIcon'
+import { EntryRow } from '../Entries/EntryRow'
+import { EntrySizeSwitch } from '../Entries/EntrySizeSwitch'
+import { useEntrySize } from '../../hooks/useEntrySize'
+import type { EntrySize } from '../../utils/entries'
 
 /** When an item was added, so the list keeps the order things were thought of. */
 const added = (t: Task) => (t.createdAt ? t.createdAt.seconds : Infinity)
@@ -27,11 +30,14 @@ export function GiftsView({ list }: { list: List }) {
   const items = listItems.filter((t) => t.listId === list.id || (secret && t.listId === secret.id)).sort((a, b) => added(a) - added(b))
   const outside = !list.recipientId
   // A list someone else made and kept from the recipient: everything on it is already a surprise.
+  const [size, setSize] = useEntrySize(list)
   const hidden = !mine && !!list.recipientId && (list.visibility === 'private' ? list.ownerId !== list.recipientId : list.visibility === 'shared' && !list.sharedWith?.includes(list.recipientId))
 
   return (
     <section className="gifts-view">
-      <ListHeader list={list} />
+      <ListHeader list={list}>
+        <EntrySizeSwitch value={size} onChange={setSize} />
+      </ListHeader>
       <p className="gift-banner small">
         <Icon name="gift" />{' '}
         {mine
@@ -44,9 +50,9 @@ export function GiftsView({ list }: { list: List }) {
       </p>
       {canClaim(app.member.role) && <AddGift list={list} secretAllowed={!mine && !outside && !hidden} name={name} />}
       {claimError && <p className="error small">{claimError}</p>}
-      <ul className="gift-list">
+      <ul className="entry-list gift-list">
         {items.map((t) => (
-          <GiftRow key={t.id} item={t} list={t.listId === list.id ? list : secret!} secret={t.listId !== list.id} claims={mine ? null : claims} />
+          <GiftRow key={t.id} item={t} list={t.listId === list.id ? list : secret!} secret={t.listId !== list.id} claims={mine ? null : claims} size={size} />
         ))}
       </ul>
       {!items.length && <p className="muted small">No ideas yet. {mine ? 'Add what you’d like: sizes, colors, links.' : 'Add one above.'}</p>}
@@ -54,21 +60,25 @@ export function GiftsView({ list }: { list: List }) {
   )
 }
 
-/** One idea: title, ×qty · color · size, secret / notes / links marks, and (for everyone but the recipient) its claims. */
-function GiftRow({ item, list, secret, claims }: { item: Task; list: List; secret: boolean; claims: GiftClaim[] | null }) {
-  const app = useApp()
+/**
+ * One idea as an entry row: title; medium adds ×qty · color · size, the secret badge and (for everyone but the
+ * recipient) who's getting it, with I'll get it / Bought.
+ */
+function GiftRow({ item, list, secret, claims, size }: { item: Task; list: List; secret: boolean; claims: GiftClaim[] | null; size: EntrySize }) {
   const summary = giftSummary(item)
   return (
-    <li className={`gift-row${app.selectedTaskId === item.id ? ' selected' : ''}`}>
-      <button type="button" className="gift-main" onClick={() => app.selectTask(item.id)}>
-        <strong><ItemIcon value={item.customIcon} /> {item.title}</strong>
-        <span className="muted small">
-          {[summary, item.noteIds?.length ? `${item.noteIds.length} note${item.noteIds.length > 1 ? 's' : ''}` : '', item.links?.length ? 'link' : ''].filter(Boolean).join(' · ')}
+    <EntryRow
+      entry={item}
+      size={size}
+      chips={
+        <>
+          {summary && <span>{summary}</span>}
+          {item.noteIds?.length ? <span>{`${item.noteIds.length} note${item.noteIds.length > 1 ? 's' : ''}`}</span> : null}
           {secret && <span className="badge gift-secret">secret idea</span>}
-        </span>
-      </button>
-      {claims && <ClaimControls item={item} list={list} claims={claims} />}
-    </li>
+          {claims && <ClaimControls item={item} list={list} claims={claims} />}
+        </>
+      }
+    />
   )
 }
 

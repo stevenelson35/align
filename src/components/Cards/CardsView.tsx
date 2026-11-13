@@ -17,6 +17,9 @@ import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { matchCard, nearbyAnswers, setPrefers, type Place } from '../../utils/geo'
 import { LearnMore } from './LearnMore'
 import { Neighbors, PlaceMap } from './PlaceMap'
+import { EntryRow } from '../Entries/EntryRow'
+import { EntrySizeSwitch } from '../Entries/EntrySizeSwitch'
+import { useEntrySize } from '../../hooks/useEntrySize'
 
 /** When a card was added, so "In order" follows the order they were added (or imported). */
 const added = (t: Task) => (t.createdAt ? t.createdAt.seconds + t.createdAt.nanoseconds / 1e9 : Infinity)
@@ -56,7 +59,7 @@ export function CardsView({ list }: { list: List }) {
   const [revealed, setRevealed] = useState(false)
   const [run, setRun] = useState(0)
   const [shuffling, setShuffling] = useState(false)
-  const [showBacks, setShowBacks] = useState(false)
+  const [cardSize, setCardSize] = useEntrySize(list)
   // The page opens on Study alone; "Cards (50)" lists them, and Edit there adds, imports and edits the list. A new,
   // empty set opens ready for adding.
   const [showCards, setShowCards] = useState(false)
@@ -347,11 +350,7 @@ export function CardsView({ list }: { list: List }) {
 
       <div className="day-section">
         <SectionHeader icon="list" title="Cards" count={cards.length} onTitleClick={() => setShowCards(!listing)} expanded={listing}>
-          {listing && cards.length > 0 && (
-            <button type="button" className="link small" onClick={() => setShowBacks(!showBacks)}>
-              {showBacks ? 'Hide answers' : 'Show answers'}
-            </button>
-          )}
+          {listing && cards.length > 0 && <EntrySizeSwitch value={cardSize} onChange={setCardSize} />}
           {listing && editable && cards.length > 0 && (
             <button type="button" className="link small" onClick={() => setEditing(!editing)} aria-pressed={editing} title={editing ? 'Done adding and editing' : 'Add cards, import a set, or edit the list'}>
               <Icon name={editing ? 'check' : 'edit'} /> {editing ? 'Done' : 'Edit'}
@@ -365,19 +364,22 @@ export function CardsView({ list }: { list: List }) {
         </SectionHeader>
         {editing && <AddCards list={list} onError={fail} />}
         {listing && (
-          <ul className="cards-list">
+          <ul className="entry-list cards-list">
             {cards.map((c) => {
               const r = resultFor(c, app.uid)
+              // Simple: the front and how you're doing; medium adds the answer; detail shows it all in place.
               return (
-                <li key={c.id} className={`card-row${app.selectedTaskId === c.id ? ' selected' : ''}`}>
-                  <button type="button" className="link card-front" onClick={() => app.selectTask(c.id)}>
-                    <ItemIcon value={c.customIcon} /> {c.title}
-                  </button>
-                  {showBacks && <span className="muted small card-back">{c.notes}</span>}
-                  <span className={`card-state small ${r.known ? 'known' : r.wrong ? 'missed' : ''}`} title={r.right || r.wrong ? `✓ ${r.right ?? 0} · ✗ ${r.wrong ?? 0}` : 'Not studied yet'}>
-                    {r.known ? '✓' : r.wrong ? '✗' : '–'}
-                  </span>
-                </li>
+                <EntryRow
+                  key={c.id}
+                  entry={c}
+                  size={cardSize}
+                  chips={c.notes ? <span className="card-back">{c.notes}</span> : null}
+                  trail={
+                    <span className={`card-state small ${r.known ? 'known' : r.wrong ? 'missed' : ''}`} title={r.right || r.wrong ? `✓ ${r.right ?? 0} · ✗ ${r.wrong ?? 0}` : 'Not studied yet'}>
+                      {r.known ? '✓' : r.wrong ? '✗' : '–'}
+                    </span>
+                  }
+                />
               )
             })}
           </ul>

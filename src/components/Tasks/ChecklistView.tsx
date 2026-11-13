@@ -5,9 +5,10 @@ import { useStoredFlag } from '../../hooks/useStoredFlag'
 import type { List, Task } from '../../types'
 import { ListHeader } from './ListHeader'
 import { Icon } from '../UI/Icon'
-import { DetailsMarks } from '../UI/Details'
 import { splitTitleNote } from '../../utils/quickAdd'
-import { ItemIcon } from '../UI/ItemIcon'
+import { EntryRow } from '../Entries/EntryRow'
+import { EntrySizeSwitch } from '../Entries/EntrySizeSwitch'
+import { useEntrySize } from '../../hooks/useEntrySize'
 
 /** When it was added (to the nanosecond: quick additions land in the same second); one still being saved is newest. */
 const added = (t: Task) => (t.createdAt ? t.createdAt.seconds + t.createdAt.nanoseconds / 1e9 : Infinity)
@@ -22,6 +23,7 @@ export function ChecklistView({ list }: { list: List }) {
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [hideChecked, setHideChecked] = useStoredFlag(`align-hide-finished:${list.id}`, false)
+  const [size, setSize] = useEntrySize(list)
 
   const items = listItems.filter((t) => t.listId === list.id)
   const open = items.filter((t) => t.status !== 'done').sort(addedOrder)
@@ -51,7 +53,9 @@ export function ChecklistView({ list }: { list: List }) {
 
   return (
     <section>
-      <ListHeader list={list} />
+      <ListHeader list={list}>
+        <EntrySizeSwitch value={size} onChange={setSize} />
+      </ListHeader>
       {editable && (
         <form className="row add-task" onSubmit={add}>
           <input placeholder="Add an item… (item: details)" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="New item" />
@@ -61,32 +65,20 @@ export function ChecklistView({ list }: { list: List }) {
         </form>
       )}
       {error && <p className="error">{error}</p>}
-      <ul className="checklist">
+      <ul className="entry-list">
         {shown.map((t) => (
-          <li key={t.id} className={`check-item${t.status === 'done' ? ' checked' : ''}${app.selectedTaskId === t.id ? ' selected' : ''}`}>
-            <input
-              type="checkbox"
-              aria-label={`Check off ${t.title}`}
-              checked={t.status === 'done'}
-              disabled={!editable}
-              onChange={(e) => updateTask(t.id, withStatus(t, e.target.checked ? 'done' : 'todo')).catch((err) => setError(String(err)))}
-            />
-            <button type="button" className="check-title" onClick={() => app.selectTask(t.id)}>
-              <ItemIcon value={t.customIcon} />
-              {t.title}
-              <DetailsMarks links={t.links} images={t.images} />
-              {t.notes && <span className="muted small"> · {t.notes.split('\n')[0]}</span>}
-            </button>
-            <button
-              type="button"
-              className="row-action"
-              title="Text someone about this"
-              aria-label={`Text someone about ${t.title}`}
-              onClick={() => app.textAbout(t.id)}
-            >
-              <Icon name="message" />
-            </button>
-          </li>
+          <EntryRow
+            key={t.id}
+            entry={t}
+            size={size}
+            className={t.status === 'done' ? 'checked' : ''}
+            check={{
+              checked: t.status === 'done',
+              disabled: !editable,
+              label: `Check off ${t.title}`,
+              onChange: (on) => updateTask(t.id, withStatus(t, on ? 'done' : 'todo')).catch((err) => setError(String(err))),
+            }}
+          />
         ))}
       </ul>
       {items.length === 0 && <p className="muted">Nothing on this list yet.</p>}

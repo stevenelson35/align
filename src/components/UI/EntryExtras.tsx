@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useApp } from '../../hooks/useApp'
 import type { Comment } from '../../types'
 import type { Details } from '../../utils/details'
@@ -42,7 +42,12 @@ export function EntryExtras({
   /** A line above the comments (e.g. a gift: the recipient can read them). */
   commentsNote?: ReactNode
 }) {
-  const { isMember } = useApp()
+  const { isMember, panelMode } = useApp()
+  // Opened with Comment (a row's ⋯ menu): bring the comments into view.
+  const commentsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (panelMode === 'comment') setTimeout(() => commentsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 80)
+  }, [panelMode])
   const [seed, setSeed] = useState<{ key: number; message: string } | null>(startTextOpen ? { key: 0, message: '' } : null)
   const textComment = (c: Comment) => {
     setSeed({ key: Date.now(), message: c.text })
@@ -53,7 +58,7 @@ export function EntryExtras({
     <div className="entry-extras">
       <DetailsView note={details.note} links={details.links} images={details.images} alt={alt} />
       <RelatedNotes noteIds={noteIds} />
-      <div className="entry-section">
+      <div className="entry-section" ref={commentsRef}>
         <h4>
           <Icon name="message" /> Comments
           <HelpTip topic="details" label="comments, links and pictures" />
