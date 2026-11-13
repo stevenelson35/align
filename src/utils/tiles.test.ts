@@ -5,19 +5,29 @@ describe('Today tiles', () => {
   it('starts from the old arrangement: main sections, To Do, Shortcuts as a group, then More…', () => {
     const t = defaultTiles({})
     const { main, more } = splitMore(t)
-    expect(main).toEqual(['panel:goals', 'panel:rewards', 'panel:games', 'panel:map', 'panel:contacts', 'panel:photos', 'panel:daily', 'panel:todo'])
+    expect(main).toEqual(['panel:inbox', 'panel:goals', 'panel:rewards', 'panel:games', 'panel:map', 'panel:contacts', 'panel:photos', 'panel:daily', 'panel:todo'])
     expect(more).toEqual(['panel:gifts', 'panel:lists', 'panel:links', 'panel:projects', 'panel:cards', 'panel:voting', 'panel:invest'])
     const mine = defaultTiles({ todayMore: ['daily', '!voting'], todayItems: ['c1', 'l2'] })
     expect(splitMore(mine).main).toEqual([
-      'panel:goals', 'panel:rewards', 'panel:games', 'panel:map', 'panel:contacts', 'panel:gifts', 'panel:lists', 'panel:links',
+      'panel:inbox', 'panel:goals', 'panel:rewards', 'panel:games', 'panel:map', 'panel:contacts', 'panel:gifts', 'panel:lists', 'panel:links',
       'panel:projects', 'panel:cards', 'panel:photos', 'panel:voting', 'panel:todo', 'group:Shortcuts', 'entry:c1', 'entry:l2',
     ])
     expect(splitMore(mine).more).toEqual(['panel:daily', 'panel:invest'])
   })
 
   it('uses what you saved, with exactly one More… mark and no repeats', () => {
-    expect(tilesOf({ today: ['panel:todo', 'entry:a', 'entry:a'], todayItems: ['x'] })).toEqual(['panel:todo', 'entry:a', MORE])
-    expect(tilesOf({ today: [MORE, 'panel:goals'] })).toEqual([MORE, 'panel:goals'])
+    expect(tilesOf({ today: ['panel:inbox', 'panel:todo', 'entry:a', 'entry:a'], todayItems: ['x'] })).toEqual(['panel:inbox', 'panel:todo', 'entry:a', MORE])
+    expect(tilesOf({ today: ['panel:inbox', MORE, 'panel:goals'] })).toEqual(['panel:inbox', MORE, 'panel:goals'])
+  })
+
+  it('puts a newly added panel (Inbox) at the top of saved tiles once; taking it off is remembered', () => {
+    expect(tilesOf({ today: ['panel:todo', MORE] })).toEqual(['panel:inbox', 'panel:todo', MORE])
+    expect(tilesOf({ today: [MORE, 'panel:inbox'] })).toEqual([MORE, 'panel:inbox']) // moved into More…: stays there
+    const off = removeTile(tilesOf({ today: ['panel:todo', MORE] }), 'panel:inbox')
+    expect(off).toEqual(['panel:todo', MORE, '-panel:inbox'])
+    expect(tilesOf({ today: off })).toEqual(off)
+    expect(known('-panel:inbox')).toBe(false)
+    expect(addTile(off, 'panel:inbox')).toEqual(['panel:todo', 'panel:inbox', MORE])
   })
 
   it('reads tiles, keeping ids with colons', () => {

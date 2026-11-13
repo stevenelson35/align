@@ -56,7 +56,7 @@ export function PhotoViewer({ photo, onClose, navigation }: {
             Full size <Icon name="external" />
           </a>
         </div>
-        <TextForm key={photo.id} subject={{ title: caption, when: '', link: full }} startOpen={false} label="Text this photo" />
+        <TextForm key={photo.id} subject={{ title: caption, when: '', link: full }} startOpen={false} label="Send this photo" kind="photo" />
       </div>
     </div>
   )

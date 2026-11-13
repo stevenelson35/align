@@ -32,6 +32,7 @@ import { TodoPanel } from '../Tasks/TodoPanel'
 import { Icon } from '../UI/Icon'
 import { ItemIcon } from '../UI/ItemIcon'
 import { SectionHeader } from '../UI/SectionHeader'
+import { InboxPanel } from '../Inbox/InboxPanel'
 import { VotingSection } from '../Voting/VotingSection'
 
 /** One Today tile (utils/tiles.ts). Something no longer here shows nothing (Arrange lists it, to remove). */
@@ -59,6 +60,8 @@ function PanelTile({ id, day }: { id: string; day: string }) {
   switch (id as TodaySection | 'todo') {
     case 'todo':
       return <TodoPanel day={day} />
+    case 'inbox':
+      return <InboxPanel />
     case 'goals':
       return <GoalsStrip day={day} />
     case 'rewards':

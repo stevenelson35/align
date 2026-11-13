@@ -8,6 +8,7 @@ import { DetailsView } from './Details'
 import { Icon, type IconName } from './Icon'
 import { HelpTip } from './HelpTip'
 import { RelatedNotes } from './RelatedNotes'
+import type { Readers } from '../../utils/audience'
 import { ItemIcon } from './ItemIcon'
 
 /** What a text about an entry says: its title, when (if anything), and a link that opens it. */
@@ -15,6 +16,8 @@ export interface TextSubject {
   title: string
   when: string
   link: string
+  /** Who can open it (Send warns if the person picked can't). */
+  readers?: Readers
 }
 
 /**
@@ -67,7 +70,7 @@ export function EntryExtras({
         <Comments thread={thread} onText={textComment} />
       </div>
       {isMember && (
-        <TextForm key={seed?.key ?? 'closed'} subject={text} startOpen={seed !== null} initialMessage={seed?.message ?? ''} label="Text about this" />
+        <TextForm key={seed?.key ?? 'closed'} subject={text} startOpen={seed !== null} initialMessage={seed?.message ?? ''} label="Send about this" />
       )}
     </div>
   )

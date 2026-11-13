@@ -1193,3 +1193,48 @@ describe('investing', () => {
     await assertSucceeds(deleteDoc(doc(db('steve'), 'investing/steve/data/summary')))
   })
 })
+
+describe('inbox', () => {
+  const msg = (over: Record<string, unknown> = {}) => ({ to: 'wife', from: 'steve', kind: 'entry', title: 'Buy milk', text: 'On your way home?', link: '#/task/t1', read: false, pushed: false, createdAt: serverTimestamp(), ...over })
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore() as unknown as Firestore, 'household/main'), { 'members.bot': { role: 'member', displayName: 'Calendar', color: '#57606a', bot: true } })
+    })
+  })
+  it('lets members send to anyone in the family, in a sane shape, as themselves', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'inbox/m1'), msg()))
+    const { text: _note, ...noText } = msg({ to: 'grandma', kind: 'game' })
+    await assertSucceeds(setDoc(doc(db('steve'), 'inbox/m2'), noText)) // a view-only account can receive, no note needed
+    await assertFails(setDoc(doc(db('steve'), 'inbox/x1'), msg({ from: 'wife' })))
+    await assertFails(setDoc(doc(db('steve'), 'inbox/x2'), msg({ to: 'steve' })))
+    await assertFails(setDoc(doc(db('steve'), 'inbox/x3'), msg({ to: 'stranger' })))
+    await assertFails(setDoc(doc(db('steve'), 'inbox/x4'), msg({ read: true })))
+    await assertFails(setDoc(doc(db('steve'), 'inbox/x5'), msg({ pushed: true })))
+    await assertFails(setDoc(doc(db('steve'), 'inbox/x6'), msg({ kind: 'spam' })))
+    await assertFails(setDoc(doc(db('steve'), 'inbox/x7'), msg({ text: 'x'.repeat(2001) })))
+    await assertFails(setDoc(doc(db('steve'), 'inbox/x8'), msg({ extra: 1 })))
+    await assertFails(setDoc(doc(db('steve'), 'inbox/x9'), msg({ createdAt: new Date('2026-01-01') })))
+    await assertFails(setDoc(doc(db('grandma'), 'inbox/x10'), msg({ from: 'grandma' })))
+  })
+  it('lets the recipient read, mark read and clear; the sender only read; others nothing', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'inbox/m1'), msg()))
+    await assertSucceeds(getDoc(doc(db('wife'), 'inbox/m1')))
+    await assertSucceeds(getDoc(doc(db('steve'), 'inbox/m1')))
+    await assertFails(getDoc(doc(db('daughter'), 'inbox/m1')))
+    await assertSucceeds(getDocs(query(collection(db('wife'), 'inbox'), where('to', '==', 'wife'))))
+    await assertFails(getDocs(query(collection(db('daughter'), 'inbox'), where('to', '==', 'wife'))))
+    await assertSucceeds(updateDoc(doc(db('wife'), 'inbox/m1'), { read: true }))
+    await assertFails(updateDoc(doc(db('wife'), 'inbox/m1'), { title: 'changed' }))
+    await assertFails(updateDoc(doc(db('wife'), 'inbox/m1'), { pushed: true }))
+    await assertFails(updateDoc(doc(db('steve'), 'inbox/m1'), { read: true }))
+    await assertFails(deleteDoc(doc(db('steve'), 'inbox/m1')))
+    await assertSucceeds(deleteDoc(doc(db('wife'), 'inbox/m1')))
+  })
+  it('lets the helper account read messages and mark them pushed, nothing else', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'inbox/m1'), msg()))
+    await assertSucceeds(getDocs(query(collection(db('bot'), 'inbox'), where('pushed', '==', false))))
+    await assertSucceeds(updateDoc(doc(db('bot'), 'inbox/m1'), { pushed: true }))
+    await assertFails(updateDoc(doc(db('bot'), 'inbox/m1'), { read: true }))
+    await assertFails(deleteDoc(doc(db('bot'), 'inbox/m1')))
+  })
+})

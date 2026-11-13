@@ -48,7 +48,7 @@ export function Comments({ thread, placeholder = 'Add a comment…', onText }: {
             {editing?.id !== c.id && (
               <span className="comment-actions">
                 {onText && isMember && (
-                  <button type="button" className="link small" onClick={() => onText(c)} title="Text someone about this comment" aria-label="Text someone about this comment">
+                  <button type="button" className="link small" onClick={() => onText(c)} title="Send this comment to someone" aria-label="Send this comment to someone">
                     <Icon name="message" />
                   </button>
                 )}

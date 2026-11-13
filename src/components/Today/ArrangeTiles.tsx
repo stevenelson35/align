@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../../hooks/useApp'
 import { useTodayTiles } from '../../hooks/useTodayTiles'
-import { defaultTiles, moveTile, newGroupName, parseTile, removeTile, renameGroup, tile, type Tile } from '../../utils/tiles'
+import { defaultTiles, isMark, moveTile, newGroupName, parseTile, removeTile, renameGroup, tile, type Tile } from '../../utils/tiles'
 import { Icon } from '../UI/Icon'
 import { useTileInfo } from './useTileInfo'
 
@@ -89,6 +89,7 @@ export function ArrangeTiles({ onDone, onAdd }: { onDone: () => void; onAdd: () 
       <p className="muted small">Drag ⠿ to move (or ↑ ↓). Below the More… line is folded into More…. ✕ only takes it off Today. Pin more with Add…, or “Pin to Today” on any entry or list.</p>
       <ol className="arrange-list" ref={box}>
         {tiles.map((t, i) => {
+          if (isMark(t)) return null // a panel you took off for good (kept so it isn't added back)
           const { kind, id } = parseTile(t)
           if (kind === 'more')
             return (

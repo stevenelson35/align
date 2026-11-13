@@ -93,7 +93,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
         details={{ ...detailsOf(item, false), note: item.notes }}
         alt={item.title}
         thread={commentThread.task(item.id)}
-        text={{ title: item.title, when: '', link: shareLink(item) }}
+        text={{ title: item.title, when: '', link: shareLink(item), readers: item }}
         startTextOpen={app.textingId === item.id}
         noteIds={item.noteIds}
         commentsNote={isGift && list.recipientId && !list.giftSecret && !isRecipient(list, app.uid) ? `${forName} can read these comments: keep surprises in your claim note above.` : undefined}

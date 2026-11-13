@@ -107,7 +107,7 @@ export function BoardView({ board, openItemId }: { board: Board; openItemId?: st
       {/* Bring someone to the board: a real text with its name and link (they may not open Align often). */}
       {app.isMember && (
         <div className="board-text">
-          <TextForm subject={{ title: `Voting: ${board.name}`, when: '', link: boardLink(board.id) }} startOpen={false} label="Text about this board" />
+          <TextForm subject={{ title: `Voting: ${board.name}`, when: '', link: boardLink(board.id) }} startOpen={false} label="Send about this board" kind="board" />
         </div>
       )}
 

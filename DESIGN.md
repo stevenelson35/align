@@ -633,6 +633,31 @@ notifications, game invites; 5 cleanup and docs.
   the open control closes it. Manage is the only way to the Goals page; other people's goals are plain text.
 - Settings no longer offers a Shortcuts panel style (the saved one is ignored).
 
+### Refactor phase 4: Inbox, Send via Align / Text / Both, notifications (2026-11-13)
+- **Data:** `inbox/{id}` `{ to, from, kind: entry|link|board|photo|game|note, title, text?, link, read, pushed,
+  createdAt }` (`firebase/inbox.ts`). Rules: members send as themselves to any member or view-only account (not
+  themselves), in that shape, `read` and `pushed` false, `createdAt` the request time; the recipient reads, flips `read`
+  and deletes; the sender reads; the calendar bot reads and may only set `pushed: true`. Index: `to` + `createdAt` desc.
+  The app listens to the newest 50 (`InboxProvider`, one listener for the badge, tile and banner). Links are stored as
+  `#/…` for Align pages (`utils/inboxLink.ts`) so they open in the app.
+- **Push in seconds:** after writing, the sender's app posts `{action: 'notify', idToken, ids}` to the Apps Script web
+  app (`notify_`): it checks the sign-in, pushes only that sender's messages through FCM (`sendPush_`, now with the
+  message's own `url`) to the recipient's `alertPrefs.push` devices unless `alertPrefs.inboxOff`, and marks each
+  `pushed` (a script-cache claim stops the sweep and the request sending one twice). **Fallback:** `sweepInbox` every
+  15 minutes (`installInboxTrigger`) for unpushed messages up to a day old. Covered by `npm run test:calendar`.
+- **Send** (`TextForm`, every "Send about this"): pick a person, Align / Text / Both (remembered per device,
+  `align-send-via`; view-only accounts text only). Both writes the Inbox message and opens Messages. If the person
+  can't open the entry (`canReadAs`, the rules' canRead), a warning says so before sending. Labels: 💬 "Send this to
+  someone", the row menu's "Send…".
+- **Inbox:** a Today tile (`panel:inbox`; added at the top of saved tiles once via `AUTO_TILES`, and taking it off is
+  remembered as `-panel:inbox`), the ✉ in the top bar with the unread count, `#/inbox` (the whole Inbox, Clear read),
+  and a banner for messages arriving while Align is open (`InboxBanner`; a game invitation stays until played or
+  closed). Tap a message: it's marked read and its link opens.
+- **Game invitations** (`inviteToGame`, Wordle's `createWordleChallenge`) also send an Inbox message linking to the
+  challenge, so invites notify at once; the Games section still handles accepting and playing.
+- **Settings → Notifications** (`NotifyToggle`): this device's push on/off (shared with map alerts) and "Notify me
+  when something arrives in my Inbox"; the Inbox tile nudges once to turn them on.
+
 
 ### Location sign-in quota: local fix awaiting Apps Script deployment
 - The calendar/location script caches the Firebase bot ID token for up to 50 minutes and serializes cache misses,

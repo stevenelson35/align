@@ -12,6 +12,7 @@ import type { IconName } from '../UI/Icon'
 
 export const PANEL_ICON: Record<string, IconName> = {
   todo: 'todo',
+  inbox: 'mail',
   goals: 'goal',
   rewards: 'photo',
   games: 'sparkle',

@@ -86,7 +86,7 @@ export function viewCoveringEditors(
 }
 
 /** Who can read a document, in the stored fields (lists, entries, goals). */
-interface Readers {
+export interface Readers {
   visibility: string
   ownerId: string
   sharedWith?: string[]
@@ -114,4 +114,16 @@ export function audienceNarrows(before: Readers, after: Readers): boolean {
   if (after.visibility === 'family') return !after.viewerVisible // a chosen viewer may lose it
   if (after.visibility === 'private') return [...had].some((u) => u !== after.ownerId)
   return [...had].some((u) => !has.has(u))
+}
+
+/**
+ * Whether this person can read a document (the rules' canRead): its owner if private; every member, and view-only
+ * accounts if allowed, if Family; the chosen people if shared. Used to warn before sending someone something they
+ * can't open.
+ */
+export function canReadAs(d: Readers, uid: string, role: string | undefined): boolean {
+  if (role !== 'member' && role !== 'viewer') return false
+  if (d.visibility === 'private') return role === 'member' && d.ownerId === uid
+  if (d.visibility === 'family') return role === 'member' || d.viewerVisible === true
+  return (d.sharedWith ?? []).includes(uid)
 }

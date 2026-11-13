@@ -131,7 +131,7 @@ function InvestmentListSection({ list, linkedSymbol }: { list: InvestmentList; l
   const linkedMissing = linkedSymbol && loaded && !dataError && !(list.kind === 'holdings' ? symbols.includes(linkedSymbol) : candidates.some((c) => c.symbol === linkedSymbol))
   const textAbout = (symbol: string, name?: string) => <>
     <p className="muted small">The recipient must sign in and have access to this list. Texting a link does not change sharing. The link opens the latest available information, not a saved report.</p>
-    <TextForm subject={{ title: `${symbol}${name && name !== symbol ? ` — ${name}` : ''} · ${list.name}`, when: '', link: investmentLink(list.id, symbol) }} startOpen={false} label="Text about this" />
+    <TextForm subject={{ title: `${symbol}${name && name !== symbol ? ` — ${name}` : ''} · ${list.name}`, when: '', link: investmentLink(list.id, symbol) }} startOpen={false} label="Send about this" kind="note" />
   </>
   const fail = (err: unknown) => setError(err instanceof Error ? err.message : String(err))
 

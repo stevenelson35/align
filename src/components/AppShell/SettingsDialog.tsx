@@ -23,6 +23,7 @@ import { replaceCurrentReveal, saveRevealPhoto, useReveal, useRevealPhoto } from
 import { photoCaption, photoUrl } from '../../photos/favorites'
 import { useFavorites } from '../../hooks/useFavorites'
 import { PhotoPicker } from '../Photos/PhotoPicker'
+import { NotifyToggle } from '../Inbox/NotifyToggle'
 import { hasSettingsPin, removeSettingsPin, saveSettingsPin, verifySettingsPin } from '../../utils/settingsPin'
 
 type DefaultAudience = NonNullable<HouseholdMember['defaultVisibility']>
@@ -167,6 +168,14 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               <input type="radio" name="newTaskDue" checked={member.newTaskDue === 'none'} onChange={() => setNewTaskDue(uid, 'none').catch((e) => setError(String(e)))} />
               <Icon name="list" /> No date (they stay in their list)
             </label>
+          </fieldset>
+        )}
+        {isMember && (
+          <fieldset className="setting">
+            <legend>
+              Notifications <HelpTip topic="inbox" />
+            </legend>
+            <NotifyToggle />
           </fieldset>
         )}
         {isMember && (

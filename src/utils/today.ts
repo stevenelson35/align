@@ -2,6 +2,7 @@
 // arrangement (sections moved into More…), which a person's tiles start from until they arrange them.
 
 export const TODAY_SECTIONS = [
+  { id: 'inbox', label: 'Inbox' },
   { id: 'goals', label: 'Goals' },
   { id: 'rewards', label: 'Reveal' },
   { id: 'games', label: 'Games' },

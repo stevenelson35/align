@@ -36,7 +36,7 @@ export function useAlertPrefs(uid: string): AlertPrefs {
         doc(db, 'alertPrefs', uid),
         (d) => {
           const data = (d.data() ?? {}) as Partial<AlertPrefs>
-          setPrefs({ rules: data.rules ?? [], push: data.push ?? [], email: data.email, emailOn: data.emailOn })
+          setPrefs({ rules: data.rules ?? [], push: data.push ?? [], email: data.email, emailOn: data.emailOn, inboxOff: data.inboxOff })
         },
         () => undefined,
       ),

@@ -104,6 +104,7 @@ export function MenuContents({ onSettings, filter = '' }: { onSettings: () => vo
   return (
     <>
       {page('Today') && <NavLink route={{ view: 'today' }} label="Today" />}
+      {page('Inbox messages') && <NavLink route={{ view: 'inbox' }} label={<><Icon name="mail" /> Inbox</>} />}
       {page('Tasks') && <NavLink route={{ view: 'home' }} label={<><Icon name="todo" /> Tasks</>} also={['mine', 'family', 'work']} />}
       {page('Goals') && <NavLink route={{ view: 'goals' }} label={<><Icon name="goal" /> Goals</>} also={['goal']} />}
       {isMember && page('Games Wordle') && <NavLink route={{ view: 'games' }} label={<><Icon name="sparkle" /> Games</>} />}

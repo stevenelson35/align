@@ -83,7 +83,7 @@ export function ContactDetails({ item, list }: { item: Task; list: List }) {
         details={{ ...detailsOf(item, false), note: item.notes }}
         alt={item.title}
         thread={commentThread.task(item.id)}
-        text={{ title: item.title, when: '', link: `${window.location.origin}${window.location.pathname}#/task/${item.id}` }}
+        text={{ title: item.title, when: '', link: `${window.location.origin}${window.location.pathname}#/task/${item.id}`, readers: item }}
         startTextOpen={app.textingId === item.id}
       />
     </EntryPanel>

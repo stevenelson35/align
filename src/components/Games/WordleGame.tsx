@@ -21,6 +21,7 @@ import { hardModeError, normalizeWord, validWord, wordleChallengeFinished, wordl
 import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
 import { WordleProgressBoard } from './WordleProgressBoard'
+import { sendToInbox } from '../../firebase/inbox'
 import { challengeNotification } from './wordleNotification'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
@@ -265,6 +266,9 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
         selected,
         challengeType,
       )
+      // The invitation also lands in each person's Inbox, with a notification within seconds (best effort).
+      const title = challengeType === 'invite' ? 'Wordle (your word to guess)' : challengeType === 'realtime-live' ? 'Wordle, real time' : 'Wordle, live'
+      void sendToInbox(app.uid, selected, { kind: 'game', title, link: result.challengeId ? `#/games/${result.challengeId}` : '#/games/play/wordle' }).catch(() => undefined)
       setWord('')
       setSelected([])
       if (isRandomChallenge && result.challengeId) {

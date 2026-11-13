@@ -21,6 +21,7 @@ export type HelpTopicId =
   | 'privacy'
   | 'details'
   | 'texting'
+  | 'inbox'
   | 'goals'
   | 'rewards'
   | 'games'
@@ -272,13 +273,25 @@ export const HELP_TOPICS: HelpTopic[] = [
   },
   {
     id: 'texting',
-    title: 'Texting',
-    tip: '“Text about this” opens Messages on your phone with a note and a link filled in; you press Send. Nothing is sent by Align itself.',
+    title: 'Sending and texting',
+    tip: '“Send about this”: pick a person, add a note, and send it to their Align Inbox, as a text from your phone, or both.',
     body: [
-      'Align doesn’t send texts; it fills them in for your own Messages app, so it’s free and replies come back as normal texts.',
+      '“Send about this” (💬 on a row, Send… in its menu) sends what you’re looking at to one person: Align (their Inbox, with a notification within seconds if they turned notifications on), Text (Messages opens on your phone with your note and a link filled in; you press Send), or Both. Align remembers your last choice on this device.',
+      'Align doesn’t send texts itself; it fills them in for your own Messages app, so it’s free and replies come back as normal texts.',
       '• Each person adds their mobile number in Settings so others can text them from Align.',
       '• “Text about this” on any entry includes its title, when it happens, and a link that opens it in Align.',
       '• In chat: “text Sam I picked up milk”, or “text Sam about pick up Alex: are you getting her?”.',
+    ],
+  },
+  {
+    id: 'inbox',
+    title: 'Inbox',
+    tip: 'What family members sent you in Align, and game invitations. Tap one to open it; ✕ clears it.',
+    body: [
+      'Your Inbox is on Today (a tile, at the top until you move it) and behind the ✉ in the top bar, with how many are new.',
+      '• Tap a message to open what it’s about (an entry, a board, a photo, a game); it’s then marked read. ✕ clears it; Mark all read and Clear read tidy up. Only you and the sender can see a message.',
+      '• Notifications: Settings → Notifications turns them on for this device (on iPhone and iPad, add Align to the Home Screen first). The sender’s phone asks for the notification at once, so it arrives in seconds; if that doesn’t get through, one goes out within 15 minutes. You can keep notifications for family map alerts but turn them off for the Inbox.',
+      '• While Align is open, a new message shows a banner at the top; a game invitation stays until you play or close it.',
     ],
   },
   {

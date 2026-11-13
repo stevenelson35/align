@@ -69,6 +69,19 @@ Align can ask the script to sync right away. The button appears on **Today** and
 
 **Updating the script later:** after pasting new code, use **Deploy → Manage deployments → ✏ (edit) → Version: New version → Deploy**. That keeps the same URL. A *New deployment* would give a new URL, which you'd then have to put in `.env.production.local` again.
 
+## Inbox notifications (refactor phase 4, 2026-11-13)
+
+When someone sends something to another person's Align Inbox (Send → Align, or a game invitation), their app posts
+`{action: "notify", idToken, ids}` to this web app, which pushes a notification to every device the recipient turned
+on (Settings → Notifications), within seconds. It uses the same `FCM_SERVICE_ACCOUNT` as family map alerts; nothing
+new to set up there. Only the sender's own messages are pushed, each once (`pushed: true` on the message, written by
+the calendar bot).
+
+A catch-up sweep sends any the sender's app couldn't trigger (offline, the web app unreachable): after pasting this
+version and making a **New version** of the deployment, pick **`installInboxTrigger`** in the function menu and click
+**Run** once. It schedules `sweepInbox` every 15 minutes (messages up to a day old). Apps Script's free quota easily
+covers it (96 short runs a day).
+
 ## Testing locally
 
 - `npm test` covers the pure helpers (event → task mapping, sync planning, Firestore value encoding).

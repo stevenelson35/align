@@ -88,6 +88,8 @@ export interface AlertPrefs {
   push: string[]
   email?: string
   emailOn?: boolean
+  /** No push for Inbox messages (map alerts still come). */
+  inboxOff?: boolean
 }
 
 export const RADIUS = { min: 50, max: 2000, default: 150 }

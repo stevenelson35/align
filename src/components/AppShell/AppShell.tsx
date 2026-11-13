@@ -22,6 +22,8 @@ import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { routeHash } from '../../utils/routes'
 import { MENU_OPEN_KEY, MENU_SCROLL_KEY } from '../../utils/menu'
+import { InboxProvider } from '../../context/InboxProvider'
+import { InboxBanner } from '../Inbox/InboxBanner'
 import { WallView } from '../Wall/WallView'
 
 interface Props {
@@ -187,9 +189,12 @@ export function AppShell({ uid, household, member }: Props) {
 
   return (
     <AppContext.Provider value={app}>
+      <InboxProvider uid={uid}>
       <div className="app-shell">
+        <InboxBanner />
         <TopBar
           member={member}
+          onInbox={() => go({ view: 'inbox' })}
           onMenu={() => (!narrow ? setSidebarOpen((o) => !o) : route.view !== 'library' ? go({ view: 'library' }) : window.history.length > 1 ? window.history.back() : go({ view: 'today' }))}
           onChat={() => setChat((c) => ({ ...c, open: !c.open }))}
           onSettings={openSettings}
@@ -237,6 +242,7 @@ export function AppShell({ uid, household, member }: Props) {
         {data.loaded && app.isMember && <RevealFinale />}
         <Celebrations />
       </div>
+      </InboxProvider>
     </AppContext.Provider>
   )
 }

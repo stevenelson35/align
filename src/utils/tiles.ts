@@ -12,6 +12,13 @@ export type TileKind = 'panel' | 'list' | 'entry' | 'person' | 'game' | 'daily' 
 export const MORE: Tile = 'more'
 /** At most this many tiles (the rules allow a few more, so a full list can still be rearranged). */
 export const MAX_TILES = 120
+/**
+ * Tiles added after people had arranged Today: put at the top of their tiles once. Taking one off is remembered as
+ * "-tile" (at the end, never shown), so it doesn't come back.
+ */
+export const AUTO_TILES: Tile[] = ['panel:inbox']
+const removedMark = (t: Tile) => `-${t}`
+
 /** Panels that belong to a day (shown on other days too). To Do is one of them. */
 export const DAY_PANELS = ['todo', 'goals', 'photos', 'daily'] as const
 
@@ -52,7 +59,8 @@ export function defaultTiles(member: { todayMore?: string[]; todayItems?: string
 
 /** Your tiles: as you arranged them, or the default. Always exactly one "more" mark; no repeats. */
 export function tilesOf(member: { today?: string[]; todayMore?: string[]; todayItems?: string[] }): Tile[] {
-  const saved = member.today ?? defaultTiles(member)
+  let saved = member.today ?? defaultTiles(member)
+  if (member.today) for (const t of [...AUTO_TILES].reverse()) if (!saved.includes(t) && !saved.includes(removedMark(t))) saved = [t, ...saved]
   const out = [...new Set(saved)]
   return out.includes(MORE) ? out : [...out, MORE]
 }
@@ -66,12 +74,20 @@ export function splitMore(tiles: Tile[]): { main: Tile[]; more: Tile[] } {
 /** Adds a tile at the end of the main page (or of More…). Already there: unchanged. */
 export function addTile(tiles: Tile[], t: Tile, toMore = false): Tile[] {
   if (tiles.includes(t)) return tiles
+  if (tiles.includes(removedMark(t))) tiles = tiles.filter((x) => x !== removedMark(t))
   const at = tiles.indexOf(MORE)
   if (toMore || at < 0) return [...tiles, t]
   return [...tiles.slice(0, at), t, ...tiles.slice(at)]
 }
 
-export const removeTile = (tiles: Tile[], t: Tile): Tile[] => (t === MORE ? tiles : tiles.filter((x) => x !== t))
+export function removeTile(tiles: Tile[], t: Tile): Tile[] {
+  if (t === MORE) return tiles
+  const out = tiles.filter((x) => x !== t)
+  return AUTO_TILES.includes(t) && !out.includes(removedMark(t)) ? [...out, removedMark(t)] : out
+}
+
+/** A "-tile" mark (a tile taken off for good), not a tile to show or arrange. */
+export const isMark = (t: Tile) => t.startsWith('-')
 
 /** Moves the tile at `from` to `to` (indexes in the whole list, the "more" mark included). */
 export function moveTile(tiles: Tile[], from: number, to: number): Tile[] {

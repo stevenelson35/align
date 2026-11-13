@@ -16,7 +16,8 @@
  *     FIREBASE_PROJECT_ID  align-a32c1
  *     BOT_EMAIL            the bot's Firebase Auth email
  *     BOT_PASSWORD         the bot's Firebase Auth password
- *   Family map alerts (optional, scripts/location/README.md): FCM_SERVICE_ACCOUNT, ALIGN_URL.
+ *   Family map alerts (optional, scripts/location/README.md): FCM_SERVICE_ACCOUNT, ALIGN_URL. The same key sends Inbox
+ *   notifications (run installInboxTrigger() once for the 15-minute catch-up sweep).
  *   Optional: WEEKS_AHEAD (8), DAYS_BEHIND (7), LIST_NAME ("Family Calendar"), LIST_ID (found or created automatically),
  *   TIME_ZONE (e.g. America/New_York; defaults to the script's zone from appsscript.json)
  *   Then run installTrigger() once.
@@ -83,6 +84,7 @@ function doPost(e) {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}')
     if (e && e.parameter && e.parameter.loc) result = location_(e.parameter.loc, body)
     else if (body.action === 'locationKey') result = locationKey_(body.idToken)
+    else if (body.action === 'notify') result = notify_(body.idToken, body.ids)
     else result = body.voice ? voice_(body) : manualSync_(body.idToken)
   } catch (err) {
     result = { ok: false, error: String((err && err.message) || err) }
@@ -340,15 +342,106 @@ function sendAlerts_(cfg, api, uid, events) {
 }
 
 /** One notification through Firebase Cloud Messaging (HTTP v1), as data the app's service worker shows. */
-function sendPush_(cfg, token, text, tag) {
+function sendPush_(cfg, token, text, tag, url) {
   var access = fcmAccessToken_(cfg)
-  if (!access) return
+  if (!access) return false
   http_(
     'post',
     cfg.FCM_URL + '/projects/' + cfg.FIREBASE_PROJECT_ID + '/messages:send',
-    { message: { token: token, data: { title: text.title, body: text.body, url: '#/map', tag: tag }, webpush: { headers: { Urgency: 'high', TTL: '3600' } } } },
+    { message: { token: token, data: { title: text.title, body: text.body, url: url || '#/map', tag: tag }, webpush: { headers: { Urgency: 'high', TTL: '86400' } } } },
     access,
   )
+  return true
+}
+
+// ---- Inbox notifications (DESIGN.md §13, refactor phase 4) ----
+
+var INBOX_SWEEP_MINUTES = 15
+// The sweep only catches up on messages this recent (older unpushed ones are left; they're in the Inbox anyway).
+var INBOX_SWEEP_HOURS = 24
+
+/** Run once from the editor: the catch-up sweep for Inbox notifications the sender's app couldn't trigger. */
+function installInboxTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(function (t) {
+      return t.getHandlerFunction() === 'sweepInbox'
+    })
+    .forEach(function (t) {
+      ScriptApp.deleteTrigger(t)
+    })
+  ScriptApp.newTrigger('sweepInbox').timeBased().everyMinutes(INBOX_SWEEP_MINUTES).create()
+  sweepInbox()
+}
+
+/**
+ * "Send now": right after sending something in Align, the sender's app posts {action: "notify", idToken, ids}. Only
+ * the sender's own messages are pushed, each once; the push goes to every device the recipient turned on.
+ */
+function notify_(idToken, ids) {
+  if (!idToken) return { ok: false, error: 'Not signed in.' }
+  if (!Array.isArray(ids) || !ids.length || ids.length > 20) return { ok: false, error: 'Nothing to send.' }
+  var cfg = config_(PropertiesService.getScriptProperties().getProperties())
+  var uid = verifyIdToken_(cfg, idToken)
+  if (!uid) return { ok: false, error: 'Your sign-in could not be checked. Reload Align and try again.' }
+  var api = firestoreApi_(cfg, signIn_(cfg))
+  var messages = ids
+    .filter(function (id) {
+      return typeof id === 'string' && /^[A-Za-z0-9]{1,40}$/.test(id)
+    })
+    .map(function (id) {
+      return api.get('inbox/' + id)
+    })
+    .filter(function (m) {
+      return m && m.fields.from === uid
+    })
+  if (!messages.length) return { ok: false, error: 'No such messages.' }
+  return { ok: true, sent: pushInbox_(cfg, api, messages) }
+}
+
+/** The trigger's entry point: pushes recent messages whose sender's app didn't get through. */
+function sweepInbox() {
+  var cfg = config_(PropertiesService.getScriptProperties().getProperties())
+  var api = firestoreApi_(cfg, signIn_(cfg))
+  var since = Date.now() - INBOX_SWEEP_HOURS * 3600000
+  var due = api.query('inbox', [['pushed', false]]).filter(function (m) {
+    return Date.parse(m.fields.createdAt) > since
+  })
+  return pushInbox_(cfg, api, due)
+}
+
+/** "Steve: Buy milk" / "Steve invited you: Lights Out", with the note (or a nudge) as the body. */
+function inboxText_(fromName, m) {
+  var title = m.kind === 'game' ? fromName + ' invited you: ' + m.title : fromName + ': ' + m.title
+  return { title: title.slice(0, 120), body: (m.text || (m.kind === 'game' ? 'Tap to play.' : 'Sent to your Align Inbox.')).slice(0, 240) }
+}
+
+/** Pushes each message once (to every device its recipient turned on, unless they turned Inbox alerts off). */
+function pushInbox_(cfg, api, messages) {
+  if (!messages.length) return 0
+  var members = ((api.get('household/main') || { fields: {} }).fields.members) || {}
+  var cache = CacheService.getScriptCache()
+  var prefs = {}
+  var sent = 0
+  messages.forEach(function (m) {
+    var f = m.fields
+    // Once: the sweep and the sender's request can meet; whoever claims it first sends it.
+    if (f.pushed || cache.get('inbox:' + m.id)) return
+    cache.put('inbox:' + m.id, '1', 3600)
+    if (!(f.to in prefs)) prefs[f.to] = api.get('alertPrefs/' + f.to)
+    var p = prefs[f.to]
+    var tokens = p && !p.fields.inboxOff ? p.fields.push || [] : []
+    var text = inboxText_((members[f.from] || {}).displayName || 'Someone', f)
+    var url = String(f.link || '').indexOf('#/') === 0 ? f.link : '#/inbox'
+    tokens.forEach(function (token) {
+      try {
+        if (sendPush_(cfg, token, text, 'inbox:' + m.id, url)) sent++
+      } catch (err) {
+        console.log('Inbox push failed: ' + err)
+      }
+    })
+    api.commit([{ update: { name: api.docName('inbox/' + m.id), fields: toFields_({ pushed: true }) }, updateMask: { fieldPaths: ['pushed'] }, currentDocument: { exists: true } }])
+  })
+  return sent
 }
 
 /**

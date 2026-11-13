@@ -1,7 +1,8 @@
 import { Timestamp, collection, doc, onSnapshot, query, runTransaction, serverTimestamp, updateDoc, where, writeBatch } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { db } from './config'
-import { compareGameResults, type GameId, type GameResult } from '../games/catalog'
+import { sendToInbox } from './inbox'
+import { compareGameResults, gameById, type GameId, type GameResult } from '../games/catalog'
 
 export interface GameScore {
   uid: string
@@ -192,11 +193,17 @@ export function useGameChallenge(id: string | undefined) {
 
 export async function inviteToGame(from: string, recipients: string[], gameId: GameId, payload: GameChallengePayload) {
   const batch = writeBatch(db)
+  const invites: { to: string; id: string }[] = []
   for (const to of new Set(recipients)) {
     if (to === from) continue
-    batch.set(doc(collection(db, 'gameChallenges')), { gameId, from, to, payload, status: 'pending', createdAt: serverTimestamp() })
+    const ref = doc(collection(db, 'gameChallenges'))
+    batch.set(ref, { gameId, from, to, payload, status: 'pending', createdAt: serverTimestamp() })
+    invites.push({ to, id: ref.id })
   }
   await batch.commit()
+  // Each invitation also goes to their Inbox, which notifies them at once (best effort: the invitation stands anyway).
+  const name = gameById(gameId)?.name ?? 'a game'
+  await Promise.all(invites.map((i) => sendToInbox(from, [i.to], { kind: 'game', title: name, link: `#/games/${i.id}` }).catch(() => undefined)))
 }
 
 export async function recordGameScore(uid: string, gameId: GameId, seed: string, result: GameResult): Promise<boolean> {

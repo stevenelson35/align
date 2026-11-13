@@ -86,7 +86,7 @@ export function BlogPostView() {
           </a>
         </p>
         {target && <p className="muted small">Added to an existing post: its address keeps that post's categories, so check the link once it's live.</p>}
-        <TextForm subject={{ title: posted.title, when: '', link: posted.url }} startOpen label="Text the link" />
+        <TextForm subject={{ title: posted.title, when: '', link: posted.url }} startOpen label="Send the link" kind="link" />
         <div className="row">
           <button type="button" className="secondary small" onClick={() => window.location.reload()}>
             Write another

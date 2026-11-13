@@ -40,6 +40,8 @@ ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web   # the USER runs this
   until their daily full load.
 - **Today is tiles** (`utils/tiles.ts`, `components/Today/`, refactor phase 3): `members.<uid>.today`; add a new
   kind of tile there (parse, `known`, `useTileInfo`, `TileView`, Add to Today) rather than a new Today section list.
+- **Inbox** (`firebase/inbox.ts`, refactor phase 4): send with `sendToInbox` (it asks the Apps Script to push at
+  once); never write `pushed`/`read` from the sender. New kinds need the rules' `kind` list and `KIND_ICON`.
 - **List rows use `EntryRow`** (`components/Entries/`, refactor phase 2): sizes simple / medium / detail per list
   (`useEntrySize`), the kind's facts in `chips`, quick actions in `trail`, extra detail in `more`; the actions menu
   (Open, Edit, Move, Comment, Send, Pin) opens panels via `app.openEntry(id, mode)`. Don't add a new per-kind row.

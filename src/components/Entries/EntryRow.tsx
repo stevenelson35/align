@@ -110,7 +110,7 @@ export function EntryRow({
         </div>
         {trail}
         {textButton && (
-          <button type="button" className="row-action" onClick={() => app.textAbout(entry.id)} aria-label={`Text someone about ${entry.title}`} title="Text someone about this">
+          <button type="button" className="row-action" onClick={() => app.textAbout(entry.id)} aria-label={`Send ${entry.title} to someone`} title="Send this to someone (Align or text)">
             <Icon name="message" />
           </button>
         )}
@@ -186,7 +186,7 @@ function ActionButton({ action, entry, menu }: { action: EntryAction; entry: Tas
     edit: { icon: 'edit', text: 'Edit', run: () => app.openEntry(entry.id, 'edit') },
     move: { icon: 'list', text: 'Move to another list', run: () => app.openEntry(entry.id, 'edit') },
     comment: { icon: 'message', text: 'Comment', run: () => app.openEntry(entry.id, 'comment') },
-    send: { icon: 'phone', text: 'Send (text)', run: () => app.textAbout(entry.id) },
+    send: { icon: 'send', text: 'Send…', run: () => app.textAbout(entry.id) },
     pin: { icon: 'pin', text: pinned ? 'Unpin from Today' : 'Pin to Today', run: () => void today.toggle(tile('entry', entry.id)).catch(() => undefined) },
   }
   const s = spec[action]

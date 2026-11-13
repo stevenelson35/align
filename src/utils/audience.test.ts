@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { audienceNarrows, audienceOf, peopleIn, privacyFields, viewCoveringEditors } from './audience'
+import { audienceNarrows, audienceOf, canReadAs, peopleIn, privacyFields, viewCoveringEditors } from './audience'
 
 describe('audience', () => {
   it('maps the five choices onto stored privacy fields and back', () => {
@@ -51,5 +51,21 @@ describe('audienceNarrows (change-only sync)', () => {
     expect(audienceNarrows(shared(['s', 'l']), shared(['s', 'l', 'c']))).toBe(false)
     expect(audienceNarrows(mine, shared(['s', 'l']))).toBe(false)
     expect(audienceNarrows(shared(['s', 'l']), everyone)).toBe(false)
+  })
+})
+
+describe('who can open a document', () => {
+  it('follows the rules: owner for private, members (and allowed viewers) for family, the chosen for shared', () => {
+    const own = { visibility: 'private', ownerId: 'steve' }
+    expect(canReadAs(own, 'steve', 'member')).toBe(true)
+    expect(canReadAs(own, 'wife', 'member')).toBe(false)
+    const fam = { visibility: 'family', ownerId: 'steve' }
+    expect(canReadAs(fam, 'wife', 'member')).toBe(true)
+    expect(canReadAs(fam, 'grandma', 'viewer')).toBe(false)
+    expect(canReadAs({ ...fam, viewerVisible: true }, 'grandma', 'viewer')).toBe(true)
+    const shared = { visibility: 'shared', ownerId: 'steve', sharedWith: ['steve', 'grandma'] }
+    expect(canReadAs(shared, 'grandma', 'viewer')).toBe(true)
+    expect(canReadAs(shared, 'wife', 'member')).toBe(false)
+    expect(canReadAs(fam, 'stranger', undefined)).toBe(false)
   })
 })

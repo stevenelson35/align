@@ -1,7 +1,7 @@
 # Align
 
 Household organizer for the Nelson family, live at https://align.itsallonesong.com. It holds:
-- **Today:** the day's to-dos (Mine / Family / Shared), goals, weather, the family map, The Daily, all as tiles you pin and arrange (people, links, lists, parts of panels), with More… for the rest
+- **Today:** the day's to-dos (Mine / Family / Shared), goals, weather, the family map, The Daily, all as tiles you pin and arrange (people, links, lists, parts of panels), with More… for the rest, and an Inbox for what family members send you (with notifications in seconds)
 - task lists and projects (dependencies, timeline), checklists, notes and links
 - **goals** with charts, celebrations, good weeks, and sparks that play a family photo-reveal game and unlock a reward ladder
 - **flashcards** with multiple choice, Challenge rounds and a leaderboard, and maps for geography cards

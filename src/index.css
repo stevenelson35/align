@@ -5426,3 +5426,142 @@ a.entry-title .icon:last-child {
   width: auto;
   flex: none;
 }
+
+/* Send via Align / Text / Both (refactor phase 4). */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.segmented button {
+  padding: 0.3rem 0.65rem;
+  background: var(--surface);
+  color: var(--text);
+  border: none;
+  border-radius: 0;
+  font-weight: 500;
+}
+.segmented button + button {
+  border-left: 1px solid var(--border);
+}
+.segmented button.on {
+  background: var(--highlight);
+  color: #fff;
+}
+.sent-note {
+  color: var(--color-project);
+}
+
+/* The Inbox: a tile on Today, a page, a badge in the top bar, a banner for new messages. */
+.inbox-list {
+  list-style: none;
+  margin: 0.3rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+.inbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.inbox-row.read {
+  background: none;
+}
+.inbox-row.read .inbox-text > span:first-child {
+  color: var(--muted);
+}
+.inbox-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.5rem 0.6rem;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.inbox-text {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.inbox-note {
+  font-style: italic;
+}
+.inbox-dot {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-top: 0.45rem;
+  border-radius: 50%;
+  background: var(--highlight);
+}
+.inbox-row .row-action {
+  margin: 0.3rem 0.2rem 0 0;
+}
+.notify-nudge {
+  margin: 0.2rem 0;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius);
+  background: var(--highlight-bg);
+  border: 1px solid var(--highlight-border);
+}
+.notify-setting {
+  display: grid;
+  gap: 0.35rem;
+}
+.notify-setting label input {
+  width: auto;
+}
+.inbox-button {
+  position: relative;
+}
+.inbox-badge {
+  position: absolute;
+  top: -0.1rem;
+  right: -0.35rem;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.05rem;
+  text-align: center;
+}
+.inbox-banner {
+  position: fixed;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: min(30rem, calc(100vw - 1rem));
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--highlight-border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.2);
+  overflow-wrap: anywhere;
+}
+.text-about .warn {
+  margin: 0.2rem 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: var(--radius);
+  background: var(--tint-yellow-bg);
+  border: 1px solid var(--tint-yellow-border);
+}

@@ -106,7 +106,7 @@ function TaskView({ task, onEdit }: { task: Task; onEdit: () => void }) {
         details={{ ...detailsOf(task, false), note: task.notes }}
         alt={task.title}
         thread={commentThread.task(task.id)}
-        text={{ title: task.title, when: whenText(task), link: shareLink(task) }}
+        text={{ title: task.title, when: whenText(task), link: shareLink(task), readers: task }}
         startTextOpen={app.textingId === task.id}
         noteIds={task.noteIds}
       />

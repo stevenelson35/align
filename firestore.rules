@@ -553,11 +553,12 @@ service cloud.firestore {
     match /alertPrefs/{uid} {
       allow read: if (isMember() && request.auth.uid == uid) || isBot();
       allow create, update: if isMember() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['rules', 'push', 'email', 'emailOn', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['rules', 'push', 'email', 'emailOn', 'inboxOff', 'updatedAt'])
         && (!('rules' in request.resource.data) || (request.resource.data.rules is list && request.resource.data.rules.size() <= 50))
         && (!('push' in request.resource.data) || (request.resource.data.push is list && request.resource.data.push.size() <= 10))
         && (!('email' in request.resource.data) || (request.resource.data.email is string && request.resource.data.email.size() <= 200))
-        && (!('emailOn' in request.resource.data) || request.resource.data.emailOn is bool);
+        && (!('emailOn' in request.resource.data) || request.resource.data.emailOn is bool)
+        && (!('inboxOff' in request.resource.data) || request.resource.data.inboxOff is bool);
       allow delete: if isMember() && request.auth.uid == uid;
     }
 
@@ -728,6 +729,33 @@ service cloud.firestore {
         && exists(progressPath)
         && get(progressPath).data.uid == request.auth.uid
         && get(progressPath).data.complete == true;
+    }
+
+    // ---- Inbox (DESIGN.md §13, refactor phase 4) ----
+    // A message one person sends another in Align ("Send about this" → Align, game invitations). Members send; the
+    // recipient (a member or a view-only account) reads it, marks it read, or clears it; the sender can read what they
+    // sent. The household's helper account (bot) reads them to push notifications and marks each one pushed.
+    function validInboxMessage(d) {
+      return d.keys().hasOnly(['to', 'from', 'kind', 'title', 'text', 'link', 'read', 'pushed', 'createdAt'])
+        && d.from == request.auth.uid
+        && d.to is string && d.to != d.from && roleOf(d.to) in ['member', 'viewer']
+        && d.kind in ['entry', 'link', 'board', 'photo', 'game', 'note']
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 300
+        && (!('text' in d) || (d.text is string && d.text.size() <= 2000))
+        && d.link is string && d.link.size() <= 500
+        && d.read == false && d.pushed == false
+        && d.createdAt == request.time;
+    }
+
+    match /inbox/{id} {
+      allow read: if (signedIn() && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid)) || isBot();
+      allow create: if isMember() && validInboxMessage(request.resource.data);
+      allow update: if (signedIn() && resource.data.to == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+          && request.resource.data.read is bool)
+        || (isBot() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pushed'])
+          && request.resource.data.pushed == true);
+      allow delete: if signedIn() && resource.data.to == request.auth.uid;
     }
 
     match /gameChallenges/{id} {
