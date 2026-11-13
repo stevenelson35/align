@@ -71,12 +71,32 @@ export function splitMore(tiles: Tile[]): { main: Tile[]; more: Tile[] } {
   return at < 0 ? { main: tiles, more: [] } : { main: tiles.slice(0, at), more: tiles.slice(at + 1) }
 }
 
-/** Adds a tile at the end of the main page (or of More…). Already there: unchanged. */
-export function addTile(tiles: Tile[], t: Tile, toMore = false): Tile[] {
+/** A "-tile" mark (a tile taken off for good), not a tile to show or arrange. */
+export const isMark = (t: Tile) => t.startsWith('-')
+
+/**
+ * Where a new tile goes: 'top' (the main page, after the tiles above your first group, so it never lands inside a
+ * group by accident), 'more' (the end of More…), or a group's name (the end of that group).
+ */
+export type TilePlace = 'top' | 'more' | { group: string }
+
+/** Adds a tile (see TilePlace). Already there: unchanged. */
+export function addTile(tiles: Tile[], t: Tile, place: TilePlace = 'top'): Tile[] {
   if (tiles.includes(t)) return tiles
   if (tiles.includes(removedMark(t))) tiles = tiles.filter((x) => x !== removedMark(t))
-  const at = tiles.indexOf(MORE)
-  if (toMore || at < 0) return [...tiles, t]
+  const more = tiles.indexOf(MORE)
+  const end = more < 0 ? tiles.length : more
+  let at: number
+  if (place === 'more') at = tiles.length
+  else if (place === 'top') {
+    const firstGroup = tiles.findIndex((x, i) => i < end && x.startsWith('group:'))
+    at = firstGroup < 0 ? end : firstGroup
+  } else {
+    const head = tiles.indexOf(tile('group', place.group))
+    if (head < 0) return addTile(tiles, t, 'top')
+    const next = tiles.findIndex((x, i) => i > head && (x === MORE || x.startsWith('group:') || isMark(x)))
+    at = next < 0 ? tiles.length : next
+  }
   return [...tiles.slice(0, at), t, ...tiles.slice(at)]
 }
 
@@ -86,8 +106,7 @@ export function removeTile(tiles: Tile[], t: Tile): Tile[] {
   return AUTO_TILES.includes(t) && !out.includes(removedMark(t)) ? [...out, removedMark(t)] : out
 }
 
-/** A "-tile" mark (a tile taken off for good), not a tile to show or arrange. */
-export const isMark = (t: Tile) => t.startsWith('-')
+
 
 /** Moves the tile at `from` to `to` (indexes in the whole list, the "more" mark included). */
 export function moveTile(tiles: Tile[], from: number, to: number): Tile[] {
@@ -104,6 +123,31 @@ export function renameGroup(tiles: Tile[], from: string, to: string): Tile[] {
   if (!name || tiles.includes(tile('group', name))) return tiles
   return tiles.map((t) => (t === tile('group', from) ? tile('group', name) : t))
 }
+
+/** Where a tile is: on the main page or in More…, and under which group (null: not on Today). */
+export function placeOf(tiles: Tile[], t: Tile): { more: boolean; group?: string } | null {
+  const at = tiles.indexOf(t)
+  if (at < 0) return null
+  const more = tiles.indexOf(MORE)
+  let group: string | undefined
+  for (let i = at - 1; i >= 0 && tiles[i] !== MORE; i--)
+    if (tiles[i].startsWith('group:')) {
+      group = tiles[i].slice(6)
+      break
+    }
+  return { more: more >= 0 && at > more, group }
+}
+
+/** A new, empty group at the end of the main page (just above the More… line); drag or add tiles into it. */
+export function addGroup(tiles: Tile[], name: string): Tile[] {
+  const g = tile('group', name)
+  if (tiles.includes(g)) return tiles
+  const more = tiles.indexOf(MORE)
+  return more < 0 ? [...tiles, g] : [...tiles.slice(0, more), g, ...tiles.slice(more)]
+}
+
+/** Every group's name, in order. */
+export const groupNames = (tiles: Tile[]) => tiles.filter((t) => t.startsWith('group:')).map((t) => t.slice(6))
 
 /** A new group's name: "Group", "Group 2", …. */
 export function newGroupName(tiles: Tile[], base = 'Group'): string {

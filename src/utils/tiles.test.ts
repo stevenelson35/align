@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addTile, dayTiles, defaultTiles, grouped, known, MORE, moveTile, newGroupName, parseTile, removeTile, renameGroup, splitMore, tilesOf } from './tiles'
+import { addGroup, addTile, dayTiles, defaultTiles, groupNames, grouped, known, MORE, placeOf, moveTile, newGroupName, parseTile, removeTile, renameGroup, splitMore, tilesOf } from './tiles'
 
 describe('Today tiles', () => {
   it('starts from the old arrangement: main sections, To Do, Shortcuts as a group, then More…', () => {
@@ -43,10 +43,26 @@ describe('Today tiles', () => {
   it('adds to the end of the main page or More…, once', () => {
     const t = ['panel:goals', MORE, 'panel:gifts']
     expect(addTile(t, 'entry:a')).toEqual(['panel:goals', 'entry:a', MORE, 'panel:gifts'])
-    expect(addTile(t, 'entry:a', true)).toEqual(['panel:goals', MORE, 'panel:gifts', 'entry:a'])
+    expect(addTile(t, 'entry:a', 'more')).toEqual(['panel:goals', MORE, 'panel:gifts', 'entry:a'])
     expect(addTile(t, 'panel:gifts')).toBe(t)
     expect(removeTile(t, 'panel:gifts')).toEqual(['panel:goals', MORE])
     expect(removeTile(t, MORE)).toBe(t)
+  })
+
+  it('adds above your first group (never into one by accident), or into the group you pick', () => {
+    const t = ['panel:goals', 'panel:todo', 'group:Shortcuts', 'entry:c1', 'group:Kids', 'entry:k1', MORE, 'group:Old', 'entry:o1']
+    expect(addTile(t, 'list:clothes')).toEqual(['panel:goals', 'panel:todo', 'list:clothes', 'group:Shortcuts', 'entry:c1', 'group:Kids', 'entry:k1', MORE, 'group:Old', 'entry:o1'])
+    expect(addTile(t, 'list:x', { group: 'Shortcuts' })).toEqual(['panel:goals', 'panel:todo', 'group:Shortcuts', 'entry:c1', 'list:x', 'group:Kids', 'entry:k1', MORE, 'group:Old', 'entry:o1'])
+    expect(addTile(t, 'list:x', { group: 'Kids' }).indexOf('list:x')).toBe(6)
+    expect(addTile(t, 'list:x', { group: 'Old' }).at(-1)).toBe('list:x')
+    expect(addTile(t, 'list:x', { group: 'Gone' }).indexOf('list:x')).toBe(2)
+    expect(placeOf(t, 'entry:k1')).toEqual({ more: false, group: 'Kids' })
+    expect(placeOf(t, 'panel:goals')).toEqual({ more: false, group: undefined })
+    expect(placeOf(t, 'entry:o1')).toEqual({ more: true, group: 'Old' })
+    expect(placeOf(t, 'entry:zz')).toBeNull()
+    expect(groupNames(t)).toEqual(['Shortcuts', 'Kids', 'Old'])
+    expect(addGroup(t, 'New').indexOf('group:New')).toBe(t.indexOf(MORE)) // empty, above the More… line
+    expect(addGroup(t, 'Kids')).toBe(t)
   })
 
   it('moves tiles, across the More… mark too', () => {

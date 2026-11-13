@@ -48,6 +48,7 @@ const ICONS = {
   check: { emoji: '✅', fill: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z', detail: 'M7.5 12.5l3 3 6-6.5' },
   person: { emoji: '👤', fill: 'M12 3.5a4 4 0 1 0 0 8a4 4 0 1 0 0-8zM4.5 20.5v-1a7.5 7.5 0 0 1 15 0v1z' },
   clock: { emoji: '🕒', fill: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z', detail: 'M12 7v5l3.5 2' },
+  folder: { emoji: '📁', fill: 'M3 6.5A1.5 1.5 0 0 1 4.5 5h4.6l2 2.2h8.4A1.5 1.5 0 0 1 21 8.7v9.8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z', line: 'M3 10h18' },
   list: { emoji: '📋', fill: 'M7 4h10a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', line: 'M9.5 2.5h5v3h-5z', detail: 'M8.5 10h7M8.5 13.5h7M8.5 17h4' },
   plus: { emoji: '➕', line: 'M12 5v14M5 12h14' },
   quickAdd: {

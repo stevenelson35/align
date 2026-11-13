@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { TodaySectionScope } from '../../context/TodaySections'
 import { useStoredSet } from '../../hooks/useStoredSet'
 import { grouped, known, parseTile, type Tile } from '../../utils/tiles'
-import { Icon } from '../UI/Icon'
+import { SectionHeader } from '../UI/SectionHeader'
 import { TileView } from './TileView'
 
 /**
@@ -14,29 +14,36 @@ export function TodayTiles({ tiles, day, onArrange }: { tiles: Tile[]; day: stri
   const press = useHoldToArrange(onArrange)
   return (
     <>
-      {grouped(tiles.filter(known)).map((g) => (
-        <div key={g.name ?? ''} className={g.name ? 'tile-group' : 'tile-ungrouped'} {...press}>
-          {g.name && (
-            <h3 className="tile-group-heading">
-              <button type="button" className="tile-group-toggle" onClick={() => toggleFolded(g.name!)} aria-expanded={!folded.has(g.name)}>
-                <span className="tile-group-name">{g.name}</span>
-                {folded.has(g.name) && <span className="muted small"> {g.tiles.length}</span>}
-                <Icon name={folded.has(g.name) ? 'more' : 'list'} />
-              </button>
-            </h3>
-          )}
-          {!(g.name && folded.has(g.name)) &&
-            g.tiles.map((t) => {
-              const { kind, id } = parseTile(t)
-              // Panels keep their own name for folding siblings (To Do registers as "tasks").
-              return (
-                <TodaySectionScope key={t} id={kind === 'panel' ? id : t}>
-                  <TileView tile={t} day={day} />
-                </TodaySectionScope>
-              )
-            })}
-        </div>
-      ))}
+      {grouped(tiles.filter(known)).map((g) => {
+        const tilesHere = g.tiles.map((t) => {
+          const { kind, id } = parseTile(t)
+          // Panels keep their own name for folding siblings (To Do registers as "tasks").
+          return (
+            <TodaySectionScope key={t} id={kind === 'panel' ? id : t}>
+              <TileView tile={t} day={day} />
+            </TodaySectionScope>
+          )
+        })
+        if (!g.name)
+          return (
+            <div key="" className="tile-ungrouped" {...press}>
+              {tilesHere}
+            </div>
+          )
+        const isFolded = folded.has(g.name)
+        return (
+          <div key={g.name} className={`tile-group${isFolded ? ' folded' : ''}`} {...press}>
+            <div className="day-section tile-group-head">
+              <SectionHeader icon="folder" title={g.name} count={g.tiles.length} onTitleClick={() => toggleFolded(g.name!)} expanded={!isFolded}>
+                <button type="button" className="link small" onClick={() => toggleFolded(g.name!)} aria-expanded={!isFolded}>
+                  {isFolded ? 'Show' : 'Hide'}
+                </button>
+              </SectionHeader>
+            </div>
+            {!isFolded && (g.tiles.length ? <div className="tile-group-body">{tilesHere}</div> : <p className="muted small tile-group-empty">Nothing in this group yet. Use + (Add) and pick this group, or Arrange to drag tiles under it.</p>)}
+          </div>
+        )
+      })}
     </>
   )
 }
@@ -56,7 +63,7 @@ function useHoldToArrange(onArrange?: () => void) {
   return {
     onPointerDown: (e: React.PointerEvent) => {
       const target = e.target as HTMLElement
-      if (e.button !== 0 || !target.closest('.section-header, .tile-group-heading') || target.closest('input, textarea, select, a, .entry-row')) return
+      if (e.button !== 0 || !target.closest('.section-header') || target.closest('input, textarea, select, a, .entry-row')) return
       start.current = { x: e.clientX, y: e.clientY }
       timer.current = setTimeout(() => {
         start.current = null
@@ -77,7 +84,7 @@ function useHoldToArrange(onArrange?: () => void) {
     onPointerCancel: cancel,
     onContextMenu: (e: React.MouseEvent) => {
       // A phone's long press would also open the browser's menu on a heading.
-      if ((e.target as HTMLElement).closest('.section-header, .tile-group-heading') && !(e.target as HTMLElement).closest('a, .entry-row')) e.preventDefault()
+      if ((e.target as HTMLElement).closest('.section-header') && !(e.target as HTMLElement).closest('a, .entry-row')) e.preventDefault()
     },
   }
 }

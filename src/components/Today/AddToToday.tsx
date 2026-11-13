@@ -4,7 +4,7 @@ import { GAMES } from '../../games/catalog'
 import { useApp, useData } from '../../hooks/useApp'
 import { useTodayTiles } from '../../hooks/useTodayTiles'
 import { people } from '../../utils/tasks'
-import { tile, type Tile } from '../../utils/tiles'
+import { addGroup, groupNames, tile, type Tile, type TilePlace } from '../../utils/tiles'
 import { TODAY_SECTIONS } from '../../utils/today'
 import { Icon } from '../UI/Icon'
 import { useTileInfo } from './useTileInfo'
@@ -23,7 +23,10 @@ export function AddToToday({ onClose }: { onClose: () => void }) {
   const today = useTodayTiles()
   const info = useTileInfo()
   const [query, setQuery] = useState('')
-  const [toMore, setToMore] = useState(false)
+  // Where new tiles go: the top of Today (above your groups), a group, or More….
+  const [place, setPlace] = useState<string>('top')
+  const yourGroups = groupNames(today.tiles)
+  const where: TilePlace = place === 'top' || place === 'more' ? place : { group: place.slice(2) }
   const [error, setError] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => input.current?.focus(), [])
@@ -61,7 +64,7 @@ export function AddToToday({ onClose }: { onClose: () => void }) {
 
   const toggle = (t: Tile) => {
     setError(null)
-    ;(today.has(t) ? today.remove(t) : today.add(t, toMore)).catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+    ;(today.has(t) ? today.remove(t) : today.add(t, where)).catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }
 
   return (
@@ -81,8 +84,29 @@ export function AddToToday({ onClose }: { onClose: () => void }) {
             <Icon name="close" />
           </button>
         </div>
-        <label className="small add-to-more">
-          <input type="checkbox" checked={toMore} onChange={() => setToMore(!toMore)} /> Add to More… instead of the main page
+        <label className="small add-to-place">
+          Put it in{' '}
+          <select
+            value={place}
+            onChange={(e) => {
+              if (e.target.value !== 'new') return setPlace(e.target.value)
+              const name = window.prompt('Name the new group (e.g. Kids, School, Call)')?.trim().replace(/\s+/g, ' ').slice(0, 40)
+              if (!name) return
+              setError(null)
+              today.save(addGroup(today.tiles, name)).catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+              setPlace(`g:${name}`)
+            }}
+            aria-label="Where new tiles go"
+          >
+            <option value="top">Today (above your groups)</option>
+            {yourGroups.map((g) => (
+              <option key={g} value={`g:${g}`}>
+                The “{g}” group
+              </option>
+            ))}
+            <option value="new">A new group…</option>
+            <option value="more">More…</option>
+          </select>
         </label>
         {error && <p className="error small">{error}</p>}
         <div className="add-to-today-results">

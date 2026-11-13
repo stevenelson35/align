@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../../hooks/useApp'
 import { useTodayTiles } from '../../hooks/useTodayTiles'
-import { defaultTiles, isMark, moveTile, newGroupName, parseTile, removeTile, renameGroup, tile, type Tile } from '../../utils/tiles'
+import { addGroup, defaultTiles, isMark, moveTile, newGroupName, parseTile, removeTile, renameGroup, type Tile } from '../../utils/tiles'
 import { Icon } from '../UI/Icon'
 import { useTileInfo } from './useTileInfo'
 
@@ -79,7 +79,7 @@ export function ArrangeTiles({ onDone, onAdd }: { onDone: () => void; onAdd: () 
         <button type="button" className="secondary small" onClick={onAdd}>
           <Icon name="plus" /> Add…
         </button>
-        <button type="button" className="secondary small" onClick={() => save([tile('group', newGroupName(tiles)), ...tiles])} title="A heading you name; drag tiles under it">
+        <button type="button" className="secondary small" onClick={() => { const name = newGroupName(tiles); save(addGroup(tiles, name)); setRenaming({ from: name, to: name }) }} title="A heading you name, added just above the More… line; drag tiles under it">
           New group
         </button>
         <button type="button" className="small" onClick={onDone}>

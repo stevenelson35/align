@@ -632,6 +632,13 @@ notifications, game invites; 5 cleanup and docs.
 - **Goals on Today:** tapping a goal's name or trend opens logging in place (like the pencil); tapping the name in
   the open control closes it. Manage is the only way to the Goals page; other people's goals are plain text.
 - Settings no longer offers a Shortcuts panel style (the saved one is ignored).
+- **Follow-up (user feedback):** groups are sections (📁, `SectionHeader`, count, Show / Hide), their tiles indented
+  along a line. New tiles go to the top of Today, above the first group (`addTile` 'top'), not into the last group;
+  Add to Today's "Put it in" picks a group, a new group, or More… (`TilePlace`); Arrange's New group adds an empty one
+  above the More… line (`addGroup`) and opens its name. The **Library** is its own page design: pages as tiles (with
+  "On Today" / "In More…"), your links as chips, each kind of list as a card (several open, remembered), rows with
+  kind icon in the audience color, count + unit, audience, where it is on Today (`placeOf`), and 📌 to pin; two
+  columns on wide screens.
 
 ### Refactor phase 4: Inbox, Send via Align / Text / Both, notifications (2026-11-13)
 - **Data:** `inbox/{id}` `{ to, from, kind: entry|link|board|photo|game|note, title, text?, link, read, pushed,
