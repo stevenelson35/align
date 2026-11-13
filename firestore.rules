@@ -78,10 +78,12 @@ service cloud.firestore {
       let uid = request.auth.uid;
       return after.diff(before).affectedKeys().hasOnly([uid])
         && after[uid].role == before[uid].role
-        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'pinnedGames', 'newTaskDue', 'pinned', 'todayMore', 'todayItems', 'todayPanels'])
+        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'pinnedGames', 'newTaskDue', 'pinned', 'todayMore', 'todayItems', 'todayPanels', 'today'])
         // How they arranged Today: sections moved into More…, and contacts / links shown at its top (ids).
         && (!('todayMore' in after[uid]) || (after[uid].todayMore is list && after[uid].todayMore.size() <= 30))
         && (!('todayItems' in after[uid]) || (after[uid].todayItems is list && after[uid].todayItems.size() <= 30))
+        // Their Today tiles, in order ("kind:id" strings: panels, lists, entries, parts, group names, the More… mark).
+        && (!('today' in after[uid]) || (after[uid].today is list && after[uid].today.size() <= 150))
         && (!('pinnedGames' in after[uid]) || (after[uid].pinnedGames is list && after[uid].pinnedGames.size() <= 30))
         && (!('todayPanels' in after[uid]) || validTodayPanels(after[uid].todayPanels))
         // Lists and contacts they pinned to the top of their Today sections (ids).

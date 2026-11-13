@@ -31,6 +31,8 @@ export type Route =
   /** A link to one task / item / note (e.g. in a text): opens it in its list. */
   | { view: 'task'; taskId: string }
   | { view: 'investment'; listId: string; symbol: string }
+  /** Everything in Align as a page (☰ on a phone). */
+  | { view: 'library' }
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent)
@@ -47,6 +49,7 @@ export function parseRoute(hash: string): Route {
     case 'blog':
     case 'photos':
     case 'wall':
+    case 'library':
       return { view: parts[0] }
     case 'map':
       return parts[1] ? { view: 'map', person: parts[1] } : { view: 'map' }

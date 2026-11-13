@@ -35,6 +35,12 @@ export interface HouseholdMember {
   todayMore?: string[]
   /** Contacts and links this person put on the top of Today (item ids), with their call / text / email or open. */
   todayItems?: string[]
+  /**
+   * Their Today, as tiles in order (DESIGN.md §13, phase 3): "panel:goals", "list:<id>", "entry:<id>",
+   * "person:<uid>", "game:<id>", "daily:<item>", "group:<name>", and "more" (what follows is in More…). Absent: built
+   * from todayMore and todayItems (utils/tiles.ts), which it replaces.
+   */
+  today?: string[]
   /** Their personal colors and sticker decorations for Today, More and Shortcuts. */
   todayPanels?: Partial<Record<TodaySurface, TodayPanelStyle>>
   /** The calendar-sync account: a member for the rules, hidden from people pickers. Set in the console. */

@@ -14,7 +14,7 @@ import { Icon } from '../UI/Icon'
  * "did the suggestion" or type the amount (progressive), type the measurement (measure), or add an amount (total).
  * People who can only view see the same thing, read-only.
  */
-export function GoalControl({ goal, day, showName = true, who }: { goal: Goal; day: string; showName?: boolean; /** Who else logs it, e.g. "with Sam". */ who?: string }) {
+export function GoalControl({ goal, day, showName = true, who, onName }: { goal: Goal; day: string; showName?: boolean; /** Who else logs it, e.g. "with Sam". */ who?: string; /** What tapping the name (or the trend) does instead of opening the goal's page (Today: closes logging; Manage is the way to the page). */ onName?: () => void }) {
   const { uid, member, navigate } = useApp()
   const [error, setError] = useState<string | null>(null)
   const entry = goal.log?.[day]
@@ -31,13 +31,14 @@ export function GoalControl({ goal, day, showName = true, who }: { goal: Goal; d
   )
 
   // The trend at a glance (rows only; the goal's own page has the full chart). Tap for the chart.
+  const open = onName ?? (() => navigate({ view: 'goal', goalId: goal.id }))
   const spark = showName && (
-    <button type="button" className="spark-button" onClick={() => navigate({ view: 'goal', goalId: goal.id })} aria-label={`${goal.name}: see the chart`}>
+    <button type="button" className="spark-button" onClick={open} aria-label={onName ? `${goal.name}: close logging` : `${goal.name}: see the chart`}>
       <GoalSparkline goal={goal} />
     </button>
   )
   const name = showName && (
-    <button type="button" className="goal-name link" onClick={() => navigate({ view: 'goal', goalId: goal.id })} title="See this goal's history">
+    <button type="button" className="goal-name link" onClick={open} title={onName ? 'Close logging' : "See this goal's history"}>
       {goal.name}
       {who && <span className="muted small goal-who"> ({who})</span>}
     </button>

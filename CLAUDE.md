@@ -38,6 +38,8 @@ ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web   # the USER runs this
   updatedAt }`** (never `deleteDoc` them; rules `isTombstone`), and **a write that narrows who can see something also
   stamps `household.accessChangedAt`** (`audienceNarrows`). A write that skips these is invisible to other devices
   until their daily full load.
+- **Today is tiles** (`utils/tiles.ts`, `components/Today/`, refactor phase 3): `members.<uid>.today`; add a new
+  kind of tile there (parse, `known`, `useTileInfo`, `TileView`, Add to Today) rather than a new Today section list.
 - **List rows use `EntryRow`** (`components/Entries/`, refactor phase 2): sizes simple / medium / detail per list
   (`useEntrySize`), the kind's facts in `chips`, quick actions in `trail`, extra detail in `more`; the actions menu
   (Open, Edit, Move, Comment, Send, Pin) opens panels via `app.openEntry(id, mode)`. Don't add a new per-kind row.

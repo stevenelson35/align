@@ -8,6 +8,8 @@ import { HelpTip } from '../UI/HelpTip'
 import type { HelpTopicId } from '../../help/topics'
 import { menuSectionOf } from '../../utils/menu'
 import { ListTransfer } from './ListTransfer'
+import { PinToToday } from '../Today/PinToToday'
+import { tile } from '../../utils/tiles'
 import { PageBar } from '../UI/PageBar'
 
 const HELP_FOR_KIND: Record<List['kind'], HelpTopicId> = {
@@ -72,6 +74,7 @@ export function ListHeader({ list, children, tools = true }: { list: List; child
         {list.defaultContext === 'work' && (list.kind === 'list' || list.kind === 'project') && <span className="badge work">Work</span>}
         <span className="grow" />
         {children}
+        <PinToToday tile={tile('list', list.id)} />
         {tools && <ListTransfer list={list} />}
         {tools && app.canEdit(list) && (
           <button type="button" className="secondary small" onClick={() => app.editList(list)}>

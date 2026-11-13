@@ -1,28 +1,22 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useApp } from '../../hooks/useApp'
-import { useTodayItems } from '../../hooks/useTodayItems'
 import { Icon } from '../UI/Icon'
-import { ArrangeToday } from './ArrangeToday'
-import { TodayShortcuts } from './TodayShortcuts'
 import { useTodaySelect } from '../../hooks/useTodaySection'
 import { panelBackground } from '../../utils/panelStyle'
 
 /**
- * Today's footer, always at the bottom of the screen: More… (the sections you moved off the main page, and Arrange
- * Today) and Shortcuts… (the people and links you added to Shortcuts). Each opens a panel just above the footer;
- * tapping it again, its title, ✕, Escape, or a tap anywhere outside the dock closes it.
+ * Today's footer, always at the bottom of the screen: More… (the tiles below the More… line, in a panel just above
+ * the footer: tapping it again, its title, ✕, Escape, or a tap anywhere outside the dock closes it), Arrange (drag
+ * tiles, groups, the More… line) and + (Add to Today).
  */
-export function TodayDock({ more, moreCount }: { more: ReactNode; moreCount: number }) {
-  const { isMember, member } = useApp()
-  const panels = member.todayPanels ?? {}
-  const moreStyle = panels.more
-  const shortcutsStyle = panels.shortcuts
-  const shortcuts = useTodayItems()
-  const [open, setOpen] = useState<'more' | 'shortcuts' | null>(null)
+export function TodayDock({ more, moreCount, onArrange, arranging = false, onAdd }: { more: ReactNode; moreCount: number; onArrange?: () => void; arranging?: boolean; onAdd?: () => void }) {
+  const { member } = useApp()
+  const moreStyle = member.todayPanels?.more
+  const [open, setOpen] = useState<'more' | null>(null)
   const select = useTodaySelect(undefined, 'dock')
-  const toggle = (which: 'more' | 'shortcuts') => {
-    if (open !== which) select()
-    setOpen(open === which ? null : which)
+  const toggle = () => {
+    if (!open) select()
+    setOpen(open ? null : 'more')
   }
   const dock = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -50,37 +44,32 @@ export function TodayDock({ more, moreCount }: { more: ReactNode; moreCount: num
   return (
     <div className="today-dock" ref={dock}>
       {open && (
-        <div
-          className="today-sheet"
-          role="region"
-          aria-label={open === 'more' ? 'More' : 'Shortcuts'}
-          style={panelBackground(open === 'more' ? moreStyle : shortcutsStyle, 'var(--surface)')}
-        >
+        <div className="today-sheet" role="region" aria-label="More" style={panelBackground(moreStyle, 'var(--surface)')}>
           <header className="row">
-            <button type="button" className="link grow today-sheet-title" onClick={() => setOpen(null)} aria-label={`Close ${open === 'more' ? 'More' : 'Shortcuts'}`}>
-              <strong>{(open === 'more' ? moreStyle : shortcutsStyle)?.sticker} {open === 'more' ? 'More' : 'Shortcuts'}</strong>
+            <button type="button" className="link grow today-sheet-title" onClick={() => setOpen(null)} aria-label="Close More">
+              <strong>{moreStyle?.sticker} More</strong>
             </button>
             <button type="button" className="link" onClick={() => setOpen(null)} aria-label="Close">
               <Icon name="close" />
             </button>
           </header>
-          {open === 'more' ? (
-            <>
-              {moreCount ? more : <p className="muted small">Everything is on the main page. Arrange Today moves sections here.</p>}
-              {isMember && <ArrangeToday />}
-            </>
-          ) : (
-            <TodayShortcuts />
-          )}
+          {moreCount ? more : <p className="muted small">Nothing in More… yet. Arrange moves tiles here (below the More… line).</p>}
         </div>
       )}
-      <nav className="today-footer" aria-label="More and shortcuts">
-        <button type="button" className={open === 'more' ? 'on' : ''} onClick={() => toggle('more')} aria-expanded={open === 'more'} style={{ backgroundColor: moreStyle?.color ? `color-mix(in srgb, ${moreStyle.color} 16%, var(--surface))` : undefined }}>
+      <nav className="today-footer" aria-label="More and arranging">
+        <button type="button" className={open ? 'on' : ''} onClick={toggle} aria-expanded={!!open} style={{ backgroundColor: moreStyle?.color ? `color-mix(in srgb, ${moreStyle.color} 16%, var(--surface))` : undefined }}>
           {moreStyle?.sticker || <Icon name="list" />} More…{moreCount ? <span className="muted small"> {moreCount}</span> : null}
         </button>
-        <button type="button" className={open === 'shortcuts' ? 'on' : ''} onClick={() => toggle('shortcuts')} aria-expanded={open === 'shortcuts'} style={{ backgroundColor: shortcutsStyle?.color ? `color-mix(in srgb, ${shortcutsStyle.color} 16%, var(--surface))` : undefined }}>
-          {shortcutsStyle?.sticker || <Icon name="star" />} Shortcuts…{shortcuts.ids.length ? <span className="muted small"> {shortcuts.ids.length}</span> : null}
-        </button>
+        {onArrange && (
+          <button type="button" className={arranging ? 'on' : ''} onClick={() => { setOpen(null); onArrange() }} aria-pressed={arranging}>
+            <Icon name="swatch" /> {arranging ? 'Done' : 'Arrange'}
+          </button>
+        )}
+        {onAdd && (
+          <button type="button" className="today-footer-add" onClick={() => { setOpen(null); onAdd() }} aria-label="Add to Today" title="Add to Today">
+            <Icon name="plus" />
+          </button>
+        )}
       </nav>
     </div>
   )

@@ -1,4 +1,5 @@
-// How Today is arranged (DESIGN.md §8): sections on the main page or folded into More…, per person.
+// Today's panels (DESIGN.md §8). How Today is arranged is now tiles (utils/tiles.ts); `moreOf` reads the older
+// arrangement (sections moved into More…), which a person's tiles start from until they arrange them.
 
 export const TODAY_SECTIONS = [
   { id: 'goals', label: 'Goals' },
@@ -34,11 +35,4 @@ export function moreOf(member: { todayMore?: string[] }): Set<string> {
   const saved = new Set(member.todayMore)
   for (const id of ADDED_TO_MORE) if (!saved.has(`!${id}`)) saved.add(id)
   return saved
-}
-
-/** The arrangement to save when a section moves (keeping the "!id" marks for added sections on the main page). */
-export function arrangement(more: Set<string>, id: string, toMore: boolean): string[] {
-  const ids = TODAY_SECTIONS.map((s) => s.id as string).filter((s) => (s === id ? toMore : more.has(s)))
-  const kept = ADDED_TO_MORE.filter((a) => (a === id ? !toMore : !more.has(a))).map((a) => `!${a}`)
-  return [...ids, ...kept]
 }

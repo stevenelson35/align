@@ -11,8 +11,9 @@ import { EntryExtras, EntryFact, EntryPanel } from '../UI/EntryExtras'
 import { Icon } from '../UI/Icon'
 import { ItemIconPicker } from '../UI/ItemIcon'
 import { TagPicker } from './ContactTags'
+import { PinToToday } from '../Today/PinToToday'
+import { tile } from '../../utils/tiles'
 import { usePinned } from '../../hooks/usePinned'
-import { useTodayItems } from '../../hooks/useTodayItems'
 
 type Contact = NonNullable<Task['contact']>
 
@@ -21,7 +22,6 @@ export function ContactDetails({ item, list }: { item: Task; list: List }) {
   const app = useApp()
   const [editing, setEditing] = useState(false)
   const pins = usePinned()
-  const onToday = useTodayItems()
   if (editing) return <ContactForm item={item} onDone={() => setEditing(false)} />
   const c = item.contact ?? {}
   const label = (l: ContactLabel) => l[0].toUpperCase() + l.slice(1)
@@ -70,9 +70,7 @@ export function ContactDetails({ item, list }: { item: Task; list: List }) {
           ) : null}
           <EntryFact icon="list">{list.name}</EntryFact>
           <EntryFact icon="star">
-            <button type="button" className="link small inline-link" onClick={() => void onToday.toggle(item.id)}>
-              {onToday.isOn(item.id) ? '✓ In Shortcuts (remove)' : '+ Add to Shortcuts'}
-            </button>{' '}
+            <PinToToday tile={tile('entry', item.id)} className="link small inline-link" />{' '}
             ·{' '}
             <button type="button" className="link small inline-link" onClick={() => void pins.toggle(item.id)}>
               {pins.isPinned(item.id) ? '★ Pinned in Contacts (unpin)' : '☆ Pin in Contacts'}

@@ -51,12 +51,12 @@ function useFetched<T>(day: string, key: string, on: boolean, load: (day: string
  * The Daily (DESIGN.md §10.5): a new word, joke, quote, question, fact, riddle, math puzzle and pictures each day,
  * each with its answer or more to reveal. Folded each morning (tap the title); choose items in Settings.
  */
-export function TheDaily({ day }: { day: string }) {
+export function TheDaily({ day, only }: { day: string; /** Just this item (a Today tile of its own), always shown. */ only?: DailyItem }) {
   const [hidden, saveHidden] = useDailyFlag('align-daily-folded', true)
   const setOpen = useTodayExpansion(!hidden, (open) => saveHidden(!open))
   const setHidden = (next: boolean) => setOpen(!next)
   const settings = useDailySettings()
-  const show = (i: DailyItem) => !hidden && !settings.hidden.has(i)
+  const show = (i: DailyItem) => (only ? i === only : !hidden && !settings.hidden.has(i))
   const joke = useFetched<Joke>(day, 'joke', show('joke'), fetchJoke)
   const space = useFetched<DailyPicture>(day, 'space', show('space'), loadSpace)
   const picture = useFetched<DailyPicture>(day, 'picture', show('picture'), fetchCommonsPicture)
@@ -265,6 +265,13 @@ export function TheDaily({ day }: { day: string }) {
     ),
   }
 
+  if (only)
+    return (
+      <div className="day-section the-daily daily-one">
+        {items[only] ?? <p className="muted small">{DAILY_ITEMS.find((i) => i.value === only)?.label}: not available today.</p>}
+        {big && <PictureLightbox src={big.src} alt={big.alt} onClose={() => setBig(null)} />}
+      </div>
+    )
   return (
     <div className="day-section the-daily">
       <SectionHeader icon="sun" title="The Daily" count={count} onTitleClick={() => setHidden(!hidden)} expanded={!hidden} help="daily">

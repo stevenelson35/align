@@ -88,7 +88,7 @@ export function ContactsView({ list }: { list: List }) {
  * One person as an entry row (the contacts list): picture or initials, name; medium adds company and tags; opened in
  * place, their numbers, emails and addresses. Call / text / email stay on the row (so there's no second 💬).
  */
-function PersonRow({ person: p, size }: { person: Task; size: EntrySize }) {
+export function PersonRow({ person: p, size }: { person: Task; size: EntrySize }) {
   const c = p.contact ?? {}
   const phone = c.phones?.[0]
   const email = c.emails?.[0]

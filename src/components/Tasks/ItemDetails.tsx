@@ -18,8 +18,9 @@ import { StarRating } from '../Picks/StarRating'
 import { AutoTextarea } from '../UI/AutoTextarea'
 import { ContactDetails } from '../Contacts/ContactDetails'
 import { GiftClaimPanel } from '../Gifts/GiftDetails'
-import { useTodayItems } from '../../hooks/useTodayItems'
 import { cleanGift, giftSummary, isRecipient, ownGiftIdea, recipientLabel } from '../../utils/gifts'
+import { PinToToday } from '../Today/PinToToday'
+import { tile } from '../../utils/tiles'
 import { ItemIconPicker } from '../UI/ItemIcon'
 
 /**
@@ -31,7 +32,6 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
   const { lists } = useData()
   // Opened with Edit or Move (a row's ⋯ menu): straight to the form.
   const [editing, setEditing] = useState(app.panelMode === 'edit')
-  const onToday = useTodayItems()
   if (list.kind === 'contacts') return <ContactDetails item={item} list={list} />
   if (editing) return <ItemEditForm item={item} list={list} onDone={() => setEditing(false)} />
   const isNote = list.kind === 'notes'
@@ -59,11 +59,9 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
               {item.category && <span className="muted"> · {item.category}</span>}
             </EntryFact>
           )}
-          {isLink && href && app.isMember && (
+          {app.isMember && (
             <EntryFact icon="star">
-              <button type="button" className="link small inline-link" onClick={() => void onToday.toggle(item.id)}>
-                {onToday.isOn(item.id) ? '✓ In Shortcuts (remove)' : '+ Add to Shortcuts'}
-              </button>
+              <PinToToday tile={tile('entry', item.id)} className="link small inline-link" />
             </EntryFact>
           )}
           {isLink && href && app.isMember && (

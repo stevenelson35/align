@@ -3296,45 +3296,161 @@ button.today-sheet-title {
   color: var(--text);
   text-align: left;
 }
-.shortcut-list {
-  list-style: none;
-  margin: 0.3rem 0;
-  padding: 0;
-  display: grid;
-  gap: 0.35rem;
+/* The footer's + (Add to Today) is just an icon. */
+.today-footer button.today-footer-add {
+  flex: 0 0 auto;
+  min-width: 2.75rem;
 }
-.shortcut {
-  display: flex;
+
+/* Today's tiles (refactor phase 3): your groups are plain headings; an entry on its own is one row. */
+.tile-group-heading {
+  margin: 0.9rem 0 0.2rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tile-group-toggle {
+  display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.35rem;
+  padding: 0.1rem 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tile-group-toggle .icon {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+.tile-entry {
+  margin: 0.3rem 0;
+}
+.tile-list .entry-list,
+.tile-entry {
+  list-style: none;
+  padding: 0;
+}
+.tile-task {
+  list-style: none;
+}
+.tile-person .map-person,
+.tile-game .collection-row {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
+  padding: 0.45rem 0.6rem;
 }
-.shortcut-main {
-  flex: 1;
+.tile-game .collection-row-main {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.6rem;
+  flex: 1;
+  min-width: 0;
   background: none;
   border: none;
   color: var(--text);
   font: inherit;
-  font-weight: 500;
   text-align: left;
-  text-decoration: none;
   cursor: pointer;
 }
-.arrange-today {
+.daily-one {
+  margin: 0.3rem 0;
+}
+
+/* Arranging Today: drag by the handle (the row itself still scrolls the page). */
+.arrange-tiles {
   display: grid;
   gap: 0.3rem;
-  margin: 0.5rem 0;
 }
-.arrange-row {
+.arrange-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.arrange-row,
+.arrange-more {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  min-width: 0;
+}
+.arrange-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.arrange-group {
+  background: var(--bg);
+}
+.arrange-row.missing .arrange-label {
+  color: var(--muted);
+  font-style: italic;
+}
+.arrange-more {
+  border-style: dashed;
+  color: var(--muted);
+  font-weight: 600;
+  background: none;
+}
+.arrange-row.dragging,
+.arrange-more.dragging {
+  border-color: var(--highlight);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
+  position: relative;
+  z-index: 2;
+}
+.drag-handle {
+  touch-action: none;
+  cursor: grab;
+  padding: 0.35rem 0.4rem;
+  margin: -0.3rem 0 -0.3rem -0.3rem;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  user-select: none;
+}
+.arrange-row .row-action:disabled,
+.arrange-more .row-action:disabled {
+  opacity: 0.3;
+}
+
+/* Add to Today: one search over everything you can pin. */
+.add-to-today {
+  margin-top: 3rem;
+  width: min(36rem, 94vw);
+  display: grid;
+  gap: 0.4rem;
+}
+.add-to-today-results {
+  max-height: 62vh;
+  overflow: auto;
+}
+.add-to-today-results h4 {
+  margin: 0.6rem 0 0.2rem;
+}
+.add-to-today-results ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+.add-to-today-results li {
+  gap: 0.4rem;
+  padding: 0.15rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.add-to-today-results li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .collection-row-text {
@@ -5286,4 +5402,27 @@ a.entry-title .icon:last-child {
 }
 .entry-row.resting {
   opacity: 0.65;
+}
+
+/* The Library (☰ on a phone): the menu as a page, with a find box. */
+.library-find {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+.library-menu {
+  display: grid;
+  gap: 0.15rem;
+}
+.library-menu > .secondary {
+  justify-self: start;
+  margin: 0.4rem 0;
+}
+.add-to-more {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.add-to-more input {
+  width: auto;
+  flex: none;
 }

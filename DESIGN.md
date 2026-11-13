@@ -404,13 +404,13 @@ The chat panel runs a local, rule-based parser (`src/chat/parser.ts`, dates by `
 ## 10. UI
 
 - **TopBar:** ☰ (phone), Align, **+ Quick add** (opens chat with `add task `), Chat, ◐/☀/☾ theme (Match device → Light → Dark, per device), avatar (opens ⚙ Settings), Sign out.
-- **Sidebar (☰):** Today, Tasks, Goals, New blog post, Photos, the blog, your pinned links; then collapsible sections Lists, Projects, Checklists, Notes, Links, Pick lists, Flashcards, Contacts, Gifts (open / unchecked counts, an audience icon on non-family lists), + New list, **Voting**; then Settings, Family map, Wall display, Help & about. An empty section shows no count. On phones it's a slide-out menu with a backdrop (tap outside or Escape closes it). Most of it is also on Today (sections, More…, Shortcuts…).
+- **Sidebar (☰):** Today, Tasks, Goals, New blog post, Photos, the blog, your pinned links; then collapsible sections Lists, Projects, Checklists, Notes, Links, Pick lists, Flashcards, Contacts, Gifts (open / unchecked counts, an audience icon on non-family lists), + New list, **Voting**; then Settings, Family map, Wall display, Help & about. An empty section shows no count. On phones it's a slide-out menu with a backdrop (tap outside or Escape closes it). Most of it is also on Today (tiles, More…). On phones ☰ opens it as the Library page (refactor phase 3).
 - **List pages by kind:** task list / project (`ListView`: quick add that doesn't open the panel, finished tasks crossed off at the bottom with a remembered **Hide N finished**; projects add **Timeline** and **Recalculate**), checklist (`ChecklistView`: items in the order added, ticked ones crossed off, **Hide N checked**, **Clear checked**), notes (`NotesView`: alphabetical cards with the first lines). The header (`ListHeader`) shows the privacy badge, "with You and Linda" for shared lists, and **Edit list**.
 - **Right panel:** `TaskDetails` for tasks (Save in a sticky header next to ✕; privacy sentence under the List picker; dependencies with ✓/✕/⏳ links and a **Needed by** section; Finish-by shift), `ItemDetails` for checklist items and notes. Both have **💬 Text about this**. On phones the panel covers the page and closes after Save or when changing views.
 - **Task and checklist rows** have a **💬** at the right end: opens the item with the text form ready.
 - **⚙ Settings** (`SettingsDialog`): Default privacy, your mobile number, Parents (read-only unless you may change it), theme.
 - **List editor:** name, kind, who can see it (🔒 Just me / 👪 Family / 👥 Chosen people with name chips and a **Parents** shortcut), who can edit it, default context, owner, visible to viewers. **Default context** only tags new tasks Family or Work (a Work badge and the Tasks page's Work filter); it doesn't change who sees them or Today. To keep a project visible to the family but off their To Do: who can see it = Family, who can edit it = Only me (it's then under your Mine).
-- **Mobile:** no bottom bar (removed with the Today redesign): Today's own footer (More… / Shortcuts…), the ☰ menu, and Chat in the top bar.
+- **Mobile:** no bottom bar (removed with the Today redesign): Today's own footer (More… / Arrange / +), ☰ (the Library page), and Chat in the top bar.
 - **Viewers** see the same screens, but editing controls are hidden.
 - **Links:** hash routes (`src/utils/routes.ts`): `#/today`, `#/all`, `#/mine`, `#/family`, `#/work`, `#/list/<id>[/timeline]`, `#/boards`, `#/board/<id>`, and `#/task/<id>` (opens that task in its list; used in texts).
 
@@ -600,6 +600,38 @@ notifications, game invites; 5 cleanup and docs.
   open the item form directly, Comment scrolls the panel to its comments (EntryExtras). Checklist items already had
   links, pictures and note references in Edit; the menu makes that reachable from the row.
 - Today's sections, Shortcuts and search still use their own rows: Phase 3 rebuilds Today as tiles on this row.
+
+### Refactor phase 3: Today as tiles (2026-11-13)
+- **Model** (`utils/tiles.ts`, tested): `members.<uid>.today`, an ordered list of strings: `panel:<id>` (the 14
+  sections plus `panel:todo`), `list:<listId>`, `entry:<taskId>`, `person:<uid>` (one person's location),
+  `game:<id>` (`game:wordle` is Wordle of the day), `daily:<item>` (one item of The Daily), `group:<name>` (a heading
+  you name), and one `more` mark: what follows is in More…. Rules: own member entry only, a list of at most 150.
+  Unknown tiles are skipped, not dropped. Absent: built from the older `todayMore` / `todayItems` (main sections,
+  To Do, the Shortcuts as a "Shortcuts" group, then More…), so nobody's Today changed and no migration was needed;
+  the first change saves the tiles. `todayMore`, `todayItems` and `pinned` stay readable; `pinned` is still the ☆
+  "pin to the top of this panel" inside Contacts, Lists, Links, Family Map and Voting.
+- **Today** (`components/Today/`): `TodayTiles` renders tiles under group headings (fold per device,
+  `align-today-folded-groups`); `TileView` picks the renderer: panels as before (To Do is now `Tasks/TodoPanel`,
+  with Done / Won't Do / Pushed), a list tile (open entries, 8 then Show all, + quick add, Open; rows at most
+  medium), an entry tile (a task card, a person with call / text / email, a link, a checklist item), a person's
+  location (`PersonLocationTile`, the Family Map row), a game (Wordle shows today's status from the Wordle API), or
+  one Daily item (`TheDaily only=`). Other days show only `DAY_PANELS` (To Do, Goals, Archive Pics, The Daily) in
+  your order. Something deleted or no longer shared shows nothing; Arrange lists it, greyed, to remove.
+- **Footer:** More… (the tiles after the mark) · Arrange · + (Add to Today). Shortcuts… and Arrange Today are gone.
+- **Arrange** (`ArrangeTiles`): press and hold a heading on Today (550 ms; rows keep their own long-press menu)
+  or the footer's Arrange. Drag by ⠿ (pointer capture, works with touch and mouse, scrolls near the edges), ↑ ↓,
+  ✕ (off Today only), New group / Rename, the More… line moves like a tile, Back to the usual arrangement.
+- **Add to Today** (`AddToToday`): one search over panels, parts (each person's location, games, Daily items),
+  lists, and entries (only once you type; 40 at most; a task shows its date, since repeats share a title). Add /
+  ✓ On Today toggles; "Add to More… instead".
+- **Pin to Today** (`useTodayTiles`, `PinToToday`): the EntryRow ⋯ menu's Pin to Today now adds an `entry:` tile;
+  item and contact details have it (replacing Add to Shortcuts); list headers have it for a `list:` tile.
+- **Library** (`#/library`, `AppShell/LibraryView`): on phones (≤ 760 px, live) ☰ opens the menu as a page with a
+  find box (pages, lists by kind, boards); ☰ again goes back. The slide-out menu isn't rendered on phones; on wide
+  screens the sidebar is unchanged. The breadcrumb's "Menu › Links" opens the Library on that section on a phone.
+- **Goals on Today:** tapping a goal's name or trend opens logging in place (like the pencil); tapping the name in
+  the open control closes it. Manage is the only way to the Goals page; other people's goals are plain text.
+- Settings no longer offers a Shortcuts panel style (the saved one is ignored).
 
 
 ### Location sign-in quota: local fix awaiting Apps Script deployment

@@ -13,7 +13,7 @@ import { useTodaySelect } from '../../hooks/useTodaySection'
 
 /**
  * The day's goals you can log, at the top of a day view. It starts as a summary (each goal's status and trend, like
- * the wall display); the pencil on a goal opens logging for that one, and "Log all" shows every goal's controls
+ * the wall display); tapping a goal (its name, trend or pencil) opens logging for that one in place, and "Log all" shows every goal's controls
  * (remembered on this device). Hidden each morning (Show opens them for the day).
  */
 export function GoalsStrip({ day }: { day: string }) {
@@ -78,7 +78,7 @@ export function GoalsStrip({ day }: { day: string }) {
           <div className="goal-list">
             {forDay.map((g) =>
               logAll ? (
-                <GoalControl key={g.id} goal={g} day={day} who={otherLoggers(g, household, uid) || undefined} />
+                <GoalControl key={g.id} goal={g} day={day} who={otherLoggers(g, household, uid) || undefined} onName={() => setLogAll(false)} />
               ) : (
                 <GoalSummary key={g.id} goal={g} day={day} open={logging.has(g.id)} onToggle={() => toggleOne(g.id)} who={otherLoggers(g, household, uid) || undefined} />
               ),
@@ -86,9 +86,7 @@ export function GoalsStrip({ day }: { day: string }) {
             {offDay.map((g) => (
               <div key={g.id} className="goal-control off-day">
                 <div className="goal-head">
-                  <button type="button" className="goal-name link" onClick={() => navigate({ view: 'goal', goalId: g.id })} title="See this goal's history">
-                    {g.name}
-                  </button>
+                  <span className="goal-name">{g.name}</span>
                   <span className="muted small">{nextOn(g, day)}</span>
                 </div>
               </div>
@@ -127,15 +125,17 @@ function nextOn(goal: Goal, day: string): string {
   return `Not today · ${goalDaysText(goal)}`
 }
 
-/** One goal as a summary line: name, where it stands (or what it asks), the trend, and a pencil to log just this one. */
+/**
+ * One goal as a summary line: name, where it stands (or what it asks), the trend, and a pencil. Tapping the name, the
+ * trend or the pencil opens logging for just this one, in place; Manage (above) is the way to a goal's own page.
+ */
 function GoalSummary({ goal, day, open, onToggle, who, readOnly = false }: { goal: Goal; day: string; open: boolean; onToggle: () => void; who?: string; /** Someone else's goal: no pencil. */ readOnly?: boolean }) {
-  const { navigate } = useApp()
   const status = goalStatus(goal, goal.log?.[day], day)
   const hint = goalHint(goal, day)
   if (open)
     return (
       <div className="goal-summary-open">
-        <GoalControl goal={goal} day={day} who={who} />
+        <GoalControl goal={goal} day={day} who={who} onName={onToggle} />
         <button type="button" className="link small" onClick={onToggle} aria-label={`Close logging for ${goal.name}`}>
           <Icon name="check" /> Done
         </button>
@@ -143,10 +143,14 @@ function GoalSummary({ goal, day, open, onToggle, who, readOnly = false }: { goa
     )
   return (
     <div className={`goal-summary${status.state === 'met' || status.state === 'exceeded' ? ' met' : ''}${readOnly ? ' read-only' : ''}`} data-goal-id={readOnly ? undefined : goal.id}>
-      <button type="button" className="goal-name link" onClick={() => navigate({ view: 'goal', goalId: goal.id })} title="See this goal's history">
-        {goal.name}
-        {who && <span className="muted small goal-who"> ({who})</span>}
-      </button>
+      {readOnly ? (
+        <span className="goal-name">{goal.name}</span>
+      ) : (
+        <button type="button" className="goal-name link" onClick={onToggle} title={`Log ${goal.name}`} aria-expanded={false}>
+          {goal.name}
+          {who && <span className="muted small goal-who"> ({who})</span>}
+        </button>
+      )}
       {status.text ? (
         <span className={`goal-status status-${status.state}`}>
           {(status.state === 'met' || status.state === 'exceeded') && <Icon name="check" />} {status.text}
@@ -155,9 +159,13 @@ function GoalSummary({ goal, day, open, onToggle, who, readOnly = false }: { goa
         <span className="muted small">{hint || 'Not done yet'}</span>
       )}
       <span className="grow" />
-      <button type="button" className="spark-button" onClick={() => navigate({ view: 'goal', goalId: goal.id })} aria-label={`${goal.name}: see the chart`}>
+      {readOnly ? (
         <GoalSparkline goal={goal} />
-      </button>
+      ) : (
+        <button type="button" className="spark-button" onClick={onToggle} aria-label={`Log ${goal.name}`}>
+          <GoalSparkline goal={goal} />
+        </button>
+      )}
       {!readOnly && (
         <button type="button" className="icon-button small goal-log-one" onClick={onToggle} title={`Log ${goal.name}`} aria-label={`Log ${goal.name}`}>
           <Icon name="edit" />

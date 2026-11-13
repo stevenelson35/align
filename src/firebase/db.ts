@@ -260,8 +260,8 @@ export function setPinned(uid: string, current: string[] | undefined, id: string
   return updateDoc(householdRef, { [`members.${uid}.pinned`]: next.length ? next.slice(-200) : deleteField() })
 }
 
-/** Which Today sections sit in More… (your arrangement, for every device). */
-export const setTodayMore = (uid: string, ids: string[]) => updateDoc(householdRef, { [`members.${uid}.todayMore`]: ids })
+/** Your Today tiles, in order (for every device). */
+export const setTodayTiles = (uid: string, tiles: string[]) => updateDoc(householdRef, { [`members.${uid}.today`]: tiles.slice(0, 150) })
 
 /** Personal colors and stickers for the Today surfaces (Settings). */
 export function setTodayPanelStyles(uid: string, styles: Partial<Record<TodaySurface, TodayPanelStyle>>) {
@@ -271,17 +271,6 @@ export function setTodayPanelStyles(uid: string, styles: Partial<Record<TodaySur
 /** Ordered Games tiles for this person (Today / More). */
 export function setPinnedGames(uid: string, ids: string[]) {
   return updateDoc(householdRef, { [`members.${uid}.pinnedGames`]: [...new Set(ids)].slice(0, 30) })
-}
-
-/** Put a contact or link on the top of Today, or take it off. */
-export function setTodayItem(uid: string, current: string[] | undefined, id: string, on: boolean) {
-  const next = on ? [...new Set([...(current ?? []), id])] : (current ?? []).filter((x) => x !== id)
-  return updateDoc(householdRef, { [`members.${uid}.todayItems`]: next.length ? next.slice(-30) : deleteField() })
-}
-
-/** Your Shortcuts in a new order (Reorder in the Shortcuts panel). */
-export function setTodayItems(uid: string, ids: string[]) {
-  return updateDoc(householdRef, { [`members.${uid}.todayItems`]: ids.length ? ids.slice(-30) : deleteField() })
 }
 
 /** Who the "Parents" sharing shortcut picks. */

@@ -214,6 +214,11 @@ describe('household', () => {
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.steve.todayMore': [] }))
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayItems': 'contact1' }))
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayMore': Array.from({ length: 31 }, (_, i) => `s${i}`) }))
+    // Today tiles: their own, a list, at most 150.
+    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.today': ['panel:goals', 'entry:contact1', 'group:Kids', 'more', 'panel:gifts'] }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.steve.today': ['panel:goals'] }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.today': 'panel:goals' }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.today': Array.from({ length: 151 }, (_, i) => `entry:${i}`) }))
   })
   it('lets a member pin lists and contacts to their own Today sections, and no one else’s', async () => {
     await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.pinned': ['familyVisible', 'contact1'] }))

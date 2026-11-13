@@ -47,14 +47,17 @@ export function AppShell({ uid, household, member }: Props) {
   // The breadcrumb's "Menu" / "Links": open the menu with that section expanded. The menu reads its open section
   // when it mounts, so it's stored and the menu remounted.
   const [menuKey, setMenuKey] = useState(0)
+  // On a phone the menu is the Library page (☰ goes there, and back); on a wide screen it sits beside the page.
+  const narrow = useNarrow()
   const openMenu = useCallback((section?: string) => {
     if (section) {
       localStorage.setItem(MENU_OPEN_KEY, section)
       sessionStorage.setItem(MENU_SCROLL_KEY, section) // the menu scrolls it to the top when it opens
     }
     setMenuKey((k) => k + 1)
-    setSidebarOpen(true)
-  }, [])
+    if (narrow) navigate({ view: 'library' })
+    else setSidebarOpen(true)
+  }, [narrow, navigate])
   const openSettings = useCallback(() => {
     setSidebarOpen(false)
     setSettingsOpen(routeHash(route))
@@ -187,14 +190,14 @@ export function AppShell({ uid, household, member }: Props) {
       <div className="app-shell">
         <TopBar
           member={member}
-          onMenu={() => setSidebarOpen((o) => !o)}
+          onMenu={() => (!narrow ? setSidebarOpen((o) => !o) : route.view !== 'library' ? go({ view: 'library' }) : window.history.length > 1 ? window.history.back() : go({ view: 'today' }))}
           onChat={() => setChat((c) => ({ ...c, open: !c.open }))}
           onSettings={openSettings}
           onSearch={() => setSearchOpen(true)}
         />
         <div className="app-body">
-          <Sidebar key={menuKey} open={sidebarOpen} onSettings={openSettings} />
-          {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
+          {!narrow && <Sidebar key={menuKey} open={sidebarOpen} onSettings={openSettings} />}
+          {sidebarOpen && !narrow && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
           <main className="main-panel" ref={mainRef}>
             {data.error && (
               <p className="error card">
@@ -236,4 +239,17 @@ export function AppShell({ uid, household, member }: Props) {
       </div>
     </AppContext.Provider>
   )
+}
+
+/** Phone-width (the layout's breakpoint), live as the window resizes or the phone unfolds. */
+function useNarrow() {
+  const query = '(max-width: 760px)'
+  const [narrow, setNarrow] = useState(() => window.matchMedia(query).matches)
+  useEffect(() => {
+    const m = window.matchMedia(query)
+    const on = () => setNarrow(m.matches)
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
+  return narrow
 }

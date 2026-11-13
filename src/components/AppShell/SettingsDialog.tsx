@@ -707,7 +707,6 @@ function PhoneBarsSetting() {
 const PANEL_OPTIONS: { id: TodaySurface; label: string }[] = [
   { id: 'today', label: 'Today' },
   { id: 'more', label: 'More' },
-  { id: 'shortcuts', label: 'Shortcuts' },
 ]
 const PANEL_STICKERS = ['', '🌈', '⭐', '🐾', '🐈', '🌻', '🦋', '🎮', '🍓', '🪴', '🚀', '🧩', '🌙', '☀️']
 
@@ -742,7 +741,7 @@ function TodayPanelsSetting({ uid, member }: { uid: string; member: HouseholdMem
   return (
     <fieldset className="setting">
       <legend>Today panel decorations</legend>
-      <p className="muted small">Give Today, More and Shortcuts their own color, sticker, or photo background. These follow your account.</p>
+      <p className="muted small">Give Today and More their own color, sticker, or photo background. These follow your account.</p>
       {PANEL_OPTIONS.map(({ id, label }) => (
         <div className="today-panel-setting" key={id}>
           <div className="today-panel-style">

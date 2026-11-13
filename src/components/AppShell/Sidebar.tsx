@@ -42,15 +42,31 @@ function Section({ title, count, active, isOpen, onToggle, children }: { title: 
   )
 }
 
+/** The ☰ menu: beside the page on a wide screen (on a phone, ☰ opens it as the Library page instead). */
 export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () => void }) {
+  return (
+    <nav className={`sidebar${open ? ' open' : ''}`}>
+      <MenuContents onSettings={onSettings} />
+    </nav>
+  )
+}
+
+/**
+ * Everything in Align: pages, every list by kind, voting boards, settings. With `filter` (the Library page's find
+ * box) only what matches shows, every section open.
+ */
+export function MenuContents({ onSettings, filter = '' }: { onSettings: () => void; filter?: string }) {
   const { uid, member, isMember, editList, route } = useApp()
+  const words = filter.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const hit = (text: string) => words.every((w) => text.toLowerCase().includes(w))
+  const finding = words.length > 0
   const [openSection, setOpenSection] = useState<string | null>(() => localStorage.getItem(OPEN_KEY))
   // Opened from the breadcrumb ("Menu › Links"): scroll that section to the top of the menu.
   useEffect(() => {
     const target = sessionStorage.getItem(MENU_SCROLL_KEY)
     if (!target) return
     sessionStorage.removeItem(MENU_SCROLL_KEY)
-    requestAnimationFrame(() => document.querySelector(`.sidebar [data-section="${CSS.escape(target)}"]`)?.scrollIntoView({ block: 'start' }))
+    requestAnimationFrame(() => document.querySelector(`:is(.sidebar, .library) [data-section="${CSS.escape(target)}"]`)?.scrollIntoView({ block: 'start' }))
   }, [])
   const toggle = (title: string) => {
     const next = openSection === title ? null : title
@@ -68,7 +84,8 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
   const color = (l: List) => `var(--color-${l.visibility})`
 
   // A gift list's secret companion shows inside the gift list, not on its own.
-  const inSection = (title: string) => lists.filter((l) => menuSectionOf(l) === title && !l.giftSecret && (l.visibility !== 'private' || l.ownerId === uid))
+  const inSection = (title: string) =>
+    lists.filter((l) => menuSectionOf(l) === title && !l.giftSecret && (l.visibility !== 'private' || l.ownerId === uid) && (!finding || hit(`${l.name} ${title}`)))
   const sections: { title: string; lists: List[]; color: string }[] = [
     { title: 'Lists', lists: inSection('Lists'), color: '' },
     { title: 'Projects', lists: inSection('Projects'), color: 'var(--color-project)' },
@@ -81,21 +98,24 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
     { title: 'Gifts', lists: inSection('Gifts'), color: '' },
   ]
 
+  const page = (text: string) => !finding || hit(text)
+  const shownBoards = boards.filter((b) => !finding || hit(`${b.name} voting`))
+
   return (
-    <nav className={`sidebar${open ? ' open' : ''}`}>
-      <NavLink route={{ view: 'today' }} label="Today" />
-      <NavLink route={{ view: 'home' }} label={<><Icon name="todo" /> Tasks</>} also={['mine', 'family', 'work']} />
-      <NavLink route={{ view: 'goals' }} label={<><Icon name="goal" /> Goals</>} also={['goal']} />
-      {isMember && <NavLink route={{ view: 'games' }} label={<><Icon name="sparkle" /> Games</>} />}
-      {isMember && <NavLink route={{ view: 'blog' }} label={<><Icon name="compose" /> New blog post</>} />}
-      <NavLink route={{ view: 'photos' }} label={<><Icon name="photo" /> Photos</>} />
-      <a className="nav-link" href={BLOG_URL} target="_blank" rel="noopener noreferrer">
+    <>
+      {page('Today') && <NavLink route={{ view: 'today' }} label="Today" />}
+      {page('Tasks') && <NavLink route={{ view: 'home' }} label={<><Icon name="todo" /> Tasks</>} also={['mine', 'family', 'work']} />}
+      {page('Goals') && <NavLink route={{ view: 'goals' }} label={<><Icon name="goal" /> Goals</>} also={['goal']} />}
+      {isMember && page('Games Wordle') && <NavLink route={{ view: 'games' }} label={<><Icon name="sparkle" /> Games</>} />}
+      {isMember && page('New blog post') && <NavLink route={{ view: 'blog' }} label={<><Icon name="compose" /> New blog post</>} />}
+      {page('Photos') && <NavLink route={{ view: 'photos' }} label={<><Icon name="photo" /> Photos</>} />}
+      {page("Travelin' On blog") && <a className="nav-link" href={BLOG_URL} target="_blank" rel="noopener noreferrer">
         <span className="grow">
           <Icon name="blog" /> Travelin' On blog
         </span>
         <Icon name="external" label="opens blog.itsallonesong.com" />
-      </a>
-      {pinned.map((t) => (
+      </a>}
+      {pinned.filter((t) => page(t.title)).map((t) => (
         <a key={t.id} className="nav-link pinned-link" href={safeUrl(t.url)!} target="_blank" rel="noopener noreferrer" title={t.url}>
           <span className="grow">
             <Icon name="link" /> {t.title}
@@ -105,13 +125,13 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
       ))}
 
 
-      {sections.map((s) => (
+      {sections.filter((s) => !finding || s.lists.length).map((s) => (
         <Section
           key={s.title}
           title={s.title}
           count={s.lists.length}
           active={s.lists.some((l) => l.id === activeListId)}
-          isOpen={openSection === s.title}
+          isOpen={finding || openSection === s.title}
           onToggle={() => toggle(s.title)}
         >
           {s.lists.map((l) => (
@@ -126,32 +146,36 @@ export function Sidebar({ open, onSettings }: { open: boolean; onSettings: () =>
           {s.lists.length === 0 && <p className="muted small">None yet</p>}
         </Section>
       ))}
-      {isMember && (
+      {isMember && !finding && (
         <button type="button" className="secondary small" onClick={() => editList(null)}>
           + New list
         </button>
       )}
 
-      <Section
-        title="Voting"
-        count={boards.length}
-        active={route.view === 'boards' || route.view === 'board'}
-        isOpen={openSection === 'Voting'}
-        onToggle={() => toggle('Voting')}
-      >
-        <NavLink route={{ view: 'boards' }} label="All boards" />
-        {boards.map((b) => (
-          <NavLink key={b.id} route={{ view: 'board', boardId: b.id }} label={b.name} />
-        ))}
-      </Section>
+      {(!finding || shownBoards.length > 0 || page('Voting boards')) && (
+        <Section
+          title="Voting"
+          count={boards.length}
+          active={route.view === 'boards' || route.view === 'board'}
+          isOpen={finding || openSection === 'Voting'}
+          onToggle={() => toggle('Voting')}
+        >
+          <NavLink route={{ view: 'boards' }} label="All boards" />
+          {(finding && page('Voting boards') ? boards : shownBoards).map((b) => (
+            <NavLink key={b.id} route={{ view: 'board', boardId: b.id }} label={b.name} />
+          ))}
+        </Section>
+      )}
       <div className="nav-section">
-        <button type="button" className="nav-link" onClick={onSettings}>
-          <Icon name="settings" /> Settings
-        </button>
-        {isMember && <NavLink route={{ view: 'map' }} label={<><Icon name="map" /> Family map</>} />}
-        <NavLink route={{ view: 'wall' }} label={<><Icon name="calendar" /> Wall display</>} />
-        <NavLink route={{ view: 'help' }} label={<><Icon name="help" /> Help & about</>} />
+        {page('Settings') && (
+          <button type="button" className="nav-link" onClick={onSettings}>
+            <Icon name="settings" /> Settings
+          </button>
+        )}
+        {isMember && page('Family map location') && <NavLink route={{ view: 'map' }} label={<><Icon name="map" /> Family map</>} />}
+        {page('Wall display') && <NavLink route={{ view: 'wall' }} label={<><Icon name="calendar" /> Wall display</>} />}
+        {page('Help & about') && <NavLink route={{ view: 'help' }} label={<><Icon name="help" /> Help & about</>} />}
       </div>
-    </nav>
+    </>
   )
 }

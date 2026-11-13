@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useApp } from '../../hooks/useApp'
-import { usePinned } from '../../hooks/usePinned'
+import { useTodayTiles } from '../../hooks/useTodayTiles'
 import type { Task } from '../../types'
 import { detailsOf } from '../../utils/details'
+import { tile } from '../../utils/tiles'
 import type { EntrySize } from '../../utils/entries'
 import { DetailsMarks, DetailsView } from '../UI/Details'
 import { Icon, type IconName } from '../UI/Icon'
@@ -175,18 +176,18 @@ const actionsFor = (canPin: boolean): EntryAction[] => ['open', 'edit', 'move', 
 
 function ActionButton({ action, entry, menu }: { action: EntryAction; entry: Task; menu?: boolean }) {
   const app = useApp()
-  const pins = usePinned()
+  const today = useTodayTiles()
   const editable = app.canEdit(entry)
   if ((action === 'edit' || action === 'move') && !editable) return null
   if (action === 'pin' && !app.isMember) return null
-  const pinned = pins.isPinned(entry.id)
+  const pinned = today.has(tile('entry', entry.id))
   const spec: Record<typeof action, { icon: IconName; text: string; run: () => void }> = {
     open: { icon: 'external', text: 'Open', run: () => app.openEntry(entry.id, 'view') },
     edit: { icon: 'edit', text: 'Edit', run: () => app.openEntry(entry.id, 'edit') },
     move: { icon: 'list', text: 'Move to another list', run: () => app.openEntry(entry.id, 'edit') },
     comment: { icon: 'message', text: 'Comment', run: () => app.openEntry(entry.id, 'comment') },
     send: { icon: 'phone', text: 'Send (text)', run: () => app.textAbout(entry.id) },
-    pin: { icon: 'pin', text: pinned ? 'Unpin from Today' : 'Pin to Today', run: () => void pins.toggle(entry.id) },
+    pin: { icon: 'pin', text: pinned ? 'Unpin from Today' : 'Pin to Today', run: () => void today.toggle(tile('entry', entry.id)).catch(() => undefined) },
   }
   const s = spec[action]
   return (

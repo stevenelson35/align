@@ -20,6 +20,7 @@ import { HelpView } from '../Help/HelpView'
 import { BoardsView } from '../Voting/BoardsView'
 import { BoardView } from '../Voting/BoardView'
 import { InvestmentEntryView } from '../Investing/InvestingSection'
+import { LibraryView } from './LibraryView'
 import { GamesView } from '../Games/GamesView'
 
 // The map library (Leaflet) loads only when the map is opened.
@@ -100,6 +101,8 @@ export function MainView() {
       return <GamesView key={route.challengeId ?? route.gameId ?? 'games'} challengeId={route.challengeId} gameId={route.gameId} />
     case 'help':
       return <HelpView topic={route.topic} />
+    case 'library':
+      return <LibraryView />
     case 'goal': {
       const goal = goals.find((g) => g.id === route.goalId)
       if (!goal) return <p className="muted">{loaded ? "That goal isn't shared with you, or it was deleted." : 'Opening…'}</p>

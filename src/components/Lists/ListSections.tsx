@@ -12,18 +12,8 @@ import { WhoseChips } from '../UI/WhoseChips'
 import { WHOSE_VALUES, whoseMatches, type Whose } from '../../utils/whose'
 import { Icon, type IconName } from '../UI/Icon'
 import { ItemIcon } from '../UI/ItemIcon'
+import { LIST_KIND } from '../../utils/listKinds'
 
-const KIND: Record<List['kind'], { icon: IconName; label: string }> = {
-  list: { icon: 'todo', label: 'Tasks' },
-  project: { icon: 'chain', label: 'Project' },
-  checklist: { icon: 'check', label: 'Checklist' },
-  notes: { icon: 'note', label: 'Notes' },
-  links: { icon: 'link', label: 'Links' },
-  picks: { icon: 'star', label: 'Pick list' },
-  cards: { icon: 'book', label: 'Flashcards' },
-  contacts: { icon: 'person', label: 'Contacts' },
-  gifts: { icon: 'gift', label: 'Gift list' },
-}
 
 
 /**
@@ -54,10 +44,10 @@ function ListCollection({ id, title, icon, kinds, whose = false, help, addKind, 
       return (
         <div className={`collection-card color-${l.visibility}`}>
           <button type="button" className="collection-card-main" onClick={() => go(l)}>
-            <Icon name={KIND[l.kind].icon} />
+            <Icon name={LIST_KIND[l.kind].icon} />
             <strong>{l.name}</strong>
             <span className="muted small">
-              {KIND[l.kind].label} · {n} {unit}
+              {LIST_KIND[l.kind].label} · {n} {unit}
             </span>
             <span className="muted small">
               <Icon name={AUDIENCE_ICON[audience]} /> {audienceLabel(audience)}
@@ -69,7 +59,7 @@ function ListCollection({ id, title, icon, kinds, whose = false, help, addKind, 
     return (
       <div className={`collection-row color-${l.visibility}`}>
         <button type="button" className="collection-row-main" onClick={() => go(l)}>
-          <Icon name={KIND[l.kind].icon} />
+          <Icon name={LIST_KIND[l.kind].icon} />
           <span className="grow">{l.name}</span>
           <span className="muted small" title={audienceLabel(audience)}>
             <Icon name={AUDIENCE_ICON[audience]} label={audienceLabel(audience)} />
@@ -94,7 +84,7 @@ function ListCollection({ id, title, icon, kinds, whose = false, help, addKind, 
       items={items}
       pinned={pinned}
       itemKey={(l) => l.id}
-      matches={(l, q) => q.toLowerCase().split(/\s+/).every((w) => l.name.toLowerCase().includes(w) || KIND[l.kind].label.toLowerCase().includes(w))}
+      matches={(l, q) => q.toLowerCase().split(/\s+/).every((w) => l.name.toLowerCase().includes(w) || LIST_KIND[l.kind].label.toLowerCase().includes(w))}
       render={render}
       searchHint={`Find a ${title === 'Lists' ? 'list' : title === 'Projects' ? 'project' : 'set'}…`}
       allowCards
