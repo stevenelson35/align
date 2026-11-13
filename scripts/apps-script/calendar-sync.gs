@@ -740,6 +740,8 @@ function stableJson_(v) {
 /**
  * What to write. `existing` is [{ id, fields }] for tasks in the list. Imported tasks whose event disappeared are
  * deleted only inside the sync window, so past history stays. Tasks family members added by hand are never touched.
+ * Deleting marks a task deleted (Align's change-only sync needs to hear about it); an event that comes back clears
+ * the mark (`revive`), and a task already marked isn't deleted again.
  */
 function planSync_(wanted, existing, windowStart, windowEnd) {
   var byId = {}
@@ -753,11 +755,12 @@ function planSync_(wanted, existing, windowStart, windowEnd) {
     seen[w.docId] = true
     var have = byId[w.docId]
     if (!have) plan.creates.push(w)
+    else if (have.fields.deleted) plan.updates.push({ docId: w.docId, fields: w.fields, revive: true })
     else if (!sameSynced_(have.fields, w.fields)) plan.updates.push(w)
   })
   existing.forEach(function (d) {
     var f = d.fields
-    if (!f.calendar || seen[d.id]) return
+    if (!f.calendar || seen[d.id] || f.deleted) return
     if (f.startDate >= windowStart && f.startDate <= windowEnd) plan.deletes.push(d.id)
   })
   return plan
@@ -830,13 +833,20 @@ function buildWrites_(plan, list, api) {
   plan.updates.forEach(function (w) {
     writes.push({
       update: { name: api.docName('tasks/' + w.docId), fields: toFields_(w.fields) },
-      updateMask: { fieldPaths: SYNCED_FIELDS },
+      // A revived task: 'deleted' is in the mask but not the fields, so the mark is removed.
+      updateMask: { fieldPaths: w.revive ? SYNCED_FIELDS.concat(['deleted']) : SYNCED_FIELDS },
       currentDocument: { exists: true },
       updateTransforms: stamp,
     })
   })
   plan.deletes.forEach(function (id) {
-    writes.push({ delete: api.docName('tasks/' + id) })
+    // Marked deleted, not removed: Align's change-only sync hears about it (rules: isTombstone).
+    writes.push({
+      update: { name: api.docName('tasks/' + id), fields: toFields_({ deleted: true }) },
+      updateMask: { fieldPaths: ['deleted'] },
+      currentDocument: { exists: true },
+      updateTransforms: stamp,
+    })
   })
   return writes
 }
@@ -902,9 +912,20 @@ function firestoreApi_(cfg, auth) {
         throw e
       }
     },
+    /** A new document with created / changed times from the server (Align's change-only sync needs updatedAt). */
     create: function (collection, data) {
-      var d = http_('post', base + '/' + collection, { fields: toFields_(data) }, auth.token)
-      return d.name.split('/').pop()
+      var id = Utilities.getUuid().replace(/-/g, '').slice(0, 20)
+      this.commit([
+        {
+          update: { name: this.docName(collection + '/' + id), fields: toFields_(data) },
+          currentDocument: { exists: false },
+          updateTransforms: [
+            { fieldPath: 'createdAt', setToServerValue: 'REQUEST_TIME' },
+            { fieldPath: 'updatedAt', setToServerValue: 'REQUEST_TIME' },
+          ],
+        },
+      ])
+      return id
     },
     /** Equality filters only; they must match the security rules (e.g. visibility == "family"). */
     query: function (collection, equals) {

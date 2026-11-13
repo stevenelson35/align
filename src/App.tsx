@@ -22,7 +22,7 @@ function App() {
       return <main className="center error">Something went wrong: {session.message}</main>
     case 'ready':
       return (
-        <DataProvider uid={session.user.uid} role={session.member.role}>
+        <DataProvider uid={session.user.uid} role={session.member.role} accessChangedAt={session.household.accessChangedAt?.toMillis?.() ?? 0}>
           <AppShell uid={session.user.uid} household={session.household} member={session.member} />
         </DataProvider>
       )

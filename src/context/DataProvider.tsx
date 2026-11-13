@@ -6,7 +6,7 @@ import { isFinished, isItemList } from '../utils/tasks'
 import { DataContext, type DataState } from './DataContext'
 
 /** Real-time subscriptions to everything the signed-in user can read. Household scale, so it's all in memory. */
-export function DataProvider({ uid, role, children }: { uid: string; role: Role; children: ReactNode }) {
+export function DataProvider({ uid, role, accessChangedAt = 0, children }: { uid: string; role: Role; /** Household's last access narrowing (ms): newer than a device's last full load means reload in full. */ accessChangedAt?: number; children: ReactNode }) {
   const [lists, setLists] = useState<List[] | null>(null)
   const [tasks, setTasks] = useState<Task[] | null>(null)
   const [boards, setBoards] = useState<Board[] | null>(null)
@@ -18,14 +18,15 @@ export function DataProvider({ uid, role, children }: { uid: string; role: Role;
   useEffect(() => {
     const onError = (e: Error) => setError(e.message)
     const unsubs = [
-      subscribeLists(uid, role, setLists, onError),
-      subscribeTasks(uid, role, setTasks, onError),
+      subscribeLists(uid, role, setLists, onError, accessChangedAt),
+      subscribeTasks(uid, role, setTasks, onError, accessChangedAt),
       subscribeBoards(role, setBoards, onError),
-      subscribeGoals(uid, role, setGoals, onError),
+      subscribeGoals(uid, role, setGoals, onError, accessChangedAt),
     ]
     if (role === 'member') unsubs.push(subscribeMyVotes(uid, setMyVotes, onError))
     return () => unsubs.forEach((u) => u())
-  }, [uid, role])
+    // A newer accessChangedAt restarts these, and the sync then loads in full (dropping what's no longer visible).
+  }, [uid, role, accessChangedAt])
 
   const boardIds = (boards ?? []).map((b) => b.id).sort().join(',')
   useEffect(() => {

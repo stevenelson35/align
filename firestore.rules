@@ -146,7 +146,9 @@ service cloud.firestore {
       allow get: if signedIn() && !householdExists();
       allow create: if signedIn() && validNewHousehold();
       allow update: if isMember()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pets', 'weeklyTokens', 'members', 'groups'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pets', 'weeklyTokens', 'members', 'groups', 'accessChangedAt'])
+        // Someone narrowed who can see something: every device reloads in full (change-only sync can't tell them).
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['accessChangedAt']) || request.resource.data.accessChangedAt == request.time)
         && ownMemberEntryOnly()
         // groups: { parents: [uid, ...] } for the "Parents" sharing shortcut. Only a convenience: who can read a
         // shared list is always its own sharedWith list, shown by name when you share.
@@ -156,6 +158,16 @@ service cloud.firestore {
     }
 
     // ---- Lists ----
+
+    // Change-only sync (DESIGN.md §13, refactor phase 1): deleting marks a document deleted instead of removing it,
+    // so other devices, which only ask for what changed, hear about it. Only the mark and the time may change, and
+    // only someone who could delete the document may mark it (each match checks that). Old marks are removed later
+    // by a real delete.
+    function isTombstone() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted', 'updatedAt'])
+        && request.resource.data.deleted == true
+        && request.resource.data.updatedAt == request.time;
+    }
 
     function validList(d) {
       return d.name is string && d.name.size() > 0
@@ -191,6 +203,7 @@ service cloud.firestore {
             || resource.data.ownerId == request.auth.uid)
         && validList(request.resource.data);
       allow delete: if canWrite(resource.data);
+      allow update: if canWrite(resource.data) && isTombstone();
       // Gift lists: view-only accounts (extended family) may make the hidden companion for secret ideas when there
       // isn't one yet: for a real gift list, with its recipient, and (validList) never shared with the recipient.
       allow create: if isViewer()
@@ -241,6 +254,7 @@ service cloud.firestore {
         && (resource.data.ownerId == request.auth.uid
             || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['log', 'updatedAt']));
       allow delete: if isMember() && resource.data.ownerId == request.auth.uid;
+      allow update: if isMember() && resource.data.ownerId == request.auth.uid && isTombstone();
     }
 
     // ---- Tasks ----
@@ -337,6 +351,8 @@ service cloud.firestore {
                 && request.resource.data.ratings[request.auth.uid] >= 1 && request.resource.data.ratings[request.auth.uid] <= 5))
         && (!('watched' in request.resource.data) || (request.resource.data.watched is list && request.resource.data.watched.size() <= 200));
       allow delete: if canWrite(resource.data);
+      allow update: if (canWrite(resource.data) || (isViewer() && resource.data.createdBy == request.auth.uid && viewerGiftList(resource.data.listId)))
+        && isTombstone();
     }
 
     // ---- Voting ----

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { audienceOf, peopleIn, privacyFields, viewCoveringEditors } from './audience'
+import { audienceNarrows, audienceOf, peopleIn, privacyFields, viewCoveringEditors } from './audience'
 
 describe('audience', () => {
   it('maps the five choices onto stored privacy fields and back', () => {
@@ -28,5 +28,28 @@ describe('viewCoveringEditors', () => {
     expect(viewCoveringEditors('private', [], 'family', [], 'me', [])).toMatchObject({ view: 'family', widened: true })
     expect(viewCoveringEditors('parents', [], 'shared', ['kid'], 'me', ['me', 'wife'])).toEqual({ view: 'shared', viewChosen: ['wife', 'kid'], widened: true })
     expect(viewCoveringEditors('shared', ['wife', 'kid'], 'parents', [], 'me', ['me', 'wife']).widened).toBe(false)
+  })
+})
+
+describe('audienceNarrows (change-only sync)', () => {
+  const fam = { visibility: 'family', ownerId: 's', viewerVisible: false }
+  const everyone = { ...fam, viewerVisible: true }
+  const mine = { visibility: 'private', ownerId: 's' }
+  const shared = (who: string[]) => ({ visibility: 'shared', ownerId: 's', sharedWith: who })
+  it('says yes when someone loses access', () => {
+    expect(audienceNarrows(fam, mine)).toBe(true)
+    expect(audienceNarrows(everyone, fam)).toBe(true)
+    expect(audienceNarrows(fam, shared(['s', 'l']))).toBe(true)
+    expect(audienceNarrows(shared(['s', 'l', 'c']), shared(['s', 'l']))).toBe(true)
+    expect(audienceNarrows(shared(['s', 'l']), mine)).toBe(true)
+    expect(audienceNarrows(mine, { ...mine, ownerId: 'l' })).toBe(true)
+  })
+  it('says no when everyone who had it still does', () => {
+    expect(audienceNarrows(mine, fam)).toBe(false)
+    expect(audienceNarrows(fam, everyone)).toBe(false)
+    expect(audienceNarrows(fam, fam)).toBe(false)
+    expect(audienceNarrows(shared(['s', 'l']), shared(['s', 'l', 'c']))).toBe(false)
+    expect(audienceNarrows(mine, shared(['s', 'l']))).toBe(false)
+    expect(audienceNarrows(shared(['s', 'l']), everyone)).toBe(false)
   })
 })

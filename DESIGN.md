@@ -520,6 +520,67 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
+### Major refactor: plan agreed 2026-11-13 (checkpoint tag `pre-refactor-2026-11-13`, commit `7e9b111`)
+Decisions (from the user):
+- **Data:** one **entry** shape (title, text, links, pictures, note references, comments, icon, tags, audience) with
+  optional parts instead of separate kinds: check, task (dates, duration, dependencies, priority, assignee, for), link
+  address, contact card, ratings (pick lists), card back + results (flashcards), gift details, calendar event. Lists are
+  containers with a default part and display, plus optional nested groups for any list. Goals, voting boards,
+  investing, games and locations stay their own collections.
+- **Display:** one entry row in three sizes (simple: check, type icon, title, text icon; medium: + markers for note,
+  picture, comment, link, date; detail: everything in place) and the same actions on every row (tap title opens in
+  place; press-and-hold: Pin, Send, Comment, Move, Edit).
+- **Today:** a **flat ordered list of tiles with optional groups the person names**. A tile is a built-in panel
+  (Goals, Family Map, On This Day, The Daily, Games, To Do, Inbox…), a pinned list, a pinned entry, or a part of a
+  panel (a person's location, Wordle of the day, Word of the day). One search across everything; any result can be
+  pinned. Arrange mode: press and hold, drag. **Shortcuts folds into pinned tiles; More… stays as the folded page.**
+  The ☰ menu becomes a Library page for browsing and bigger edits.
+- **Inbox:** "Send about this" → Align, Text, or both; an Inbox tile with unread count, mark read / clear; game
+  invitations move into it. **Notifications in seconds:** the sender's app asks the Apps Script web app to send the
+  push at once (like Refresh calendar), with a 15-minute background sweep as a fallback. Live game invites: instant
+  in-app; push the same immediate way. iPhone/iPad push needs Home Screen install; Fire tablets may only get the
+  in-app badge.
+- **Goals on Today:** tapping a goal's name opens logging in place (same as the pencil); Manage is the one way to the
+  full goal page.
+- **Reads:** ~1,600 document reads per cold open today (1,532 docs in `tasks`, incl. 254 contacts). Phase 1 adds
+  change-only sync (query `updatedAt > lastSync` on top of the persistent cache, tombstones for deletes) and loads big
+  lists (contacts, flashcards, long link lists) when opened or pinned.
+- **Live migration is approved** after a full backup to a file and a dry run on the emulator.
+
+Phases (each shippable): 1 data layer + migration + change-only sync (no visible change); 2 entry row sizes and one
+entry panel; 3 Today as tiles, search-to-pin, drag to arrange, Library; 4 Inbox, Send via Align / text / both,
+notifications, game invites; 5 cleanup and docs.
+
+#### Phase 1 (built 2026-11-13; not yet deployed or committed)
+- **Finding:** entries were already one shape in `tasks` (every kind has the same base; kinds add `contact`, `url` +
+  `category`, `ratings`, `results`, `gift`, `calendar`), so the "entry" model needs no data rewrite; Phases 2–3 build
+  the shared row and panel on it. Of 1,532 entries, 1,113 are flashcards and 254 contacts.
+- **Change-only sync** (`src/firebase/sync.ts`, `subscribeLists/Tasks/Goals` in db.ts): per query, a listener on the
+  device's saved copy only (`source: 'cache'`, no reads billed, includes your own unconfirmed writes) is what's shown;
+  a server listener asks for everything (first open, once a day per device/person/collection, or after
+  `household.accessChangedAt`) or only `updatedAt > newest held − 2 min`, which keeps the saved copy current. Measured
+  on the real data in the emulator: first open 1,582 documents; a reopen **0** from the server. Documents leaving every
+  query (narrowed access) are hidden and remembered per device (`<key>:gone`) until the next full load.
+- **Deleting marks** `{ deleted: true, updatedAt }` (rules `isTombstone`: only those two fields, the time = request
+  time, allowed exactly when a real delete would be); the next full load removes your own marks older than 30 days.
+  `deleteTask`, `deleteList` (in 450-write batches), `deleteGoal`; the calendar sync marks removed events deleted and
+  clears the mark (`revive`) when an event comes back.
+- **Narrowing access** (`audienceNarrows`, tested: Family → Only me, fewer chosen people, no longer for view-only
+  accounts, a new owner of a private one) stamps `household.accessChangedAt` in the same batch (`updateList`,
+  `updateGoal`, `updateTask` moves; screens pass the entry so moves need no extra read); every device's DataProvider
+  restarts and loads in full. Rules: members may set it, only to the request time.
+- **Every write to lists / tasks / goals must stamp `updatedAt`** (client: serverTimestamp; Apps Script:
+  `REQUEST_TIME`; its `create` now commits with createdAt/updatedAt, which voice-added tasks and the Family Calendar
+  list lacked). Indexes for the change queries: `firestore.indexes.json` (owner+visibility, visibility,
+  visibility+viewerVisible, sharedWith, each + updatedAt) for lists, tasks, goals.
+- **Migration** (`scripts/migrate-phase1.mjs`, dry run by default, idempotent): stamps `updatedAt` where missing.
+  Live: 1 document (the Family Calendar list). Backup: `~/align-backups/2026-11-13` (1,736 documents, read-only
+  export, private). `scripts/restore-to-emulator.mjs <backup> uid=email…` loads a backup into the emulators with
+  logins for real uids (password align-dev) for dry runs.
+- **Deploy order:** rules + indexes (wait until the indexes finish building), paste the Apps Script and deploy a new
+  version, run the live migration, then the web app.
+
+
 ### Location sign-in quota: local fix awaiting Apps Script deployment
 - The calendar/location script caches the Firebase bot ID token for up to 50 minutes and serializes cache misses,
   reducing password-verification requests from frequent OwnTracks reports. Paste `scripts/apps-script/calendar-sync.gs`

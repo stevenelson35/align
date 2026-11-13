@@ -23,7 +23,9 @@ import {
 import type { Move } from '../engine/scheduling'
 import type { Board, BoardItem, Comment, Goal, GoalEntry, Household, ItemStatus, List, Role, Task, TodayPanelStyle, TodaySurface, Vote } from '../types'
 import { db } from './config'
-import { audienceOf, privacyFields, type Audience } from '../utils/audience'
+import { currentSlot } from './accounts'
+import { subscribeSynced } from './sync'
+import { audienceNarrows, audienceOf, privacyFields, type Audience } from '../utils/audience'
 import { isStoredImage, storedImageId } from '../utils/pictures'
 import { today } from '../engine/dates'
 import type { DependencyChange } from '../utils/project'
@@ -100,17 +102,34 @@ export function subscribeInvestmentLists(uid: string, role: Role, onData: (lists
 
 type OnError = (e: FirestoreError) => void
 
-export function subscribeLists(uid: string, role: Role, onData: (lists: List[]) => void, onError: OnError) {
-  return subscribeUnion(visibleQueries('lists', uid, role), (id, d) => ({ ...d, id }) as List, onData, onError)
+// Lists, entries and goals load through change-only sync (firebase/sync.ts): the saved copy at once, then only
+// what changed; a full load once a day. Deleted documents are marked, not removed (markDeleted).
+function synced<T extends { id: string }>(name: 'lists' | 'tasks' | 'goals', uid: string, role: Role, onData: (items: T[]) => void, onError: OnError, accessChangedAt = 0) {
+  return subscribeSynced<T & { id: string }>(
+    name,
+    `align-sync:${currentSlot()}:${uid}:${name}`,
+    uid,
+    visibleQueries(name, uid, role),
+    (snap) => ({ ...snap.data(), id: snap.id }) as unknown as T,
+    onData,
+    onError,
+    (id) => doc(db, name, id),
+    accessChangedAt,
+  )
 }
 
-export function subscribeTasks(uid: string, role: Role, onData: (tasks: Task[]) => void, onError: OnError) {
-  return subscribeUnion(visibleQueries('tasks', uid, role), (id, d) => ({ ...d, id }) as Task, onData, onError)
-}
+export const subscribeLists = (uid: string, role: Role, onData: (lists: List[]) => void, onError: OnError, accessChangedAt = 0) => synced<List>('lists', uid, role, onData, onError, accessChangedAt)
+export const subscribeTasks = (uid: string, role: Role, onData: (tasks: Task[]) => void, onError: OnError, accessChangedAt = 0) => synced<Task>('tasks', uid, role, onData, onError, accessChangedAt)
+export const subscribeGoals = (uid: string, role: Role, onData: (goals: Goal[]) => void, onError: OnError, accessChangedAt = 0) => synced<Goal>('goals', uid, role, onData, onError, accessChangedAt)
 
-export function subscribeGoals(uid: string, role: Role, onData: (goals: Goal[]) => void, onError: OnError) {
-  return subscribeUnion(visibleQueries('goals', uid, role), (id, d) => ({ ...d, id }) as Goal, onData, onError)
-}
+/**
+ * Someone lost access to something (audienceNarrows): devices that only ask for changes can't hear about that, so
+ * this stamp on the household (which every device listens to) makes each one reload in full.
+ */
+const accessChanged = () => ({ accessChangedAt: serverTimestamp() })
+
+/** Deleting: mark it deleted (and stamped), so devices that only ask for changes hear about it (rules: isTombstone). */
+const markDeleted = () => ({ deleted: true, updatedAt: serverTimestamp() })
 
 // ---- Goals (DESIGN.md §5.6) ----
 
@@ -154,12 +173,15 @@ export function updateGoal(goal: Goal, patch: Partial<GoalInput>) {
   const next = { ...goal, ...patch }
   const data: Record<string, unknown> = { updatedAt: serverTimestamp() }
   for (const [k, v] of Object.entries(patch)) data[k] = v === undefined ? deleteField() : v
-  return updateDoc(doc(db, 'goals', goal.id), { ...data, ...goalPrivacy(next) })
+  const batch = writeBatch(db)
+  batch.update(doc(db, 'goals', goal.id), { ...data, ...goalPrivacy(next) })
+  if (audienceNarrows(goal, { ...next, viewerVisible: next.visibility === 'family' && next.viewerVisible })) batch.update(householdRef, accessChanged())
+  return batch.commit()
 }
 
 /** Deletes a goal and the pictures stored on its log entries (the ones you added). */
 export async function deleteGoal(goal: Pick<Goal, 'id' | 'log'>) {
-  await deleteDoc(doc(db, 'goals', goal.id))
+  await updateDoc(doc(db, 'goals', goal.id), markDeleted())
   await deleteRemovedImages(Object.values(goal.log ?? {}).flatMap((e) => e.images ?? []), [])
 }
 
@@ -321,15 +343,19 @@ export function updateList(list: List, patch: Partial<ListInput>, tasks: Task[])
       batch.update(doc(db, 'tasks', t.id), { ...copied, updatedAt: serverTimestamp() })
     }
   }
+  if (audienceNarrows(list, { ...next, viewerVisible: copied.viewerVisible as boolean })) batch.update(householdRef, accessChanged())
   return batch.commit()
 }
 
 export async function deleteList(listId: string, tasks: Task[]) {
-  const batch = writeBatch(db)
   const inList = tasks.filter((t) => t.listId === listId)
-  for (const t of inList) batch.delete(doc(db, 'tasks', t.id))
-  batch.delete(doc(db, 'lists', listId))
-  await batch.commit()
+  // A batch holds 500 writes: a big flashcard set goes in several, the list itself last.
+  for (let i = 0; i < inList.length; i += 450) {
+    const batch = writeBatch(db)
+    for (const t of inList.slice(i, i + 450)) batch.update(doc(db, 'tasks', t.id), markDeleted())
+    await batch.commit()
+  }
+  await updateDoc(doc(db, 'lists', listId), markDeleted())
   await deleteRemovedImages(inList.flatMap((t) => t.images ?? []), [])
 }
 
@@ -417,20 +443,30 @@ export function addTaskNow(list: List, input: TaskInput, uid: string): { id: str
 }
 
 /** Patch a task. Undefined values clear the field. Moving to another list re-copies that list's fields. */
-export async function updateTask(id: string, patch: Partial<TaskInput>, moveTo?: List) {
+/**
+ * `moveTo` moves it to another list (taking that list's privacy); `from` is the entry as it is now (its privacy and
+ * date), which the screens that move entries have, saving a read.
+ */
+export async function updateTask(id: string, patch: Partial<TaskInput>, moveTo?: List, from?: Pick<Task, 'visibility' | 'ownerId' | 'sharedWith' | 'viewerVisible' | 'startDate'>) {
+  let before = from
   if (moveTo?.kind === 'project' && !patch.startDate) {
-    const existing = await getDoc(doc(db, 'tasks', id))
-    patch = { ...patch, startDate: existing.data()?.startDate || today() }
+    before ??= (await getDoc(doc(db, 'tasks', id))).data() as Task | undefined
+    patch = { ...patch, startDate: before?.startDate || today() }
   }
   const data: Record<string, unknown> = { updatedAt: serverTimestamp() }
   for (const [k, v] of Object.entries(patch)) data[k] = v === undefined ? deleteField() : v
-  if (moveTo) Object.assign(data, { listId: moveTo.id, ...copiedFields(moveTo) })
-  return updateDoc(doc(db, 'tasks', id), data)
+  if (!moveTo) return updateDoc(doc(db, 'tasks', id), data)
+  Object.assign(data, { listId: moveTo.id, ...copiedFields(moveTo) })
+  // Moved to a list fewer people can see (or we can't tell): every device reloads (see accessChanged).
+  const batch = writeBatch(db)
+  batch.update(doc(db, 'tasks', id), data)
+  if (!before?.visibility || audienceNarrows(before, moveTo)) batch.update(householdRef, accessChanged())
+  return batch.commit()
 }
 
 /** Deletes a task (or item, note, link) and the pictures stored on it that you added. */
 export async function deleteTask(task: Pick<Task, 'id' | 'images'>) {
-  await deleteDoc(doc(db, 'tasks', task.id))
+  await updateDoc(doc(db, 'tasks', task.id), markDeleted())
   await deleteRemovedImages(task.images ?? [], [])
 }
 

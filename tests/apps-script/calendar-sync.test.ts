@@ -152,6 +152,29 @@ describe('planSync_', () => {
     const p = plan([], [have('cancelled', '2026-10-20'), have('old', '2026-09-01'), handMade])
     expect(p.deletes).toEqual(['cancelled'])
   })
+
+  it('doesn’t delete a task already marked deleted, and revives one whose event came back', () => {
+    const p = plan([w('back', '2026-10-20')], [have('back', '2026-10-20', { deleted: true }), have('gone', '2026-10-21', { deleted: true })])
+    expect(p.deletes).toEqual([])
+    expect(p.updates).toEqual([expect.objectContaining({ docId: 'back', revive: true })])
+  })
+})
+
+describe('buildWrites_ (change-only sync)', () => {
+  const api = { uid: 'bot', docName: (p: string) => `projects/x/databases/(default)/documents/${p}` }
+  const list = { id: 'cal', visibility: 'family', ownerId: 'bot', viewerVisible: true }
+  it('marks a removed event deleted (stamped), and clears the mark on a revived one', () => {
+    const writes = gs.buildWrites_(
+      { creates: [], updates: [{ docId: 'back', fields: { title: 'T' }, revive: true }], deletes: ['gone'] } as never,
+      list as never,
+      api as never,
+    ) as { update: { name: string; fields: Record<string, unknown> }; updateMask: { fieldPaths: string[] }; updateTransforms: { fieldPath: string }[] }[]
+    expect(writes[0].updateMask.fieldPaths).toContain('deleted')
+    expect(writes[0].update.fields.deleted).toBeUndefined()
+    expect(writes[1]).toMatchObject({ update: { fields: { deleted: { booleanValue: true } } }, updateMask: { fieldPaths: ['deleted'] } })
+    expect(writes[1].updateTransforms.map((t) => t.fieldPath)).toEqual(['updatedAt'])
+    expect(JSON.stringify(writes)).not.toContain('"delete"')
+  })
 })
 
 describe('Firestore value encoding', () => {

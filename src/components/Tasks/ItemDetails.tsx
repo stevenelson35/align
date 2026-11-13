@@ -220,6 +220,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
           ...(isLink ? { url: link!, category: cleanCategory(category) || undefined } : {}),
         },
         moveTo,
+        item,
       )
       void deleteRemovedImages(detailsOf(item, false).images, images)
       if (isLink && pinned !== wasPinned) await setPinnedLink(app.uid, app.member.pinnedLinks, item.id, pinned)

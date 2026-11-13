@@ -15,6 +15,7 @@ import {
   query,
   setDoc,
   increment,
+  serverTimestamp,
   updateDoc,
   where,
   writeBatch,
@@ -785,6 +786,38 @@ describe('games', () => {
     await assertSucceeds(updateDoc(doc(db('wife'), 'gameChallenges/ch-hanoi'), {
       status: 'completed', result: { moves: 7, ms: 15000 }, completedAt: new Date(),
     }))
+  })
+})
+
+describe('marking deleted (change-only sync)', () => {
+  const gone = () => ({ deleted: true, updatedAt: serverTimestamp() })
+
+  it('lets whoever could delete an entry or list mark it deleted, and nothing else with it', async () => {
+    await assertSucceeds(updateDoc(doc(db('steve'), 'tasks/stevePrivateTask'), gone()))
+    await assertFails(updateDoc(doc(db('wife'), 'tasks/stevePrivateTask'), gone())) // can't see it
+    await assertSucceeds(updateDoc(doc(db('daughter'), 'tasks/familyVisibleTask'), gone())) // family: any member
+    await assertFails(updateDoc(doc(db('grandma'), 'tasks/familyVisibleTask'), gone())) // view-only
+    await assertFails(updateDoc(doc(db('daughter'), 'tasks/parentsOnlyTask'), gone())) // not shared with her
+    await assertSucceeds(updateDoc(doc(db('wife'), 'lists/parentsOnly'), gone()))
+    await assertFails(updateDoc(doc(db('daughter'), 'lists/parentsOnly'), gone()))
+  })
+
+  it('lets a member stamp the household when access narrows, but only with the current time', async () => {
+    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { accessChangedAt: serverTimestamp() }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { accessChangedAt: new Date('2020-01-01') }))
+    await assertFails(updateDoc(doc(db('grandma'), 'household/main'), { accessChangedAt: serverTimestamp() }))
+  })
+
+  it('lets only a goal’s owner mark it deleted, not someone who may only log it', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore() as unknown as Firestore, 'goals/walk'), {
+        name: 'Walk', kind: 'check', visibility: 'family', ownerId: 'steve', viewerVisible: false, createdBy: 'steve', editAudience: 'family',
+      })
+    })
+    await assertSucceeds(updateDoc(doc(db('wife'), 'goals/walk'), { 'log.2026-11-13.done': true })) // she may log it
+    await assertFails(updateDoc(doc(db('wife'), 'goals/walk'), gone())) // but not delete it
+    await assertFails(updateDoc(doc(db('wife'), 'goals/walk'), { deleted: true, updatedAt: new Date('2020-01-01') }))
+    await assertSucceeds(updateDoc(doc(db('steve'), 'goals/walk'), gone()))
   })
 })
 

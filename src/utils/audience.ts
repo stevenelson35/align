@@ -84,3 +84,34 @@ export function viewCoveringEditors(
   if (!missing.length) return same
   return { view: 'shared', viewChosen: [...viewers, ...missing].filter((id) => id !== ownerId), widened: true }
 }
+
+/** Who can read a document, in the stored fields (lists, entries, goals). */
+interface Readers {
+  visibility: string
+  ownerId: string
+  sharedWith?: string[]
+  viewerVisible?: boolean
+}
+
+/**
+ * Whether a change takes a document away from anyone who could read it before (Family → Only me, fewer chosen
+ * people, no longer visible to view-only accounts, a new owner of a private one). Change-only sync can't tell those
+ * people, so a narrowing write also stamps the household's `accessChangedAt` and every device reloads in full
+ * (firebase/sync.ts). Erring toward true only costs a reload.
+ */
+export function audienceNarrows(before: Readers, after: Readers): boolean {
+  const had = new Set(before.sharedWith ?? [])
+  const has = new Set(after.sharedWith ?? [])
+  if (before.visibility === 'private') {
+    if (after.visibility === 'private') return after.ownerId !== before.ownerId
+    return after.visibility === 'shared' && !has.has(before.ownerId)
+  }
+  if (before.visibility === 'family') {
+    if (after.visibility !== 'family') return true
+    return !!before.viewerVisible && !after.viewerVisible
+  }
+  // Shared with chosen people (possibly including view-only accounts).
+  if (after.visibility === 'family') return !after.viewerVisible // a chosen viewer may lose it
+  if (after.visibility === 'private') return [...had].some((u) => u !== after.ownerId)
+  return [...had].some((u) => !has.has(u))
+}

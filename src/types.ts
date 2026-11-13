@@ -55,6 +55,8 @@ export interface Household {
   tokenStartDate: Timestamp
   /** Named groups for the sharing shortcuts (e.g. "Parents"). A convenience only: access is each list's sharedWith. */
   groups?: { parents?: string[]; revealManager?: string }
+  /** When someone last narrowed who can see something: every device reloads in full (firebase/sync.ts). */
+  accessChangedAt?: Timestamp
 }
 
 /** private: the owner. family: every member (viewers too if viewerVisible). shared: the people in sharedWith. */

@@ -51,19 +51,30 @@ describe('project task dates', () => {
   it('gives an undated task today when moved to a project', async () => {
     mocks.getDoc.mockResolvedValue({ data: () => ({ title: 'Existing task' }) })
     await updateTask('task', {}, project)
-    expect(mocks.updateDoc.mock.calls[0][1]).toMatchObject({ startDate: '2026-10-11', listId: 'door' })
+    expect(mocks.batchUpdate.mock.calls[0][1]).toMatchObject({ startDate: '2026-10-11', listId: 'door' })
   })
 
   it('keeps an existing date when moved to a project', async () => {
     mocks.getDoc.mockResolvedValue({ data: () => ({ startDate: '2026-11-05' }) })
     await updateTask('task', {}, project)
-    expect(mocks.updateDoc.mock.calls[0][1].startDate).toBe('2026-11-05')
+    expect(mocks.batchUpdate.mock.calls[0][1].startDate).toBe('2026-11-05')
   })
 
   it('keeps an explicitly changed date when moved to a project', async () => {
     await updateTask('task', { startDate: '2026-12-01' }, project)
     expect(mocks.getDoc).not.toHaveBeenCalled()
-    expect(mocks.updateDoc.mock.calls[0][1].startDate).toBe('2026-12-01')
+    expect(mocks.batchUpdate.mock.calls[0][1].startDate).toBe('2026-12-01')
+  })
+
+  it('reads nothing extra when the screen passes the entry, and stamps the household only when access narrows', async () => {
+    const familyTask = { visibility: 'family' as const, ownerId: 'steve', viewerVisible: false, startDate: '2026-11-02' }
+    await updateTask('task', {}, { ...project, visibility: 'family', viewerVisible: true }, familyTask)
+    expect(mocks.getDoc).not.toHaveBeenCalled()
+    expect(mocks.batchUpdate.mock.calls).toHaveLength(1) // widened: just the task
+    mocks.batchUpdate.mockClear()
+    await updateTask('task', {}, { ...project, visibility: 'private', viewerVisible: false }, familyTask)
+    expect(mocks.batchUpdate.mock.calls).toHaveLength(2) // narrowed: the task and the household's stamp
+    expect(mocks.batchUpdate.mock.calls[1][1]).toHaveProperty('accessChangedAt')
   })
 })
 

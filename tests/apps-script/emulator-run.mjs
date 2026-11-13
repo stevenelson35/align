@@ -74,6 +74,7 @@ const sandbox = createContext({
     Events: { list: () => ({ timeZone: 'UTC', items: events }) },
   },
   Utilities: {
+    getUuid: () => crypto.randomUUID(),
     // Apps Script returns signed bytes.
     DigestAlgorithm: { SHA_256: 'sha256' },
     computeDigest: (algorithm, value) => [...createHash(algorithm).update(value).digest()].map((b) => (b > 127 ? b - 256 : b)),
@@ -141,7 +142,8 @@ check(plan.creates.length === 0 && plan.updates.length === 1 && plan.deletes.len
 tasks = await imported()
 const moved = tasks.find((t) => t.id === vet.id)
 check(moved.title === 'Vet: Dog 1 (moved)' && moved.status === 'done' && moved.notes === 'Bring records', 'update changes synced fields only')
-check(tasks.length === 3, 'cancelled instance removed')
+// Removed events are marked deleted (stamped), not removed, so Align's change-only sync hears about it.
+check(tasks.filter((t) => !t.deleted).length === 3 && tasks.some((t) => t.deleted === true && t.updatedAt), 'cancelled instance marked deleted')
 
 plan = sandbox.syncCalendar()
 check(plan.creates.length + plan.updates.length + plan.deletes.length === 0, 'third sync with no changes writes nothing')

@@ -33,6 +33,11 @@ ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web   # the USER runs this
 - **Every entry looks and works the same:** it opens as a view (`EntryPanel` facts + the `EntryExtras` block: note, named links `{url,label}`, pictures, comments via `commentThread`, Text about this), and Edit opens its form (`LinksAndPictures` / `DetailsFields` for the details). Reuse these for any new kind of entry; section headings use `SectionHeader`.
 - **Help text lives in `src/help/topics.ts`** (ⓘ tips + the Help page). When you change how something works, update its topic.
 - **Icons go through `<Icon name=… />`** (`components/UI/Icon.tsx`) so the Settings icon style applies; add new drawings there (fill / line / detail layers).
+- **Change-only sync (refactor phase 1):** lists, tasks and goals load through `src/firebase/sync.ts`. So **every write
+  to them must stamp `updatedAt`** (serverTimestamp; Apps Script REQUEST_TIME), **deleting marks `{ deleted: true,
+  updatedAt }`** (never `deleteDoc` them; rules `isTombstone`), and **a write that narrows who can see something also
+  stamps `household.accessChangedAt`** (`audienceNarrows`). A write that skips these is invisible to other devices
+  until their daily full load.
 - **Checklist items, notes and links are task docs** kept in `DataState.listItems`, not `tasks`. They stay out of task views, chat task commands and scheduling.
 - Hash routing (static hosting on Turbify, no rewrites), including `#/task/<id>` links. No spaces in generated names.
 - Match the existing style: functional React components, typed Firestore data in `src/types.ts`, small modules, comments that explain *why*, plain user-facing wording.

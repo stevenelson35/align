@@ -188,7 +188,7 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
     }
     const moveTo = form.listId !== task.listId ? lists.find((l) => l.id === form.listId) : undefined
     try {
-      await updateTask(task.id, patch, moveTo)
+      await updateTask(task.id, patch, moveTo, task)
       void deleteRemovedImages(detailsOf(task, false).images, images)
       if (preview) app.proposeShift({ title: `Move ${task.title}`, preview })
       onDone() // back to the view, which shows the change
