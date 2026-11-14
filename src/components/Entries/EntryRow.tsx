@@ -43,6 +43,8 @@ export function EntryRow({
   textButton = true,
   more,
   aside,
+  below,
+  expanded,
 }: {
   entry: Task
   size: EntrySize
@@ -64,11 +66,16 @@ export function EntryRow({
   more?: ReactNode
   /** A short fact on the same line, after the title (a family member's location). */
   aside?: ReactNode
+  /** Under the line, before any detail (a pinned person's fuller location, with Details). */
+  below?: ReactNode
+  /** Opened in place, controlled by the caller (with its own `title` button); otherwise the title toggles it. */
+  expanded?: boolean
 }) {
   const app = useApp()
   const [open, setOpen] = useState(false)
   const [menu, setMenu] = useState(false)
-  const detail = size === 'detail' || open
+  const isOpen = expanded ?? open
+  const detail = size === 'detail' || isOpen
   const details = detailsOf(entry, false) // its own address (a link, a "Read:" task) shows on its own
   const hasText = !!entry.notes?.trim()
   const press = useLongPress(() => setMenu(true))
@@ -122,7 +129,8 @@ export function EntryRow({
           <Icon name="more" />
         </button>
       </div>
-      {detail && <EntryDetail entry={entry} canPin={canPin} actions={open} more={more} />}
+      {below}
+      {detail && <EntryDetail entry={entry} canPin={canPin} actions={isOpen} more={more} />}
       {menu && <EntryMenu entry={entry} canPin={canPin} onClose={() => setMenu(false)} />}
     </Tag>
   )

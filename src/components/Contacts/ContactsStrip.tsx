@@ -7,6 +7,7 @@ import type { Task } from '../../types'
 import { hasAnyTag, matches, NO_TAG, tagsIn } from '../../utils/contacts'
 import { CollectionSection, PinButton } from '../UI/CollectionSection'
 import { ContactRow } from './ContactsView'
+import { useFamilyOnMap } from '../../hooks/useFamilyOnMap'
 import { ContactFilters, ExportContacts } from './ContactTags'
 
 /**
@@ -55,7 +56,7 @@ export function ContactsStrip() {
       itemKey={(p) => p.id}
       matches={(p, q) => matches(p, q)}
       render={(p) => (
-        <ContactRow block person={p} note={listName(p.listId)} pin={<PinButton pinned={pins.isPinned(p.id)} onToggle={() => void pins.toggle(p.id)} label={p.title} />} />
+        <MappedContactRow block person={p} note={listName(p.listId)} pin={<PinButton pinned={pins.isPinned(p.id)} onToggle={() => void pins.toggle(p.id)} label={p.title} />} />
       )}
       searchHint="Find a name, company, number or tag…"
       filters={
@@ -87,4 +88,13 @@ export function ContactsStrip() {
     {adding && <AddItemDialog kind="contacts" onClose={() => setAdding(false)} />}
     </>
   )
+}
+
+/**
+ * A contact row with 🗺 when they're a family member on the map. Its own component so the locations are listened to
+ * only while rows are shown (the panel open), not while Contacts is folded.
+ */
+function MappedContactRow(props: Omit<Parameters<typeof ContactRow>[0], 'mapUid'>) {
+  const onMap = useFamilyOnMap()
+  return <ContactRow {...props} mapUid={onMap(props.person)} />
 }

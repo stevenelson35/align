@@ -6,13 +6,13 @@ import type { FamilyLocation } from '../utils/location'
 import { calendarSyncUrl } from './calendarSync'
 import { auth, db } from './config'
 
-/** Everyone's latest positions, live. */
-export function useLocations(): { locations: FamilyLocation[]; error: string | null } {
+/** Everyone's latest positions, live (members only: `enabled` false for others, so nothing is asked). */
+export function useLocations(enabled = true): { locations: FamilyLocation[]; error: string | null } {
   const [locations, setLocations] = useState<FamilyLocation[]>([])
   const [error, setError] = useState<string | null>(null)
-  useEffect(
-    () =>
-      onSnapshot(
+  useEffect(() => {
+    if (!enabled) return
+    return onSnapshot(
         collection(db, 'locations'),
         (snap) =>
           setLocations(
@@ -24,9 +24,8 @@ export function useLocations(): { locations: FamilyLocation[]; error: string | n
             }),
           ),
         (err) => setError(err.message),
-      ),
-    [],
-  )
+      )
+  }, [enabled])
   return { locations, error }
 }
 

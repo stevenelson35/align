@@ -32,6 +32,7 @@ import { TodoPanel } from '../Tasks/TodoPanel'
 import { Icon, type IconName } from '../UI/Icon'
 import { memberForContact } from '../../utils/contacts'
 import { useMemberLocation } from '../../hooks/useMemberLocation'
+import { useFamilyOnMap } from '../../hooks/useFamilyOnMap'
 import { ItemIcon } from '../UI/ItemIcon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { InboxPanel } from '../Inbox/InboxPanel'
@@ -257,9 +258,31 @@ function PersonTile({ person }: { person: Task }) {
   return <PersonRow person={person} size="simple" lead={tileIcon('person')} className="flat" />
 }
 
+/**
+ * A family member pinned to Today: one line, their location shortened to fit ("at Ho…"). Tapping the name opens the
+ * whole contact in place, like any row; tapping the location shows the full location line under it (Show opens the
+ * map); 🗺 opens the map on them.
+ */
 function FamilyPersonTile({ person, uid }: { person: Task; uid: string }) {
   const where = useMemberLocation(uid)
-  return <PersonRow person={person} size="simple" lead={tileIcon('person')} className="flat" aside={where} extra={<PersonLocationTile uid={uid} />} />
+  const onMap = useFamilyOnMap()
+  const [peek, setPeek] = useState(false)
+  return (
+    <PersonRow
+      person={person}
+      size="simple"
+      lead={tileIcon('person')}
+      className="flat"
+      mapUid={onMap(person)}
+      aside={
+        <button type="button" className="entry-aside-button" onClick={() => setPeek(!peek)} aria-expanded={peek} title={peek ? 'Hide the location' : `Where ${person.title} is: tap for more`}>
+          {where}
+        </button>
+      }
+      below={peek && <div className="tile-person-peek"><PersonLocationTile uid={uid} /></div>}
+      extra={!peek && <PersonLocationTile uid={uid} />}
+    />
+  )
 }
 
 /** A game on Today; Wordle shows whether you've done today's. */

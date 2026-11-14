@@ -652,6 +652,12 @@ notifications, game invites; 5 cleanup and docs.
   ✕), seen ones have a hollow dot and dashed outline; Wordle invites open the Games page (older ones too). The banner
   sits below the top bar. `scripts/set-today.mjs <arrangement.json>` sets everyone's Today (dry run first; keeps
   their own pins at the end of More…).
+- **Follow-up 3:** a contact who is a family member on the map (`useFamilyOnMap`: `memberForContact` + a reported
+  location; one locations listener, only while rows are shown) gets 🗺 beside call / text / email on the Contacts page,
+  the Today Contacts panel and a pinned person; it opens `#/map/<uid>`. A pinned family member is one line: the name
+  keeps priority, the location shortens with "…" (`.entry-aside-button`); tapping the location toggles the full map
+  row under it (`EntryRow` `below`), tapping the name opens the card as on any row. Under 380 px their email button
+  moves to the card. `useLocations(enabled)`.
 - **Regression fixed:** the Library CSS edit in the first follow-up truncated `index.css` after the old Library rules,
   dropping the phase 4 styles (Inbox, badge, banner, Send's Align / Text / Both, the warning) from `60f8ead`; restored.
 

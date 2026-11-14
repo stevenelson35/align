@@ -5848,3 +5848,59 @@ a.entry-title .icon:last-child {
 .game-invitations-content {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* A pinned family member: name and location on one line; the location shortens to fit ("at Ho…") and taps open the
+   fuller location line under the row. */
+.entry-row.flat .entry-main {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.entry-row.flat .entry-title {
+  flex: none;
+  max-width: calc(100% - 2.6rem);
+  min-width: 0;
+}
+.entry-row.flat .row-action {
+  padding-inline: 0.2rem;
+  min-width: 1.75rem;
+}
+.entry-row.flat .entry-title [aria-label='Has text'] {
+  display: none;
+}
+.entry-row.flat .entry-title-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.entry-row.flat .entry-aside {
+  flex: 1 1 0;
+  min-width: 2.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.entry-aside-button {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.tile-person-peek {
+  margin: 0.25rem 0 0 2.25rem;
+}
+.tile-entry {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* A Fold's cover screen: a pinned person's email button goes to the opened card, leaving room for the name. */
+@media (max-width: 380px) {
+  .entry-row.flat > .entry-line > .row-action[href^='mailto:'] {
+    display: none;
+  }
+}

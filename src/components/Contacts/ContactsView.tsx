@@ -14,6 +14,7 @@ import { ItemIcon } from '../UI/ItemIcon'
 import { EntryRow } from '../Entries/EntryRow'
 import { EntrySizeSwitch } from '../Entries/EntrySizeSwitch'
 import { useEntrySize } from '../../hooks/useEntrySize'
+import { useFamilyOnMap } from '../../hooks/useFamilyOnMap'
 import { EntryFact } from '../UI/EntryExtras'
 
 const initials = (name: string) =>
@@ -30,6 +31,7 @@ const initials = (name: string) =>
  */
 export function ContactsView({ list }: { list: List }) {
   const app = useApp()
+  const onMap = useFamilyOnMap()
   const { listItems } = useData()
   const [query, setQuery] = useState('')
   const [name, setName] = useState('')
@@ -75,7 +77,7 @@ export function ContactsView({ list }: { list: List }) {
       )}
       <ul className="entry-list contacts-list">
         {shown.map((p) => (
-          <PersonRow key={p.id} person={p} size={size} />
+          <PersonRow key={p.id} person={p} size={size} mapUid={onMap(p)} />
         ))}
       </ul>
       {!people.length && <p className="muted small">No contacts yet. Add a person above, or Import a .vcf or CSV file from your phone, Google or Outlook.</p>}
@@ -88,7 +90,35 @@ export function ContactsView({ list }: { list: List }) {
  * One person as an entry row (the contacts list): picture or initials, name; medium adds company and tags; opened in
  * place, their numbers, emails and addresses. Call / text / email stay on the row (so there's no second 💬).
  */
-export function PersonRow({ person: p, size, lead, aside, extra, className }: { person: Task; size: EntrySize; /** Replaces the picture or initials (Today's icon). */ lead?: ReactNode; /** On the line, after the name. */ aside?: ReactNode; /** Shown first when opened (their location). */ extra?: ReactNode; className?: string }) {
+export function PersonRow({
+  person: p,
+  size,
+  lead,
+  aside,
+  extra,
+  className,
+  mapUid,
+  title,
+  below,
+  expanded,
+}: {
+  person: Task
+  size: EntrySize
+  /** Replaces the picture or initials (Today's icon). */
+  lead?: ReactNode
+  /** On the line, after the name. */
+  aside?: ReactNode
+  /** Shown first when opened (their location). */
+  extra?: ReactNode
+  className?: string
+  /** They're a family member on the family map: a 🗺 button opens the map on them. */
+  mapUid?: string | null
+  /** Replaces the name button (Today's peek). */
+  title?: ReactNode
+  below?: ReactNode
+  expanded?: boolean
+}) {
+  const app = useApp()
   const c = p.contact ?? {}
   const phone = c.phones?.[0]
   const email = c.emails?.[0]
@@ -100,6 +130,9 @@ export function PersonRow({ person: p, size, lead, aside, extra, className }: { 
       textButton={false}
       className={className}
       aside={aside}
+      title={title}
+      below={below}
+      expanded={expanded}
       lead={
         lead ?? (
           <span className="avatar contact-avatar" aria-hidden="true">
@@ -125,6 +158,7 @@ export function PersonRow({ person: p, size, lead, aside, extra, className }: { 
               <Icon name="mail" />
             </a>
           )}
+          {mapUid && <MapButton uid={mapUid} name={p.title} onMap={(uid) => app.navigate({ view: 'map', person: uid })} />}
         </>
       }
       more={
@@ -158,7 +192,7 @@ export function PersonRow({ person: p, size, lead, aside, extra, className }: { 
 }
 
 /** One person: picture or initials, name and company (tap for the details panel), then call / text / email (Today's Contacts). */
-export function ContactRow({ person: p, note, pin, block = false }: { person: Task; note?: string; /** A ☆ pin button at the end. */ pin?: ReactNode; /** A plain block instead of a list item. */ block?: boolean }) {
+export function ContactRow({ person: p, note, pin, block = false, mapUid }: { person: Task; note?: string; /** A ☆ pin button at the end. */ pin?: ReactNode; /** A plain block instead of a list item. */ block?: boolean; /** On the family map: 🗺 opens it on them. */ mapUid?: string | null }) {
   const app = useApp()
   const phone = p.contact?.phones?.[0]
   const email = p.contact?.emails?.[0]
@@ -190,7 +224,17 @@ export function ContactRow({ person: p, note, pin, block = false }: { person: Ta
           <Icon name="mail" />
         </a>
       )}
+      {mapUid && <MapButton uid={mapUid} name={p.title} onMap={(uid) => app.navigate({ view: 'map', person: uid })} />}
       {pin}
     </Row>
+  )
+}
+
+/** 🗺 on a person who's a family member on the family map: opens the map centered on them. */
+function MapButton({ uid, name, onMap }: { uid: string; name: string; onMap: (uid: string) => void }) {
+  return (
+    <button type="button" className="row-action" onClick={() => onMap(uid)} title={`Show ${name} on the family map`} aria-label={`Show ${name} on the family map`}>
+      <Icon name="map" />
+    </button>
   )
 }
