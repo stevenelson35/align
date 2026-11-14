@@ -639,6 +639,21 @@ notifications, game invites; 5 cleanup and docs.
   "On Today" / "In More…"), your links as chips, each kind of list as a card (several open, remembered), rows with
   kind icon in the audience color, count + unit, audience, where it is on Today (`placeOf`), and 📌 to pin; two
   columns on wide screens.
+- **Follow-up 2 (user feedback, 2026-11-14):** one gap between all tiles, grouped or not (`.today-tiles` flex columns,
+  `--tile-gap`; each tile's outer margins dropped), adjustable per device (`useTileGap`, `align-tile-gap`; Settings →
+  Today spacing and in Arrange). **End lines** (`end:<n>` tiles): a group runs to its end line, so tiles can sit below
+  a group outside it; `addGroup` adds one with each new group, Arrange offers "Add end line" on the last open group,
+  removing a group removes its end line, and Add's "Put it in" has "below your groups" (`'bottom'`). Entries pinned on
+  their own are one flat line (`EntryRow` `.flat`, the kind's icon in the panels' tinted square); a contact who is a
+  family member (`memberForContact`: same mobile number, or a unique first name) shows where they are inline
+  (`useMemberLocation`) and the map row when opened. Games on Today now use the shared Pinned / search / Show all
+  (`CollectionContents` `top` slot for `GameInvitationsBlock`); Live Wordle Updates has the Invitations heading; no
+  disclosure triangles; the Games page lists Invitations too. Inbox rows are one line (who · what, time; game: Play,
+  ✕), seen ones have a hollow dot and dashed outline; Wordle invites open the Games page (older ones too). The banner
+  sits below the top bar. `scripts/set-today.mjs <arrangement.json>` sets everyone's Today (dry run first; keeps
+  their own pins at the end of More…).
+- **Regression fixed:** the Library CSS edit in the first follow-up truncated `index.css` after the old Library rules,
+  dropping the phase 4 styles (Inbox, badge, banner, Send's Align / Text / Both, the warning) from `60f8ead`; restored.
 
 ### Refactor phase 4: Inbox, Send via Align / Text / Both, notifications (2026-11-13)
 - **Data:** `inbox/{id}` `{ to, from, kind: entry|link|board|photo|game|note, title, text?, link, read, pushed,

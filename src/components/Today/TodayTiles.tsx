@@ -3,6 +3,7 @@ import { TodaySectionScope } from '../../context/TodaySections'
 import { useStoredSet } from '../../hooks/useStoredSet'
 import { grouped, known, parseTile, type Tile } from '../../utils/tiles'
 import { SectionHeader } from '../UI/SectionHeader'
+import { useTileGap } from '../../hooks/useTileGap'
 import { TileView } from './TileView'
 
 /**
@@ -12,21 +13,22 @@ import { TileView } from './TileView'
 export function TodayTiles({ tiles, day, onArrange }: { tiles: Tile[]; day: string; onArrange?: () => void }) {
   const [folded, toggleFolded] = useStoredSet('align-today-folded-groups')
   const press = useHoldToArrange(onArrange)
+  const gap = useTileGap()
   return (
-    <>
-      {grouped(tiles.filter(known)).map((g) => {
+    <div className="today-tiles" style={{ '--tile-gap': `${gap}rem` } as React.CSSProperties}>
+      {grouped(tiles.filter(known)).map((g, gi) => {
         const tilesHere = g.tiles.map((t) => {
           const { kind, id } = parseTile(t)
           // Panels keep their own name for folding siblings (To Do registers as "tasks").
           return (
-            <TodaySectionScope key={t} id={kind === 'panel' ? id : t}>
+            <TodaySectionScope key={t} id={kind === 'panel' ? id : t} className="tile">
               <TileView tile={t} day={day} />
             </TodaySectionScope>
           )
         })
         if (!g.name)
           return (
-            <div key="" className="tile-ungrouped" {...press}>
+            <div key={`u${gi}`} className="tile-ungrouped" {...press}>
               {tilesHere}
             </div>
           )
@@ -44,7 +46,7 @@ export function TodayTiles({ tiles, day, onArrange }: { tiles: Tile[]; day: stri
           </div>
         )
       })}
-    </>
+    </div>
   )
 }
 

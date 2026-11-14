@@ -78,7 +78,7 @@ export function CollectionSection<T>({
 }
 
 /** Shared collection body; the map mounts this only when open to avoid folded location subscriptions. */
-export function CollectionContents<T>({ id, title, items, pinned, itemKey, matches, render, filters, searchHint, allowCards = false, empty, hidden = false }: CollectionContentsProps<T> & { hidden?: boolean }) {
+export function CollectionContents<T>({ id, title, items, pinned, itemKey, matches, render, filters, searchHint, allowCards = false, empty, hidden = false, top }: CollectionContentsProps<T> & { hidden?: boolean; /** Above the pinned ones (Games: invitations and live updates). */ top?: ReactNode }) {
   const [cards, setCards] = useStoredFlag(`align-today-${id}-cards`, false)
   const [query, setQuery] = useState('')
   const [all, setAll] = useState(false)
@@ -89,6 +89,7 @@ export function CollectionContents<T>({ id, title, items, pinned, itemKey, match
   if (hidden) return null
   return (
     <div className="section-content collection-content">
+      {top}
       {pinned.length > 0 && !q && (
         <div className="collection-pinned">
           <h4 className="collection-label small muted">Pinned</h4>

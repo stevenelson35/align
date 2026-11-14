@@ -5,12 +5,14 @@ import { useInbox } from '../../hooks/useInbox'
 import { Icon } from '../UI/Icon'
 import { useOpenMessage } from '../../hooks/useOpenMessage'
 
-/** How long the banner stays (a game invitation stays until answered or closed). */
+/** How long the banner stays (a game invitation a little longer). */
 const SHOW_MS = 10_000
+const GAME_MS = 30_000
 
 /**
  * A new message while Align is open: a banner at the top for a few seconds ("Steve: Buy milk · Open"), so a live game
- * invitation is seen at once even without notifications. Messages already there when Align opened don't show.
+ * invitation is seen at once even without notifications. Messages already there when Align opened don't show. It sits
+ * just below the top bar.
  */
 export function InboxBanner() {
   const app = useApp()
@@ -29,8 +31,8 @@ export function InboxBanner() {
     if (fresh) setShown(fresh)
   }, [messages, loaded])
   useEffect(() => {
-    if (!shown || shown.kind === 'game') return
-    const t = setTimeout(() => setShown(null), SHOW_MS)
+    if (!shown) return
+    const t = setTimeout(() => setShown(null), shown.kind === 'game' ? GAME_MS : SHOW_MS)
     return () => clearTimeout(t)
   }, [shown])
   if (!shown) return null

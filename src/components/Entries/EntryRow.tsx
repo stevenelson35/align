@@ -42,6 +42,7 @@ export function EntryRow({
   as: Tag = 'li',
   textButton = true,
   more,
+  aside,
 }: {
   entry: Task
   size: EntrySize
@@ -61,6 +62,8 @@ export function EntryRow({
   textButton?: boolean
   /** The kind's own details, shown first when opened in place (a person's numbers and addresses). */
   more?: ReactNode
+  /** A short fact on the same line, after the title (a family member's location). */
+  aside?: ReactNode
 }) {
   const app = useApp()
   const [open, setOpen] = useState(false)
@@ -101,6 +104,7 @@ export function EntryRow({
               {hasText && !detail && <Icon name="note" label="Has text" />}
             </button>
           )}
+          {aside && <span className="entry-aside small">{aside}</span>}
           {size !== 'simple' && (
             <div className="entry-marks small">
               <DetailsMarks links={details.links} images={details.images} />

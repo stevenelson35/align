@@ -26,7 +26,7 @@ export function AddToToday({ onClose }: { onClose: () => void }) {
   // Where new tiles go: the top of Today (above your groups), a group, or More….
   const [place, setPlace] = useState<string>('top')
   const yourGroups = groupNames(today.tiles)
-  const where: TilePlace = place === 'top' || place === 'more' ? place : { group: place.slice(2) }
+  const where: TilePlace = place === 'top' || place === 'bottom' || place === 'more' ? place : { group: place.slice(2) }
   const [error, setError] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => input.current?.focus(), [])
@@ -98,7 +98,8 @@ export function AddToToday({ onClose }: { onClose: () => void }) {
             }}
             aria-label="Where new tiles go"
           >
-            <option value="top">Today (above your groups)</option>
+            <option value="top">Today, above your groups</option>
+            <option value="bottom">Today, below your groups</option>
             {yourGroups.map((g) => (
               <option key={g} value={`g:${g}`}>
                 The “{g}” group

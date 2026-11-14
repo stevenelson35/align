@@ -29,7 +29,9 @@ import { OnThisDay } from '../Photos/OnThisDay'
 import { RewardsStrip } from '../Rewards/RewardsStrip'
 import { TaskCard } from '../Tasks/TaskCard'
 import { TodoPanel } from '../Tasks/TodoPanel'
-import { Icon } from '../UI/Icon'
+import { Icon, type IconName } from '../UI/Icon'
+import { memberForContact } from '../../utils/contacts'
+import { useMemberLocation } from '../../hooks/useMemberLocation'
 import { ItemIcon } from '../UI/ItemIcon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { InboxPanel } from '../Inbox/InboxPanel'
@@ -180,7 +182,7 @@ function ListTile({ listId }: { listId: string }) {
 }
 
 /** One entry on Today, as its own list shows it (sized by that list, at most medium): a task, a checklist item, a person, a link. */
-function TileEntry({ entry, list, size: forced }: { entry: Task; list?: List; size?: EntrySize }) {
+function TileEntry({ entry, list, size: forced, flat = false }: { entry: Task; list?: List; size?: EntrySize; /** One line, the kind's icon, no border (an entry pinned on its own). */ flat?: boolean }) {
   const app = useApp()
   const [listSize] = useEntrySize(list ?? { id: '', kind: 'list' })
   // Today stays a glance: a list shown in full detail (notes) is medium here; tapping a row still opens it in place.
@@ -192,12 +194,14 @@ function TileEntry({ entry, list, size: forced }: { entry: Task; list?: List; si
       </li>
     )
   if (list.kind === 'contacts' || entry.contact) return <PersonRow person={entry} size={size} />
+  const flatLook = flat ? { className: 'flat', lead: tileIcon(LIST_KIND[list.kind].icon) } : {}
   const href = list.kind === 'links' ? safeUrl(entry.url) : null
   if (href)
     return (
       <EntryRow
         entry={entry}
         size={size}
+        {...flatLook}
         title={
           <a href={href} target="_blank" rel="noopener noreferrer" className="entry-title link-name">
             <ItemIcon value={entry.customIcon} /> <span className="entry-title-text">{entry.title}</span> <Icon name="external" />
@@ -210,7 +214,7 @@ function TileEntry({ entry, list, size: forced }: { entry: Task; list?: List; si
       <EntryRow
         entry={entry}
         size={size}
-        className={entry.status === 'done' ? 'checked' : ''}
+        className={`${entry.status === 'done' ? 'checked' : ''}${flat ? ' flat' : ''}`}
         check={{
           checked: entry.status === 'done',
           disabled: !app.canEdit(entry),
@@ -219,19 +223,43 @@ function TileEntry({ entry, list, size: forced }: { entry: Task; list?: List; si
         }}
       />
     )
-  return <EntryRow entry={entry} size={size} />
+  return <EntryRow entry={entry} size={size} {...flatLook} />
 }
 
-/** One entry pinned to Today (a person to call, a link, a task, a note), as a row. */
+/**
+ * One entry pinned to Today, as one line like the panels' headings: the kind's icon in the same tinted square, the
+ * title, its quick buttons, no border (a person: call / text / email, and where they are if they're in the family;
+ * a link: opens the site). Tap the title to open it in place. Tasks keep their task card.
+ */
 function EntryTile({ id }: { id: string }) {
   const { lists, tasks, listItems } = useData()
   const entry = listItems.find((t) => t.id === id) ?? tasks.find((t) => t.id === id)
   if (!entry) return null
+  const list = lists.find((l) => l.id === entry.listId)
   return (
     <ul className="entry-list tile-entry">
-      <TileEntry entry={entry} list={lists.find((l) => l.id === entry.listId)} size="simple" />
+      {list && (list.kind === 'contacts' || entry.contact) ? <PersonTile person={entry} /> : <TileEntry entry={entry} list={list} size="simple" flat />}
     </ul>
   )
+}
+
+const tileIcon = (name: IconName) => (
+  <span className="section-icon" aria-hidden="true">
+    <Icon name={name} />
+  </span>
+)
+
+/** A person on Today: one line; if they're in the family (and you're a member), where they are, more when opened. */
+function PersonTile({ person }: { person: Task }) {
+  const app = useApp()
+  const uid = app.isMember ? memberForContact(person, app.household.members) : null
+  if (uid) return <FamilyPersonTile person={person} uid={uid} />
+  return <PersonRow person={person} size="simple" lead={tileIcon('person')} className="flat" />
+}
+
+function FamilyPersonTile({ person, uid }: { person: Task; uid: string }) {
+  const where = useMemberLocation(uid)
+  return <PersonRow person={person} size="simple" lead={tileIcon('person')} className="flat" aside={where} extra={<PersonLocationTile uid={uid} />} />
 }
 
 /** A game on Today; Wordle shows whether you've done today's. */

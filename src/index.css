@@ -3305,15 +3305,56 @@ button.today-sheet-title {
 /* Today's tiles (refactor phase 3): a group is a section like the others (📁 icon, name, count); its tiles sit
    under it, indented along a thin line, so it's clear what belongs to it. */
 .tile-group-body {
-  margin: 0 0 0.6rem 0.95rem;
+  margin-left: 0.95rem;
   padding-left: 0.65rem;
   border-left: 2px solid var(--border);
 }
 .tile-group-empty {
-  margin: 0 0 0.6rem 1.6rem;
+  margin: 0 0 0 1.6rem;
+}
+
+/* One space between every tile, grouped or not, the same everywhere (Settings or Arrange → Space between tiles sets
+   --tile-gap on this device). Each tile's own outer margins are dropped so the gap is the only spacing. */
+.today-tiles,
+.today-tiles .tile-ungrouped,
+.today-tiles .tile-group,
+.today-tiles .tile-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tile-gap, 1rem);
+}
+.today-tiles .tile:empty {
+  display: none;
+}
+.today-tiles .tile > *,
+.today-tiles .tile-group-head {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.today-tiles .tile > * + * {
+  margin-top: var(--tile-gap, 1rem);
+}
+.today-tiles .tile > .day-section > .section-header:last-child,
+.today-tiles .tile-group-head > .section-header {
+  margin-bottom: 0;
+}
+.tile-gap-setting {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.tile-gap-setting input[type='range'] {
+  width: auto;
+  flex: 1;
+  min-width: 8rem;
+  max-width: 16rem;
+}
+.arrange-row.in-group {
+  margin-left: 1.1rem;
 }
 .tile-entry {
-  margin: 0.3rem 0;
+  margin: 0;
 }
 .tile-list .entry-list,
 .tile-entry {
@@ -5565,4 +5606,245 @@ a.entry-title .icon:last-child {
   color: var(--highlight);
   background: var(--highlight-bg);
   border-color: var(--highlight-border);
+}
+
+/* An entry pinned on its own to Today: one line like a panel's heading (the kind's icon in the same tinted square,
+   the title in the heading's weight), no border; opened, it shows its details below. */
+.entry-row.flat {
+  border: none;
+  background: none;
+}
+.entry-row.flat > .entry-line {
+  padding: 0;
+  gap: 0.5rem;
+}
+.entry-row.flat .entry-main {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 0.5rem;
+}
+.entry-row.flat .entry-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+.entry-row.flat > .entry-detail {
+  margin-left: 2.25rem;
+  padding: 0.3rem 0 0.2rem 0.65rem;
+  border-left: 2px solid var(--border);
+}
+.entry-aside {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* Games: no disclosure triangles (nothing else on Today has them); the headings open and close like the others. */
+.game-invitations-list summary {
+  list-style: none;
+}
+.game-invitations-list summary::-webkit-details-marker {
+  display: none;
+}
+.game-invitations-list .game-invitations-heading {
+  padding: 0.3rem 0;
+  font-weight: 600;
+}
+.games-view .game-invitations-list {
+  margin-bottom: 0.75rem;
+}
+
+/* Send via Align / Text / Both (refactor phase 4). */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.segmented button {
+  padding: 0.3rem 0.65rem;
+  background: var(--surface);
+  color: var(--text);
+  border: none;
+  border-radius: 0;
+  font-weight: 500;
+}
+.segmented button + button {
+  border-left: 1px solid var(--border);
+}
+.segmented button.on {
+  background: var(--highlight);
+  color: #fff;
+}
+.sent-note {
+  color: var(--color-project);
+}
+
+/* The Inbox: a tile on Today, a page, a badge in the top bar, a banner for new messages. */
+.inbox-list {
+  list-style: none;
+  margin: 0.3rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+  width: 100%;
+}
+.inbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.inbox-row.read {
+  background: none;
+  border-style: dashed;
+}
+.inbox-row.read .inbox-line {
+  color: var(--muted);
+}
+.inbox-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.inbox-text {
+  flex: 1;
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+/* One line: who and what; it shortens with "…" on a narrow screen rather than wrapping the buttons away. */
+.inbox-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.inbox-note {
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+.inbox-when {
+  flex: none;
+  white-space: nowrap;
+}
+.inbox-dot {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--highlight);
+}
+.inbox-dot.seen {
+  background: none;
+  border: 1.5px solid var(--border);
+}
+.inbox-play {
+  flex: none;
+}
+.inbox-row .row-action {
+  flex: none;
+  margin-right: 0.2rem;
+}
+@media (max-width: 420px) {
+  .inbox-when {
+    display: none;
+  }
+}
+.notify-nudge {
+  margin: 0.2rem 0;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius);
+  background: var(--highlight-bg);
+  border: 1px solid var(--highlight-border);
+}
+.notify-setting {
+  display: grid;
+  gap: 0.35rem;
+}
+.notify-setting label input {
+  width: auto;
+}
+.inbox-button {
+  position: relative;
+}
+.inbox-badge {
+  position: absolute;
+  top: -0.1rem;
+  right: -0.35rem;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.05rem;
+  text-align: center;
+}
+.inbox-banner {
+  position: fixed;
+  top: 3.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: min(30rem, calc(100vw - 1rem));
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--highlight-border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.2);
+  overflow-wrap: anywhere;
+}
+.text-about .warn {
+  margin: 0.2rem 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: var(--radius);
+  background: var(--tint-yellow-bg);
+  border: 1px solid var(--tint-yellow-border);
+}
+/* A tile's last line adds no space of its own (the gap between tiles is the only spacing). */
+.today-tiles .tile > .day-section > :last-child {
+  margin-bottom: 0;
+}
+/* Narrow phones: an invitation's buttons wrap under it rather than off the edge; the count shortens. */
+.game-invitation-row {
+  flex-wrap: wrap;
+}
+.game-invitation-row > details {
+  flex: 1 1 9rem;
+}
+.game-invitations-list {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.game-invitations-count {
+  flex: 1;
+}
+/* The narrowest phones (a Fold's cover screen): the top bar's five buttons sit a little closer. */
+@media (max-width: 380px) {
+  .user {
+    gap: 0.45rem;
+  }
+}
+.game-invitations-list,
+.game-invitations-list .games-today-disclosure,
+.game-invitations-content {
+  grid-template-columns: minmax(0, 1fr);
 }

@@ -6,7 +6,7 @@ import { DEFAULT_MORE, moreOf, TODAY_SECTIONS } from './today'
 
 /** A tile, as saved: "kind:id" (or "more"). */
 export type Tile = string
-export type TileKind = 'panel' | 'list' | 'entry' | 'person' | 'game' | 'daily' | 'group' | 'more'
+export type TileKind = 'panel' | 'list' | 'entry' | 'person' | 'game' | 'daily' | 'group' | 'end' | 'more'
 
 /** Where More… starts. */
 export const MORE: Tile = 'more'
@@ -30,7 +30,7 @@ export function parseTile(t: Tile): { kind: TileKind; id: string } {
   return { kind: t.slice(0, at) as TileKind, id: t.slice(at + 1) }
 }
 
-const KINDS = new Set<TileKind>(['panel', 'list', 'entry', 'person', 'game', 'daily', 'group'])
+const KINDS = new Set<TileKind>(['panel', 'list', 'entry', 'person', 'game', 'daily', 'group', 'end'])
 const PANELS = new Set<string>(['todo', ...TODAY_SECTIONS.map((s) => s.id)])
 
 /** Tiles this version knows how to show (others, from a newer version or a bad save, are skipped, not lost). */
@@ -76,9 +76,10 @@ export const isMark = (t: Tile) => t.startsWith('-')
 
 /**
  * Where a new tile goes: 'top' (the main page, after the tiles above your first group, so it never lands inside a
- * group by accident), 'more' (the end of More…), or a group's name (the end of that group).
+ * group by accident), 'bottom' (the end of the main page, outside any group), 'more' (the end of More…), or a group's
+ * name (the end of that group).
  */
-export type TilePlace = 'top' | 'more' | { group: string }
+export type TilePlace = 'top' | 'bottom' | 'more' | { group: string }
 
 /** Adds a tile (see TilePlace). Already there: unchanged. */
 export function addTile(tiles: Tile[], t: Tile, place: TilePlace = 'top'): Tile[] {
@@ -88,13 +89,18 @@ export function addTile(tiles: Tile[], t: Tile, place: TilePlace = 'top'): Tile[
   const end = more < 0 ? tiles.length : more
   let at: number
   if (place === 'more') at = tiles.length
-  else if (place === 'top') {
+  else if (place === 'bottom') {
+    // After the last group: close it first with an end line, so the tile isn't in it.
+    const last = tiles.slice(0, end).at(-1)
+    if (last && placeOf(tiles, last)?.group !== undefined) return [...tiles.slice(0, end), endLine(tiles), t, ...tiles.slice(end)]
+    at = end
+  } else if (place === 'top') {
     const firstGroup = tiles.findIndex((x, i) => i < end && x.startsWith('group:'))
     at = firstGroup < 0 ? end : firstGroup
   } else {
     const head = tiles.indexOf(tile('group', place.group))
     if (head < 0) return addTile(tiles, t, 'top')
-    const next = tiles.findIndex((x, i) => i > head && (x === MORE || x.startsWith('group:') || isMark(x)))
+    const next = tiles.findIndex((x, i) => i > head && (x === MORE || x.startsWith('group:') || x.startsWith('end:') || isMark(x)))
     at = next < 0 ? tiles.length : next
   }
   return [...tiles.slice(0, at), t, ...tiles.slice(at)]
@@ -102,7 +108,13 @@ export function addTile(tiles: Tile[], t: Tile, place: TilePlace = 'top'): Tile[
 
 export function removeTile(tiles: Tile[], t: Tile): Tile[] {
   if (t === MORE) return tiles
-  const out = tiles.filter((x) => x !== t)
+  let out = tiles.filter((x) => x !== t)
+  // A group heading takes its own end line with it (its tiles join what's above).
+  if (t.startsWith('group:')) {
+    const at = tiles.indexOf(t)
+    const close = tiles.findIndex((x, i) => i > at && (x === MORE || x.startsWith('group:') || x.startsWith('end:')))
+    if (close >= 0 && tiles[close].startsWith('end:')) out = out.filter((x) => x !== tiles[close])
+  }
   return AUTO_TILES.includes(t) && !out.includes(removedMark(t)) ? [...out, removedMark(t)] : out
 }
 
@@ -130,20 +142,51 @@ export function placeOf(tiles: Tile[], t: Tile): { more: boolean; group?: string
   if (at < 0) return null
   const more = tiles.indexOf(MORE)
   let group: string | undefined
-  for (let i = at - 1; i >= 0 && tiles[i] !== MORE; i--)
+  for (let i = at - 1; i >= 0 && tiles[i] !== MORE; i--) {
+    if (tiles[i].startsWith('end:')) break
     if (tiles[i].startsWith('group:')) {
       group = tiles[i].slice(6)
       break
     }
+  }
   return { more: more >= 0 && at > more, group }
 }
 
-/** A new, empty group at the end of the main page (just above the More… line); drag or add tiles into it. */
+/** A new "end of group" line's tile ("end:1", "end:2", …): what follows it isn't in the group above. */
+export function endLine(tiles: Tile[]): Tile {
+  for (let n = 1; ; n++) if (!tiles.includes(`end:${n}`)) return `end:${n}`
+}
+
+/**
+ * A new, empty group at the end of the main page (just above the More… line), with its end line, so what you
+ * drag between them is in the group and what's below stays out of it.
+ */
 export function addGroup(tiles: Tile[], name: string): Tile[] {
   const g = tile('group', name)
   if (tiles.includes(g)) return tiles
   const more = tiles.indexOf(MORE)
-  return more < 0 ? [...tiles, g] : [...tiles.slice(0, more), g, ...tiles.slice(more)]
+  const add = [g, endLine(tiles)]
+  return more < 0 ? [...tiles, ...add] : [...tiles.slice(0, more), ...add, ...tiles.slice(more)]
+}
+
+/** Whether the group heading at index `at` has its own end line (before the next group or the More… line). */
+export function closedAt(tiles: Tile[], at: number): boolean {
+  const close = tiles.findIndex((x, i) => i > at && (x === MORE || x.startsWith('group:') || x.startsWith('end:')))
+  return close >= 0 && tiles[close].startsWith('end:')
+}
+
+/** Whether the group heading at `at` runs to the More… line (the last group, no end line): one to offer an end for. */
+export function runsToMore(tiles: Tile[], at: number): boolean {
+  const close = tiles.findIndex((x, i) => i > at && (x === MORE || x.startsWith('group:') || x.startsWith('end:')))
+  return close < 0 || tiles[close] === MORE
+}
+
+/** Adds an end line after the last tile of the group whose heading is at `at`. */
+export function closeGroup(tiles: Tile[], at: number): Tile[] {
+  if (closedAt(tiles, at)) return tiles
+  const close = tiles.findIndex((x, i) => i > at && (x === MORE || x.startsWith('group:') || isMark(x)))
+  const where = close < 0 ? tiles.length : close
+  return [...tiles.slice(0, where), endLine(tiles), ...tiles.slice(where)]
 }
 
 /** Every group's name, in order. */
@@ -169,9 +212,10 @@ export function grouped(tiles: Tile[]): TileGroup[] {
   for (const t of tiles) {
     const { kind, id } = parseTile(t)
     if (kind === 'group') out.push({ name: id, tiles: [] })
+    else if (kind === 'end') out.push({ tiles: [] }) // below an end line: not in a group
     else out[out.length - 1].tiles.push(t)
   }
-  return out.filter((g, i) => i > 0 || g.tiles.length)
+  return out.filter((g) => g.name !== undefined || g.tiles.length)
 }
 
 /** Another day: only what belongs to a day (To Do, Goals, Archive Pics, The Daily), in your order. */

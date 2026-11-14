@@ -24,6 +24,7 @@ import { photoCaption, photoUrl } from '../../photos/favorites'
 import { useFavorites } from '../../hooks/useFavorites'
 import { PhotoPicker } from '../Photos/PhotoPicker'
 import { NotifyToggle } from '../Inbox/NotifyToggle'
+import { TileGapSetting } from '../Today/TileGapSetting'
 import { hasSettingsPin, removeSettingsPin, saveSettingsPin, verifySettingsPin } from '../../utils/settingsPin'
 
 type DefaultAudience = NonNullable<HouseholdMember['defaultVisibility']>
@@ -264,6 +265,11 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             {tokenNote && <p className="muted small">{tokenNote}</p>}
           </fieldset>
         )}
+        <fieldset className="setting">
+          <legend>Today spacing (this device)</legend>
+          <TileGapSetting />
+          <p className="muted small">The space between tiles and groups on Today. Also in Arrange.</p>
+        </fieldset>
         <fieldset className="setting">
           <legend>Icons (this device)</legend>
           {ICON_STYLES.map((st) => (

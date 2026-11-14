@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Task } from '../types'
-import { cleanTags, contactsToCsv, contactsToVcf, csvToContacts, dedupe, hasAnyTag, mapUrl, mergeContact, NO_TAG, parseCsv, samePerson, tagsIn, telUrl, vcfToContacts } from './contacts'
+import { cleanTags, contactsToCsv, contactsToVcf, csvToContacts, dedupe, hasAnyTag, mapUrl, memberForContact, mergeContact, NO_TAG, parseCsv, samePerson, tagsIn, telUrl, vcfToContacts } from './contacts'
 
 const sam = {
   name: 'Sam Lee',
@@ -86,5 +86,16 @@ describe('contact tags', () => {
     const rows = parseCsv(csv)
     expect(rows[0]).toEqual(['Name', 'Company', 'Job Title', 'Phone', 'Email', 'Address', 'Birthday', 'Tags', 'Notes'])
     expect(rows[1]).toEqual(['Ann Lee', '', '', '407 555 0100', '', '1 Elm St\nWinter Park, FL 32789', '', 'Christmas List', ''])
+  })
+})
+
+describe('which family member a contact is', () => {
+  const members = { u1: { displayName: 'Linda', phone: '+1 (407) 555-0101' }, u2: { displayName: 'Sam' }, u3: { displayName: 'Sam' }, bot: { displayName: 'Calendar', bot: true } }
+  it('matches by mobile number first, then a unique first name', () => {
+    expect(memberForContact({ title: 'Mom', contact: { phones: [{ label: 'mobile', value: '407.555.0101' }] } }, members)).toBe('u1')
+    expect(memberForContact({ title: 'Linda West' }, members)).toBe('u1')
+    expect(memberForContact({ title: 'Sam Jones' }, members)).toBeNull() // two Sams: not a guess
+    expect(memberForContact({ title: 'Calendar' }, members)).toBeNull()
+    expect(memberForContact({ title: 'Sharon Nelson' }, members)).toBeNull()
   })
 })

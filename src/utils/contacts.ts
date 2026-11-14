@@ -359,3 +359,21 @@ export function birthdayText(b: string): string {
   const md = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
   return /^\d{4}$/.test(m[1]) ? `${md}, ${m[1]}` : md
 }
+
+/**
+ * The family member a contact is, if any: the same mobile number (Settings → Your mobile number), or else a contact
+ * whose first name is a member's name when only one member has it. Bots are never matched.
+ */
+export function memberForContact(
+  p: Pick<Task, 'title' | 'contact'>,
+  members: Record<string, { displayName: string; phone?: string; bot?: boolean }>,
+): string | null {
+  const people = Object.entries(members).filter(([, m]) => !m.bot)
+  const phones = new Set((p.contact?.phones ?? []).map((x) => phoneKey(x.value)).filter((k) => k.length >= 7))
+  const byPhone = people.find(([, m]) => m.phone && phones.has(phoneKey(m.phone)))
+  if (byPhone) return byPhone[0]
+  const first = p.title.trim().split(/\s+/)[0]?.toLowerCase()
+  if (!first) return null
+  const named = people.filter(([, m]) => m.displayName.trim().toLowerCase() === first || m.displayName.trim().toLowerCase() === p.title.trim().toLowerCase())
+  return named.length === 1 ? named[0][0] : null
+}

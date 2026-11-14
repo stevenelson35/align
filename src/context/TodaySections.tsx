@@ -15,8 +15,8 @@ export function TodaySections({ children }: { children: ReactNode }) {
   return <TodayContext.Provider value={value}>{children}</TodayContext.Provider>
 }
 
-export function TodaySectionScope({ id, children }: { id: string; children: ReactNode }) {
+export function TodaySectionScope({ id, children, className }: { id: string; children: ReactNode; className?: string }) {
   const element = useRef<HTMLDivElement>(null)
   const value = useMemo(() => ({ id, element }), [id])
-  return <TodaySectionContext.Provider value={value}><div ref={element}>{children}</div></TodaySectionContext.Provider>
+  return <TodaySectionContext.Provider value={value}><div ref={element} className={className}>{children}</div></TodaySectionContext.Provider>
 }

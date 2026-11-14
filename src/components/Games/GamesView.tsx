@@ -10,6 +10,7 @@ import { GameTile } from './GameTile'
 import { setPinnedGames } from '../../firebase/db'
 import { TowerOfHanoiGame } from './TowerOfHanoiGame'
 import { SlidingTilesGame } from './SlidingTilesGame'
+import { GameInvitationsBlock } from './GameInvitationsBlock'
 import { WordleGame } from './WordleGame'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
@@ -174,6 +175,7 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
           <h2><Icon name="sparkle" /> Games</h2>
           <span className="muted small">Find a game to play or pin</span>
         </header>
+        <GameInvitationsBlock />
         <label className="games-search">
           <input
             type="search"

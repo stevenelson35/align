@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addGroup, addTile, dayTiles, defaultTiles, groupNames, grouped, known, MORE, placeOf, moveTile, newGroupName, parseTile, removeTile, renameGroup, splitMore, tilesOf } from './tiles'
+import { addGroup, addTile, closeGroup, closedAt, runsToMore, dayTiles, defaultTiles, groupNames, grouped, known, MORE, placeOf, moveTile, newGroupName, parseTile, removeTile, renameGroup, splitMore, tilesOf } from './tiles'
 
 describe('Today tiles', () => {
   it('starts from the old arrangement: main sections, To Do, Shortcuts as a group, then More…', () => {
@@ -61,8 +61,28 @@ describe('Today tiles', () => {
     expect(placeOf(t, 'entry:o1')).toEqual({ more: true, group: 'Old' })
     expect(placeOf(t, 'entry:zz')).toBeNull()
     expect(groupNames(t)).toEqual(['Shortcuts', 'Kids', 'Old'])
-    expect(addGroup(t, 'New').indexOf('group:New')).toBe(t.indexOf(MORE)) // empty, above the More… line
+    expect(addGroup(t, 'New').slice(t.indexOf(MORE), t.indexOf(MORE) + 2)).toEqual(['group:New', 'end:1']) // empty, above the More… line
     expect(addGroup(t, 'Kids')).toBe(t)
+  })
+
+  it('ends a group with an end line, so tiles can sit below a group without being in it', () => {
+    const t = ['panel:goals', 'group:Fun', 'panel:daily', 'end:1', 'panel:todo', MORE]
+    expect(grouped(splitMore(t).main)).toEqual([{ tiles: ['panel:goals'] }, { name: 'Fun', tiles: ['panel:daily'] }, { tiles: ['panel:todo'] }])
+    expect(placeOf(t, 'panel:todo')).toEqual({ more: false, group: undefined })
+    expect(addTile(t, 'entry:x', { group: 'Fun' })).toEqual(['panel:goals', 'group:Fun', 'panel:daily', 'entry:x', 'end:1', 'panel:todo', MORE])
+    expect(addTile(t, 'entry:x', 'bottom')).toEqual(['panel:goals', 'group:Fun', 'panel:daily', 'end:1', 'panel:todo', 'entry:x', MORE])
+    // The main page ending inside a group: 'bottom' closes it first.
+    expect(addTile(['group:Fun', 'panel:daily', MORE], 'entry:x', 'bottom')).toEqual(['group:Fun', 'panel:daily', 'end:1', 'entry:x', MORE])
+    expect(addGroup(t, 'People')).toEqual(['panel:goals', 'group:Fun', 'panel:daily', 'end:1', 'panel:todo', 'group:People', 'end:2', MORE])
+    expect(removeTile(t, 'group:Fun')).toEqual(['panel:goals', 'panel:daily', 'panel:todo', MORE])
+    expect(known('end:1')).toBe(true)
+    const open = ['group:Shortcuts', 'entry:a', MORE]
+    expect(closedAt(open, 0)).toBe(false)
+    expect(closeGroup(open, 0)).toEqual(['group:Shortcuts', 'entry:a', 'end:1', MORE])
+    expect(closedAt(t, 1)).toBe(true)
+    expect(runsToMore(open, 0)).toBe(true)
+    expect(runsToMore(['group:A', 'entry:a', 'group:B', MORE], 0)).toBe(false) // B ends A
+    expect(runsToMore(t, 1)).toBe(false)
   })
 
   it('moves tiles, across the More… mark too', () => {

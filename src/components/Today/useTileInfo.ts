@@ -78,7 +78,9 @@ export function useTileInfo(): (t: Tile) => TileInfo {
       case 'daily':
         return { label: dailyLabel(id), kind: 'The Daily', icon: 'sun', missing: !DAILY_ITEMS.some((i) => i.value === id) }
       case 'group':
-        return { label: id, kind: 'Group', icon: 'list' }
+        return { label: id, kind: 'Group', icon: 'folder' }
+      case 'end':
+        return { label: 'End of group', kind: '', icon: 'folder' }
       default:
         return { label: 'More…', kind: '', icon: 'more' }
     }

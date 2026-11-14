@@ -88,7 +88,7 @@ export function ContactsView({ list }: { list: List }) {
  * One person as an entry row (the contacts list): picture or initials, name; medium adds company and tags; opened in
  * place, their numbers, emails and addresses. Call / text / email stay on the row (so there's no second 💬).
  */
-export function PersonRow({ person: p, size }: { person: Task; size: EntrySize }) {
+export function PersonRow({ person: p, size, lead, aside, extra, className }: { person: Task; size: EntrySize; /** Replaces the picture or initials (Today's icon). */ lead?: ReactNode; /** On the line, after the name. */ aside?: ReactNode; /** Shown first when opened (their location). */ extra?: ReactNode; className?: string }) {
   const c = p.contact ?? {}
   const phone = c.phones?.[0]
   const email = c.emails?.[0]
@@ -98,10 +98,14 @@ export function PersonRow({ person: p, size }: { person: Task; size: EntrySize }
       entry={p}
       size={size}
       textButton={false}
+      className={className}
+      aside={aside}
       lead={
-        <span className="avatar contact-avatar" aria-hidden="true">
-          {p.images?.[0] ? <Picture src={p.images[0]} alt="" /> : initials(p.title)}
-        </span>
+        lead ?? (
+          <span className="avatar contact-avatar" aria-hidden="true">
+            {p.images?.[0] ? <Picture src={p.images[0]} alt="" /> : initials(p.title)}
+          </span>
+        )
       }
       chips={sub ? <span>{sub}</span> : null}
       trail={
@@ -124,6 +128,8 @@ export function PersonRow({ person: p, size }: { person: Task; size: EntrySize }
         </>
       }
       more={
+        <>
+        {extra}
         <ul className="entry-facts">
           {(c.phones ?? []).map((x, i) => (
             <EntryFact key={`p${i}`} icon="phone">
@@ -145,6 +151,7 @@ export function PersonRow({ person: p, size }: { person: Task; size: EntrySize }
           ))}
           {c.birthday && <EntryFact icon="calendar">Birthday {birthdayText(c.birthday)}</EntryFact>}
         </ul>
+        </>
       }
     />
   )

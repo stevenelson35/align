@@ -209,7 +209,10 @@ export function PendingGameInvitations({
         </div>
       </details>
       <details className="wordle-challenge-updates games-today-disclosure" open={liveUpdatesOpen}>
-          <summary className="small" onClick={(event) => toggleDisclosure(event, onToggleLiveUpdates)}>Live Wordle Updates</summary>
+        <summary className="game-invitations-heading" onClick={(event) => toggleDisclosure(event, onToggleLiveUpdates)}>
+          <span className="game-invitations-title"><Icon name="clock" /> Live Wordle Updates</span>
+          <span className="game-invitations-count">{liveGroups.length ? `${liveGroups.length} ${liveGroups.length === 1 ? 'game' : 'games'}` : 'none now'}</span>
+        </summary>
           {!liveGroups.length && <p className="muted small">No live Wordle updates right now.</p>}
           {liveGroups.map((group) => {
             const first = group[0]

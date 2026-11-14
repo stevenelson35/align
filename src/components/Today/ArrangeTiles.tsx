@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../../hooks/useApp'
 import { useTodayTiles } from '../../hooks/useTodayTiles'
-import { addGroup, defaultTiles, isMark, moveTile, newGroupName, parseTile, removeTile, renameGroup, type Tile } from '../../utils/tiles'
+import { addGroup, closeGroup, defaultTiles, runsToMore, placeOf, isMark, moveTile, newGroupName, parseTile, removeTile, renameGroup, type Tile } from '../../utils/tiles'
 import { Icon } from '../UI/Icon'
+import { TileGapSetting } from './TileGapSetting'
 import { useTileInfo } from './useTileInfo'
 
 /**
@@ -86,11 +87,28 @@ export function ArrangeTiles({ onDone, onAdd }: { onDone: () => void; onAdd: () 
           Done
         </button>
       </h3>
-      <p className="muted small">Drag ⠿ to move (or ↑ ↓). Below the More… line is folded into More…. ✕ only takes it off Today. Pin more with Add…, or “Pin to Today” on any entry or list.</p>
+      <p className="muted small">
+        Drag ⠿ to move (or ↑ ↓). Tiles between a group and its end line are in the group; below the end line they aren’t. Below the More… line is folded into More…. ✕
+        only takes it off Today. Pin more with Add…, or “Pin to Today” on any entry or list.
+      </p>
+      <TileGapSetting />
       <ol className="arrange-list" ref={box}>
         {tiles.map((t, i) => {
           if (isMark(t)) return null // a panel you took off for good (kept so it isn't added back)
           const { kind, id } = parseTile(t)
+          const inGroup = kind !== 'group' && kind !== 'more' && kind !== 'end' && placeOf(tiles, t)?.group !== undefined
+          if (kind === 'end')
+            return (
+              <li key={t} data-tile={t} className={`arrange-more arrange-end${held === t ? ' dragging' : ''}`}>
+                <span {...handle(t, 'the end of the group')}>⠿</span>
+                <span className="grow">End of group (below: not in a group)</span>
+                <button type="button" className="row-action" disabled={i === 0} onClick={() => move(i, i - 1)} aria-label="Move the end of the group up" title="Move up">↑</button>
+                <button type="button" className="row-action" disabled={i === tiles.length - 1} onClick={() => move(i, i + 1)} aria-label="Move the end of the group down" title="Move down">↓</button>
+                <button type="button" className="row-action" onClick={() => save(tiles.filter((x) => x !== t))} aria-label="Remove the end of the group" title="Remove (the group then runs to the next group or the More… line)">
+                  <Icon name="close" />
+                </button>
+              </li>
+            )
           if (kind === 'more')
             return (
               <li key={t} data-tile={t} className={`arrange-more${held === t ? ' dragging' : ''}`}>
@@ -102,7 +120,7 @@ export function ArrangeTiles({ onDone, onAdd }: { onDone: () => void; onAdd: () 
             )
           const it = info(t)
           return (
-            <li key={t} data-tile={t} className={`arrange-row${kind === 'group' ? ' arrange-group' : ''}${it.missing ? ' missing' : ''}${held === t ? ' dragging' : ''}`}>
+            <li key={t} data-tile={t} className={`arrange-row${kind === 'group' ? ' arrange-group' : ''}${inGroup ? ' in-group' : ''}${it.missing ? ' missing' : ''}${held === t ? ' dragging' : ''}`}>
               <span {...handle(t, it.label)}>⠿</span>
               {kind === 'group' && renaming?.from === id ? (
                 <form
@@ -125,6 +143,11 @@ export function ArrangeTiles({ onDone, onAdd }: { onDone: () => void; onAdd: () 
                   {kind === 'group' && (
                     <button type="button" className="link small" onClick={() => setRenaming({ from: id, to: id })}>
                       Rename
+                    </button>
+                  )}
+                  {kind === 'group' && runsToMore(tiles, i) && (
+                    <button type="button" className="link small" onClick={() => save(closeGroup(tiles, i))} title="Add an end line after its last tile, so tiles can go below the group">
+                      Add end line
                     </button>
                   )}
                 </span>

@@ -59,20 +59,25 @@ export function InboxPanel({ page = false }: { page?: boolean }) {
           )}
           <ul className="inbox-list">
             {shown.map((m) => (
-              <li key={m.id} className={`inbox-row${m.read ? ' read' : ''}`}>
-                <button type="button" className="inbox-open" onClick={() => openMessage(m)}>
-                  {!m.read && <span className="inbox-dot" aria-label="New" />}
+              <li key={m.id} className={`inbox-row${m.read ? ' read' : ' unread'}${m.kind === 'game' ? ' game' : ''}`}>
+                <button type="button" className="inbox-open" onClick={() => openMessage(m)} title={m.read ? 'Opened before; open again' : 'Open'}>
+                  <span className={`inbox-dot${m.read ? ' seen' : ''}`} aria-label={m.read ? 'Seen' : 'New'} />
                   <Icon name={KIND_ICON[m.kind] ?? 'mail'} />
                   <span className="inbox-text">
-                    <span>
+                    <span className="inbox-line">
                       <strong>{name(m.from)}</strong>
-                      {m.kind === 'game' ? ' invited you: ' : ': '}
+                      {m.kind === 'game' ? ' · ' : ': '}
                       {m.title}
                     </span>
                     {m.text && <span className="inbox-note">“{m.text}”</span>}
-                    <span className="muted small">{m.createdAt ? agoText(m.createdAt.toMillis(), now) : 'just now'}</span>
                   </span>
+                  <span className="inbox-when muted small">{m.read ? 'seen · ' : ''}{m.createdAt ? agoText(m.createdAt.toMillis(), now) : 'just now'}</span>
                 </button>
+                {m.kind === 'game' && (
+                  <button type="button" className="small inbox-play" onClick={() => openMessage(m)}>
+                    Play
+                  </button>
+                )}
                 <button type="button" className="row-action" onClick={() => clearOne(m.id).catch(fail)} aria-label={`Clear ${m.title} from your Inbox`} title="Clear">
                   <Icon name="close" />
                 </button>
