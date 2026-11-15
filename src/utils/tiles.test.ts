@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addGroup, addTile, closeGroup, closedAt, runsToMore, dayTiles, defaultTiles, groupNames, grouped, known, MORE, placeOf, moveTile, newGroupName, parseTile, removeTile, renameGroup, splitMore, tilesOf } from './tiles'
+import { addGroup, addTile, closeGroup, closedAt, runsToMore, tilesInGroup, dayTiles, defaultTiles, groupNames, grouped, known, MORE, placeOf, moveTile, newGroupName, parseTile, removeTile, renameGroup, splitMore, tilesOf } from './tiles'
 
 describe('Today tiles', () => {
   it('starts from the old arrangement: main sections, To Do, Shortcuts as a group, then More…', () => {
@@ -83,6 +83,9 @@ describe('Today tiles', () => {
     expect(runsToMore(open, 0)).toBe(true)
     expect(runsToMore(['group:A', 'entry:a', 'group:B', MORE], 0)).toBe(false) // B ends A
     expect(runsToMore(t, 1)).toBe(false)
+    expect(tilesInGroup(t, 'Fun')).toEqual(['panel:daily'])
+    expect(tilesInGroup(['group:A', 'entry:a', 'entry:b', 'group:B', 'entry:c', MORE, 'x'], 'B')).toEqual(['entry:c'])
+    expect(tilesInGroup(t, 'Nope')).toEqual([])
   })
 
   it('moves tiles, across the More… mark too', () => {

@@ -11,7 +11,7 @@ import { TodayDock } from './TodayDock'
 import { TodaySections } from '../../context/TodaySections'
 import { panelBackground } from '../../utils/panelStyle'
 import { useTodayTiles } from '../../hooks/useTodayTiles'
-import { dayTiles, splitMore } from '../../utils/tiles'
+import { dayTiles, splitMore, type TilePlace } from '../../utils/tiles'
 import { TodayTiles } from '../Today/TodayTiles'
 import { ArrangeTiles } from '../Today/ArrangeTiles'
 import { AddToToday } from '../Today/AddToToday'
@@ -34,7 +34,8 @@ function DayContents({ day }: { day: string }) {
   const tiles = useTodayTiles()
   const { main, more } = splitMore(tiles.tiles)
   const [arranging, setArranging] = useState(false)
-  const [adding, setAdding] = useState(false)
+  // Add to Today, open and aimed somewhere (the footer's +: the top of Today; a group's +: that group).
+  const [adding, setAdding] = useState<TilePlace | null>(null)
   const canArrange = day === now && tiles.canChange
   const [weatherOpen, setWeatherOpen] = useStoredFlag('align-weather-open', false)
   const { weather, error: weatherError, place: weatherPlace, settings: weatherSettings } = useWeather(day === now)
@@ -71,19 +72,19 @@ function DayContents({ day }: { day: string }) {
       {day !== now ? (
         <TodayTiles tiles={dayTiles(tiles.tiles)} day={day} />
       ) : arranging ? (
-        <ArrangeTiles onDone={() => setArranging(false)} onAdd={() => setAdding(true)} />
+        <ArrangeTiles onDone={() => setArranging(false)} onAdd={() => setAdding('top')} />
       ) : (
-        <TodayTiles tiles={main} day={day} onArrange={canArrange ? () => setArranging(true) : undefined} />
+        <TodayTiles tiles={main} day={day} onArrange={canArrange ? () => setArranging(true) : undefined} onAdd={canArrange ? setAdding : undefined} />
       )}
-      {adding && <AddToToday onClose={() => setAdding(false)} />}
+      {adding && <AddToToday start={adding} onClose={() => setAdding(null)} />}
       {day === now && (
         // Not wrapped in a TodaySectionScope: the dock must stay a direct child of .day-view to stick to the bottom.
         <TodayDock
-          more={<TodayTiles tiles={more} day={day} />}
+          more={<TodayTiles tiles={more} day={day} onAdd={canArrange ? setAdding : undefined} />}
           moreCount={more.length}
           onArrange={canArrange ? () => { setArranging(!arranging); window.scrollTo({ top: 0 }) } : undefined}
           arranging={arranging}
-          onAdd={canArrange ? () => setAdding(true) : undefined}
+          onAdd={canArrange ? () => setAdding('top') : undefined}
         />
       )}
     </section>

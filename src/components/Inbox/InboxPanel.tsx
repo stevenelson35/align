@@ -61,7 +61,7 @@ export function InboxPanel({ page = false }: { page?: boolean }) {
             {shown.map((m) => (
               <li key={m.id} className={`inbox-row${m.read ? ' read' : ' unread'}${m.kind === 'game' ? ' game' : ''}`}>
                 <button type="button" className="inbox-open" onClick={() => openMessage(m)} title={m.read ? 'Opened before; open again' : 'Open'}>
-                  <span className={`inbox-dot${m.read ? ' seen' : ''}`} aria-label={m.read ? 'Seen' : 'New'} />
+                  {m.read ? <span className="inbox-seen" aria-label="Opened"><Icon name="check" /></span> : <span className="inbox-dot" aria-label="New" />}
                   <Icon name={KIND_ICON[m.kind] ?? 'mail'} />
                   <span className="inbox-text">
                     <span className="inbox-line">
@@ -74,8 +74,8 @@ export function InboxPanel({ page = false }: { page?: boolean }) {
                   <span className="inbox-when muted small">{m.read ? 'seen · ' : ''}{m.createdAt ? agoText(m.createdAt.toMillis(), now) : 'just now'}</span>
                 </button>
                 {m.kind === 'game' && (
-                  <button type="button" className="small inbox-play" onClick={() => openMessage(m)}>
-                    Play
+                  <button type="button" className={`small inbox-play${m.read ? ' secondary' : ''}`} onClick={() => openMessage(m)} title={m.read ? 'You opened this invitation; open it again' : 'Play'}>
+                    {m.read ? <><Icon name="check" /> Opened</> : 'Play'}
                   </button>
                 )}
                 <button type="button" className="row-action" onClick={() => clearOne(m.id).catch(fail)} aria-label={`Clear ${m.title} from your Inbox`} title="Clear">

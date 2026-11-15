@@ -189,6 +189,19 @@ export function closeGroup(tiles: Tile[], at: number): Tile[] {
   return [...tiles.slice(0, where), endLine(tiles), ...tiles.slice(where)]
 }
 
+/** The tiles in a group (from its heading to its end line, the next group or the More… line). */
+export function tilesInGroup(tiles: Tile[], name: string): Tile[] {
+  const head = tiles.indexOf(tile('group', name))
+  if (head < 0) return []
+  const out: Tile[] = []
+  for (let i = head + 1; i < tiles.length; i++) {
+    const x = tiles[i]
+    if (x === MORE || x.startsWith('group:') || x.startsWith('end:') || isMark(x)) break
+    out.push(x)
+  }
+  return out
+}
+
 /** Every group's name, in order. */
 export const groupNames = (tiles: Tile[]) => tiles.filter((t) => t.startsWith('group:')).map((t) => t.slice(6))
 

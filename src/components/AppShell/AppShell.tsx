@@ -37,7 +37,7 @@ export function AppShell({ uid, household, member }: Props) {
   const [route, navigate] = useHashRoute()
   const [selectedTaskId, selectTask] = useState<string | null>(null)
   const [shift, proposeShift] = useState<PendingShift | null>(null)
-  const [listEditor, setListEditor] = useState<{ list: List | null; kind?: List['kind'] } | null>(null)
+  const [listEditor, setListEditor] = useState<{ list: List | null; kind?: List['kind']; onCreated?: (id: string) => void } | null>(null)
   const [chat, setChat] = useState<{ open: boolean; draft: string; key: number }>({ open: false, draft: '', key: 0 })
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // Settings belongs to the page it was opened on: going to another page (e.g. "More in Help" in a tip) closes it.
@@ -122,7 +122,7 @@ export function AppShell({ uid, household, member }: Props) {
       openSettings,
       openMenu,
       proposeShift,
-      editList: (list, kind) => setListEditor({ list, kind }),
+      editList: (list, kind, onCreated) => setListEditor({ list, kind, onCreated }),
       canEdit,
       openChat,
     }),
@@ -234,7 +234,7 @@ export function AppShell({ uid, household, member }: Props) {
         </div>
         {chat.open && <ChatPanel key={chat.key} initialDraft={chat.draft} onClose={() => setChat((c) => ({ ...c, open: false }))} />}
         {shift && <ShiftDialog shift={shift} onClose={() => proposeShift(null)} />}
-        {listEditor && <ListEditor list={listEditor.list} kind={listEditor.kind} onClose={() => setListEditor(null)} />}
+        {listEditor && <ListEditor list={listEditor.list} kind={listEditor.kind} onCreated={listEditor.onCreated} onClose={() => setListEditor(null)} />}
         {settingsOpen === routeHash(route) && <SettingsDialog onClose={() => setSettingsOpen(null)} />}
         {searchOpen && <SearchDialog onClose={() => setSearchOpen(false)} />}
         {data.loaded && <GoalCelebrations />}

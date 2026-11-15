@@ -79,6 +79,18 @@ export function TextForm({
     setSending(false)
   }
 
+  /**
+   * Both: the Inbox message is saved first, then Messages opens. Opening Messages in the same tap (as before) sent the
+   * phone to another app before the save went out, so only the text arrived. Waits at most a few seconds (offline,
+   * the save is queued on this device and goes out later; the 15-minute sweep then notifies).
+   */
+  async function both(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault()
+    const href = e.currentTarget.href
+    await Promise.race([toInbox(), new Promise((done) => setTimeout(done, 4000))])
+    window.location.href = href
+  }
+
   return (
     <div className="text-about">
       {!open ? (
@@ -128,7 +140,7 @@ export function TextForm({
             )}
             {others.length > 0 && via !== 'align' &&
               (phone ? (
-                <a className="button-link small primary-link" href={smsUrl(phone, body)} onClick={() => { if (via === 'both') void toInbox() }}>
+                <a className="button-link small primary-link" href={smsUrl(phone, body)} onClick={via === 'both' ? (e) => void both(e) : undefined} aria-disabled={sending}>
                   <Icon name="phone" /> {via === 'both' ? `Send to ${toName} (Inbox + text)` : 'Send text'}
                 </a>
               ) : (

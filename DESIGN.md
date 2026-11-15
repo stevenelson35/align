@@ -658,6 +658,13 @@ notifications, game invites; 5 cleanup and docs.
   keeps priority, the location shortens with "…" (`.entry-aside-button`); tapping the location toggles the full map
   row under it (`EntryRow` `below`), tapping the name opens the card as on any row. Under 380 px their email button
   moves to the card. `useLocations(enabled)`.
+- **Follow-up 4 (2026-11-15):** **Both** saved nothing to the Inbox (live data had no entry messages): the sms: link
+  opened Messages in the same tap and the save never went out. Now `both()` waits for the Inbox write (at most 4 s)
+  and then opens Messages. Inbox: an opened message shows ✓ (game: "✓ Opened" on an outlined button). **Adding from
+  where you are:** each group's heading has + (`TodayTiles` `onAdd`), opening Add to Today aimed at that group
+  (`start`): "In <group> now" with ✕, Something new (New entry in a list: `NewEntry`, one line, a web address makes a
+  link, the list remembered per device; New list: `editList(null, kind, onCreated)` pins the new list instead of
+  opening it; New group), then the search. Goals on Today has + for a new goal (`GoalEditor` in place).
 - **Regression fixed:** the Library CSS edit in the first follow-up truncated `index.css` after the old Library rules,
   dropping the phase 4 styles (Inbox, badge, banner, Send's Align / Text / Both, the warning) from `60f8ead`; restored.
 

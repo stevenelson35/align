@@ -64,6 +64,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     tip: 'The place to start: Goals, Family Map, Contacts, Gifts, Lists, Projects, Flashcards, Archive Pics, The Daily and To Do. Every other page has a Back to Today button at the top right.',
     body: [
       'Today is yours to arrange: a list of tiles in your order. A tile can be a whole panel (Goals, Family Map, To Do…), a list, one entry (a person to call, a link, a task, a note), or part of a panel (someone’s location, Wordle of the day, the Word of the day). Groups (📁) are sections you name that hold tiles of their own, indented under them; tap a group to fold it. Make as many as you like. ‹ and › go to other days, which show what belongs to a day: Goals, Archive Pics, The Daily and To Do (with what was done, skipped or pushed).',
+      '• + on a group’s heading opens Add aimed at that group: what’s in it now (✕ takes one out), Something new (a new entry in one of your lists, a new list, or a new group, each put right there), and Find something to pin. The footer’s + is the same, aimed at the top of Today.',
       '• Add a tile: + in the footer searches everything you can pin, and “Put it in” chooses where: the top of Today (above your groups; the default, also for “Pin to Today”), one of your groups, a new group, or More…. You can also use “Pin to Today” in an entry’s ⋯ menu (press and hold a row on a phone), in its details, at the top of a list, or 📌 in the Library.',
       '• Arrange: press and hold any heading on Today (or tap Arrange in the footer), then drag ⠿ (or use ↑ ↓). New group adds an empty group (with its end line) just above the More… line and asks for its name; tiles between a group and its end line are in it, and below the end line they aren’t (so To Do can sit below your groups). Space between tiles (also in Settings) sets how roomy Today is on this device. ✕ only takes a tile off Today. Tiles below the “More…” line are folded into More… in the footer. Saved for you on every device.',
       'The panels:',
@@ -276,7 +277,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: 'Sending and texting',
     tip: '“Send about this”: pick a person, add a note, and send it to their Align Inbox, as a text from your phone, or both.',
     body: [
-      '“Send about this” (💬 on a row, Send… in its menu) sends what you’re looking at to one person: Align (their Inbox, with a notification within seconds if they turned notifications on), Text (Messages opens on your phone with your note and a link filled in; you press Send), or Both. Align remembers your last choice on this device.',
+      '“Send about this” (💬 on a row, Send… in its menu) sends what you’re looking at to one person: Align (their Inbox, with a notification within seconds if they turned notifications on), Text (Messages opens on your phone with your note and a link filled in; you press Send), or Both (the Inbox message is saved first, then Messages opens). Align remembers your last choice on this device.',
       'Align doesn’t send texts itself; it fills them in for your own Messages app, so it’s free and replies come back as normal texts.',
       '• Each person adds their mobile number in Settings so others can text them from Align.',
       '• “Text about this” on any entry includes its title, when it happens, and a link that opens it in Align.',
@@ -289,7 +290,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     tip: 'What family members sent you in Align, and game invitations. Tap one to open it; ✕ clears it.',
     body: [
       'Your Inbox is on Today (a tile, at the top until you move it) and behind the ✉ in the top bar, with how many are new.',
-      '• Tap a message to open what it’s about (an entry, a board, a photo, a game); it’s then marked seen (a hollow dot and a dashed outline). A game invitation has Play, which opens the Games page with your Invitations, where you play or decline it. ✕ clears it; Mark all read and Clear read tidy up. Only you and the sender can see a message.',
+      '• Tap a message to open what it’s about (an entry, a board, a photo, a game); it’s then marked seen (a hollow dot and a dashed outline). A game invitation has Play, which opens the Games page with your Invitations, where you play or decline it; once you’ve opened it, the button says ✓ Opened. ✕ clears it; Mark all read and Clear read tidy up. Only you and the sender can see a message.',
       '• Notifications: Settings → Notifications turns them on for this device (on iPhone and iPad, add Align to the Home Screen first). The sender’s phone asks for the notification at once, so it arrives in seconds; if that doesn’t get through, one goes out within 15 minutes. You can keep notifications for family map alerts but turn them off for the Inbox.',
       '• While Align is open, a new message shows a banner at the top; a game invitation stays until you play or close it.',
     ],

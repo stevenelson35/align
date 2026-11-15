@@ -5746,9 +5746,11 @@ a.entry-title .icon:last-child {
   border-radius: 50%;
   background: var(--highlight);
 }
-.inbox-dot.seen {
-  background: none;
-  border: 1.5px solid var(--border);
+.inbox-seen {
+  flex: none;
+  display: inline-flex;
+  color: var(--color-project);
+  font-size: 0.85rem;
 }
 .inbox-play {
   flex: none;
@@ -5903,4 +5905,17 @@ a.entry-title .icon:last-child {
   .entry-row.flat > .entry-line > .row-action[href^='mailto:'] {
     display: none;
   }
+}
+/* Add to Today: something new. */
+.add-new-buttons {
+  gap: 0.35rem;
+}
+.add-new-entry {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+.add-new-entry select,
+.add-to-today-results input[type='search'] {
+  width: 100%;
 }

@@ -7,6 +7,7 @@ import type { Goal } from '../../types'
 import { appliesOn, goalDaysText, goalGroups, goalHint, goalStatus, loggableGoals, met, otherLoggers } from '../../utils/goals'
 import { GoalControl } from './GoalControl'
 import { SectionHeader } from '../UI/SectionHeader'
+import { GoalEditor } from './GoalEditor'
 import { Icon } from '../UI/Icon'
 import { GoalSparkline } from './GoalSparkline'
 import { useTodaySelect } from '../../hooks/useTodaySection'
@@ -18,6 +19,7 @@ import { useTodaySelect } from '../../hooks/useTodaySection'
  */
 export function GoalsStrip({ day }: { day: string }) {
   const { navigate, uid, member, household } = useApp()
+  const [creating, setCreating] = useState(false)
   const { goals } = useData()
   const [hidden, saveHidden] = useDailyFlag('align-goals-hidden', true)
   const [logAll, saveLogAll] = useStoredFlag('align-goals-log-all', false)
@@ -63,6 +65,11 @@ export function GoalsStrip({ day }: { day: string }) {
         {!hidden && forDay.length > 0 && (
           <button type="button" className="link small" onClick={() => setLogAll(!logAll)} aria-pressed={logAll} aria-label={logAll ? 'Summary' : 'Log all'} title={logAll ? 'Back to the summary' : 'Show every goal ready to log'}>
             <Icon name={logAll ? 'list' : 'edit'} /> <span className="hide-mobile">{logAll ? 'Summary' : 'Log all'}</span>
+          </button>
+        )}
+        {member.role === 'member' && (
+          <button type="button" className="link small header-add" onClick={() => setCreating(true)} title="New goal" aria-label="New goal">
+            <Icon name="plus" />
           </button>
         )}
         <button type="button" className="link small" onClick={() => navigate({ view: 'goals' })}>
@@ -112,6 +119,7 @@ export function GoalsStrip({ day }: { day: string }) {
           )}
         </div>
       )}
+      {creating && <GoalEditor goal={null} onClose={() => setCreating(false)} />}
     </div>
   )
 }

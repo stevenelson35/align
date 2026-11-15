@@ -1,7 +1,8 @@
 import { useRef } from 'react'
 import { TodaySectionScope } from '../../context/TodaySections'
 import { useStoredSet } from '../../hooks/useStoredSet'
-import { grouped, known, parseTile, type Tile } from '../../utils/tiles'
+import { grouped, known, parseTile, type Tile, type TilePlace } from '../../utils/tiles'
+import { Icon } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { useTileGap } from '../../hooks/useTileGap'
 import { TileView } from './TileView'
@@ -10,7 +11,7 @@ import { TileView } from './TileView'
  * Tiles in your order, under your group headings (tap a heading to fold the group; remembered on this device).
  * Pressing and holding a tile's heading (or a group's) starts arranging.
  */
-export function TodayTiles({ tiles, day, onArrange }: { tiles: Tile[]; day: string; onArrange?: () => void }) {
+export function TodayTiles({ tiles, day, onArrange, onAdd }: { tiles: Tile[]; day: string; onArrange?: () => void; /** A group's +: Add to Today aimed at that group. */ onAdd?: (place: TilePlace) => void }) {
   const [folded, toggleFolded] = useStoredSet('align-today-folded-groups')
   const press = useHoldToArrange(onArrange)
   const gap = useTileGap()
@@ -37,12 +38,17 @@ export function TodayTiles({ tiles, day, onArrange }: { tiles: Tile[]; day: stri
           <div key={g.name} className={`tile-group${isFolded ? ' folded' : ''}`} {...press}>
             <div className="day-section tile-group-head">
               <SectionHeader icon="folder" title={g.name} count={g.tiles.length} onTitleClick={() => toggleFolded(g.name!)} expanded={!isFolded}>
+                {onAdd && (
+                  <button type="button" className="link small header-add" onClick={() => onAdd({ group: g.name! })} title={`Add to ${g.name}, or take something out`} aria-label={`Add to ${g.name}`}>
+                    <Icon name="plus" />
+                  </button>
+                )}
                 <button type="button" className="link small" onClick={() => toggleFolded(g.name!)} aria-expanded={!isFolded}>
                   {isFolded ? 'Show' : 'Hide'}
                 </button>
               </SectionHeader>
             </div>
-            {!isFolded && (g.tiles.length ? <div className="tile-group-body">{tilesHere}</div> : <p className="muted small tile-group-empty">Nothing in this group yet. Use + (Add) and pick this group, or Arrange to drag tiles under it.</p>)}
+            {!isFolded && (g.tiles.length ? <div className="tile-group-body">{tilesHere}</div> : <p className="muted small tile-group-empty">Nothing in this group yet. Tap + on its heading to add something.</p>)}
           </div>
         )
       })}

@@ -43,7 +43,8 @@ export interface AppState {
   proposeShift: (shift: PendingShift) => void
   /** Open the list editor (null = new list). */
   /** Edit a list, or (null) make a new one, optionally of a kind (a Today section's + New). */
-  editList: (list: List | null, kind?: List['kind']) => void
+  /** `onCreated`: a new list's id goes there instead of opening the list (Add to Today pins it). */
+  editList: (list: List | null, kind?: List['kind'], onCreated?: (id: string) => void) => void
   // Works for lists too: both carry visibility and ownerId.
   canEdit: (item: Shareable) => boolean
   openChat: (text?: string) => void

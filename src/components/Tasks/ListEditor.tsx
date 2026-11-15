@@ -9,7 +9,7 @@ import { PICK_KINDS } from '../../utils/picks'
 import { secretSharedWith } from '../../utils/gifts'
 
 /** Create or edit a list/project. Visibility changes rewrite the copied fields on its tasks in the same batch. */
-export function ListEditor({ list, kind, onClose }: { list: List | null; /** For a new list: its kind to start with. */ kind?: List['kind']; onClose: () => void }) {
+export function ListEditor({ list, kind, onClose, onCreated }: { list: List | null; /** For a new list: its kind to start with. */ kind?: List['kind']; onClose: () => void; /** A new list's id goes here (and you stay where you are) instead of opening it. */ onCreated?: (id: string) => void }) {
   const app = useApp()
   // A list's contents are tasks, or checklist items / notes: the batch updates must cover both.
   const { tasks: taskDocs, listItems } = useData()
@@ -77,7 +77,8 @@ export function ListEditor({ list, kind, onClose }: { list: List | null; /** For
         await updateList(list, data, tasks)
       } else {
         const id = await createList({ ...data, ownerId: app.uid })
-        app.navigate({ view: 'list', listId: id, timeline: false })
+        if (onCreated) onCreated(id)
+        else app.navigate({ view: 'list', listId: id, timeline: false })
       }
       onClose()
     } catch (err) {
