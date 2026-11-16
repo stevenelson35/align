@@ -5919,3 +5919,102 @@ a.entry-title .icon:last-child {
 .add-to-today-results input[type='search'] {
   width: 100%;
 }
+
+/* Gift lists: sort and show, priority numbers, claimed / partly claimed marks, group gifts. */
+.gift-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0.4rem 0 0.6rem;
+}
+.gift-tools select {
+  width: auto;
+}
+.gift-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: none;
+}
+.gift-rank {
+  min-width: 1.9rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: var(--highlight-bg);
+  color: var(--highlight);
+  border: 1px solid var(--highlight-border);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+}
+.gift-state {
+  font-weight: 700;
+}
+.gift-state.claimed {
+  color: var(--color-project);
+}
+.gift-state.partial {
+  color: var(--tint-yellow-border);
+}
+.entry-row.gift-claimed .entry-title-text {
+  color: var(--muted);
+}
+.gift-secret-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 1rem 0 0.4rem;
+}
+.gift-pool {
+  background: var(--tint-green-bg);
+  border-color: var(--tint-green-border);
+}
+.pledge input {
+  width: 6rem;
+}
+.gift-price-row {
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+.gift-arrange {
+  display: grid;
+  gap: 0.4rem;
+}
+
+/* Add to Today's first screen: four plain choices, then one task per screen. */
+.add-choices {
+  display: grid;
+  gap: 0.45rem;
+}
+.add-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.add-choice:hover {
+  background: var(--bg);
+}
+.add-choice > span:last-child {
+  display: grid;
+  gap: 0.1rem;
+}
+.add-everything {
+  justify-self: center;
+  margin-top: 0.2rem;
+}
+.add-step {
+  display: grid;
+  gap: 0.5rem;
+}
+.add-back {
+  justify-self: start;
+}

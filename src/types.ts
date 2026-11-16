@@ -169,8 +169,12 @@ export interface Task {
   images?: string[]
   /** Notes (ids of notes-list items) this entry refers to, e.g. a gift → "Steve's clothes sizes". Any kind of entry. */
   noteIds?: string[]
-  /** Gift-list items: how many, and the color / size wanted (details go in notes; where to buy in links). */
-  gift?: { qty?: number; color?: string; size?: string }
+  /**
+   * Gift-list items: how many, and the color / size wanted (details go in notes; where to buy in links); about what it
+   * costs (dollars); its priority on the list (1 = most wanted; set by whoever keeps the list); and whether it's a
+   * group gift that people chip in toward (claims then pledge an amount).
+   */
+  gift?: { qty?: number; color?: string; size?: string; price?: number; rank?: number; pool?: boolean }
   /** A reading-list task: the link it's about ("Read: …"); the link shows 📖 until this task is done. */
   linkId?: string
   /** Days it was pushed off ("⏭ next day"), so a past day can show what was rescheduled. */
@@ -290,4 +294,6 @@ export interface GiftClaim {
   qty: number
   bought: boolean
   note?: string
+  /** A group gift: how much they're putting in (dollars). */
+  amount?: number
 }

@@ -665,6 +665,15 @@ notifications, game invites; 5 cleanup and docs.
   (`start`): "In <group> now" with ✕, Something new (New entry in a list: `NewEntry`, one line, a web address makes a
   link, the list remembered per device; New list: `editList(null, kind, onCreated)` pins the new list instead of
   opening it; New group), then the search. Goals on Today has + for a new goal (`GoalEditor` in place).
+- **Follow-up 5 (2026-11-15):** pressing and holding a pinned entry (a flat row) arranges Today like every other
+  tile (`EntryRow` skips its own hold menu on `.flat`; ⋯ still opens it). Add to Today is guided: four choices
+  (pin something already in Align, add something new, make a new group, take something out), one small screen each,
+  "Show everything on one page" for the full one. **Gift lists:** `gift.price` (estimate), `gift.rank` (priority,
+  1 = most wanted; Arrange by priority for whoever can edit the list, `reRank` + `setGiftRanks` write only changed
+  numbers, keeping the other gift fields), `gift.pool` (group gift: claims carry `amount`, rules allow 0 < amount ≤
+  100,000; `claimState` gives `pledged` / `still`). Sort (priority / price either way / newest) and Show (All / Not
+  claimed / Claimed, givers only) per device; ✓ / ◐ marks with All; secret ideas in their own section. Claim notes
+  now show to the other givers on the row ("got the blue one").
 - **Regression fixed:** the Library CSS edit in the first follow-up truncated `index.css` after the old Library rules,
   dropping the phase 4 styles (Inbox, badge, banner, Send's Align / Text / Both, the warning) from `60f8ead`; restored.
 

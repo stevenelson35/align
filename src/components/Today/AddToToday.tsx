@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { DAILY_ITEMS } from '../../daily/settings'
 import { addTaskNow } from '../../firebase/db'
 import { GAMES } from '../../games/catalog'
@@ -9,7 +9,7 @@ import { defaultName, safeUrl } from '../../utils/links'
 import { LIST_KIND } from '../../utils/listKinds'
 import { splitTitleNote } from '../../utils/quickAdd'
 import { people } from '../../utils/tasks'
-import { addGroup, addTile, groupNames, tile, tilesInGroup, type Tile, type TilePlace } from '../../utils/tiles'
+import { addGroup, addTile, groupNames, known, placeOf, splitMore, tile, tilesInGroup, type Tile, type TilePlace } from '../../utils/tiles'
 import { TODAY_SECTIONS } from '../../utils/today'
 import { Icon } from '../UI/Icon'
 import { useTileInfo } from './useTileInfo'
@@ -20,14 +20,17 @@ const ENTRY_RESULTS = 40
 const QUICK_KINDS: List['kind'][] = ['list', 'project', 'checklist', 'notes', 'links', 'picks']
 const LAST_LIST = 'align-add-entry-list'
 
+/** The dialog's screens: the choices, then one task each (or everything on one page). */
+type Step = 'choose' | 'find' | 'new' | 'group' | 'remove' | 'all'
+
 const placeKey = (p: TilePlace) => (typeof p === 'string' ? p : `g:${p.group}`)
 const keyPlace = (k: string): TilePlace => (k === 'top' || k === 'bottom' || k === 'more' ? k : { group: k.slice(2) })
 
 /**
- * Add to Today, from the footer's + or a group's +: where it goes ("Put it in"), what that group holds now (✕ takes
- * one off), something new (an entry in one of your lists, a new list, or a new group; each is pinned where you
- * chose), and a search over everything you can pin (panels, a person's location, Wordle of the day, an item of The
- * Daily, lists, any entry), each added or taken off with one tap.
+ * Add to Today, from the footer's + or a group's +. It starts with four choices, each one small screen: pin something
+ * already in Align (search), add something new (an entry in one of your lists, or a new list), make a new group, or
+ * take something out. "Show everything on one page" has it all at once. What's added goes where it was opened (the
+ * group, or the top of Today); "Goes in" changes that.
  */
 export function AddToToday({ onClose, start = 'top' }: { onClose: () => void; /** Where it opens aimed (a group's +). */ start?: TilePlace }) {
   const app = useApp()
@@ -43,9 +46,6 @@ export function AddToToday({ onClose, start = 'top' }: { onClose: () => void; /*
   const [note, setNote] = useState<string | null>(null)
   const [making, setMaking] = useState<'entry' | null>(null)
   const input = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    if (start === 'top') input.current?.focus()
-  }, [start])
   const fail = (err: unknown) => setError(err instanceof Error ? err.message : String(err))
 
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
@@ -93,15 +93,6 @@ export function AddToToday({ onClose, start = 'top' }: { onClose: () => void; /*
 
   const whereText = place === 'top' ? 'at the top of Today' : place === 'bottom' ? 'on Today, below your groups' : place === 'more' ? 'in More…' : `in “${group}”`
 
-  function newGroup() {
-    const name = window.prompt('Name the new group (e.g. Kids, School, Call)')?.trim().replace(/\s+/g, ' ').slice(0, 40)
-    if (!name) return
-    setError(null)
-    today.save(addGroup(today.tiles, name)).catch(fail)
-    setPlace(`g:${name}`)
-    setNote(`Made the “${name}” group. What you add now goes in it.`)
-  }
-
   function newList() {
     setError(null)
     // The list editor (who sees it, who edits it…); the new list is pinned here instead of opening.
@@ -112,129 +103,258 @@ export function AddToToday({ onClose, start = 'top' }: { onClose: () => void; /*
   }
 
   const inGroup = group ? tilesInGroup(today.tiles, group) : []
+  // What "Take something out" lists: the group's tiles, or (aimed at Today itself) the tiles not in any group.
+  const removable = group
+    ? inGroup
+    : splitMore(today.tiles).main.filter((t) => known(t) && !t.startsWith('group:') && !t.startsWith('end:') && placeOf(today.tiles, t)?.group === undefined)
+  const [step, setStep] = useState<Step>('choose')
+  const [groupName, setGroupName] = useState('')
+  const [browse, setBrowse] = useState(false)
+  const go = (next: Step) => {
+    setError(null)
+    setNote(null)
+    setStep(next)
+  }
+
+  function makeGroup(e: FormEvent) {
+    e.preventDefault()
+    const name = groupName.trim().replace(/\s+/g, ' ').slice(0, 40)
+    if (!name) return
+    if (yourGroups.includes(name)) return setError(`There’s already a group called “${name}”.`)
+    setError(null)
+    today.save(addGroup(today.tiles, name)).catch(fail)
+    setPlace(`g:${name}`)
+    setGroupName('')
+    setNote(`Made the “${name}” group. Add something to it?`)
+    setStep('choose')
+  }
+
+  const title = group ? `“${group}”` : place === 'more' ? 'More…' : 'Today'
+  const row = (t: Tile, action: ReactNode) => {
+    const it = info(t)
+    return (
+      <li key={t} className="row">
+        <span className="grow">
+          <Icon name={it.icon} /> {it.label} <span className="muted small">{it.kind}</span>
+        </span>
+        {action}
+      </li>
+    )
+  }
+  const addButton = (t: Tile) => {
+    const it = info(t)
+    const on = today.has(t)
+    return (
+      <button type="button" className={on ? 'secondary small' : 'small'} onClick={() => toggle(t)} aria-pressed={on} aria-label={on ? `Take ${it.label} off Today` : `Add ${it.label} to Today`}>
+        {on ? '✓ On Today' : 'Add'}
+      </button>
+    )
+  }
+  const removeButton = (t: Tile) => (
+    <button type="button" className="row-action" onClick={() => today.remove(t).catch(fail)} aria-label={`Take ${info(t).label} off Today`} title="Take it off Today (it stays in its list)">
+      <Icon name="close" />
+    </button>
+  )
+  const results = (all: boolean) =>
+    (all || words.length ? sections : []).map((g) => (
+      <section key={g.title}>
+        <h4 className="muted small">{g.title}</h4>
+        <ul>{g.tiles.map((t) => row(t, addButton(t)))}</ul>
+      </section>
+    ))
+  const search = (
+    <input
+      ref={input}
+      type="search"
+      autoFocus={step === 'find'}
+      placeholder="A list, person, link, task, note or panel…"
+      value={query}
+      onChange={(e) => setQuery(e.target.value)}
+      onKeyDown={(e) => e.key === 'Escape' && onClose()}
+      aria-label="Find something to add to Today"
+    />
+  )
+  const placePicker = (
+    <label className="small add-to-place">
+      Goes in{' '}
+      <select
+        value={place}
+        onChange={(e) => {
+          setNote(null)
+          if (e.target.value === 'new') go('group')
+          else setPlace(e.target.value)
+        }}
+        aria-label="Where new tiles go"
+      >
+        <option value="top">Today, above your groups</option>
+        <option value="bottom">Today, below your groups</option>
+        {yourGroups.map((g) => (
+          <option key={g} value={`g:${g}`}>
+            The “{g}” group
+          </option>
+        ))}
+        <option value="new">A new group…</option>
+        <option value="more">More…</option>
+      </select>
+    </label>
+  )
+  const back = (
+    <button type="button" className="link small add-back" onClick={() => go('choose')}>
+      ‹ Back
+    </button>
+  )
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="card modal add-to-today" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={group ? `Add to ${group}` : 'Add to Today'}>
+      <div className="card modal add-to-today" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={`Add to ${title}`}>
         <div className="row">
-          <strong className="grow">{group ? `Add to “${group}”` : 'Add to Today'}</strong>
+          <strong className="grow">{step === 'remove' ? `Take something out of ${title}` : step === 'group' ? 'Make a new group' : `Add to ${title}`}</strong>
           <button type="button" className="link" onClick={onClose} aria-label="Close">
             <Icon name="close" />
           </button>
         </div>
-        <label className="small add-to-place">
-          Put it in{' '}
-          <select
-            value={place}
-            onChange={(e) => {
-              setNote(null)
-              if (e.target.value === 'new') newGroup()
-              else setPlace(e.target.value)
-            }}
-            aria-label="Where new tiles go"
-          >
-            <option value="top">Today, above your groups</option>
-            <option value="bottom">Today, below your groups</option>
-            {yourGroups.map((g) => (
-              <option key={g} value={`g:${g}`}>
-                The “{g}” group
-              </option>
-            ))}
-            <option value="new">A new group…</option>
-            <option value="more">More…</option>
-          </select>
-        </label>
         {error && <p className="error small">{error}</p>}
         {note && <p className="small sent-note"><Icon name="check" /> {note}</p>}
 
-        <div className="add-to-today-results">
-          {group && (
-            <section>
-              <h4 className="muted small">In “{group}” now</h4>
-              {inGroup.length ? (
-                <ul>
-                  {inGroup.map((t) => {
-                    const it = info(t)
-                    return (
-                      <li key={t} className="row">
-                        <span className="grow">
-                          <Icon name={it.icon} /> {it.label} <span className="muted small">{it.kind}</span>
-                        </span>
-                        <button type="button" className="row-action" onClick={() => today.remove(t).catch(fail)} aria-label={`Take ${it.label} out of ${group}`} title="Take it off Today (it stays in its list)">
-                          <Icon name="close" />
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              ) : (
-                <p className="muted small">Nothing yet: add something below.</p>
-              )}
-            </section>
-          )}
+        {step === 'choose' && (
+          <div className="add-choices">
+            <button type="button" className="add-choice" onClick={() => go('find')}>
+              <span className="section-icon"><Icon name="pin" /></span>
+              <span><strong>Pin something already in Align</strong><span className="muted small">A list, a person, a link, a note, a panel</span></span>
+            </button>
+            {app.isMember && (
+              <button type="button" className="add-choice" onClick={() => go('new')}>
+                <span className="section-icon"><Icon name="plus" /></span>
+                <span><strong>Add something new</strong><span className="muted small">A new entry in one of your lists, or a new list</span></span>
+              </button>
+            )}
+            <button type="button" className="add-choice" onClick={() => go('group')}>
+              <span className="section-icon"><Icon name="folder" /></span>
+              <span><strong>Make a new group</strong><span className="muted small">A heading you name, to gather tiles under</span></span>
+            </button>
+            {removable.length > 0 && (
+              <button type="button" className="add-choice" onClick={() => go('remove')}>
+                <span className="section-icon"><Icon name="close" /></span>
+                <span><strong>Take something out</strong><span className="muted small">{removable.length} in {title} now</span></span>
+              </button>
+            )}
+            <button type="button" className="link small add-everything" onClick={() => go('all')}>
+              Show everything on one page
+            </button>
+          </div>
+        )}
 
-          {app.isMember && (
-            <section>
-              <h4 className="muted small">Something new</h4>
-              <div className="row wrap add-new-buttons">
-                <button type="button" className={making === 'entry' ? 'small' : 'secondary small'} onClick={() => setMaking(making === 'entry' ? null : 'entry')} aria-expanded={making === 'entry'}>
-                  <Icon name="plus" /> New entry in a list
-                </button>
-                <button type="button" className="secondary small" onClick={newList}>
-                  <Icon name="list" /> New list
-                </button>
-                <button type="button" className="secondary small" onClick={newGroup}>
-                  <Icon name="folder" /> New group
-                </button>
-              </div>
-              {making === 'entry' && (
-                <NewEntry
-                  onMade={(id, title) => {
-                    today.save(addTile(today.tiles, tile('entry', id), where)).catch(fail)
-                    setNote(`Added “${title}” and put it ${whereText}.`)
-                  }}
-                  onError={fail}
-                />
+        {step === 'find' && (
+          <div className="add-step">
+            {back}
+            {placePicker}
+            {search}
+            <div className="add-to-today-results">
+              {results(browse)}
+              {words.length > 0 && !sections.length && <p className="muted small">Nothing matches “{query.trim()}”.</p>}
+              {!words.length && !browse && (
+                <p className="muted small">
+                  Type a few letters of what you want.{' '}
+                  <button type="button" className="link small" onClick={() => setBrowse(true)}>
+                    Or browse panels and lists
+                  </button>
+                </p>
               )}
-            </section>
-          )}
+            </div>
+          </div>
+        )}
 
-          <section>
-            <h4 className="muted small">Find something to pin</h4>
-            <input
-              ref={input}
-              type="search"
-              placeholder="A panel, person, list or entry…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Escape' && onClose()}
-              aria-label="Find something to add to Today"
+        {step === 'new' && (
+          <div className="add-step">
+            {back}
+            {placePicker}
+            <h4 className="muted small">A new entry in one of your lists</h4>
+            <NewEntry
+              onMade={(id, made) => {
+                today.save(addTile(today.tiles, tile('entry', id), where)).catch(fail)
+                setNote(`Added “${made}” and put it ${whereText}.`)
+              }}
+              onError={fail}
             />
-          </section>
-          {sections.map((g) => (
-            <section key={g.title}>
-              <h4 className="muted small">{g.title}</h4>
-              <ul>
-                {g.tiles.map((t) => {
-                  const it = info(t)
-                  const on = today.has(t)
-                  return (
-                    <li key={t} className="row">
-                      <span className="grow">
-                        <Icon name={it.icon} /> {it.label} <span className="muted small">{it.kind}</span>
-                      </span>
-                      <button type="button" className={on ? 'secondary small' : 'small'} onClick={() => toggle(t)} aria-pressed={on} aria-label={on ? `Take ${it.label} off Today` : `Add ${it.label} to Today`}>
-                        {on ? '✓ On Today' : 'Add'}
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            </section>
-          ))}
-          {words.length > 0 && !sections.length && <p className="muted small">Nothing matches “{query.trim()}”.</p>}
-          {!words.length && <p className="muted small">Type to find entries too (a person, a link, a task, a note).</p>}
-        </div>
+            <p className="small">
+              Or{' '}
+              <button type="button" className="link small" onClick={newList}>
+                make a new list
+              </button>{' '}
+              and put it {whereText}.
+            </p>
+          </div>
+        )}
+
+        {step === 'group' && (
+          <form className="add-step" onSubmit={makeGroup}>
+            {back}
+            <p className="muted small">A group is a heading on Today with its own tiles under it (like Fun or Links). Name it; then add things to it.</p>
+            <div className="row">
+              <input autoFocus value={groupName} maxLength={40} onChange={(e) => setGroupName(e.target.value)} placeholder="e.g. Kids, School, Call" aria-label="Group name" />
+              <button type="submit" className="small" disabled={!groupName.trim()}>
+                Make it
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 'remove' && (
+          <div className="add-step">
+            {back}
+            <p className="muted small">✕ takes it off Today; it stays where it is in Align.</p>
+            <div className="add-to-today-results">
+              <ul>{removable.map((t) => row(t, removeButton(t)))}</ul>
+              {!removable.length && <p className="muted small">Nothing left here.</p>}
+            </div>
+          </div>
+        )}
+
+        {step === 'all' && (
+          <div className="add-step">
+            {back}
+            {placePicker}
+            <div className="add-to-today-results">
+              {group && (
+                <section>
+                  <h4 className="muted small">In “{group}” now</h4>
+                  {inGroup.length ? <ul>{inGroup.map((t) => row(t, removeButton(t)))}</ul> : <p className="muted small">Nothing yet: add something below.</p>}
+                </section>
+              )}
+              {app.isMember && (
+                <section>
+                  <h4 className="muted small">Something new</h4>
+                  <div className="row wrap add-new-buttons">
+                    <button type="button" className={making === 'entry' ? 'small' : 'secondary small'} onClick={() => setMaking(making === 'entry' ? null : 'entry')} aria-expanded={making === 'entry'}>
+                      <Icon name="plus" /> New entry in a list
+                    </button>
+                    <button type="button" className="secondary small" onClick={newList}>
+                      <Icon name="list" /> New list
+                    </button>
+                    <button type="button" className="secondary small" onClick={() => go('group')}>
+                      <Icon name="folder" /> New group
+                    </button>
+                  </div>
+                  {making === 'entry' && (
+                    <NewEntry
+                      onMade={(id, made) => {
+                        today.save(addTile(today.tiles, tile('entry', id), where)).catch(fail)
+                        setNote(`Added “${made}” and put it ${whereText}.`)
+                      }}
+                      onError={fail}
+                    />
+                  )}
+                </section>
+              )}
+              <section>
+                <h4 className="muted small">Find something to pin</h4>
+                {search}
+              </section>
+              {results(true)}
+              {words.length > 0 && !sections.length && <p className="muted small">Nothing matches “{query.trim()}”.</p>}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

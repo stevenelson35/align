@@ -78,16 +78,19 @@ export function EntryRow({
   const detail = size === 'detail' || isOpen
   const details = detailsOf(entry, false) // its own address (a link, a "Read:" task) shows on its own
   const hasText = !!entry.notes?.trim()
+  // A pinned entry on Today (flat): pressing and holding arranges Today, like every other tile (its ⋯ still opens
+  // the actions). Everywhere else it opens the actions.
+  const flat = className.split(' ').includes('flat')
   const press = useLongPress(() => setMenu(true))
 
   return (
     <Tag
       className={`entry-row size-${size}${detail ? ' open' : ''}${app.selectedTaskId === entry.id ? ' selected' : ''} ${className}`}
-      {...press}
+      {...(flat ? {} : press)}
       onContextMenu={(e) => {
         // A long press on a phone (or a right-click) opens the actions instead of the browser's menu.
         e.preventDefault()
-        setMenu(true)
+        if (!flat) setMenu(true)
       }}
     >
       <div className="entry-line">

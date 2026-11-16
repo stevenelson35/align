@@ -1,8 +1,8 @@
 // Gift lists' data: the secret companion list (made when the first surprise idea is added) and claims. Claims are
 // queried by recipient, never for lists meant for you (the rules would refuse, and the point is not to know).
-import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore'
+import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
-import type { GiftClaim, Household, List } from '../types'
+import type { GiftClaim, Household, List, Task } from '../types'
 import { recipientKey, secretListFor, secretSharedWith } from '../utils/gifts'
 import { db } from './config'
 import { createList } from './db'
@@ -28,7 +28,7 @@ export function useGiftClaims(recipients: string[]): { claims: GiftClaim[]; erro
 }
 
 /** Claim some of a gift (or change how many / the note / bought). One claim per person per item. */
-export function saveClaim(list: List, item: { id: string; title: string }, uid: string, patch: { qty: number; bought: boolean; note?: string }) {
+export function saveClaim(list: List, item: { id: string; title: string }, uid: string, patch: { qty: number; bought: boolean; note?: string; amount?: number }) {
   return setDoc(doc(db, 'giftClaims', `${item.id}_${uid}`), {
     listId: list.id,
     itemId: item.id,
@@ -38,6 +38,7 @@ export function saveClaim(list: List, item: { id: string; title: string }, uid: 
     qty: Math.min(99, Math.max(1, Math.round(patch.qty))),
     bought: patch.bought,
     ...(patch.note?.trim() ? { note: patch.note.trim().slice(0, 500) } : {}),
+    ...(patch.amount && patch.amount > 0 ? { amount: Math.min(100000, Math.round(patch.amount * 100) / 100) } : {}),
     updatedAt: serverTimestamp(),
   })
 }
@@ -63,4 +64,16 @@ export async function ensureSecretList(list: List, lists: List[], household: Hou
   }
   const id = await createList(data)
   return { id, ...data }
+}
+
+/** New priorities on a gift list (1 = most wanted), in one write; each keeps its other gift fields. */
+export async function setGiftRanks(changes: { id: string; rank: number }[], items: { id: string; gift?: Task['gift'] }[]) {
+  for (let i = 0; i < changes.length; i += 400) {
+    const batch = writeBatch(db)
+    for (const c of changes.slice(i, i + 400)) {
+      const gift = items.find((t) => t.id === c.id)?.gift ?? {}
+      batch.update(doc(db, 'tasks', c.id), { gift: { ...gift, rank: c.rank }, updatedAt: serverTimestamp() })
+    }
+    await batch.commit()
+  }
 }

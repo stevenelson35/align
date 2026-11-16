@@ -40,24 +40,90 @@ export function secretSharedWith(household: Household, recipientId: string, owne
 /** A gift list's secret companion (surprise ideas for the same person), if you can see one. */
 export const secretListFor = (list: List, lists: List[]) => lists.find((l) => l.kind === 'gifts' && l.giftSecret && l.secretOf === list.id)
 
-/** How much of an item is spoken for: claimed (all, incl. bought) and bought, against how many are wanted. */
+/**
+ * How much of an item is spoken for: claimed (all, incl. bought) and bought, against how many are wanted; for a group
+ * gift, how much has been pledged against its price (open until the pledges reach it).
+ */
 export function claimState(item: Pick<Task, 'id' | 'gift'>, claims: GiftClaim[]) {
   const mine = claims.filter((c) => c.itemId === item.id)
   const wanted = Math.max(1, item.gift?.qty ?? 1)
   const claimed = mine.reduce((n, c) => n + c.qty, 0)
   const bought = mine.filter((c) => c.bought).reduce((n, c) => n + c.qty, 0)
-  return { claims: mine, wanted, claimed, bought, open: Math.max(0, wanted - claimed) }
+  const pledged = mine.reduce((n, c) => n + (c.amount ?? 0), 0)
+  if (item.gift?.pool) {
+    const price = item.gift.price ?? 0
+    const open = price ? Math.max(0, price - pledged) : 1
+    return { claims: mine, wanted: 1, claimed: open ? 0 : 1, bought, open: open ? 1 : 0, pledged, still: price ? open : null }
+  }
+  return { claims: mine, wanted, claimed, bought, open: Math.max(0, wanted - claimed), pledged, still: null as number | null }
 }
 
-/** "2 · blue · size M": a gift's quantity (when more than one), color and size, for a row. */
+/** Where an item stands for givers: nobody's on it, some of it is (one of two, part of a group gift), or all of it. */
+export function giftStatus(item: Pick<Task, 'id' | 'gift'>, claims: GiftClaim[]): 'open' | 'partial' | 'claimed' {
+  const s = claimState(item, claims)
+  if (!s.claims.length) return 'open'
+  return s.open > 0 ? 'partial' : 'claimed'
+}
+
+/** "$25", "$12.50": a gift's price estimate. */
+export const priceText = (n: number) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`
+
+export const GIFT_SORTS = ['priority', 'cheap', 'pricey', 'newest'] as const
+export type GiftSort = (typeof GIFT_SORTS)[number]
+export const GIFT_SHOWS = ['all', 'open', 'claimed'] as const
+export type GiftShow = (typeof GIFT_SHOWS)[number]
+
+const addedAt = (t: Pick<Task, 'createdAt'>) => (t.createdAt ? t.createdAt.seconds : Infinity)
+
+/**
+ * Gift ideas in an order: by priority (#1 first; unranked ones after, oldest first), price low→high or high→low (no
+ * price last), or newest first.
+ */
+export function sortGifts<T extends Pick<Task, 'gift' | 'createdAt' | 'title'>>(items: T[], by: GiftSort): T[] {
+  const rank = (t: T) => t.gift?.rank ?? Infinity
+  const price = (t: T) => t.gift?.price
+  return [...items].sort((a, b) => {
+    if (by === 'priority') return rank(a) - rank(b) || addedAt(a) - addedAt(b)
+    if (by === 'newest') return addedAt(b) - addedAt(a)
+    const pa = price(a)
+    const pb = price(b)
+    if (pa === undefined || pb === undefined) return (pa === undefined ? 1 : 0) - (pb === undefined ? 1 : 0) || rank(a) - rank(b)
+    return (by === 'cheap' ? pa - pb : pb - pa) || rank(a) - rank(b)
+  })
+}
+
+/** Only what's still to get ('open': nobody, or not all of it), only what's spoken for, or everything. */
+export function showGifts<T extends Pick<Task, 'id' | 'gift'>>(items: T[], show: GiftShow, claims: GiftClaim[]): T[] {
+  if (show === 'all') return items
+  return items.filter((t) => (show === 'open' ? giftStatus(t, claims) !== 'claimed' : giftStatus(t, claims) !== 'open'))
+}
+
+/** New priorities for ideas in this order (1, 2, 3…): only the ones whose number changes. */
+export function reRank(ordered: Pick<Task, 'id' | 'gift'>[]): { id: string; rank: number }[] {
+  return ordered.map((t, i) => ({ id: t.id, rank: i + 1 })).filter((r, i) => ordered[i].gift?.rank !== r.rank)
+}
+
+/** "×2 · blue · size M · about $25": a gift's quantity (when more than one), color, size and price, for a row. */
 export function giftSummary(item: Pick<Task, 'gift'>): string {
   const g = item.gift ?? {}
-  return [g.qty && g.qty > 1 ? `×${g.qty}` : '', g.color, g.size ? `size ${g.size}` : ''].filter(Boolean).join(' · ')
+  return [g.qty && g.qty > 1 && !g.pool ? `×${g.qty}` : '', g.color, g.size ? `size ${g.size}` : '', g.price !== undefined ? `about ${priceText(g.price)}` : ''].filter(Boolean).join(' · ')
 }
 
-/** A gift's fields to store: quantity 1–99 (1 is left out), color and size trimmed; undefined when empty. */
-export function cleanGift(g: { qty?: number | string; color?: string; size?: string }): Task['gift'] {
+/**
+ * A gift's fields to store: quantity 1–99 (1 is left out), color and size trimmed, a price 0–100,000 (cents kept),
+ * its priority kept as it was, and the group-gift flag; undefined when empty.
+ */
+export function cleanGift(g: { qty?: number | string; color?: string; size?: string; price?: number | string; rank?: number; pool?: boolean }): Task['gift'] {
   const qty = Math.min(99, Math.max(1, Math.round(Number(g.qty) || 1)))
-  const out = { ...(qty > 1 ? { qty } : {}), ...(g.color?.trim() ? { color: g.color.trim().slice(0, 60) } : {}), ...(g.size?.trim() ? { size: g.size.trim().slice(0, 60) } : {}) }
+  const rawPrice = typeof g.price === 'string' ? g.price.replace(/[$,\s]/g, '') : g.price
+  const price = rawPrice === '' || rawPrice === undefined || !Number.isFinite(Number(rawPrice)) ? undefined : Math.min(100000, Math.max(0, Math.round(Number(rawPrice) * 100) / 100))
+  const out = {
+    ...(qty > 1 ? { qty } : {}),
+    ...(g.color?.trim() ? { color: g.color.trim().slice(0, 60) } : {}),
+    ...(g.size?.trim() ? { size: g.size.trim().slice(0, 60) } : {}),
+    ...(price !== undefined ? { price } : {}),
+    ...(g.rank ? { rank: g.rank } : {}),
+    ...(g.pool ? { pool: true } : {}),
+  }
   return Object.keys(out).length ? out : undefined
 }

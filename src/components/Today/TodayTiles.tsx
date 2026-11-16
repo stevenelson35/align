@@ -71,7 +71,9 @@ function useHoldToArrange(onArrange?: () => void) {
   return {
     onPointerDown: (e: React.PointerEvent) => {
       const target = e.target as HTMLElement
-      if (e.button !== 0 || !target.closest('.section-header') || target.closest('input, textarea, select, a, .entry-row')) return
+      // A heading, or an entry pinned on its own (one flat line); not a field, a link, or a row inside a list.
+      const onEntry = !!target.closest('.tile-entry > .entry-row.flat') && !target.closest('.entry-detail, .tile-person-peek, .entry-menu')
+      if (e.button !== 0 || (!target.closest('.section-header') && !onEntry) || target.closest('input, textarea, select, a') || (!onEntry && target.closest('.entry-row'))) return
       start.current = { x: e.clientX, y: e.clientY }
       timer.current = setTimeout(() => {
         start.current = null
@@ -92,7 +94,8 @@ function useHoldToArrange(onArrange?: () => void) {
     onPointerCancel: cancel,
     onContextMenu: (e: React.MouseEvent) => {
       // A phone's long press would also open the browser's menu on a heading.
-      if ((e.target as HTMLElement).closest('.section-header') && !(e.target as HTMLElement).closest('a, .entry-row')) e.preventDefault()
+      const t = e.target as HTMLElement
+      if ((t.closest('.section-header') || t.closest('.tile-entry > .entry-row.flat')) && !t.closest('a')) e.preventDefault()
     },
   }
 }

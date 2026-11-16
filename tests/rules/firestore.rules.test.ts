@@ -1034,6 +1034,13 @@ describe('gift lists, secret ideas and claims', () => {
     await assertFails(getDocs(collection(db('daughter'), 'giftClaims')))
     await assertFails(getDoc(doc(db(), 'giftClaims/g1_steve')))
   })
+  it('lets givers pledge an amount toward a group gift, within sense', async () => {
+    await assertSucceeds(setDoc(doc(db('wife'), 'giftClaims/g1_wife'), { ...claim('wife'), amount: 40 }))
+    await assertSucceeds(setDoc(doc(db('wife'), 'giftClaims/g1_wife'), { ...claim('wife'), amount: 12.5 }))
+    await assertFails(setDoc(doc(db('wife'), 'giftClaims/g1_wife'), { ...claim('wife'), amount: 0 }))
+    await assertFails(setDoc(doc(db('wife'), 'giftClaims/g1_wife'), { ...claim('wife'), amount: '40' }))
+    await assertFails(setDoc(doc(db('wife'), 'giftClaims/g1_wife'), { ...claim('wife'), amount: 200000 }))
+  })
   it('lets view-only accounts (extended family) claim and see claims, still never their own gifts', async () => {
     await assertSucceeds(setDoc(doc(db('grandma'), 'giftClaims/g1_grandma'), claim('grandma')))
     await assertSucceeds(getDocs(query(collection(db('grandma'), 'giftClaims'), where('recipientId', '==', 'daughter'))))

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GiftClaim, Household, List, Task } from '../types'
-import { claimState, cleanGift, giftSummary, isRecipient, recipientKey, recipientLabel, secretListFor, secretSharedWith } from './gifts'
+import { claimState, cleanGift, giftStatus, giftSummary, priceText, reRank, showGifts, sortGifts, isRecipient, recipientKey, recipientLabel, secretListFor, secretSharedWith } from './gifts'
 
 const household = {
   members: {
@@ -42,5 +42,40 @@ describe('gift helpers', () => {
     expect(cleanGift({ qty: 500 })).toEqual({ qty: 99 })
     expect(giftSummary({ gift: { qty: 2, color: 'Navy', size: 'M' } })).toBe('×2 · Navy · size M')
     expect(giftSummary({})).toBe('')
+  })
+})
+
+describe('gift priorities, prices and group gifts', () => {
+  const at = (s: number) => ({ seconds: s, nanoseconds: 0 }) as Task['createdAt']
+  const g = (id: string, gift: Task['gift'], s: number) => ({ id, title: id, gift, createdAt: at(s) }) as Task
+  const items = [g('a', { price: 40 }, 1), g('b', { rank: 2, price: 10 }, 2), g('c', { rank: 1 }, 3), g('d', {}, 4)]
+  const claim = (itemId: string, by: string, qty = 1, amount?: number) => ({ id: `${itemId}_${by}`, listId: 'l', itemId, recipientId: 'r', claimedBy: by, title: itemId, qty, bought: false, ...(amount ? { amount } : {}) }) as GiftClaim
+  it('sorts by priority (unranked after, oldest first), price either way (no price last), or newest', () => {
+    expect(sortGifts(items, 'priority').map((t) => t.id)).toEqual(['c', 'b', 'a', 'd'])
+    expect(sortGifts(items, 'cheap').map((t) => t.id)).toEqual(['b', 'a', 'c', 'd'])
+    expect(sortGifts(items, 'pricey').map((t) => t.id)).toEqual(['a', 'b', 'c', 'd'])
+    expect(sortGifts(items, 'newest').map((t) => t.id)).toEqual(['d', 'c', 'b', 'a'])
+  })
+  it('renumbers only what changes when the order changes', () => {
+    expect(reRank([items[2], items[1], items[0]])).toEqual([{ id: 'a', rank: 3 }])
+    expect(reRank([items[0], items[2]])).toEqual([{ id: 'a', rank: 1 }, { id: 'c', rank: 2 }])
+  })
+  it('knows what is still open: one of two, part of a group gift', () => {
+    const two = g('shorts', { qty: 2 }, 5)
+    expect(giftStatus(two, [])).toBe('open')
+    expect(giftStatus(two, [claim('shorts', 'linda', 1)])).toBe('partial')
+    expect(giftStatus(two, [claim('shorts', 'linda', 1), claim('shorts', 'sam', 1)])).toBe('claimed')
+    const bike = g('bike', { price: 200, pool: true }, 6)
+    expect(claimState(bike, [claim('bike', 'linda', 1, 80)])).toMatchObject({ pledged: 80, still: 120, open: 1 })
+    expect(giftStatus(bike, [claim('bike', 'linda', 1, 80)])).toBe('partial')
+    expect(giftStatus(bike, [claim('bike', 'linda', 1, 80), claim('bike', 'sam', 1, 120)])).toBe('claimed')
+    expect(showGifts([two, bike], 'open', [claim('shorts', 'linda', 1)]).map((t) => t.id)).toEqual(['shorts', 'bike'])
+    expect(showGifts([two, bike], 'claimed', [claim('shorts', 'linda', 1)]).map((t) => t.id)).toEqual(['shorts'])
+  })
+  it('stores a price (typed with $ or commas), keeps the priority, and shows it', () => {
+    expect(cleanGift({ qty: '1', price: '$1,250.5', rank: 3, pool: true })).toEqual({ price: 1250.5, rank: 3, pool: true })
+    expect(cleanGift({ price: '' })).toBeUndefined()
+    expect(giftSummary({ gift: { qty: 2, color: 'Navy', price: 25 } })).toBe('×2 · Navy · about $25')
+    expect(priceText(12.5)).toBe('$12.50')
   })
 })

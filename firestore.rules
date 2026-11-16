@@ -512,7 +512,7 @@ service cloud.firestore {
     }
 
     function validClaim(claimId, d) {
-      return d.keys().hasOnly(['listId', 'itemId', 'recipientId', 'claimedBy', 'title', 'qty', 'bought', 'note', 'updatedAt'])
+      return d.keys().hasOnly(['listId', 'itemId', 'recipientId', 'claimedBy', 'title', 'qty', 'bought', 'note', 'amount', 'updatedAt'])
         && d.claimedBy == request.auth.uid
         && claimId == d.itemId + '_' + request.auth.uid
         && d.recipientId != request.auth.uid
@@ -521,7 +521,9 @@ service cloud.firestore {
         && d.title is string && d.title.size() <= 500
         && d.qty is int && d.qty >= 1 && d.qty <= 99
         && d.bought is bool
-        && (!('note' in d) || (d.note is string && d.note.size() <= 500));
+        && (!('note' in d) || (d.note is string && d.note.size() <= 500))
+        // A group gift: what they're putting in (dollars).
+        && (!('amount' in d) || ((d.amount is int || d.amount is float) && d.amount > 0 && d.amount <= 100000));
     }
 
     match /giftClaims/{claimId} {

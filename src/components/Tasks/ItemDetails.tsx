@@ -186,7 +186,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
   const [extras, setExtras] = useState(() => detailsOf(item, false))
   const [noteIds, setNoteIds] = useState<string[]>(item.noteIds ?? [])
   const isGift = list.kind === 'gifts'
-  const [gift, setGift] = useState({ qty: String(item.gift?.qty ?? 1), color: item.gift?.color ?? '', size: item.gift?.size ?? '' })
+  const [gift, setGift] = useState({ qty: String(item.gift?.qty ?? 1), color: item.gift?.color ?? '', size: item.gift?.size ?? '', price: item.gift?.price !== undefined ? String(item.gift.price) : '', pool: !!item.gift?.pool })
   const wasPinned = !!app.member.pinnedLinks?.includes(item.id)
   const [pinned, setPinned] = useState(wasPinned)
   const [listId, setListId] = useState(item.listId)
@@ -215,7 +215,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
           notes: text.trim() ? text : undefined,
           ...taskDetails({ links, images }),
           noteIds: noteIds.filter((id) => id !== item.id).length ? noteIds.filter((id) => id !== item.id) : undefined,
-          ...(isGift ? { gift: cleanGift(gift) } : {}),
+          ...(isGift ? { gift: cleanGift({ ...gift, rank: item.gift?.rank }) } : {}),
           ...(isLink ? { url: link!, category: cleanCategory(category) || undefined } : {}),
         },
         moveTo,
@@ -281,6 +281,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
           </>
         )}
         {isGift && (
+          <>
           <div className="grid3">
             <label>
               How many
@@ -295,6 +296,16 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
               <input value={gift.size} onChange={(e) => setGift({ ...gift, size: e.target.value })} />
             </label>
           </div>
+          <div className="row wrap gift-price-row">
+            <label className="small">
+              About how much
+              <input inputMode="decimal" value={gift.price} onChange={(e) => setGift({ ...gift, price: e.target.value })} placeholder="$25" style={{ width: '7rem' }} />
+            </label>
+            <label className="inline small">
+              <input type="checkbox" checked={gift.pool} onChange={(e) => setGift({ ...gift, pool: e.target.checked })} /> Group gift: people chip in
+            </label>
+          </div>
+          </>
         )}
         <label>
           {isNote || isLink ? 'Note' : list.kind === 'cards' ? 'Back (the answer)' : 'Details'}
