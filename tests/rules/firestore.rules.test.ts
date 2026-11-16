@@ -210,9 +210,8 @@ describe('household', () => {
   })
 
   it('lets a member arrange their own Today (More… and contacts / links on it), and no one else’s', async () => {
-    // The old Shortcuts field may still be there (until it's cleared); the older More… list no longer may.
-    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayItems': ['contact1'] }))
-    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayItems': 'contact1' }))
+    // The pre-tile Today fields are gone for good.
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayItems': ['contact1'] }))
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayMore': ['gifts'] }))
     // Today tiles: their own, a list, at most 150.
     await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.today': ['panel:goals', 'entry:contact1', 'group:Kids', 'more', 'panel:gifts'] }))

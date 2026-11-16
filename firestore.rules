@@ -77,9 +77,7 @@ service cloud.firestore {
       let uid = request.auth.uid;
       return after.diff(before).affectedKeys().hasOnly([uid])
         && after[uid].role == before[uid].role
-        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'pinnedGames', 'newTaskDue', 'pinned', 'todayItems', 'todayPanels', 'today'])
-        // The old Shortcuts (item ids), replaced by Today tiles; still on some member entries until they're cleared.
-        && (!('todayItems' in after[uid]) || (after[uid].todayItems is list && after[uid].todayItems.size() <= 30))
+        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'pinnedGames', 'newTaskDue', 'pinned', 'todayPanels', 'today'])
         // Their Today tiles, in order ("kind:id" strings: panels, lists, entries, parts, group names, the More… mark).
         && (!('today' in after[uid]) || (after[uid].today is list && after[uid].today.size() <= 150))
         && (!('pinnedGames' in after[uid]) || (after[uid].pinnedGames is list && after[uid].pinnedGames.size() <= 30))

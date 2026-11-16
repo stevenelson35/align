@@ -593,8 +593,8 @@ Planned 2026-11-13 (checkpoint tag `pre-refactor-2026-11-13`, `7e9b111`) and fin
 
 #### Phase 5 cleanup (2026-11-16)
 - The pre-tile Today settings (`todayMore`, the Shortcuts list `todayItems`, the Shortcuts panel style) are gone from
-  the code; rules no longer allow `todayMore` or a Shortcuts style, and allow `todayItems` only until it's cleared from
-  the live member entries (`scripts/cleanup-phase5.mjs`), after which the rules drop it too.
+  the code, the rules and the live data (`scripts/cleanup-phase5.mjs`, run 2026-11-16 after a backup; it also pointed
+  one old Wordle invite at the Games page).
 - `tests/samples/styles.test.ts` guards the stylesheet (each feature's key rules, balanced braces, no sudden shrink): an earlier
   edit had cut `index.css` short and silently dropped the Inbox and Send styles.
 - Lint is clean (no warnings).
