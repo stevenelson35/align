@@ -38,6 +38,9 @@ ALIGN_FTP_DIR=/align.itsallonesong.com npm run deploy:web   # the USER runs this
   updatedAt }`** (never `deleteDoc` them; rules `isTombstone`), and **a write that narrows who can see something also
   stamps `household.accessChangedAt`** (`audienceNarrows`). A write that skips these is invisible to other devices
   until their daily full load.
+- **Styles:** `src/index.css` is one long file; edit it with exact replacements, never by slicing it at an index
+  (that once cut it short and dropped whole features' styles). Add a feature's key selectors to
+  `tests/samples/styles.test.ts`, which fails if any go missing.
 - **Today is tiles** (`utils/tiles.ts`, `components/Today/`, refactor phase 3): `members.<uid>.today`; add a new
   kind of tile there (parse, `known`, `useTileInfo`, `TileView`, Add to Today) rather than a new Today section list.
 - **Inbox** (`firebase/inbox.ts`, refactor phase 4): send with `sendToInbox` (it asks the Apps Script to push at

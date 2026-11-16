@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { BLOG_URL } from '../../blog/post'
 import { useApp, useData } from '../../hooks/useApp'
 import { useInbox } from '../../hooks/useInbox'
@@ -8,7 +8,7 @@ import type { List, Task } from '../../types'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 import { safeUrl } from '../../utils/links'
 import { LIST_KIND } from '../../utils/listKinds'
-import { menuSectionOf } from '../../utils/menu'
+import { MENU_SCROLL_KEY, menuSectionOf } from '../../utils/menu'
 import type { Route } from '../../utils/routes'
 import { isFinished, isItemList } from '../../utils/tasks'
 import { placeOf, tile, type Tile } from '../../utils/tiles'
@@ -46,6 +46,15 @@ export function LibraryView() {
   const today = useTodayTiles()
   const [filter, setFilter] = useState('')
   const [open, toggleOpen] = useStoredSet('align-library-open')
+  // From a list page's breadcrumb ("Links ›"): open that section and bring it to the top, once.
+  useEffect(() => {
+    const target = sessionStorage.getItem(MENU_SCROLL_KEY)
+    if (!target) return
+    sessionStorage.removeItem(MENU_SCROLL_KEY)
+    if (!open.has(target)) toggleOpen(target)
+    requestAnimationFrame(() => document.querySelector(`.library [data-section="${CSS.escape(target)}"]`)?.scrollIntoView({ block: 'start' }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on arriving
+  }, [])
   const [error, setError] = useState<string | null>(null)
   const words = filter.trim().toLowerCase().split(/\s+/).filter(Boolean)
   const hit = (...text: string[]) => words.every((w) => text.join(' ').toLowerCase().includes(w))

@@ -36,7 +36,7 @@ export function TaskDetails({ task }: { task: Task }) {
 
 /**
  * A task before Edit: its facts (status, when, who, list, what it waits on), then the common EntryExtras block
- * (note, links, pictures, comments, Text about this).
+ * (note, links, pictures, comments, Send about this).
  */
 function TaskView({ task, onEdit }: { task: Task; onEdit: () => void }) {
   const app = useApp()

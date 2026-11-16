@@ -520,188 +520,84 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
-### Major refactor: plan agreed 2026-11-13 (checkpoint tag `pre-refactor-2026-11-13`, commit `7e9b111`)
-Decisions (from the user):
-- **Data:** one **entry** shape (title, text, links, pictures, note references, comments, icon, tags, audience) with
-  optional parts instead of separate kinds: check, task (dates, duration, dependencies, priority, assignee, for), link
-  address, contact card, ratings (pick lists), card back + results (flashcards), gift details, calendar event. Lists are
-  containers with a default part and display, plus optional nested groups for any list. Goals, voting boards,
-  investing, games and locations stay their own collections.
-- **Display:** one entry row in three sizes (simple: check, type icon, title, text icon; medium: + markers for note,
-  picture, comment, link, date; detail: everything in place) and the same actions on every row (tap title opens in
-  place; press-and-hold: Pin, Send, Comment, Move, Edit).
-- **Today:** a **flat ordered list of tiles with optional groups the person names**. A tile is a built-in panel
-  (Goals, Family Map, On This Day, The Daily, Games, To Do, Inbox…), a pinned list, a pinned entry, or a part of a
-  panel (a person's location, Wordle of the day, Word of the day). One search across everything; any result can be
-  pinned. Arrange mode: press and hold, drag. **Shortcuts folds into pinned tiles; More… stays as the folded page.**
-  The ☰ menu becomes a Library page for browsing and bigger edits.
-- **Inbox:** "Send about this" → Align, Text, or both; an Inbox tile with unread count, mark read / clear; game
-  invitations move into it. **Notifications in seconds:** the sender's app asks the Apps Script web app to send the
-  push at once (like Refresh calendar), with a 15-minute background sweep as a fallback. Live game invites: instant
-  in-app; push the same immediate way. iPhone/iPad push needs Home Screen install; Fire tablets may only get the
-  in-app badge.
-- **Goals on Today:** tapping a goal's name opens logging in place (same as the pencil); Manage is the one way to the
-  full goal page.
-- **Reads:** ~1,600 document reads per cold open today (1,532 docs in `tasks`, incl. 254 contacts). Phase 1 adds
-  change-only sync (query `updatedAt > lastSync` on top of the persistent cache, tombstones for deletes) and loads big
-  lists (contacts, flashcards, long link lists) when opened or pinned.
-- **Live migration is approved** after a full backup to a file and a dry run on the emulator.
+### How Align works now (the 2026-11 refactor, phases 1–5, done)
+Planned 2026-11-13 (checkpoint tag `pre-refactor-2026-11-13`, `7e9b111`) and finished 2026-11-16. Commits: phase 1
+`55d8a6c`, phase 2 `4ba5220`, phase 3 `1c7e9fe`, phase 4 `13111f6`, follow-ups `60f8ead` `6bba091` `31532ad`
+`fd29a9b` `ad630cc`, phase 5 (cleanup) after it.
 
-Phases (each shippable): 1 data layer + migration + change-only sync (no visible change); 2 entry row sizes and one
-entry panel; 3 Today as tiles, search-to-pin, drag to arrange, Library; 4 Inbox, Send via Align / text / both,
-notifications, game invites; 5 cleanup and docs.
+#### Data and sync
+- **Entries are one shape** in `tasks` (lists' items and tasks alike); kinds add parts: `contact`, `url` + `category`,
+  `ratings`, `results`, `gift`, `calendar`. Lists are containers. Goals, boards, investing, games, locations and the
+  Inbox are their own collections.
+- **Change-only sync** (`firebase/sync.ts`): per query, a listener on the device's saved copy only (`source:
+  'cache'`, no reads billed, includes your own unconfirmed writes), which is what's shown, and a server listener for
+  everything (first open, once a day per device/person/collection, or after `household.accessChangedAt`) or only
+  `updatedAt > newest held − 2 min`. A reopen costs about 0 reads instead of ~1,600. Documents leaving every query are
+  hidden and remembered per device (`<key>:gone`) until the next full load.
+- **Deleting marks** `{ deleted: true, updatedAt }` (rules `isTombstone`); a full load removes your own marks older
+  than 30 days. **Every write to lists / tasks / goals stamps `updatedAt`** (client `serverTimestamp`, Apps Script
+  `REQUEST_TIME`). **Narrowing who can see something** (`audienceNarrows`) stamps `household.accessChangedAt` in the
+  same batch, so every device reloads in full. Indexes for the change queries are in `firestore.indexes.json`.
 
-#### Phase 1 (built 2026-11-13; not yet deployed or committed)
-- **Finding:** entries were already one shape in `tasks` (every kind has the same base; kinds add `contact`, `url` +
-  `category`, `ratings`, `results`, `gift`, `calendar`), so the "entry" model needs no data rewrite; Phases 2–3 build
-  the shared row and panel on it. Of 1,532 entries, 1,113 are flashcards and 254 contacts.
-- **Change-only sync** (`src/firebase/sync.ts`, `subscribeLists/Tasks/Goals` in db.ts): per query, a listener on the
-  device's saved copy only (`source: 'cache'`, no reads billed, includes your own unconfirmed writes) is what's shown;
-  a server listener asks for everything (first open, once a day per device/person/collection, or after
-  `household.accessChangedAt`) or only `updatedAt > newest held − 2 min`, which keeps the saved copy current. Measured
-  on the real data in the emulator: first open 1,582 documents; a reopen **0** from the server. Documents leaving every
-  query (narrowed access) are hidden and remembered per device (`<key>:gone`) until the next full load.
-- **Deleting marks** `{ deleted: true, updatedAt }` (rules `isTombstone`: only those two fields, the time = request
-  time, allowed exactly when a real delete would be); the next full load removes your own marks older than 30 days.
-  `deleteTask`, `deleteList` (in 450-write batches), `deleteGoal`; the calendar sync marks removed events deleted and
-  clears the mark (`revive`) when an event comes back.
-- **Narrowing access** (`audienceNarrows`, tested: Family → Only me, fewer chosen people, no longer for view-only
-  accounts, a new owner of a private one) stamps `household.accessChangedAt` in the same batch (`updateList`,
-  `updateGoal`, `updateTask` moves; screens pass the entry so moves need no extra read); every device's DataProvider
-  restarts and loads in full. Rules: members may set it, only to the request time.
-- **Every write to lists / tasks / goals must stamp `updatedAt`** (client: serverTimestamp; Apps Script:
-  `REQUEST_TIME`; its `create` now commits with createdAt/updatedAt, which voice-added tasks and the Family Calendar
-  list lacked). Indexes for the change queries: `firestore.indexes.json` (owner+visibility, visibility,
-  visibility+viewerVisible, sharedWith, each + updatedAt) for lists, tasks, goals.
-- **Migration** (`scripts/migrate-phase1.mjs`, dry run by default, idempotent): stamps `updatedAt` where missing.
-  Live: 1 document (the Family Calendar list). Backup: `~/align-backups/2026-11-13` (1,736 documents, read-only
-  export, private). `scripts/restore-to-emulator.mjs <backup> uid=email…` loads a backup into the emulators with
-  logins for real uids (password align-dev) for dry runs.
-- **Deploy order:** rules + indexes (wait until the indexes finish building), paste the Apps Script and deploy a new
-  version, run the live migration, then the web app.
-- **Deployed 2026-11-13** (`55d8a6c`): rules + indexes (all 14 built), Apps Script new version, live migration (1
-  document), web; verified the live bundle.
+#### Rows
+- **One entry row** (`components/Entries/EntryRow.tsx`) for every kind, in three sizes per list per device
+  (`useEntrySize`): simple, medium (marks and the kind's facts), detail (everything in place). Tap the title to open it
+  in place; ⋯ or press and hold opens Open, Edit, Move, Comment, Send…, Pin to Today. `.flat` rows (an entry pinned on
+  Today) are one line with the kind's icon in the panels' tinted square, no border, and hold arranges Today instead.
+  Panels open in a mode: `app.openEntry(id, 'view' | 'edit' | 'comment')`.
 
-#### Phase 2 (built 2026-11-13; not yet committed)
-- **One entry row** (`components/Entries/EntryRow.tsx`) for every list kind: checklists, notes, task lists and
-  projects (`TaskCard` is now an EntryRow, so Today's To Do and the Tasks page use it too), links, pick lists,
-  contacts, gift lists and the flashcard list. Sizes (`utils/entries.ts`; `useEntrySize`, per list per device;
-  `EntrySizeSwitch` in each list's header): **simple** (check, icon, title, a text mark), **medium** (+ marks for
-  extra links / pictures and the kind's facts in `chips`: task badges and dates, link address and reading badge,
-  pick-list stars, a person's company and tags, gift summary / secret / claims, a card's answer), **detail** (text,
-  links, pictures, related notes and the kind's `more`, e.g. a person's numbers and addresses, in place). The old
-  per-kind toggles became sizes (links: Addresses / Notes; flashcards: Show answers).
-- **Same actions everywhere:** tap the title to open it in place (detail + buttons); ⋯ or press-and-hold (500 ms,
-  touch) opens a menu: Open, Edit, Move to another list, Comment, Send (text), Pin to Today. One-tap 💬 stays on the
-  row (not for people, who have their own call / text / email). Kinds keep their own quick actions in `trail` (a
-  task's ↗ / push / won't do, a person's call / text / email, a title's stars, a card's ✓ / ✗); a link's name still
-  opens the site.
-- **Panels open in a mode:** `app.openEntry(id, 'view' | 'edit' | 'comment')` (AppContext `panelMode`): Edit and Move
-  open the item form directly, Comment scrolls the panel to its comments (EntryExtras). Checklist items already had
-  links, pictures and note references in Edit; the menu makes that reachable from the row.
-- Today's sections, Shortcuts and search still use their own rows: Phase 3 rebuilds Today as tiles on this row.
+#### Today
+- **Tiles** (`utils/tiles.ts`, `components/Today/`): `members.<uid>.today`, an ordered list of `panel:<id>`
+  (`TODAY_SECTIONS` plus `todo`), `list:<id>`, `entry:<id>`, `person:<uid>`, `game:<id>`, `daily:<item>`,
+  `group:<name>`, `end:<n>` (a group's end line: below it isn't in the group) and one `more` (what follows is in
+  More…). Unknown tiles are skipped, not lost. No saved list: `defaultTiles()` (On this day, Inbox, Goals, a Fun group,
+  a People group, To Do, the rest in More…). `AUTO_TILES` (Inbox) are added once to saved lists; taking one off leaves
+  a `-tile` mark. Other days show only `DAY_PANELS` (To Do, Goals, Archive Pics, The Daily).
+- **Look:** groups are sections (📁, count, Show/Hide, + on the heading) with their tiles indented along a line; one
+  gap between all tiles (`--tile-gap`, per device: `useTileGap`, in Arrange and Settings). A list tile shows what's
+  left (8, then Show all) with + and Open; a person who is a family member on the map (`memberForContact`,
+  `useFamilyOnMap`) shows a short location ("at Ho…"; tap for the full line), and 🗺 opens the map on them.
+- **Arranging** (`ArrangeTiles`): press and hold a heading or a pinned entry, or the footer's Arrange; drag ⠿ (pointer
+  capture, scrolls at the edges) or ↑ ↓; ✕; New group (with its end line); Add end line on the last open group; the
+  More… line moves like a tile; Back to the usual arrangement.
+- **Adding** (`AddToToday`, the footer's + or a group's +): four choices, one small screen each: pin something
+  already in Align (search), add something new (`NewEntry` in one of your lists, or a new list via
+  `editList(null, kind, onCreated)`, pinned where you came from), make a new group, take something out. "Show
+  everything on one page" has it all. "Goes in" (`TilePlace`: top, bottom, a group, More…). Pin to Today is also in
+  every entry's menu and details, list headers, and the Library (📌).
+- **Footer:** More… · Arrange · +. **Library** (`#/library`, ☰ on phones ≤ 760 px): pages as tiles (with where
+  they are on Today), your links, each kind of list as a card, rows with count, audience, place on Today and 📌.
+- **Goals on Today:** tapping a goal opens logging in place; + makes a new goal; Manage is the way to the Goals page.
+- `scripts/set-today.mjs <arrangement.json>` sets everyone's Today to one arrangement (dry run first; keeps each
+  person's own pins at the end of More…). The family's arrangement file is kept outside the repo.
 
-### Refactor phase 3: Today as tiles (2026-11-13)
-- **Model** (`utils/tiles.ts`, tested): `members.<uid>.today`, an ordered list of strings: `panel:<id>` (the 14
-  sections plus `panel:todo`), `list:<listId>`, `entry:<taskId>`, `person:<uid>` (one person's location),
-  `game:<id>` (`game:wordle` is Wordle of the day), `daily:<item>` (one item of The Daily), `group:<name>` (a heading
-  you name), and one `more` mark: what follows is in More…. Rules: own member entry only, a list of at most 150.
-  Unknown tiles are skipped, not dropped. Absent: built from the older `todayMore` / `todayItems` (main sections,
-  To Do, the Shortcuts as a "Shortcuts" group, then More…), so nobody's Today changed and no migration was needed;
-  the first change saves the tiles. `todayMore`, `todayItems` and `pinned` stay readable; `pinned` is still the ☆
-  "pin to the top of this panel" inside Contacts, Lists, Links, Family Map and Voting.
-- **Today** (`components/Today/`): `TodayTiles` renders tiles under group headings (fold per device,
-  `align-today-folded-groups`); `TileView` picks the renderer: panels as before (To Do is now `Tasks/TodoPanel`,
-  with Done / Won't Do / Pushed), a list tile (open entries, 8 then Show all, + quick add, Open; rows at most
-  medium), an entry tile (a task card, a person with call / text / email, a link, a checklist item), a person's
-  location (`PersonLocationTile`, the Family Map row), a game (Wordle shows today's status from the Wordle API), or
-  one Daily item (`TheDaily only=`). Other days show only `DAY_PANELS` (To Do, Goals, Archive Pics, The Daily) in
-  your order. Something deleted or no longer shared shows nothing; Arrange lists it, greyed, to remove.
-- **Footer:** More… (the tiles after the mark) · Arrange · + (Add to Today). Shortcuts… and Arrange Today are gone.
-- **Arrange** (`ArrangeTiles`): press and hold a heading on Today (550 ms; rows keep their own long-press menu)
-  or the footer's Arrange. Drag by ⠿ (pointer capture, works with touch and mouse, scrolls near the edges), ↑ ↓,
-  ✕ (off Today only), New group / Rename, the More… line moves like a tile, Back to the usual arrangement.
-- **Add to Today** (`AddToToday`): one search over panels, parts (each person's location, games, Daily items),
-  lists, and entries (only once you type; 40 at most; a task shows its date, since repeats share a title). Add /
-  ✓ On Today toggles; "Add to More… instead".
-- **Pin to Today** (`useTodayTiles`, `PinToToday`): the EntryRow ⋯ menu's Pin to Today now adds an `entry:` tile;
-  item and contact details have it (replacing Add to Shortcuts); list headers have it for a `list:` tile.
-- **Library** (`#/library`, `AppShell/LibraryView`): on phones (≤ 760 px, live) ☰ opens the menu as a page with a
-  find box (pages, lists by kind, boards); ☰ again goes back. The slide-out menu isn't rendered on phones; on wide
-  screens the sidebar is unchanged. The breadcrumb's "Menu › Links" opens the Library on that section on a phone.
-- **Goals on Today:** tapping a goal's name or trend opens logging in place (like the pencil); tapping the name in
-  the open control closes it. Manage is the only way to the Goals page; other people's goals are plain text.
-- Settings no longer offers a Shortcuts panel style (the saved one is ignored).
-- **Follow-up (user feedback):** groups are sections (📁, `SectionHeader`, count, Show / Hide), their tiles indented
-  along a line. New tiles go to the top of Today, above the first group (`addTile` 'top'), not into the last group;
-  Add to Today's "Put it in" picks a group, a new group, or More… (`TilePlace`); Arrange's New group adds an empty one
-  above the More… line (`addGroup`) and opens its name. The **Library** is its own page design: pages as tiles (with
-  "On Today" / "In More…"), your links as chips, each kind of list as a card (several open, remembered), rows with
-  kind icon in the audience color, count + unit, audience, where it is on Today (`placeOf`), and 📌 to pin; two
-  columns on wide screens.
-- **Follow-up 2 (user feedback, 2026-11-14):** one gap between all tiles, grouped or not (`.today-tiles` flex columns,
-  `--tile-gap`; each tile's outer margins dropped), adjustable per device (`useTileGap`, `align-tile-gap`; Settings →
-  Today spacing and in Arrange). **End lines** (`end:<n>` tiles): a group runs to its end line, so tiles can sit below
-  a group outside it; `addGroup` adds one with each new group, Arrange offers "Add end line" on the last open group,
-  removing a group removes its end line, and Add's "Put it in" has "below your groups" (`'bottom'`). Entries pinned on
-  their own are one flat line (`EntryRow` `.flat`, the kind's icon in the panels' tinted square); a contact who is a
-  family member (`memberForContact`: same mobile number, or a unique first name) shows where they are inline
-  (`useMemberLocation`) and the map row when opened. Games on Today now use the shared Pinned / search / Show all
-  (`CollectionContents` `top` slot for `GameInvitationsBlock`); Live Wordle Updates has the Invitations heading; no
-  disclosure triangles; the Games page lists Invitations too. Inbox rows are one line (who · what, time; game: Play,
-  ✕), seen ones have a hollow dot and dashed outline; Wordle invites open the Games page (older ones too). The banner
-  sits below the top bar. `scripts/set-today.mjs <arrangement.json>` sets everyone's Today (dry run first; keeps
-  their own pins at the end of More…).
-- **Follow-up 3:** a contact who is a family member on the map (`useFamilyOnMap`: `memberForContact` + a reported
-  location; one locations listener, only while rows are shown) gets 🗺 beside call / text / email on the Contacts page,
-  the Today Contacts panel and a pinned person; it opens `#/map/<uid>`. A pinned family member is one line: the name
-  keeps priority, the location shortens with "…" (`.entry-aside-button`); tapping the location toggles the full map
-  row under it (`EntryRow` `below`), tapping the name opens the card as on any row. Under 380 px their email button
-  moves to the card. `useLocations(enabled)`.
-- **Follow-up 4 (2026-11-15):** **Both** saved nothing to the Inbox (live data had no entry messages): the sms: link
-  opened Messages in the same tap and the save never went out. Now `both()` waits for the Inbox write (at most 4 s)
-  and then opens Messages. Inbox: an opened message shows ✓ (game: "✓ Opened" on an outlined button). **Adding from
-  where you are:** each group's heading has + (`TodayTiles` `onAdd`), opening Add to Today aimed at that group
-  (`start`): "In <group> now" with ✕, Something new (New entry in a list: `NewEntry`, one line, a web address makes a
-  link, the list remembered per device; New list: `editList(null, kind, onCreated)` pins the new list instead of
-  opening it; New group), then the search. Goals on Today has + for a new goal (`GoalEditor` in place).
-- **Follow-up 5 (2026-11-15):** pressing and holding a pinned entry (a flat row) arranges Today like every other
-  tile (`EntryRow` skips its own hold menu on `.flat`; ⋯ still opens it). Add to Today is guided: four choices
-  (pin something already in Align, add something new, make a new group, take something out), one small screen each,
-  "Show everything on one page" for the full one. **Gift lists:** `gift.price` (estimate), `gift.rank` (priority,
-  1 = most wanted; Arrange by priority for whoever can edit the list, `reRank` + `setGiftRanks` write only changed
-  numbers, keeping the other gift fields), `gift.pool` (group gift: claims carry `amount`, rules allow 0 < amount ≤
-  100,000; `claimState` gives `pledged` / `still`). Sort (priority / price either way / newest) and Show (All / Not
-  claimed / Claimed, givers only) per device; ✓ / ◐ marks with All; secret ideas in their own section. Claim notes
-  now show to the other givers on the row ("got the blue one").
-- **Regression fixed:** the Library CSS edit in the first follow-up truncated `index.css` after the old Library rules,
-  dropping the phase 4 styles (Inbox, badge, banner, Send's Align / Text / Both, the warning) from `60f8ead`; restored.
-
-### Refactor phase 4: Inbox, Send via Align / Text / Both, notifications (2026-11-13)
-- **Data:** `inbox/{id}` `{ to, from, kind: entry|link|board|photo|game|note, title, text?, link, read, pushed,
-  createdAt }` (`firebase/inbox.ts`). Rules: members send as themselves to any member or view-only account (not
-  themselves), in that shape, `read` and `pushed` false, `createdAt` the request time; the recipient reads, flips `read`
-  and deletes; the sender reads; the calendar bot reads and may only set `pushed: true`. Index: `to` + `createdAt` desc.
-  The app listens to the newest 50 (`InboxProvider`, one listener for the badge, tile and banner). Links are stored as
-  `#/…` for Align pages (`utils/inboxLink.ts`) so they open in the app.
+#### Inbox, Send, notifications
+- `inbox/{id}` `{ to, from, kind, title, text?, link, read, pushed, createdAt }` (`firebase/inbox.ts`): members send to
+  anyone in the family; the recipient reads, marks read, clears; the sender reads; the calendar bot sets `pushed`.
+  `InboxProvider` listens to the newest 50 for the ✉ badge, the Inbox tile (`#/inbox` for all) and the banner below
+  the top bar. Opened messages show ✓ (a game invite: "✓ Opened"); Play on a game invite opens the Games page, which
+  lists Invitations.
+- **Send** (`TextForm`, every "Send about this"): pick a person, then Align / Text / Both (remembered per device).
+  Both saves the Inbox message first, then opens Messages. It warns when the person can't open what you're sending
+  (`canReadAs`). Game invitations (`inviteToGame`, Wordle) also send an Inbox message.
 - **Push in seconds:** after writing, the sender's app posts `{action: 'notify', idToken, ids}` to the Apps Script web
-  app (`notify_`): it checks the sign-in, pushes only that sender's messages through FCM (`sendPush_`, now with the
-  message's own `url`) to the recipient's `alertPrefs.push` devices unless `alertPrefs.inboxOff`, and marks each
-  `pushed` (a script-cache claim stops the sweep and the request sending one twice). **Fallback:** `sweepInbox` every
-  15 minutes (`installInboxTrigger`) for unpushed messages up to a day old. Covered by `npm run test:calendar`.
-- **Send** (`TextForm`, every "Send about this"): pick a person, Align / Text / Both (remembered per device,
-  `align-send-via`; view-only accounts text only). Both writes the Inbox message and opens Messages. If the person
-  can't open the entry (`canReadAs`, the rules' canRead), a warning says so before sending. Labels: 💬 "Send this to
-  someone", the row menu's "Send…".
-- **Inbox:** a Today tile (`panel:inbox`; added at the top of saved tiles once via `AUTO_TILES`, and taking it off is
-  remembered as `-panel:inbox`), the ✉ in the top bar with the unread count, `#/inbox` (the whole Inbox, Clear read),
-  and a banner for messages arriving while Align is open (`InboxBanner`; a game invitation stays until played or
-  closed). Tap a message: it's marked read and its link opens.
-- **Game invitations** (`inviteToGame`, Wordle's `createWordleChallenge`) also send an Inbox message linking to the
-  challenge, so invites notify at once; the Games section still handles accepting and playing.
-- **Settings → Notifications** (`NotifyToggle`): this device's push on/off (shared with map alerts) and "Notify me
-  when something arrives in my Inbox"; the Inbox tile nudges once to turn them on.
+  app (`notify_`), which pushes that sender's messages once through FCM to the recipient's devices (unless
+  `alertPrefs.inboxOff`); `sweepInbox` every 15 minutes (`installInboxTrigger`) sends any it missed (up to a day
+  old). Settings → Notifications (`NotifyToggle`) turns this device on (shared with map alerts).
 
+#### Gift lists (additions)
+- `gift.price` (about how much), `gift.rank` (priority, 1 = most wanted; Arrange by priority for whoever can edit the
+  list; `reRank` + `setGiftRanks` write only changed numbers), `gift.pool` (a group gift: claims carry `amount`; the
+  rules allow 0 < amount ≤ 100,000). Sort (priority, price either way, newest) and Show (All / Not claimed / Claimed,
+  givers only) per device; ✓ / ◐ with All; secret ideas in their own section; claim notes show to other givers.
+
+#### Phase 5 cleanup (2026-11-16)
+- The pre-tile Today settings (`todayMore`, the Shortcuts list `todayItems`, the Shortcuts panel style) are gone from
+  the code; rules no longer allow `todayMore` or a Shortcuts style, and allow `todayItems` only until it's cleared from
+  the live member entries (`scripts/cleanup-phase5.mjs`), after which the rules drop it too.
+- `tests/samples/styles.test.ts` guards the stylesheet (each feature's key rules, balanced braces, no sudden shrink): an earlier
+  edit had cut `index.css` short and silently dropped the Inbox and Send styles.
+- Lint is clean (no warnings).
 
 ### Location sign-in quota: local fix awaiting Apps Script deployment
 - The calendar/location script caches the Firebase bot ID token for up to 50 minutes and serializes cache misses,

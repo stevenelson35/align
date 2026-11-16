@@ -1,15 +1,5 @@
 import { Icon, type IconName } from './Icon'
-
-export const ITEM_ICON_CHOICES: IconName[] = [
-  'goal', 'todo', 'star', 'book', 'calendar', 'family', 'photo', 'gift',
-  'map', 'check', 'sparkle', 'play', 'pin', 'sun', 'moon', 'note',
-  'link', 'camera', 'lock', 'coin',
-]
-
-export const ITEM_EMOJI_CHOICES = [
-  '⭐', '🌈', '🐾', '🐈', '🌻', '🦋', '🎮', '🍓', '🪴', '🚀',
-  '⚽', '🎨', '📚', '🧩', '🐶', '🐱', '🏆', '💡', '🎵', '🍕',
-]
+import { ITEM_EMOJI_CHOICES, ITEM_ICON_CHOICES } from '../../utils/itemIcons'
 
 export function ItemIcon({ value }: { value?: string }) {
   if (!value) return null

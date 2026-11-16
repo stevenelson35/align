@@ -1,7 +1,7 @@
 import type { Timestamp } from 'firebase/firestore'
 
 export type Role = 'member' | 'viewer'
-export type TodaySurface = 'today' | 'more' | 'shortcuts'
+export type TodaySurface = 'today' | 'more'
 
 export interface TodayPanelStyle {
   color?: string
@@ -31,17 +31,13 @@ export interface HouseholdMember {
   pinnedGames?: string[]
   /** Today pins: list, item and board ids, or `map-person:<uid>` for a family map person. */
   pinned?: string[]
-  /** Today sections this person moved into More… (section ids; absent = the defaults: gifts, lists, links…). */
-  todayMore?: string[]
-  /** Contacts and links this person put on the top of Today (item ids), with their call / text / email or open. */
-  todayItems?: string[]
   /**
    * Their Today, as tiles in order (DESIGN.md §13, phase 3): "panel:goals", "list:<id>", "entry:<id>",
-   * "person:<uid>", "game:<id>", "daily:<item>", "group:<name>", and "more" (what follows is in More…). Absent: built
-   * from todayMore and todayItems (utils/tiles.ts), which it replaces.
+   * "person:<uid>", "game:<id>", "daily:<item>", "group:<name>", "end:<n>" (a group's end line), and "more" (what
+   * follows is in More…). Absent: the default layout (utils/tiles.ts defaultTiles).
    */
   today?: string[]
-  /** Their personal colors and sticker decorations for Today, More and Shortcuts. */
+  /** Their personal colors and sticker decorations for Today and More. */
   todayPanels?: Partial<Record<TodaySurface, TodayPanelStyle>>
   /** The calendar-sync account: a member for the rules, hidden from people pickers. Set in the console. */
   bot?: boolean

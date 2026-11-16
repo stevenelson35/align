@@ -2,7 +2,7 @@
 // `members.<uid>.today`. Anything can be a tile: a whole panel (Goals, Family Map, To Do…), a list, one entry (a
 // person, a link, a task), or a part of a panel (one person's location, Wordle of the day, one item of The Daily).
 // Group headings you name sit between them; everything after the "more" mark is folded into More….
-import { DEFAULT_MORE, moreOf, TODAY_SECTIONS } from './today'
+import { TODAY_SECTIONS } from './today'
 
 /** A tile, as saved: "kind:id" (or "more"). */
 export type Tile = string
@@ -40,26 +40,22 @@ export function known(t: Tile): boolean {
   return KINDS.has(kind) && !!id && (kind !== 'panel' || PANELS.has(id))
 }
 
+/** Today's panels in the order someone new starts with (the family's own layout, without their personal links). */
+const DEFAULT_MAIN = ['photos', 'inbox', 'goals', 'group:Fun', 'daily', 'games', 'rewards', 'cards', 'group:People', 'map', 'contacts', 'end:1', 'todo']
+
 /**
- * Today until you arrange it: what you had (your sections on the main page, then To Do, then your Shortcuts as a
- * group) and the rest in More…. Panels added later than your saved tiles are not added for you; they're in Add.
+ * Today for someone who hasn't arranged it (a new member or relative): On this day, Inbox, Goals, a Fun group, a
+ * People group, To Do below them, and every other panel in More…. "Back to the usual arrangement" returns to it.
  */
-export function defaultTiles(member: { todayMore?: string[]; todayItems?: string[] }): Tile[] {
-  const more = member.todayMore ? moreOf(member) : new Set<string>(DEFAULT_MORE)
-  const ids = TODAY_SECTIONS.map((s) => s.id as string)
-  const shortcuts = (member.todayItems ?? []).map((id) => tile('entry', id))
-  return [
-    ...ids.filter((id) => !more.has(id)).map((id) => tile('panel', id)),
-    tile('panel', 'todo'),
-    ...(shortcuts.length ? [tile('group', 'Shortcuts'), ...shortcuts] : []),
-    MORE,
-    ...ids.filter((id) => more.has(id)).map((id) => tile('panel', id)),
-  ]
+export function defaultTiles(): Tile[] {
+  const main = DEFAULT_MAIN.map((id) => (id.includes(':') ? id : tile('panel', id)))
+  const rest = TODAY_SECTIONS.map((s) => tile('panel', s.id)).filter((t) => !main.includes(t))
+  return [...main, MORE, ...rest]
 }
 
 /** Your tiles: as you arranged them, or the default. Always exactly one "more" mark; no repeats. */
-export function tilesOf(member: { today?: string[]; todayMore?: string[]; todayItems?: string[] }): Tile[] {
-  let saved = member.today ?? defaultTiles(member)
+export function tilesOf(member: { today?: string[] }): Tile[] {
+  let saved = member.today ?? defaultTiles()
   if (member.today) for (const t of [...AUTO_TILES].reverse()) if (!saved.includes(t) && !saved.includes(removedMark(t))) saved = [t, ...saved]
   const out = [...new Set(saved)]
   return out.includes(MORE) ? out : [...out, MORE]

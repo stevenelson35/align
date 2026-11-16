@@ -3355,6 +3355,7 @@ button.today-sheet-title {
 }
 .tile-entry {
   margin: 0;
+  grid-template-columns: minmax(0, 1fr);
 }
 .tile-list .entry-list,
 .tile-entry {
@@ -5139,6 +5140,9 @@ input.ladder-sparks {
   padding: 0.6rem;
   border: 1px solid color-mix(in srgb, var(--brand) 38%, var(--border));
   border-radius: var(--radius);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .game-invitations-disclosure,
 .game-invitations-content {
@@ -5168,6 +5172,7 @@ input.ladder-sparks {
   font-variant-numeric: tabular-nums;
   text-align: right;
   font-size: 0.8rem;
+  flex: 1;
 }
 .game-invitation-row {
   display: flex;
@@ -5627,6 +5632,9 @@ a.entry-title .icon:last-child {
 .entry-row.flat .entry-title {
   font-weight: 600;
   font-size: 1rem;
+  flex: none;
+  max-width: calc(100% - 2.6rem);
+  min-width: 0;
 }
 .entry-row.flat > .entry-detail {
   margin-left: 2.25rem;
@@ -5831,14 +5839,6 @@ a.entry-title .icon:last-child {
 .game-invitation-row > details {
   flex: 1 1 9rem;
 }
-.game-invitations-list {
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-.game-invitations-count {
-  flex: 1;
-}
 /* The narrowest phones (a Fold's cover screen): the top bar's five buttons sit a little closer. */
 @media (max-width: 380px) {
   .user {
@@ -5855,11 +5855,6 @@ a.entry-title .icon:last-child {
    fuller location line under the row. */
 .entry-row.flat .entry-main {
   flex-wrap: nowrap;
-  min-width: 0;
-}
-.entry-row.flat .entry-title {
-  flex: none;
-  max-width: calc(100% - 2.6rem);
   min-width: 0;
 }
 .entry-row.flat .row-action {
@@ -5896,9 +5891,6 @@ a.entry-title .icon:last-child {
 }
 .tile-person-peek {
   margin: 0.25rem 0 0 2.25rem;
-}
-.tile-entry {
-  grid-template-columns: minmax(0, 1fr);
 }
 /* A Fold's cover screen: a pinned person's email button goes to the opened card, leaving room for the name. */
 @media (max-width: 380px) {
@@ -5982,6 +5974,16 @@ a.entry-title .icon:last-child {
   gap: 0.4rem;
 }
 
+.add-to-place {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.add-to-place select {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
 /* Add to Today's first screen: four plain choices, then one task per screen. */
 .add-choices {
   display: grid;

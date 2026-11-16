@@ -10,7 +10,7 @@ import { EntryExtras } from '../UI/EntryExtras'
 import { ItemIcon, ItemIconPicker } from '../UI/ItemIcon'
 
 /**
- * A voting item opened up: the common EntryExtras block (note, links, pictures, comments, Text about this with a
+ * A voting item opened up: the common EntryExtras block (note, links, pictures, comments, Send about this with a
  * link that opens this item) and Edit.
  */
 export function ItemDetail({ item }: { item: BoardItem }) {

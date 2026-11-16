@@ -1,22 +1,19 @@
 import { describe, expect, it } from 'vitest'
+import { TODAY_SECTIONS } from './today'
 import { addGroup, addTile, closeGroup, closedAt, runsToMore, tilesInGroup, dayTiles, defaultTiles, groupNames, grouped, known, MORE, placeOf, moveTile, newGroupName, parseTile, removeTile, renameGroup, splitMore, tilesOf } from './tiles'
 
 describe('Today tiles', () => {
-  it('starts from the old arrangement: main sections, To Do, Shortcuts as a group, then More…', () => {
-    const t = defaultTiles({})
-    const { main, more } = splitMore(t)
-    expect(main).toEqual(['panel:inbox', 'panel:goals', 'panel:rewards', 'panel:games', 'panel:map', 'panel:contacts', 'panel:photos', 'panel:daily', 'panel:todo'])
-    expect(more).toEqual(['panel:gifts', 'panel:lists', 'panel:links', 'panel:projects', 'panel:cards', 'panel:voting', 'panel:invest'])
-    const mine = defaultTiles({ todayMore: ['daily', '!voting'], todayItems: ['c1', 'l2'] })
-    expect(splitMore(mine).main).toEqual([
-      'panel:inbox', 'panel:goals', 'panel:rewards', 'panel:games', 'panel:map', 'panel:contacts', 'panel:gifts', 'panel:lists', 'panel:links',
-      'panel:projects', 'panel:cards', 'panel:photos', 'panel:voting', 'panel:todo', 'group:Shortcuts', 'entry:c1', 'entry:l2',
-    ])
-    expect(splitMore(mine).more).toEqual(['panel:daily', 'panel:invest'])
+  it('starts someone new with the family layout: On this day, Inbox, Goals, Fun, People, To Do, the rest in More…', () => {
+    const t = defaultTiles()
+    expect(splitMore(t).main).toEqual(['panel:photos', 'panel:inbox', 'panel:goals', 'group:Fun', 'panel:daily', 'panel:games', 'panel:rewards', 'panel:cards', 'group:People', 'panel:map', 'panel:contacts', 'end:1', 'panel:todo'])
+    expect(splitMore(t).more).toEqual(['panel:gifts', 'panel:lists', 'panel:links', 'panel:projects', 'panel:voting', 'panel:invest'])
+    // Every panel is somewhere, once (a new panel added to TODAY_SECTIONS lands in More… by itself).
+    expect(TODAY_SECTIONS.every((s) => t.filter((x) => x === `panel:${s.id}`).length === 1)).toBe(true)
+    expect(tilesOf({})).toEqual(t)
   })
 
   it('uses what you saved, with exactly one More… mark and no repeats', () => {
-    expect(tilesOf({ today: ['panel:inbox', 'panel:todo', 'entry:a', 'entry:a'], todayItems: ['x'] })).toEqual(['panel:inbox', 'panel:todo', 'entry:a', MORE])
+    expect(tilesOf({ today: ['panel:inbox', 'panel:todo', 'entry:a', 'entry:a'] })).toEqual(['panel:inbox', 'panel:todo', 'entry:a', MORE])
     expect(tilesOf({ today: ['panel:inbox', MORE, 'panel:goals'] })).toEqual(['panel:inbox', MORE, 'panel:goals'])
   })
 

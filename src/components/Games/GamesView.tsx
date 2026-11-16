@@ -51,6 +51,9 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
     challengeLoaded.current = challenge.id
     const puzzleId = challenge.payload?.puzzleId ?? challenge.seed
     if (!puzzleId) return
+    // Loading a challenge that just arrived from the database into the board: a sync from outside React, once per
+    // challenge (guarded by challengeLoaded), not derived state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSeed(puzzleId)
     setBoard(lightsOutBoard(puzzleId))
     setMoves(0)

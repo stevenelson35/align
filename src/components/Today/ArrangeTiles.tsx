@@ -165,7 +165,7 @@ export function ArrangeTiles({ onDone, onAdd }: { onDone: () => void; onAdd: () 
         <button
           type="button"
           className="link small"
-          onClick={() => window.confirm('Put Today back the way it started (your pins and groups go)?') && save(defaultTiles(member))}
+          onClick={() => window.confirm('Put Today back the way it started (your pins and groups go)?') && save(defaultTiles())}
         >
           Back to the usual arrangement
         </button>

@@ -210,10 +210,10 @@ describe('household', () => {
   })
 
   it('lets a member arrange their own Today (More… and contacts / links on it), and no one else’s', async () => {
-    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayMore': ['gifts', 'links'], 'members.wife.todayItems': ['contact1'] }))
-    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.steve.todayMore': [] }))
+    // The old Shortcuts field may still be there (until it's cleared); the older More… list no longer may.
+    await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayItems': ['contact1'] }))
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayItems': 'contact1' }))
-    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayMore': Array.from({ length: 31 }, (_, i) => `s${i}`) }))
+    await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.todayMore': ['gifts'] }))
     // Today tiles: their own, a list, at most 150.
     await assertSucceeds(updateDoc(doc(db('wife'), 'household/main'), { 'members.wife.today': ['panel:goals', 'entry:contact1', 'group:Kids', 'more', 'panel:gifts'] }))
     await assertFails(updateDoc(doc(db('wife'), 'household/main'), { 'members.steve.today': ['panel:goals'] }))
@@ -729,7 +729,7 @@ describe('games', () => {
 
   it('lets members save valid styles and pinned games for their own account', async () => {
     await assertSucceeds(updateDoc(doc(db('steve'), 'household/main'), {
-      'members.steve.todayPanels': { today: { color: '#fedcba', sticker: '🐈', image: 'favorite_123' }, more: { sticker: '🌈' }, shortcuts: { sticker: '🚀' } },
+      'members.steve.todayPanels': { today: { color: '#fedcba', sticker: '🐈', image: 'favorite_123' }, more: { sticker: '🌈' } },
       'members.steve.pinnedGames': ['lights-out'],
     }))
     await assertFails(updateDoc(doc(db('steve'), 'household/main'), {

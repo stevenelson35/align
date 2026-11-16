@@ -64,10 +64,9 @@ service cloud.firestore {
     }
 
     function validTodayPanels(p) {
-      return p is map && p.keys().hasOnly(['today', 'more', 'shortcuts'])
+      return p is map && p.keys().hasOnly(['today', 'more'])
         && (!('today' in p) || validPanelStyle(p.today))
-        && (!('more' in p) || validPanelStyle(p.more))
-        && (!('shortcuts' in p) || validPanelStyle(p.shortcuts));
+        && (!('more' in p) || validPanelStyle(p.more));
     }
 
     // ---- Household ----
@@ -78,9 +77,8 @@ service cloud.firestore {
       let uid = request.auth.uid;
       return after.diff(before).affectedKeys().hasOnly([uid])
         && after[uid].role == before[uid].role
-        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'pinnedGames', 'newTaskDue', 'pinned', 'todayMore', 'todayItems', 'todayPanels', 'today'])
-        // How they arranged Today: sections moved into More…, and contacts / links shown at its top (ids).
-        && (!('todayMore' in after[uid]) || (after[uid].todayMore is list && after[uid].todayMore.size() <= 30))
+        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'pinnedGames', 'newTaskDue', 'pinned', 'todayItems', 'todayPanels', 'today'])
+        // The old Shortcuts (item ids), replaced by Today tiles; still on some member entries until they're cleared.
         && (!('todayItems' in after[uid]) || (after[uid].todayItems is list && after[uid].todayItems.size() <= 30))
         // Their Today tiles, in order ("kind:id" strings: panels, lists, entries, parts, group names, the More… mark).
         && (!('today' in after[uid]) || (after[uid].today is list && after[uid].today.size() <= 150))

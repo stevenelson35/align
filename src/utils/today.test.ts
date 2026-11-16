@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_MORE, moreOf, TODAY_SECTIONS } from './today'
+import { TODAY_SECTIONS } from './today'
 
-describe('arranging Today', () => {
-  it('starts with the less-used sections in More…, then follows your arrangement', () => {
-    expect([...moreOf({})]).toEqual(DEFAULT_MORE)
-    expect(DEFAULT_MORE).toEqual(['gifts', 'lists', 'links', 'projects', 'cards', 'voting', 'invest'])
-    expect(moreOf({}).has('games')).toBe(false)
-    expect([...moreOf({ todayMore: ['daily'] })].sort()).toEqual(['daily', 'invest', 'voting']) // newly added sections start in More…
-    expect([...moreOf({ todayMore: ['!voting', '!invest'] })].filter((s) => !s.startsWith('!'))).toEqual([]) // everything on the main page
-    expect(TODAY_SECTIONS.map((s) => s.id)).not.toContain('todo') // To Do always stays
+describe("Today's panels", () => {
+  it('has each panel once, To Do apart (it is a tile of its own)', () => {
+    const ids = TODAY_SECTIONS.map((s) => s.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(ids).not.toContain('todo')
   })
 })

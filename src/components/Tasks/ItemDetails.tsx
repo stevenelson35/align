@@ -25,7 +25,7 @@ import { ItemIconPicker } from '../UI/ItemIcon'
 
 /**
  * Side panel for a checklist item, a note or a link. It opens as a view (the item, its note, links, pictures,
- * comments and Text about this: the common EntryExtras block); Edit switches to the form.
+ * comments and Send about this: the common EntryExtras block); Edit switches to the form.
  */
 export function ItemDetails({ item, list }: { item: Task; list: List }) {
   const app = useApp()

@@ -19,7 +19,7 @@ export function BoardView({ board, openItemId }: { board: Board; openItemId?: st
   const { items: allItems } = useData()
   const balance = useTokenBalance()
   const [title, setTitle] = useState('')
-  // A link to a closed item (Text about this) opens the closed list too.
+  // A link to a closed item (Send about this) opens the closed list too.
   const [showClosed, setShowClosed] = useState(() => !!openItemId && allItems.some((i) => i.id === openItemId && i.status !== 'open'))
   useEffect(() => {
     if (openItemId) document.getElementById(`item-${openItemId}`)?.scrollIntoView({ block: 'start' })
