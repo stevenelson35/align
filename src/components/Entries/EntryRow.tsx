@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useApp } from '../../hooks/useApp'
 import { useTodayTiles } from '../../hooks/useTodayTiles'
 import type { Task } from '../../types'
@@ -162,6 +162,21 @@ function EntryDetail({ entry, canPin, actions, more }: { entry: Task; canPin: bo
 /** The same actions as a menu (⋯, or press and hold). */
 function EntryMenu({ entry, canPin, onClose }: { entry: Task; canPin: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
+  const [up, setUp] = useState(false)
+  // Keep the menu on screen: near the bottom (or under Today's footer) it opens upward; if there's no room above
+  // either, the page scrolls to show it.
+  useLayoutEffect(() => {
+    const menu = ref.current
+    if (!menu) return
+    const footer = document.querySelector('.today-footer')?.getBoundingClientRect().top
+    const bottom = Math.min(window.innerHeight, footer && footer > 0 ? footer : window.innerHeight) - 8
+    const box = menu.getBoundingClientRect()
+    if (box.bottom <= bottom) return
+    const row = menu.parentElement?.getBoundingClientRect()
+    const header = document.querySelector('.top-bar')?.getBoundingClientRect().bottom ?? 0
+    if (row && row.top - box.height - 8 > header) setUp(true)
+    else menu.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [])
   useEffect(() => {
     const away = (e: Event) => !ref.current?.contains(e.target as Node) && onClose()
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -176,7 +191,7 @@ function EntryMenu({ entry, canPin, onClose }: { entry: Task; canPin: boolean; o
     }
   }, [onClose])
   return (
-    <div className="entry-menu" role="menu" ref={ref} onClick={onClose}>
+    <div className={`entry-menu${up ? ' up' : ''}`} role="menu" ref={ref} onClick={onClose}>
       {actionsFor(canPin).map((a) => (
         <ActionButton key={a} action={a} entry={entry} menu />
       ))}

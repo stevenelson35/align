@@ -31,6 +31,8 @@ export type Route =
   /** A link to one task / item / note (e.g. in a text): opens it in its list. */
   | { view: 'task'; taskId: string }
   | { view: 'investment'; listId: string; symbol: string }
+  /** The periodic table; `symbol` opens one element. */
+  | { view: 'elements'; symbol?: string }
   /** Your Inbox (refactor phase 4). */
   | { view: 'inbox' }
   /** Everything in Align as a page (☰ on a phone). */
@@ -56,6 +58,8 @@ export function parseRoute(hash: string): Route {
       return { view: parts[0] }
     case 'map':
       return parts[1] ? { view: 'map', person: parts[1] } : { view: 'map' }
+    case 'elements':
+      return parts[1] ? { view: 'elements', symbol: parts[1] } : { view: 'elements' }
     case 'help':
       return HELP_TOPICS.some((t) => t.id === parts[1]) ? { view: 'help', topic: parts[1] as HelpTopicId } : { view: 'help' }
     case 'list':
@@ -106,6 +110,8 @@ export function routeHash(route: Route): string {
       return route.topic ? `#/help/${route.topic}` : '#/help'
     case 'map':
       return route.person ? `#/map/${encodeURIComponent(route.person)}` : '#/map'
+    case 'elements':
+      return route.symbol ? `#/elements/${encodeURIComponent(route.symbol)}` : '#/elements'
     default:
       return `#/${route.view}`
   }

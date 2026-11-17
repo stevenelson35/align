@@ -25,6 +25,7 @@ export const PANEL_ICON: Record<string, IconName> = {
   cards: 'book',
   photos: 'photo',
   daily: 'sun',
+  elements: 'sparkle',
   voting: 'star',
   invest: 'coin',
 }

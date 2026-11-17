@@ -156,7 +156,7 @@ export function AppShell({ uid, household, member }: Props) {
   // A new page starts at the top (picking a list lower down the menu used to leave you scrolled down).
   const mainRef = useRef<HTMLElement>(null)
   // Moving between Help topics stays on the same page (it scrolls to the topic itself).
-  const pageKey = route.view === 'task' ? 'task' : route.view === 'help' ? 'help' : JSON.stringify(route)
+  const pageKey = route.view === 'task' ? 'task' : route.view === 'help' ? 'help' : route.view === 'elements' ? 'elements' : JSON.stringify(route)
   useEffect(() => {
     window.scrollTo(0, 0)
     mainRef.current?.scrollTo?.(0, 0)

@@ -41,7 +41,7 @@ export function known(t: Tile): boolean {
 }
 
 /** Today's panels in the order someone new starts with (the family's own layout, without their personal links). */
-const DEFAULT_MAIN = ['photos', 'inbox', 'goals', 'group:Fun', 'daily', 'games', 'rewards', 'cards', 'group:People', 'map', 'contacts', 'end:1', 'todo']
+const DEFAULT_MAIN = ['photos', 'inbox', 'goals', 'group:Fun', 'daily', 'games', 'rewards', 'cards', 'elements', 'group:People', 'map', 'contacts', 'end:1', 'todo']
 
 /**
  * Today for someone who hasn't arranged it (a new member or relative): On this day, Inbox, Goals, a Fun group, a

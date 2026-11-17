@@ -22,6 +22,7 @@ import { BoardView } from '../Voting/BoardView'
 import { InvestmentEntryView } from '../Investing/InvestingSection'
 import { LibraryView } from './LibraryView'
 import { InboxPanel } from '../Inbox/InboxPanel'
+const ElementsView = lazy(() => import('../Elements/ElementsView').then((m) => ({ default: m.ElementsView })))
 import { GamesView } from '../Games/GamesView'
 
 // The map library (Leaflet) loads only when the map is opened.
@@ -104,6 +105,12 @@ export function MainView() {
       return <HelpView topic={route.topic} />
     case 'library':
       return <LibraryView />
+    case 'elements':
+      return (
+        <Suspense fallback={<p className="muted">Opening the periodic table…</p>}>
+          <ElementsView symbol={route.symbol} />
+        </Suspense>
+      )
     case 'inbox':
       return <InboxPanel page />
     case 'goal': {

@@ -68,6 +68,7 @@ export function LibraryView() {
     { label: 'Games', icon: 'sparkle', route: { view: 'games' }, tile: 'panel:games', members: true },
     { label: 'Family map', icon: 'map', route: { view: 'map' }, tile: 'panel:map', members: true },
     { label: 'Photos', icon: 'photo', route: { view: 'photos' } },
+    { label: 'Periodic table', icon: 'sparkle', route: { view: 'elements' }, tile: 'panel:elements' },
     { label: 'Voting boards', icon: 'star', route: { view: 'boards' }, tile: 'panel:voting' },
     { label: 'New blog post', icon: 'compose', route: { view: 'blog' }, members: true },
     { label: 'Wall display', icon: 'calendar', route: { view: 'wall' } },

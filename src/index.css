@@ -5382,6 +5382,10 @@ input.ladder-sparks {
   border-radius: var(--radius);
   box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
 }
+.entry-menu.up {
+  top: auto;
+  bottom: 2.3rem;
+}
 .entry-menu-item {
   display: flex;
   align-items: center;
@@ -6019,4 +6023,282 @@ a.entry-title .icon:last-child {
 }
 .add-back {
   justify-self: start;
+}
+
+/* The periodic table (DESIGN.md §5.15): each family its own color, mixed into the surface so it reads in light and
+   dark themes. */
+.fam-alkali-metal { --fam: #e8590c; }
+.fam-alkaline-earth-metal { --fam: #f59f00; }
+.fam-transition-metal { --fam: #1c7ed6; }
+.fam-post-transition-metal { --fam: #0ca678; }
+.fam-metalloid { --fam: #66a80f; }
+.fam-nonmetal { --fam: #ae3ec9; }
+.fam-halogen { --fam: #d6336c; }
+.fam-noble-gas { --fam: #7048e8; }
+.fam-lanthanide { --fam: #c2255c; }
+.fam-actinide { --fam: #868e96; }
+.ptable-scroll {
+  overflow-x: auto;
+  margin: 0.4rem 0 0.75rem;
+  padding-bottom: 0.3rem;
+}
+.ptable {
+  display: grid;
+  grid-template-columns: repeat(18, minmax(2.15rem, 1fr));
+  grid-template-rows: repeat(10, auto);
+  gap: 2px;
+  min-width: 40rem;
+}
+.ptable.mini {
+  grid-template-columns: repeat(18, 1fr);
+  min-width: 0;
+  gap: 1px;
+}
+.pcell {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--fam) 45%, var(--border));
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--fam) 22%, var(--surface));
+  color: var(--text);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+.ptable.mini .pcell {
+  border: none;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--fam) 55%, var(--surface));
+  cursor: default;
+}
+.ptable .pgap {
+  opacity: 0.45;
+  border-style: dashed;
+}
+.pnum {
+  font-size: 0.55rem;
+  color: var(--muted);
+}
+.psym {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.pcell.picked {
+  outline: 3px solid var(--text);
+  outline-offset: 0;
+  z-index: 1;
+}
+.ptable.lit .pcell:not(.in) {
+  opacity: 0.25;
+}
+.ptable.mini .pcell.picked {
+  outline-width: 2px;
+}
+.family-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.family-chip {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--fam) 50%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fam) 16%, var(--surface));
+  color: var(--text);
+  font-size: 0.8rem;
+}
+.family-chip.on {
+  background: color-mix(in srgb, var(--fam) 45%, var(--surface));
+  font-weight: 700;
+}
+.elements-find input {
+  flex: 1;
+}
+.elements-found {
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+}
+.family-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 0.3rem 0;
+}
+.family-strip .pcell {
+  width: 2.4rem;
+}
+.element-detail {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  scroll-margin-top: 3.5rem;
+}
+.element-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.element-head h3 {
+  margin: 0;
+}
+.element-head p {
+  margin: 0;
+}
+.element-tile {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  width: 4.2rem;
+  height: 4.2rem;
+  flex: none;
+  border: 2px solid color-mix(in srgb, var(--fam) 60%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--fam) 25%, var(--surface));
+  line-height: 1.05;
+}
+.element-tile.small {
+  width: 3rem;
+  height: 3rem;
+}
+.element-sym {
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+.element-tile.small .element-sym {
+  font-size: 1.15rem;
+}
+.element-tile-name {
+  font-size: 0.6rem;
+}
+.element-steps {
+  display: flex;
+  flex: none;
+}
+.element-photo {
+  margin: 0;
+}
+.element-photo img {
+  display: block;
+  max-width: 100%;
+  max-height: 16rem;
+  border-radius: var(--radius);
+}
+.element-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.35rem 0.75rem;
+  margin: 0;
+}
+.element-fact dt {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.element-fact dd {
+  margin: 0;
+  font-weight: 600;
+}
+.element-family h4 {
+  margin: 0;
+}
+.element-traits {
+  margin: 0.2rem 0 0;
+  padding-left: 1.2rem;
+}
+.term {
+  position: relative;
+}
+.term-word {
+  padding: 0;
+  background: none;
+  border: none;
+  border-bottom: 1px dotted currentColor;
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  cursor: help;
+}
+.term-pop {
+  position: absolute;
+  left: 0;
+  top: 1.5em;
+  z-index: 30;
+  width: max-content;
+  max-width: min(18rem, 80vw);
+  padding: 0.45rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.18);
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+.elements-today {
+  display: grid;
+  gap: 0.5rem;
+}
+.element-of-day {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.element-of-day .grow {
+  display: grid;
+}
+.elements-today p {
+  margin: 0;
+}
+.ptable-mini-link {
+  display: block;
+  max-width: 22rem;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.add-gift-extras {
+  justify-self: start;
+}
+/* Element flashcards: the answer side's picture, and making the sets. */
+.element-answer {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  text-align: left;
+}
+.element-answer-table {
+  max-width: 20rem;
+}
+.element-answer-family {
+  margin: 0;
+}
+.element-decks {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.element-decks h3 {
+  margin: 0;
+}
+.element-deck-links {
+  margin: 0;
+  padding-left: 1.1rem;
 }

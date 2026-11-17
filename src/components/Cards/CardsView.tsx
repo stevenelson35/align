@@ -19,6 +19,12 @@ import { LearnMore } from './LearnMore'
 import { Neighbors, PlaceMap } from './PlaceMap'
 import { EntryRow } from '../Entries/EntryRow'
 import { EntrySizeSwitch } from '../Entries/EntrySizeSwitch'
+import { ElementAnswer } from '../Elements/ElementAnswer'
+import { elementChoices, readElementCard, type ElementCardInfo } from '../../utils/elementCards'
+import { loadElements, type Element } from '../../utils/elements'
+
+/** A quick look for element cards before loading the table data. */
+const ELEMENT_FRONT = /^(What is the symbol for|Which family is|What is the atomic number of|Which family: |Which of these is an? )/i
 import { useEntrySize } from '../../hooks/useEntrySize'
 
 /** When a card was added, so "In order" follows the order they were added (or imported). */
@@ -83,6 +89,24 @@ export function CardsView({ list }: { list: List }) {
     // cardKey stands for the cards' words
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geo, cardKey])
+  // Element cards (the periodic table sets): the element picture on the answer side, and wrong answers that make you
+  // think. The table's data loads only for a set that has them.
+  const looksElemental = cards.some((c) => ELEMENT_FRONT.test(c.title))
+  const [elements, setElements] = useState<Element[] | null>(null)
+  useEffect(() => {
+    if (looksElemental && !elements) void loadElements().then(setElements)
+  }, [looksElemental, elements])
+  const elementInfo = useMemo(() => {
+    const out = new Map<string, ElementCardInfo>()
+    if (!elements) return out
+    for (const c of cards) {
+      const info = readElementCard(c.title, c.notes ?? '', elements)
+      if (info) out.set(c.id, info)
+    }
+    return out
+    // cardKey stands for the cards' words
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elements, cardKey])
   const [hintOpen, setHintOpen] = useState(false)
   const [mapFirst, setMapFirst] = useStoredFlag(`align-cards-map-first-${list.id}`, false)
   const canMapFirst = places.size >= 3
@@ -145,14 +169,17 @@ export function CardsView({ list }: { list: List }) {
   const mapFirstHere = mapFirst && canMapFirst && !!currentPlace && !inChallenge
   // In Map first the answer is the front's words (the place); otherwise the back.
   const answerText = current ? (mapFirstHere ? current.title : (current.notes ?? '')).trim() : ''
+  const currentElement = current ? elementInfo.get(current.id) : undefined
   const choices = useMemo(() => {
     if (!current || !answerText) return []
+    if (currentElement && elements) return elementChoices(currentElement, answerText, elements, Math.random)
     const pool = cards.filter((c) => c.id !== current.id).map((c) => (mapFirstHere ? c.title : (c.notes ?? '')))
     return choicesFor(answerText, pool, currentPlace && geo ? nearbyAnswers(currentPlace, geo.meta, answerText) : [], Math.random)
     // A new card (or a new turn of the same one) deals new choices.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, session?.at, mapFirstHere, answerText])
-  const showChoices = choices.length > 1 && (choicesAlways || choicesOpen || inChallenge)
+  }, [current?.id, session?.at, mapFirstHere, answerText, !!currentElement])
+  // "Which of these is a halogen?" only makes sense with the choices to pick from.
+  const showChoices = choices.length > 1 && (choicesAlways || choicesOpen || inChallenge || currentElement?.series === 'member')
   // Keep the card in view: a turned card (with its map) can push Got it / Next below the screen, so scroll down to
   // it; a new card starts back at its top. Checked again once a map has had time to load.
   const cardEl = useRef<HTMLDivElement>(null)
@@ -261,7 +288,11 @@ export function CardsView({ list }: { list: List }) {
                   onPick={pick}
                 />
               }
-              back={<FlashBack title={current.title} customIcon={current.customIcon} notes={current.notes} place={geo ? places.get(current.id) : undefined} geo={geo} mapFirst={mapFirst && canMapFirst} />}
+              back={
+                <FlashBack title={current.title} customIcon={current.customIcon} notes={current.notes} place={geo ? places.get(current.id) : undefined} geo={geo} mapFirst={mapFirst && canMapFirst}>
+                  {currentElement && elements && <ElementAnswer info={currentElement} elements={elements} />}
+                </FlashBack>
+              }
               open={revealed}
               onOpen={() => setRevealed(true)}
               canReveal={!inChallenge}
@@ -557,7 +588,7 @@ function FlashFront({
 
 /** A card's back: the answer, and for a place a labeled map (capital marked, neighbors named), its borders, and
  *  Learn more. In Map first the front's words show too, since the front was only a map. */
-function FlashBack({ title, customIcon, notes, place, geo, mapFirst }: { title: string; customIcon?: string; notes?: string; place?: Place; geo: ReturnType<typeof useGeoIndex>; mapFirst: boolean }) {
+function FlashBack({ title, customIcon, notes, place, geo, mapFirst, children }: { title: string; customIcon?: string; notes?: string; place?: Place; geo: ReturnType<typeof useGeoIndex>; mapFirst: boolean; /** More to show under the answer (an element card's picture). */ children?: React.ReactNode }) {
   return (
     <div className="flash-back-wrap">
       {mapFirst && place && <span className="flash-front"><ItemIcon value={customIcon} /> {title}</span>}
@@ -569,6 +600,7 @@ function FlashBack({ title, customIcon, notes, place, geo, mapFirst }: { title: 
           <LearnMore place={place} index={geo} />
         </div>
       )}
+      {children}
     </div>
   )
 }

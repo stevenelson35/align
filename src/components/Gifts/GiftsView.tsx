@@ -11,6 +11,8 @@ import { Icon } from '../UI/Icon'
 import { EntryRow } from '../Entries/EntryRow'
 import { EntrySizeSwitch } from '../Entries/EntrySizeSwitch'
 import { useEntrySize } from '../../hooks/useEntrySize'
+import { LinksAndPictures } from '../UI/Details'
+import { cleanLinks, cleanUrls, MAX_IMAGES, taskDetails, type Details } from '../../utils/details'
 import type { EntrySize } from '../../utils/entries'
 
 /**
@@ -353,6 +355,9 @@ function AddGift({ list, secretAllowed, name }: { list: List; secretAllowed: boo
   const [price, setPrice] = useState('')
   const [pool, setPool] = useState(false)
   const [details, setDetails] = useState('')
+  // Links (where to buy) and pictures, folded behind one button so the form stays short.
+  const [extrasOpen, setExtrasOpen] = useState(false)
+  const [extras, setExtras] = useState<Pick<Details, 'links' | 'images'>>({ links: [], images: [] })
   const canPublic = canAddIdeas(list, app.member.role, app.canEdit(list))
   const [secret, setSecret] = useState(secretAllowed)
   const [error, setError] = useState<string | null>(null)
@@ -366,10 +371,14 @@ function AddGift({ list, secretAllowed, name }: { list: List; secretAllowed: boo
     setBusy(true)
     setError(null)
     try {
+      const links = cleanLinks(extras.links)
+      const images = cleanUrls(extras.images, MAX_IMAGES, 'pictures')
+      if (typeof links === 'string') throw new Error(links)
+      if (typeof images === 'string') throw new Error(images)
       const target = asSecret ? await ensureSecretList(list, lists, app.household, app.uid) : list
       await addTaskNow(
         target,
-        { title: title.trim(), notes: details.trim() || undefined, gift: cleanGift({ qty, color, size, price, pool }), priority: 2, status: 'todo', context: target.defaultContext, durationDays: 1, dependsOn: [] },
+        { title: title.trim(), notes: details.trim() || undefined, gift: cleanGift({ qty, color, size, price, pool }), ...taskDetails({ links, images }), priority: 2, status: 'todo', context: target.defaultContext, durationDays: 1, dependsOn: [] },
         app.uid,
       ).written
       setTitle('')
@@ -379,6 +388,8 @@ function AddGift({ list, secretAllowed, name }: { list: List; secretAllowed: boo
       setPrice('')
       setPool(false)
       setDetails('')
+      setExtras({ links: [], images: [] })
+      setExtrasOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -417,7 +428,14 @@ function AddGift({ list, secretAllowed, name }: { list: List; secretAllowed: boo
           <input type="checkbox" checked={pool} onChange={(e) => setPool(e.target.checked)} /> Group gift: people chip in
         </label>
       </div>
-      <textarea rows={2} value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Details: brand, style, where to get it… (link a note with sizes after adding: tap the idea → Edit)" aria-label="Details" />
+      <textarea rows={2} value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Details: brand, style… (link a note with sizes after adding: tap the idea → Edit)" aria-label="Details" />
+      {extrasOpen ? (
+        <LinksAndPictures value={extras} onChange={setExtras} onError={setError} linkHint="Where to get it (e.g. target.com/…)" />
+      ) : (
+        <button type="button" className="link small add-gift-extras" onClick={() => setExtrasOpen(true)}>
+          <Icon name="link" /> + Link or picture
+        </button>
+      )}
       {secretAllowed && canPublic && (
         <label className="inline small">
           <input type="checkbox" checked={secret} onChange={(e) => setSecret(e.target.checked)} />

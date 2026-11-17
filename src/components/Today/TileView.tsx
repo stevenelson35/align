@@ -36,6 +36,7 @@ import { useFamilyOnMap } from '../../hooks/useFamilyOnMap'
 import { ItemIcon } from '../UI/ItemIcon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { InboxPanel } from '../Inbox/InboxPanel'
+import { ElementsPanel } from '../Elements/ElementsPanel'
 import { VotingSection } from '../Voting/VotingSection'
 
 /** One Today tile (utils/tiles.ts). Something no longer here shows nothing (Arrange lists it, to remove). */
@@ -65,6 +66,8 @@ function PanelTile({ id, day }: { id: string; day: string }) {
       return <TodoPanel day={day} />
     case 'inbox':
       return <InboxPanel />
+    case 'elements':
+      return <ElementsPanel />
     case 'goals':
       return <GoalsStrip day={day} />
     case 'rewards':

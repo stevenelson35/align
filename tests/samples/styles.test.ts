@@ -20,6 +20,8 @@ const REQUIRED = [
   '.entry-row', '.entry-line', '.entry-detail', '.section-header', '.section-icon', '.day-section',
   // Gift lists
   '.gift-tools', '.gift-rank', '.gift-state', '.gift-pool', '.gift-arrange',
+  // Periodic table
+  '.ptable', '.pcell', '.fam-halogen', '.element-detail', '.term-pop', '.family-strip', '.element-answer', '.element-decks',
   // Games
   '.game-invitations-list', '.game-invitation-row',
 ]

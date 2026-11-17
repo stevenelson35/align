@@ -14,6 +14,7 @@ export const TODAY_SECTIONS = [
   { id: 'cards', label: 'Flashcards' },
   { id: 'photos', label: 'Archive Pics' },
   { id: 'daily', label: 'The Daily' },
+  { id: 'elements', label: 'Periodic Table' },
   { id: 'voting', label: 'Voting' },
   { id: 'invest', label: 'Investing' },
 ] as const

@@ -22,6 +22,7 @@ export type HelpTopicId =
   | 'details'
   | 'texting'
   | 'inbox'
+  | 'elements'
   | 'goals'
   | 'rewards'
   | 'games'
@@ -293,6 +294,19 @@ export const HELP_TOPICS: HelpTopic[] = [
       '• Tap a message to open what it’s about (an entry, a board, a photo, a game); it’s then marked seen (a hollow dot and a dashed outline). A game invitation has Play, which opens the Games page with your Invitations, where you play or decline it; once you’ve opened it, the button says ✓ Opened. ✕ clears it; Mark all read and Clear read tidy up. Only you and the sender can see a message.',
       '• Notifications: Settings → Notifications turns them on for this device (on iPhone and iPad, add Align to the Home Screen first). The sender’s phone asks for the notification at once, so it arrives in seconds; if that doesn’t get through, one goes out within 15 minutes. You can keep notifications for family map alerts but turn them off for the Inbox.',
       '• While Align is open, a new message shows a banner at the top; a game invitation stays until you play or close it.',
+    ],
+  },
+  {
+    id: 'elements',
+    title: 'Periodic table',
+    tip: 'Explore the elements: tap one for its facts, its family and a photo; tap a family to light it up.',
+    body: [
+      'Open it from Today (Periodic Table → Open, or tap the element of the day) or the Library.',
+      '• Tap an element for its atomic number, mass, group, period, family, what it looks like, when it melts and boils, who discovered it, a photo and a short description; ‹ › step to the next element.',
+      '• Tap a family (Halogens, Noble gases…) to light up its members; each element’s page shows its family in a row and what the family has in common.',
+      '• Words with a dotted underline (malleable, ion, inert…) explain themselves when tapped.',
+      '• Learn them with flashcards (at the bottom of the page): pick the elements (the column families, everyday elements, or both) and Align makes five flashcard sets: symbols, families, atomic numbers, family traits, and which is which (“Which of these is a halogen?”). Every answer shows the element in the table, its family’s row and what the family has in common. Wrong answers in multiple choice are chosen to make you think (look-alike symbols, nearby numbers, never a second right answer). Run it again to add more elements to the same sets.',
+      '• Facts and photos come from Wikipedia (via the open Periodic-Table-JSON, CC BY-SA 3.0); each photo’s credit is under it.',
     ],
   },
   {

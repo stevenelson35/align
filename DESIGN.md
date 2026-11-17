@@ -266,6 +266,26 @@ for unmigrated accounts. Owners alone see fallback legacy results until the upda
 Sharing never grants access to the old private document. Scanner state/cursors are preserved; updating needs no reset.
 Scores and AI recovery estimates are uncalibrated research aids, not measured probabilities.
 
+### 5.15 Periodic table (no stored data)
+- `#/elements` (`components/Elements/ElementsView`): the 118 elements in the usual 18-column layout (lanthanides and
+  actinides in rows 9–10), colored by family; tap a family chip to light it; find by name, symbol or number; tap an
+  element for `ElementDetail` (facts, a Wikimedia photo with its credit folded under it, a two-sentence summary, its
+  family's strip (its own row for the big transition-metal family) and traits, Wikipedia link, ‹ ›). Picking an element
+  changes the address (`#/elements/Cu`) without jumping the page to the top.
+- Data: `src/data/elements.json`, built by `scripts/build-elements.mjs` from Periodic-Table-JSON (CC BY-SA 3.0, from
+  Wikipedia), loaded only when needed. Families are assigned by group first (halogens and noble gases are their own
+  families); `FAMILIES` (traits) and `GLOSSARY` are Align's own short summaries; glossary words in any text are tappable
+  (`GlossaryText` / `Term`).
+- **Flashcards** (`utils/elementCards.ts`, `ElementDecks`, `ElementAnswer`): "Make the flashcard sets" creates five
+  `cards` lists ("Elements 1: Symbols" … "Elements 5: Which is which", visible to everyone, owned by whoever made them)
+  for the chosen elements (`STARTER_FAMILIES`: the noble gases, halogens, alkali and alkaline earth metals a class
+  starts with; `EVERYDAY`); again adds only missing cards. Cards stay plain front/back text; `readElementCard`
+  recognizes them by wording, so the answer side shows the mini table, the family's row and traits, and
+  `elementChoices` deals the wrong answers (look-alike symbols, nearby numbers, other families; for "Which of these is
+  a halogen?" only other families' elements, and those cards always show choices).
+- Today: the `elements` panel (Periodic Table): element of the day, its most telling sentence (`keySentence`), the mini
+  table with it marked. In the default layout's Fun group.
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts
