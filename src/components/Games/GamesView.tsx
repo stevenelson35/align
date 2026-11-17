@@ -11,6 +11,7 @@ import { setPinnedGames } from '../../firebase/db'
 import { TowerOfHanoiGame } from './TowerOfHanoiGame'
 import { SlidingTilesGame } from './SlidingTilesGame'
 import { GameInvitationsBlock } from './GameInvitationsBlock'
+import { GliderGame } from './GliderGame'
 import { WordleGame } from './WordleGame'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
@@ -167,6 +168,7 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
   if (selectedGame === 'sliding-tiles') {
     return <SlidingTilesGame challenge={challengeId ? challenge ?? undefined : undefined} onBack={() => app.navigate({ view: 'games' })} onSolved={() => setSolved(true)} />
   }
+  if (selectedGame === 'glider') return <GliderGame onBack={() => app.navigate({ view: 'games' })} />
   if (selectedGame === 'wordle') {
     return <WordleGame key={challengeId ?? 'daily'} challenge={challengeId ? challenge ?? undefined : undefined} onBack={() => app.navigate({ view: 'games' })} />
   }

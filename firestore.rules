@@ -729,6 +729,17 @@ service cloud.firestore {
         && get(progressPath).data.complete == true;
     }
 
+    // ---- Play time (DESIGN.md §5.16): earned by learning, spent on Glider; only your own, capped ----
+    match /play/{uid} {
+      allow read: if (isMember() || isViewer()) && request.auth.uid == uid;
+      allow create, update: if (isMember() || isViewer()) && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['seconds', 'seen', 'best', 'updatedAt'])
+        && request.resource.data.seconds is int && request.resource.data.seconds >= 0 && request.resource.data.seconds <= 900
+        && (!('seen' in request.resource.data) || (request.resource.data.seen is list && request.resource.data.seen.size() <= 118))
+        && (!('best' in request.resource.data) || (request.resource.data.best is int && request.resource.data.best >= 0 && request.resource.data.best <= 100000));
+      allow delete: if false;
+    }
+
     // ---- Inbox (DESIGN.md §13, refactor phase 4) ----
     // A message one person sends another in Align ("Send about this" → Align, game invitations). Members send; the
     // recipient (a member or a view-only account) reads it, marks it read, or clears it; the sender can read what they

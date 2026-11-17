@@ -22,6 +22,8 @@ const REQUIRED = [
   '.gift-tools', '.gift-rank', '.gift-state', '.gift-pool', '.gift-arrange',
   // Periodic table
   '.ptable', '.pcell', '.fam-halogen', '.element-detail', '.term-pop', '.family-strip', '.element-answer', '.element-decks',
+  // Glider and play time
+  '.glider-canvas', '.glider-overlay', '.earn-more', '.flash-earned',
   // Games
   '.game-invitations-list', '.game-invitation-row',
 ]

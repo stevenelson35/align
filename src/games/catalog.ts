@@ -33,10 +33,16 @@ export const GAMES = [
     description: 'Guess the shared daily word, choose a word to challenge family, or start a live random-word race.',
     scoreOrder: ['guesses', 'ms'],
   },
+  {
+    id: 'glider',
+    name: 'Glider',
+    description: 'Tap to keep the paper plane up between the cloud towers. Played with time you earn from flashcards and the periodic table.',
+    scoreOrder: [],
+  },
 ] as const satisfies readonly GameDefinition[]
 
 export type GameId = (typeof GAMES)[number]['id']
-export const DEFAULT_PINNED_GAMES: GameId[] = ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle']
+export const DEFAULT_PINNED_GAMES: GameId[] = ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle', 'glider']
 
 export const gameById = (id: string) => GAMES.find((game) => game.id === id)
 

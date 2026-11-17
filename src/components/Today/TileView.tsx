@@ -37,6 +37,7 @@ import { ItemIcon } from '../UI/ItemIcon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { InboxPanel } from '../Inbox/InboxPanel'
 import { ElementsPanel } from '../Elements/ElementsPanel'
+import { playClock, usePlay } from '../../firebase/play'
 import { VotingSection } from '../Voting/VotingSection'
 
 /** One Today tile (utils/tiles.ts). Something no longer here shows nothing (Arrange lists it, to remove). */
@@ -291,6 +292,7 @@ function FamilyPersonTile({ person, uid }: { person: Task; uid: string }) {
 /** A game on Today; Wordle shows whether you've done today's. */
 function GameTodayTile({ id }: { id: string }) {
   const app = useApp()
+  const play = usePlay(app.uid, id === 'glider' && app.isMember)
   const game = gameById(id)
   const [daily, setDaily] = useState<DailyWordlePreview | null>(null)
   useEffect(() => {
@@ -304,7 +306,7 @@ function GameTodayTile({ id }: { id: string }) {
     }
   }, [id, app.isMember])
   if (!game) return null
-  const status = id !== 'wordle' ? game.description : !daily ? '' : daily.complete ? (daily.solved ? `Solved in ${daily.guessCount}` : 'Not solved today') : daily.guessCount ? `${daily.guessCount} guesses so far` : 'Not played yet'
+  const status = id === 'glider' ? (play ? (play.seconds > 0 ? `${playClock(play.seconds)} of play time` : 'No play time: study some flashcards to earn it') : '') : id !== 'wordle' ? game.description : !daily ? '' : daily.complete ? (daily.solved ? `Solved in ${daily.guessCount}` : 'Not solved today') : daily.guessCount ? `${daily.guessCount} guesses so far` : 'Not played yet'
   return (
     <div className="day-section tile-game">
       <div className="collection-row">
@@ -315,7 +317,7 @@ function GameTodayTile({ id }: { id: string }) {
           </span>
         </button>
         <button type="button" className="secondary small" onClick={() => app.navigate({ view: 'games', gameId: id })}>
-          <Icon name="play" /> {daily?.complete ? 'See it' : 'Play'}
+          <Icon name="play" /> {daily?.complete ? 'See it' : id === 'glider' && play && play.seconds <= 0 ? 'Earn time' : 'Play'}
         </button>
       </div>
     </div>

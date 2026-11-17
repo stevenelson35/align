@@ -286,6 +286,16 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
 - Today: the `elements` panel (Periodic Table): element of the day, its most telling sentence (`keySentence`), the mini
   table with it marked. In the default layout's Fun group.
 
+### 5.16 Glider and play time (`play/{uid}`)
+- Glider (`games/glider.ts` physics, unit-tested; `components/Games/GliderGame.tsx` draws it on a canvas): an original
+  side-scroller, a paper plane between cloud towers; tap or Space to lift. In the game catalog (`glider`), no scores
+  or challenges in Firestore; your best is kept with your play time.
+- Play time: `play/{uid}` `{ seconds (0–900), seen (element numbers already counted), best, updatedAt }`, only your own
+  (rules). Earned (`utils/play.ts`, in transactions in `firebase/play.ts`): a finished flashcard round of 5+ answers
+  = 60 s + 5 s a card after 5; a Challenge round = 90 s; an element opened the first time = 10 s; capped at 15
+  minutes. Spent while flying (saved every 10 s and at each crash). Out of time, `EarnMore` lists flashcard sets and
+  the periodic table. Today: the `game:glider` tile shows your play time; in the default Fun group.
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts

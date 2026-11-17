@@ -1244,3 +1244,17 @@ describe('inbox', () => {
     await assertFails(deleteDoc(doc(db('bot'), 'inbox/m1')))
   })
 })
+
+describe('play time', () => {
+  it('keeps each person’s play time to themselves, within the cap', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), 'play/steve'), { seconds: 60, seen: [1, 2], best: 3, updatedAt: serverTimestamp() }))
+    await assertSucceeds(getDoc(doc(db('steve'), 'play/steve')))
+    await assertFails(getDoc(doc(db('wife'), 'play/steve')))
+    await assertFails(setDoc(doc(db('wife'), 'play/steve'), { seconds: 900 }))
+    await assertFails(setDoc(doc(db('steve'), 'play/steve'), { seconds: 901 }))
+    await assertFails(setDoc(doc(db('steve'), 'play/steve'), { seconds: -1 }))
+    await assertFails(setDoc(doc(db('steve'), 'play/steve'), { seconds: 10, extra: true }))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'play/grandma'), { seconds: 30 }))
+    await assertFails(deleteDoc(doc(db('steve'), 'play/steve')))
+  })
+})

@@ -345,6 +345,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: 'Family games',
     tip: 'Short family puzzles with leaderboards. Invite someone to solve the same puzzle, then compare moves, guesses or time.',
     body: [
+      'Glider: tap (or Space) to keep the paper plane up between the cloud towers. It runs on play time you earn by learning: a finished flashcard round of 5 or more cards gives a minute, plus 5 seconds for each card after 5 (a Challenge round: 1½ minutes), and each element you open for the first time in the periodic table gives 10 seconds. You can hold up to 15 minutes; the clock runs only while you fly. Out of time, Glider shows flashcard sets to study and the periodic table to explore.',
       'Games has Lights Out, Tower of Hanoi, Picture Slider and Wordle. Choose a favorite photo and a 3 × 3, 4 × 4 or 5 × 5 slider board; invitations replay the same picture and board size.',
       'Wordle gives the family the same daily five-letter word, or lets you choose a 2–12 letter word and invite members to guess it. Five-letter games accept the Wordle guess list and require hard mode; other word lengths accept any letters-only guess. Leaderboards rank fewest guesses, then fastest time, and identify hard-mode scores.',
       'In hard mode, keep green letters in their places and use the revealed yellow letters in later guesses. Yellow letters may be used again in the same position. Quit leaves the daily game to resume later; Give up ends it.',

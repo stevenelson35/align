@@ -25,6 +25,7 @@ import { loadElements, type Element } from '../../utils/elements'
 
 /** A quick look for element cards before loading the table data. */
 const ELEMENT_FRONT = /^(What is the symbol for|Which family is|What is the atomic number of|Which family: |Which of these is an? )/i
+import { earnPlay, playClock, roundEarns } from '../../firebase/play'
 import { useEntrySize } from '../../hooks/useEntrySize'
 
 /** When a card was added, so "In order" follows the order they were added (or imported). */
@@ -114,6 +115,8 @@ export function CardsView({ list }: { list: List }) {
   const [choicesAlways, setChoicesAlways] = useStoredFlag(`align-cards-choices-${list.id}`, false)
   const [choicesOpen, setChoicesOpen] = useState(false)
   const [picked, setPicked] = useState<{ choice: string; right: boolean } | null>(null)
+  // Play time this round earned (shown in the round's summary).
+  const [earned, setEarned] = useState<number | null>(null)
 
   const board = useCardBoard(list.id, app.isMember)
   const answered = cards.filter((c) => (c.notes ?? '').trim())
@@ -125,6 +128,7 @@ export function CardsView({ list }: { list: List }) {
     const order = challenge ? studyOrder(answered, 'shuffle', app.uid, seed).slice(0, CHALLENGE_CARDS) : studyOrder(cards, m, app.uid, seed)
     if (!order.length) return setError(m === 'unknown' ? 'You’ve got them all. Try Shuffled, or Start over.' : 'Add some cards first.')
     setLastChallenge(null)
+    setEarned(null)
     setError(null)
     setRevealed(false)
     setRun(0)
@@ -157,6 +161,10 @@ export function CardsView({ list }: { list: List }) {
       setLastChallenge({ score, best, first: !board[app.uid] })
       if (best) saveChallengeScore(list.id, app.uid, score).catch(fail)
     }
+    // A finished round earns play time for Glider (members; 5 answers or more).
+    const answeredNow = next.right + next.wrong
+    if (app.isMember && next.at >= next.ids.length && roundEarns(answeredNow, !!next.challenge) > 0)
+      void earnPlay(app.uid, roundEarns(answeredNow, !!next.challenge)).then((s) => setEarned(s), () => undefined)
     // Every card right (3 or more): the big burst.
     if (next.at >= next.ids.length && next.wrong === 0 && next.right >= 3) setTimeout(() => celebrate({ done: next.right, total: next.right, message: `All ${next.right} right!` }), 450)
   }
@@ -345,6 +353,20 @@ export function CardsView({ list }: { list: List }) {
         )}
         {finished && session && (
           <div className="flash-summary">
+            {earned !== null && (
+              <p className="flash-earned">
+                {earned > 0 ? (
+                  <>
+                    <Icon name="sparkle" /> +{playClock(earned)} of Glider play time.{' '}
+                    <button type="button" className="link small" onClick={() => app.navigate({ view: 'games', gameId: 'glider' })}>
+                      Play
+                    </button>
+                  </>
+                ) : (
+                  <span className="muted small">Your Glider play time is full (15 minutes).</span>
+                )}
+              </p>
+            )}
             {lastChallenge && (
               <p className="flash-challenge-result">
                 <strong>

@@ -3,6 +3,8 @@ import { useApp } from '../../hooks/useApp'
 import { FAMILIES, loadElements, type Element, type FamilyId } from '../../utils/elements'
 import { ElementDecks } from './ElementDecks'
 import { ElementDetail } from './ElementDetail'
+import { seeElement } from '../../firebase/play'
+import { Icon } from '../UI/Icon'
 import { PeriodicTable } from './PeriodicTable'
 
 /**
@@ -17,6 +19,13 @@ export function ElementsView({ symbol }: { symbol?: string }) {
   useEffect(() => {
     void loadElements().then(setElements)
   }, [])
+  // Opening an element you haven't seen before earns Glider play time (once per element).
+  const [earned, setEarned] = useState<{ symbol: string; s: number } | null>(null)
+  useEffect(() => {
+    if (!symbol || !elements || !app.isMember) return
+    const e = elements.find((x) => x.symbol === symbol)
+    if (e) void seeElement(app.uid, e.number).then((s) => s > 0 && setEarned({ symbol, s }), () => undefined)
+  }, [symbol, elements, app.isMember, app.uid])
   // Picking an element brings its details into view (the table stays where it was).
   useEffect(() => {
     if (symbol) requestAnimationFrame(() => document.querySelector('.element-detail')?.scrollIntoView({ block: 'start', behavior: 'smooth' }))
@@ -53,6 +62,11 @@ export function ElementsView({ symbol }: { symbol?: string }) {
       <div className="ptable-scroll">
         <PeriodicTable elements={elements} picked={picked?.number} family={family} onPick={pick} />
       </div>
+      {earned && earned.symbol === symbol && (
+        <p className="small sent-note">
+          <Icon name="sparkle" /> New element: +{earned.s} s of Glider play time.
+        </p>
+      )}
       {picked ? <ElementDetail element={picked} elements={elements} onPick={pick} /> : <p className="muted small">Tap an element to see its facts, its family and a photo.</p>}
       <ElementDecks elements={elements} />
       <p className="muted small">Element facts and photos from Wikipedia via Periodic-Table-JSON (CC BY-SA 3.0); each photo’s credit is under it.</p>

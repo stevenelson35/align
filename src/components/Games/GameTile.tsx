@@ -26,6 +26,12 @@ export function GameTile({
           <span className="game-mini-picture game-mini-slider" role="img" aria-label={`${name} preview`}>
             {Array.from({ length: 9 }, (_, i) => <span key={i} className={i === 8 ? 'empty' : 'number'}>{i === 8 ? '' : i + 1}</span>)}
           </span>
+        ) : id === 'glider' ? (
+          <span className="game-mini-picture game-mini-glider" role="img" aria-label={`${name} preview`}>
+            <span className="glider-mini-tower top" />
+            <span className="glider-mini-plane">➤</span>
+            <span className="glider-mini-tower bottom" />
+          </span>
         ) : id === 'tower-of-hanoi' ? (
           <span className="game-mini-picture game-mini-hanoi" role="img" aria-label={`${name} preview`}>
             <span className="hanoi-mini-stack"><i /><i /><i /></span>

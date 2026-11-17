@@ -6302,3 +6302,109 @@ a.entry-title .icon:last-child {
   margin: 0;
   padding-left: 1.1rem;
 }
+
+/* Glider (DESIGN.md §5.16): the sky scales to the screen (2:3), an overlay to start or say you're out of time. */
+.glider {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 28rem;
+}
+.glider-status {
+  gap: 0.75rem;
+  font-weight: 600;
+}
+.glider-time.low {
+  color: var(--danger);
+}
+.glider-stage {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  touch-action: manipulation;
+  user-select: none;
+}
+.glider-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  max-height: 70vh;
+  cursor: pointer;
+}
+.glider-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.4rem;
+  padding: 1.5rem;
+  background: rgb(255 255 255 / 0.55);
+  border: none;
+  color: #1f2a37;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.glider-overlay strong {
+  font-size: 1.5rem;
+}
+.glider-overlay.out {
+  background: rgb(255 255 255 / 0.8);
+  cursor: default;
+}
+.earn-more {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.earn-more.emphasize {
+  border-color: var(--highlight-border);
+  background: var(--highlight-bg);
+}
+.earn-more h3,
+.earn-more p {
+  margin: 0;
+}
+.earn-sets {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+.earn-more > button {
+  justify-self: start;
+}
+.flash-earned {
+  margin: 0 0 0.4rem;
+  color: var(--color-project);
+  font-weight: 600;
+}
+.game-mini-glider {
+  position: relative;
+  background: linear-gradient(#7cc4f5, #dff1ff);
+}
+.glider-mini-tower {
+  position: absolute;
+  right: 22%;
+  width: 22%;
+  background: #fbfdff;
+  border: 1px solid #a9c4dc;
+}
+.glider-mini-tower.top {
+  top: 0;
+  height: 30%;
+}
+.glider-mini-tower.bottom {
+  bottom: 0;
+  height: 30%;
+}
+.glider-mini-plane {
+  position: absolute;
+  left: 18%;
+  top: 40%;
+  color: #33506e;
+  font-size: 1.1rem;
+}
