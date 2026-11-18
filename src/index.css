@@ -4619,7 +4619,6 @@ input.ladder-sparks {
 }
 .wordle-guess-error {
   max-width: 100%;
-  height: 3.75rem;
   margin: 0;
   overflow: auto;
   color: var(--danger);
@@ -4639,15 +4638,21 @@ input.ladder-sparks {
   width: min(100%, 32rem);
   margin: 0 auto;
 }
+.wordle-guess-count {
+  margin: 0;
+  text-align: center;
+}
+/* Letter keys are near-square, like the board's tiles (Enter and ⌫ are wider, the same height). */
 .wordle-key {
   flex: 1;
   min-width: 0;
-  height: clamp(2.4rem, 8vw, 3rem);
-  padding: 0.2rem 0;
+  aspect-ratio: 1 / 1.1;
+  max-height: 3.4rem;
+  padding: 0;
   border-radius: 0.25rem;
   color: var(--wordle-key-text);
   background: var(--wordle-key);
-  font-size: 0.75rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 .wordle-key-row {
@@ -4660,6 +4665,7 @@ input.ladder-sparks {
 }
 .wordle-key.wordle-key-action {
   flex: 1.5;
+  aspect-ratio: auto;
   padding: 0 0.35rem;
   font-size: 0.7rem;
 }
@@ -4672,6 +4678,9 @@ input.ladder-sparks {
 }
 .wordle-game-playing {
   min-width: 0;
+}
+.wordle-notification-row:empty {
+  display: none;
 }
 .wordle-notification-row {
   display: flex;
@@ -4713,7 +4722,7 @@ input.ladder-sparks {
   }
   .wordle-game-playing .wordle-key,
   .wordle-game-challenge .wordle-key {
-    height: clamp(1.6rem, 3vh, 1.9rem);
+    max-height: 2.6rem;
   }
   .wordle-game-playing .wordle-notification-row,
   .wordle-game-challenge .wordle-notification-row {
@@ -5746,6 +5755,7 @@ a.entry-title .icon:last-child {
 .inbox-note {
   font-style: italic;
   overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 .inbox-when {
   flex: none;
@@ -6407,4 +6417,64 @@ a.entry-title .icon:last-child {
   top: 40%;
   color: #33506e;
   font-size: 1.1rem;
+}
+.earn-more h4 {
+  margin: 0.3rem 0 0;
+}
+.earn-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.15rem;
+}
+.earn-list button.link {
+  color: var(--highlight);
+  font-weight: 600;
+}
+.earn-list li.done button {
+  color: var(--color-project);
+  text-decoration: none;
+}
+.glider-board {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.glider-board h3 {
+  margin: 0 0 0.3rem;
+}
+.glider-board ol {
+  margin: 0;
+  padding-left: 1.3rem;
+  display: grid;
+  gap: 0.15rem;
+}
+.glider-board li > * {
+  margin-right: 0.4rem;
+}
+.glider-board li.me {
+  font-weight: 600;
+}
+
+/* Share a Wordle result: the score and colored squares (no letters). */
+.inbox-row.game .inbox-note,
+.inbox-banner .inbox-note {
+  font-style: normal;
+  line-height: 1.15;
+}
+.wordle-share {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  margin-top: 0.4rem;
+}
+.wordle-share-grid {
+  margin: 0;
+  font-family: inherit;
+  line-height: 1.25;
+  text-align: center;
+}
+.wordle-share select {
+  width: auto;
 }

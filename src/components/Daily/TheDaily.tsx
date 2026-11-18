@@ -16,6 +16,9 @@ import { Icon } from '../UI/Icon'
 import { PictureLightbox } from '../UI/Picture'
 import { RevealCard } from '../UI/RevealCard'
 import { SectionHeader } from '../UI/SectionHeader'
+import { earnDaily } from '../../firebase/play'
+import { useApp } from '../../hooks/useApp'
+import { today } from '../../engine/dates'
 import { useTodayExpansion } from '../../hooks/useTodaySection'
 
 /** Days since 2026-01-01: picks the day's built-in items (the same for everyone that day). */
@@ -51,8 +54,9 @@ function useFetched<T>(day: string, key: string, on: boolean, load: (day: string
  * The Daily (DESIGN.md §10.5): a new word, joke, quote, question, fact, riddle, math puzzle and pictures each day,
  * each with its answer or more to reveal. Folded each morning (tap the title); choose items in Settings.
  */
-export function TheDaily({ day, only }: { day: string; /** Just this item (a Today tile of its own), always shown. */ only?: DailyItem }) {
-  const [hidden, saveHidden] = useDailyFlag('align-daily-folded', true)
+export function TheDaily({ day, only, page = false }: { day: string; /** Just this item (a Today tile of its own), always shown. */ only?: DailyItem; /** The Daily's own page (#/daily): always open. */ page?: boolean }) {
+  const [savedHidden, saveHidden] = useDailyFlag('align-daily-folded', true)
+  const hidden = page ? false : savedHidden
   const setOpen = useTodayExpansion(!hidden, (open) => saveHidden(!open))
   const setHidden = (next: boolean) => setOpen(!next)
   const settings = useDailySettings()
@@ -78,10 +82,16 @@ export function TheDaily({ day, only }: { day: string; /** Just this item (a Tod
   const poker = ofDay(POKER_ODDS, day, 23)
   const petTip = ofDay(PET_TIPS, day, 29)
   const count = DAILY_ITEMS.length - settings.hidden.size
+  // Opening today's answers earns Glider play time (once a day each; members).
+  const app = useApp()
+  const earn = (id: string) => () => {
+    if (app.isMember && day === today()) void earnDaily(app.uid, id, day).catch(() => undefined)
+  }
 
-  const pic = (p: DailyPicture | null, label: string, icon: 'star' | 'photo') =>
+  const pic = (p: DailyPicture | null, label: string, icon: 'star' | 'photo', id: string) =>
     p && (
       <RevealCard
+        onOpen={earn(id)}
         label={label}
         icon={icon}
         front={
@@ -113,7 +123,7 @@ export function TheDaily({ day, only }: { day: string; /** Just this item (a Tod
   const items: Partial<Record<DailyItem, ReactNode>> = {
     word: (
       <RevealCard
-        label="Word of the Day"
+        label="Word of the Day" onOpen={earn('word')}
         icon="book"
         front={
           <>
@@ -131,7 +141,7 @@ export function TheDaily({ day, only }: { day: string; /** Just this item (a Tod
     joke: joke && <RevealCard label="Joke" icon="message" front={joke.setup} back={joke.punchline || undefined} revealLabel="Tell me!" />,
     quote: (
       <RevealCard
-        label="Quote"
+        label="Quote" onOpen={earn('quote')}
         icon="note"
         front={<span className="daily-quote">“{quote.text}”</span>}
         back={<span className="muted">— {quote.by}</span>}
@@ -140,7 +150,7 @@ export function TheDaily({ day, only }: { day: string; /** Just this item (a Tod
     ),
     philosophy: (
       <RevealCard
-        label="Mini Philosophy"
+        label="Mini Philosophy" onOpen={earn('philosophy')}
         icon="play"
         front={
           <>
@@ -164,13 +174,13 @@ export function TheDaily({ day, only }: { day: string; /** Just this item (a Tod
         revealLabel="Watch here"
       />
     ),
-    think: <RevealCard label="Something to Think About" icon="help" front={thought.question} back={thought.thought} revealLabel="One way to think about it" />,
-    fact: <RevealCard label="Science" icon="sun" front={fact.question} back={fact.answer} revealLabel="Show answer" />,
-    riddle: <RevealCard label="Riddle" icon="help" front={riddle.riddle} back={riddle.answer} revealLabel="Show answer" />,
-    math: <RevealCard label={`Math Puzzle (Grade ${settings.grade})`} icon="todo" front={puzzle.question} back={puzzle.answer} revealLabel="Show answer" />,
+    think: <RevealCard label="Something to Think About" onOpen={earn('think')} icon="help" front={thought.question} back={thought.thought} revealLabel="One way to think about it" />,
+    fact: <RevealCard label="Science" onOpen={earn('fact')} icon="sun" front={fact.question} back={fact.answer} revealLabel="Show answer" />,
+    riddle: <RevealCard label="Riddle" onOpen={earn('riddle')} icon="help" front={riddle.riddle} back={riddle.answer} revealLabel="Show answer" />,
+    math: <RevealCard label={`Math Puzzle (Grade ${settings.grade})`} onOpen={earn('math')} icon="todo" front={puzzle.question} back={puzzle.answer} revealLabel="Show answer" />,
     chess: chess && (
       <RevealCard
-        label="Chess Puzzle: Mate in One"
+        label="Chess Puzzle: Mate in One" onOpen={earn('chess')}
         icon="star"
         front={
           <>
@@ -189,10 +199,10 @@ export function TheDaily({ day, only }: { day: string; /** Just this item (a Tod
         revealLabel="Show answer"
       />
     ),
-    chessTip: <RevealCard label="Chess Lesson" icon="book" front={<><strong>{chessTip.title}.</strong> {chessTip.tip}</>} back={chessTip.more} revealLabel="Tell me more" />,
-    poker: <RevealCard label="Poker Odds" icon="coin" front={poker.question} back={poker.answer} revealLabel="Show answer" />,
-    pet: <RevealCard label="Pet Health" icon="help" front={<strong>{petTip.tip}</strong>} back={<>{petTip.more} <span className="muted small">(General guidance; ask your vet about your pet.)</span></>} revealLabel="Tell me more" />,
-    petFact: petFact && <RevealCard label={`${petFact.animal} Fun Fact`} icon="star" front={petFact.fact} back={<span className="muted small">From a public trivia site (dogapi.dog / catfact.ninja); fun, not vet-checked.</span>} revealLabel="Where’s this from?" />,
+    chessTip: <RevealCard label="Chess Lesson" onOpen={earn('chessTip')} icon="book" front={<><strong>{chessTip.title}.</strong> {chessTip.tip}</>} back={chessTip.more} revealLabel="Tell me more" />,
+    poker: <RevealCard label="Poker Odds" onOpen={earn('poker')} icon="coin" front={poker.question} back={poker.answer} revealLabel="Show answer" />,
+    pet: <RevealCard label="Pet Health" onOpen={earn('pet')} icon="help" front={<strong>{petTip.tip}</strong>} back={<>{petTip.more} <span className="muted small">(General guidance; ask your vet about your pet.)</span></>} revealLabel="Tell me more" />,
+    petFact: petFact && <RevealCard label={`${petFact.animal} Fun Fact`} onOpen={earn('petFact')} icon="star" front={petFact.fact} back={<span className="muted small">From a public trivia site (dogapi.dog / catfact.ninja); fun, not vet-checked.</span>} revealLabel="Where’s this from?" />,
     adopt:
       adopt ? (
         <RevealCard
@@ -238,11 +248,11 @@ export function TheDaily({ day, only }: { day: string; /** Just this item (a Tod
           revealLabel="Where to look"
         />
       ),
-    space: pic(space, 'Space (NASA)', 'star'),
-    picture: pic(picture, 'Picture of the Day', 'photo'),
+    space: pic(space, 'Space (NASA)', 'star', 'space'),
+    picture: pic(picture, 'Picture of the Day', 'photo', 'picture'),
     animal: animal && (
       <RevealCard
-        label="Wild Animal: What Is It?"
+        label="Wild Animal: What Is It?" onOpen={earn('animal')}
         icon="photo"
         front={
           <button type="button" className="picture-button" onClick={() => setBig({ src: animal.image.replace('/medium.', '/large.'), alt: 'A wild animal' })} aria-label="Show the animal larger">

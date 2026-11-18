@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareWordleResults, decodeWordleProgressRow, hardModeError, markGuess, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, wordleProgressLabel, type WordleGuess } from './wordle'
+import { compareWordleResults, decodeWordleProgressRow, hardModeError, markGuess, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, wordleProgressLabel, shareGrid, shareTitle, type WordleGuess } from './wordle'
 
 describe('Wordle rules', () => {
   it('marks exact, present and absent letters', () => {
@@ -91,5 +91,13 @@ describe('Wordle rules', () => {
     const first = { word: 'CRANE', marks: markGuess('CRISP', 'CRANE') }
     const second = { word: 'CRATE', marks: markGuess('CRISP', 'CRATE') }
     expect(hardModeError([first, second], 'CRISP')).toBeNull()
+  })
+})
+
+describe('sharing a result', () => {
+  it('shows colors only, a line per guess, and the score', () => {
+    expect(shareGrid([{ word: 'CRANE', marks: ['absent', 'present', 'correct', 'absent', 'absent'] }, { word: 'GRASP', marks: ['correct', 'correct', 'correct', 'correct', 'correct'] }])).toBe('⬛🟨🟩⬛⬛\n🟩🟩🟩🟩🟩')
+    expect(shareTitle('2026-11-17', true, 4)).toBe('Wordle 4/6 · 2026-11-17')
+    expect(shareTitle('2026-11-17', false, 6)).toBe('Wordle X/6 · 2026-11-17')
   })
 })

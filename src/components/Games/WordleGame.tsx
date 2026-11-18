@@ -17,11 +17,14 @@ import {
 import { useGameScores, useWordleChallengeProgress, type GameChallenge } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
 import { formatGameResult } from '../../games/catalog'
-import { hardModeError, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES } from '../../games/wordle'
+import { hardModeError, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES, shareGrid, shareTitle } from '../../games/wordle'
 import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
 import { WordleProgressBoard } from './WordleProgressBoard'
 import { sendToInbox } from '../../firebase/inbox'
+import { earnDaily } from '../../firebase/play'
+import { people } from '../../utils/tasks'
+import { today } from '../../engine/dates'
 import { challengeNotification } from './wordleNotification'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
@@ -92,6 +95,8 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
       celebrate({ done: 1, total: 1, message: `${name} solved the Wordle!` })
     })
   }, [challenge, activeChallengeProgress, challengeProgressLoaded, app.household.members])
+  // The news under the board (hard mode, other players finishing, how a finished game went).
+  const notice = game ? challengeNotification(game, challenge, activeChallengeProgress, app.household.members) : null
 
   useEffect(() => {
     if (!waitingForPlayers || !challengeId || realtimeTransitionLoading.current) return
@@ -196,6 +201,8 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
       setElapsed(next.elapsedMs)
       setReceivedAt(Date.now())
       setGuess('')
+      // Finishing Wordle of the day (solved or not) earns Glider play time, once a day.
+      if (next.complete && game.mode === 'daily') void earnDaily(app.uid, 'wordle', today()).catch(() => undefined)
       if (next.solved) {
         celebratedProgress.current.add(app.uid)
         celebrate({ done: 1, total: 1, message: 'You solved the Wordle!' })
@@ -591,15 +598,21 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
               })}
             </div>
 
-            <div className="wordle-notification-row" role="status" aria-live="polite" aria-atomic="true">
-              {challengeNotification(game, challenge, activeChallengeProgress, app.household.members)}
-            </div>
-
-            {!game.complete && (
-              <>
-                <p className="wordle-guess-error" role="alert">{guessError}</p>
-                <p className="muted small">Guess {game.guesses.length + 1} of {WORDLE_MAX_GUESSES}</p>
-              </>
+            {/* One line under the board, to keep the keyboard close: while playing, the guess count with any news (hard
+                mode, other players finishing), or what was wrong with a guess; at the end, how it went. */}
+            {game.complete ? (
+              <div className="wordle-notification-row" role="status" aria-live="polite" aria-atomic="true">
+                {notice}
+              </div>
+            ) : guessError ? (
+              <p className="wordle-guess-error" role="alert">
+                {guessError}
+              </p>
+            ) : (
+              <p className="muted small wordle-guess-count" role="status" aria-live="polite" aria-atomic="true">
+                Guess {game.guesses.length + 1} of {WORDLE_MAX_GUESSES}
+                {notice ? ` · ${notice}` : ''}
+              </p>
             )}
 
             {!game.complete && (
@@ -685,6 +698,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                     Return to games
                   </button>
                 )}
+                {!challenge && game.mode === 'daily' && <ShareResult game={game} />}
               </>
             )}
             </>
@@ -715,5 +729,55 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
         )}
       </article>}
     </section>
+  )
+}
+
+/**
+ * Share how your Wordle of the day went: pick someone (or everyone); they get an Inbox message (and a notification)
+ * with your score and the colored squares, no letters, and Play opens today's Wordle.
+ */
+function ShareResult({ game }: { game: WordleGameState }) {
+  const app = useApp()
+  const others = people(app.household, true).filter(([id]) => id !== app.uid)
+  const [to, setTo] = useState('everyone')
+  const [sent, setSent] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  if (!app.isMember || !others.length) return null
+  const title = shareTitle(game.date, game.solved, game.guesses.length)
+  const grid = shareGrid(game.guesses)
+  async function send() {
+    setError(null)
+    try {
+      const recipients = to === 'everyone' ? others.map(([id]) => id) : [to]
+      await sendToInbox(app.uid, recipients, { kind: 'game', title, text: grid, link: '#/games/play/wordle' })
+      setSent(to === 'everyone' ? 'Sent to everyone.' : `Sent to ${app.household.members[to]?.displayName}.`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+  return (
+    <div className="wordle-share">
+      <strong>Share your result</strong>
+      <pre className="wordle-share-grid" aria-label={title}>
+        {title}
+        {'\n'}
+        {grid}
+      </pre>
+      <div className="row wrap">
+        <select value={to} onChange={(e) => (setTo(e.target.value), setSent(null))} aria-label="Send to">
+          <option value="everyone">Everyone</option>
+          {others.map(([id, m]) => (
+            <option key={id} value={id}>
+              {m.displayName}
+            </option>
+          ))}
+        </select>
+        <button type="button" className="small" onClick={() => void send()}>
+          <Icon name="send" /> Send
+        </button>
+      </div>
+      {sent && <p className="small sent-note">{sent} They can tap Play to try today’s word.</p>}
+      {error && <p className="error small">{error}</p>}
+    </div>
   )
 }

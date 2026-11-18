@@ -78,10 +78,10 @@ export function CollectionSection<T>({
 }
 
 /** Shared collection body; the map mounts this only when open to avoid folded location subscriptions. */
-export function CollectionContents<T>({ id, title, items, pinned, itemKey, matches, render, filters, searchHint, allowCards = false, empty, hidden = false, top }: CollectionContentsProps<T> & { hidden?: boolean; /** Above the pinned ones (Games: invitations and live updates). */ top?: ReactNode }) {
+export function CollectionContents<T>({ id, title, items, pinned, itemKey, matches, render, filters, searchHint, allowCards = false, empty, hidden = false, top, bottom, startAll = false }: CollectionContentsProps<T> & { hidden?: boolean; /** Above the pinned ones. */ top?: ReactNode; /** Below everything (Games: invitations, then live Wordle updates). */ bottom?: ReactNode; /** Show all open to begin with (a short list, like the games). */ startAll?: boolean }) {
   const [cards, setCards] = useStoredFlag(`align-today-${id}-cards`, false)
   const [query, setQuery] = useState('')
-  const [all, setAll] = useState(false)
+  const [all, setAll] = useState(startAll)
   const mode = allowCards && cards ? 'card' : 'row'
   const q = query.trim()
   const found = q ? items.filter((i) => matches(i, q)) : []
@@ -122,6 +122,7 @@ export function CollectionContents<T>({ id, title, items, pinned, itemKey, match
       ) : (
         (empty ?? <p className="muted small">Nothing here yet.</p>)
       )}
+      {bottom}
     </div>
   )
 }

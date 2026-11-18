@@ -23,6 +23,7 @@ import { InvestmentEntryView } from '../Investing/InvestingSection'
 import { LibraryView } from './LibraryView'
 import { InboxPanel } from '../Inbox/InboxPanel'
 const ElementsView = lazy(() => import('../Elements/ElementsView').then((m) => ({ default: m.ElementsView })))
+import { TheDaily } from '../Daily/TheDaily'
 import { GamesView } from '../Games/GamesView'
 
 // The map library (Leaflet) loads only when the map is opened.
@@ -113,6 +114,8 @@ export function MainView() {
       )
     case 'inbox':
       return <InboxPanel page />
+    case 'daily':
+      return <TheDaily day={today()} page />
     case 'goal': {
       const goal = goals.find((g) => g.id === route.goalId)
       if (!goal) return <p className="muted">{loaded ? "That goal isn't shared with you, or it was deleted." : 'Opening…'}</p>

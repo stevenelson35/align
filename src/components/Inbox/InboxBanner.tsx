@@ -44,7 +44,7 @@ export function InboxBanner() {
         <strong>{from}</strong>
         {shown.kind === 'game' ? ' invited you: ' : ': '}
         {shown.title}
-        {shown.text && <span className="muted"> “{shown.text}”</span>}
+        {shown.text && <span className="muted inbox-note"> {shown.kind === 'game' ? shown.text : `“${shown.text}”`}</span>}
       </span>
       <button
         type="button"

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { EARN, MIN_ROUND, playClock, spendPlay, usePlay } from '../../firebase/play'
+import { DAILY_EARNERS, doneToday, EARN, MAX_PLAY_SECONDS, MIN_ROUND, playClock, spendPlay, useGliderBoard, usePlay, type Play } from '../../firebase/play'
+import { today } from '../../engine/dates'
 import { flap, H, newWorld, PLANE_R, PLANE_X, step, TOWER, W, type World } from '../../games/glider'
 import { useApp, useData } from '../../hooks/useApp'
+import { useDailySettings, type DailyItem } from '../../daily/settings'
 import { Icon } from '../UI/Icon'
 
 type Phase = 'ready' | 'flying' | 'crashed'
@@ -35,7 +37,7 @@ export function GliderGame({ onBack }: { onBack: () => void }) {
     (finalScore = 0) => {
       const used = Math.round(unsaved.current)
       unsaved.current -= used
-      if (used > 0 || finalScore > 0) void spendPlay(app.uid, used, finalScore).catch(() => undefined)
+      if (used > 0 || finalScore > 0) void spendPlay(app.uid, used, finalScore, today()).catch(() => undefined)
     },
     [app.uid],
   )
@@ -159,45 +161,88 @@ export function GliderGame({ onBack }: { onBack: () => void }) {
           </div>
         )}
       </div>
-      <EarnMore emphasize={out} seen={play.seen.length} />
+      <GliderBoard />
+      <EarnMore emphasize={out} play={play} />
     </section>
   )
 }
 
-/** Where to earn play time: flashcard sets to study, and the periodic table's elements you haven't opened yet. */
-export function EarnMore({ emphasize = false, seen }: { emphasize?: boolean; seen: number }) {
+/** The family's best scores, highest first. */
+function GliderBoard() {
+  const app = useApp()
+  const board = useGliderBoard(app.isMember)
+  const rows = Object.entries(board)
+    .filter(([uid]) => app.household.members[uid])
+    .sort((a, b) => b[1].best - a[1].best)
+  return (
+    <div className="glider-board">
+      <h3>
+        <Icon name="star" /> Family best
+      </h3>
+      {rows.length ? (
+        <ol>
+          {rows.map(([uid, r]) => (
+            <li key={uid} className={uid === app.uid ? 'me' : ''}>
+              <span className="grow">{app.household.members[uid].displayName}</span> <strong>{r.best}</strong> <span className="muted small">{r.at}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="muted small">No scores yet: be the first.</p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Where to earn play time, as a list of things to do with a tap each: today's Daily items and Wordle of the day (✓ once
+ * done today), flashcard sets (a round, or a Challenge), and the periodic table's elements you haven't opened.
+ */
+export function EarnMore({ emphasize = false, play }: { emphasize?: boolean; play: Play }) {
   const app = useApp()
   const { lists, listItems } = useData()
+  const done = doneToday(play.daily, today())
+  // Only the Daily items you show (Settings → The Daily).
+  const dailySettings = useDailySettings()
   const sets = lists
     .filter((l) => l.kind === 'cards')
     .map((l) => ({ l, n: listItems.filter((t) => t.listId === l.id).length }))
     .filter((x) => x.n >= MIN_ROUND)
-    .sort((a, b) => (a.l.name.startsWith('Elements') ? 0 : 1) - (b.l.name.startsWith('Elements') ? 0 : 1) || a.l.name.localeCompare(b.l.name))
-    .slice(0, 8)
+    .sort((a, b) => a.l.name.localeCompare(b.l.name))
+  const unseen = 118 - play.seen.length
+  const item = (key: string, label: string, earns: string, go: () => void, isDone = false) => (
+    <li key={key} className={isDone ? 'done' : ''}>
+      <button type="button" className="link" onClick={go} disabled={isDone}>
+        {isDone ? <Icon name="check" /> : null} {label}
+      </button>{' '}
+      <span className="muted small">{isDone ? 'done today' : earns}</span>
+    </li>
+  )
   return (
     <div className={`earn-more${emphasize ? ' emphasize' : ''}`}>
       <h3>
         <Icon name="star" /> Earn play time
       </h3>
-      <p className="small">
-        Finish a flashcard round of {MIN_ROUND} or more cards: <strong>+{playClock(EARN.round)}</strong>, and {EARN.perCard} s more for each card after {MIN_ROUND} (a Challenge round: +{playClock(EARN.challenge)}). Open an element
-        you haven’t seen in the periodic table: <strong>+{EARN.element} s</strong>. You can hold up to 15 minutes.
-      </p>
+      <p className="muted small">Pick something to learn; the time is added as soon as you finish it. You can hold up to {playClock(MAX_PLAY_SECONDS)}.</p>
+      <h4 className="small">Today</h4>
+      <ul className="earn-list">
+        {DAILY_EARNERS.filter((d) => d.id === 'wordle' || !dailySettings.hidden.has(d.id as DailyItem)).map((d) =>
+          item(d.id, d.label, `+${d.seconds < 60 ? `${d.seconds} s` : playClock(d.seconds)}`, () => app.navigate(d.id === 'wordle' ? { view: 'games', gameId: 'wordle' } : { view: 'daily' }), done.includes(d.id)),
+        )}
+      </ul>
       {sets.length > 0 && (
-        <ul className="earn-sets">
-          {sets.map(({ l, n }) => (
-            <li key={l.id}>
-              <button type="button" className="link" onClick={() => app.navigate({ view: 'list', listId: l.id, timeline: false })}>
-                {l.name}
-              </button>{' '}
-              <span className="muted small">{n} cards</span>
-            </li>
-          ))}
-        </ul>
+        <>
+          <h4 className="small">Flashcards</h4>
+          <p className="muted small">
+            A round of {MIN_ROUND}+ cards: +{playClock(EARN.round)} and {EARN.perCard} s more a card after {MIN_ROUND}; a Challenge round: +{playClock(EARN.challenge)}.
+          </p>
+          <ul className="earn-list">{sets.map(({ l, n }) => item(l.id, l.name, `${n} cards`, () => app.navigate({ view: 'list', listId: l.id, timeline: false })))}</ul>
+        </>
       )}
-      <button type="button" className="secondary small" onClick={() => app.navigate({ view: 'elements' })}>
-        <Icon name="sparkle" /> Explore the periodic table <span className="muted">({118 - seen} elements to discover)</span>
-      </button>
+      <h4 className="small">Explore</h4>
+      <ul className="earn-list">
+        {item('elements', 'The periodic table', unseen > 0 ? `+${EARN.element} s for each new element (${unseen} to discover)` : 'all discovered', () => app.navigate({ view: 'elements' }), unseen <= 0)}
+      </ul>
     </div>
   )
 }

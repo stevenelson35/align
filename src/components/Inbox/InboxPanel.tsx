@@ -69,7 +69,7 @@ export function InboxPanel({ page = false }: { page?: boolean }) {
                       {m.kind === 'game' ? ' · ' : ': '}
                       {m.title}
                     </span>
-                    {m.text && <span className="inbox-note">“{m.text}”</span>}
+                    {m.text && <span className="inbox-note">{m.kind === 'game' ? m.text : `“${m.text}”`}</span>}
                   </span>
                   <span className="inbox-when muted small">{m.read ? 'seen · ' : ''}{m.createdAt ? agoText(m.createdAt.toMillis(), now) : 'just now'}</span>
                 </button>

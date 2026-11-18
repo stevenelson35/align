@@ -729,14 +729,27 @@ service cloud.firestore {
         && get(progressPath).data.complete == true;
     }
 
+    // Glider's family leaderboard: each person's best score, readable by the family, written only by its owner.
+    match /gliderBest/{uid} {
+      allow read: if isMember() || isViewer();
+      allow create, update: if (isMember() || isViewer()) && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['best', 'at'])
+        && request.resource.data.best is int && request.resource.data.best >= 0 && request.resource.data.best <= 100000
+        && request.resource.data.at is string && request.resource.data.at.size() <= 10;
+      allow delete: if request.auth.uid == uid;
+    }
+
     // ---- Play time (DESIGN.md §5.16): earned by learning, spent on Glider; only your own, capped ----
     match /play/{uid} {
       allow read: if (isMember() || isViewer()) && request.auth.uid == uid;
       allow create, update: if (isMember() || isViewer()) && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['seconds', 'seen', 'best', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['seconds', 'seen', 'best', 'daily', 'updatedAt'])
         && request.resource.data.seconds is int && request.resource.data.seconds >= 0 && request.resource.data.seconds <= 900
         && (!('seen' in request.resource.data) || (request.resource.data.seen is list && request.resource.data.seen.size() <= 118))
-        && (!('best' in request.resource.data) || (request.resource.data.best is int && request.resource.data.best >= 0 && request.resource.data.best <= 100000));
+        && (!('best' in request.resource.data) || (request.resource.data.best is int && request.resource.data.best >= 0 && request.resource.data.best <= 100000))
+        // Daily things already counted today: { day, done: [ids] }.
+        && (!('daily' in request.resource.data) || (request.resource.data.daily is map && request.resource.data.daily.keys().hasOnly(['day', 'done'])
+          && request.resource.data.daily.day is string && request.resource.data.daily.done is list && request.resource.data.daily.done.size() <= 30));
       allow delete: if false;
     }
 

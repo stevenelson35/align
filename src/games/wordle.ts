@@ -126,3 +126,12 @@ export function compareWordleResults(
 ): number {
   return a.guesses - b.guesses || a.ms - b.ms
 }
+
+/** A finished Wordle as colored squares only (no letters, so it doesn't give the word away): one line per guess. */
+export function shareGrid(guesses: WordleGuess[]): string {
+  const square = { correct: '🟩', present: '🟨', absent: '⬛' } as const
+  return guesses.map((g) => g.marks.map((m) => square[m]).join('')).join('\n')
+}
+
+/** "Wordle 4/6 · 2026-11-17" (X/6 when not solved): the score first, so it shows on a short line. */
+export const shareTitle = (date: string | undefined, solved: boolean, guesses: number, max = 6) => `Wordle ${solved ? guesses : 'X'}/${max}${date ? ` · ${date}` : ''}`

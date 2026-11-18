@@ -127,7 +127,8 @@ export function PendingGameInvitations({
   }
 
   return (
-    <section className="game-invitations-list" aria-label="Game invitations and live Wordle updates">
+    <>
+    <section className="game-invitations-list" aria-label="Game invitations">
       <details className="game-invitations-disclosure games-today-disclosure" open={invitationsOpen}>
         <summary className="game-invitations-heading" onClick={(event) => toggleDisclosure(event, onToggleInvitations)}>
           <span className="game-invitations-title"><Icon name="sparkle" /> Invitations</span>
@@ -208,11 +209,16 @@ export function PendingGameInvitations({
           })}
         </div>
       </details>
+    </section>
+    {/* Live challenges: everyone plays the same word at once; this is where all the players (the one who started it
+        too) watch how each other is doing, and see who finished. Its own block, after the invitations. */}
+    <section className="game-invitations-list live-wordle" aria-label="Live Wordle updates">
       <details className="wordle-challenge-updates games-today-disclosure" open={liveUpdatesOpen}>
         <summary className="game-invitations-heading" onClick={(event) => toggleDisclosure(event, onToggleLiveUpdates)}>
           <span className="game-invitations-title"><Icon name="clock" /> Live Wordle Updates</span>
           <span className="game-invitations-count">{liveGroups.length ? `${liveGroups.length} ${liveGroups.length === 1 ? 'game' : 'games'}` : 'none now'}</span>
         </summary>
+        <p className="muted small">Live Wordle challenges you’re in (or started): everyone plays the same word, and here you see each player’s progress and who finished.</p>
           {!liveGroups.length && <p className="muted small">No live Wordle updates right now.</p>}
           {liveGroups.map((group) => {
             const first = group[0]
@@ -244,5 +250,6 @@ export function PendingGameInvitations({
           })}
       </details>
     </section>
+    </>
   )
 }

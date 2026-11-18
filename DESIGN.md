@@ -295,6 +295,15 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
   = 60 s + 5 s a card after 5; a Challenge round = 90 s; an element opened the first time = 10 s; capped at 15
   minutes. Spent while flying (saved every 10 s and at each crash). Out of time, `EarnMore` lists flashcard sets and
   the periodic table. Today: the `game:glider` tile shows your play time; in the default Fun group.
+- Also earned once a day each (`DAILY_EARNERS`, `play.daily` `{ day, done }`, rules ≤ 30 ids): opening an answer in The
+  Daily (word, quote, science fact, Mini Philosophy, something to think about, riddle, math, chess, poker, pets,
+  animal, pictures; 15 s; only today's Daily) and finishing Wordle of the day (60 s). `EarnMore` is a checklist of
+  links (The Daily page `#/daily`, Wordle, each flashcard set, the periodic table), hiding Daily items turned off in
+  Settings. Family leaderboard: `gliderBest/{uid}` `{ best, at }`, readable by the family, written by its owner when
+  `spendPlay` records a new best.
+- Wordle of the day, finished: Share your result (`ShareResult` in `WordleGame`) sends an Inbox message (kind `game`,
+  title `shareTitle`: "Wordle 3/6 · 2026-11-17", text `shareGrid`: colored squares, no letters, link to today's
+  Wordle) to one person or everyone; the Inbox shows the squares and Play.
 
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 

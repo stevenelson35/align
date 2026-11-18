@@ -45,7 +45,8 @@ export function GamesTodaySection() {
           itemKey={(g) => g.id}
           matches={(g, q) => q.toLowerCase().split(/\s+/).every((w) => `${g.name} ${g.description}`.toLowerCase().includes(w))}
           searchHint="Find a game…"
-          top={<GameInvitationsBlock enabled={open} />}
+          startAll
+          bottom={<GameInvitationsBlock enabled={open} />}
           filters={error && <p className="error small">{error}</p>}
           render={(g) => (
             <div className="collection-row">

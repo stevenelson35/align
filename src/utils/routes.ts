@@ -31,6 +31,8 @@ export type Route =
   /** A link to one task / item / note (e.g. in a text): opens it in its list. */
   | { view: 'task'; taskId: string }
   | { view: 'investment'; listId: string; symbol: string }
+  /** The Daily as a page, all open (where Glider's "earn play time" links go). */
+  | { view: 'daily' }
   /** The periodic table; `symbol` opens one element. */
   | { view: 'elements'; symbol?: string }
   /** Your Inbox (refactor phase 4). */
@@ -55,6 +57,7 @@ export function parseRoute(hash: string): Route {
     case 'wall':
     case 'library':
     case 'inbox':
+    case 'daily':
       return { view: parts[0] }
     case 'map':
       return parts[1] ? { view: 'map', person: parts[1] } : { view: 'map' }
