@@ -6512,3 +6512,7 @@ a.entry-title .icon:last-child {
   color: var(--muted);
   font-style: italic;
 }
+.element-scope-done {
+  margin: 0;
+  color: var(--color-project);
+}

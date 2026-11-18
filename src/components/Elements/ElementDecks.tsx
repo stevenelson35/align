@@ -15,11 +15,26 @@ import { Icon } from '../UI/Icon'
 export function ElementDecks({ elements }: { elements: Element[] }) {
   const app = useApp()
   const { lists, listItems } = useData()
-  const [scopes, setScopes] = useState<Set<string>>(() => new Set(['families']))
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const sets = SERIES.map((s) => ({ ...s, list: lists.find((l) => l.kind === 'cards' && l.name === s.name) }))
+  // Which groups of elements the sets already hold in full (every set has every one of their cards).
+  const inSets = new Set<string>(
+    SCOPES.filter((scope) => {
+      const chosen = elements.filter((e) => scope.symbols.includes(e.symbol))
+      return sets.every((s) => {
+        if (!s.list) return false
+        const have = new Set(listItems.filter((t) => t.listId === s.list!.id).map((t) => `${t.title}|${t.notes ?? ''}`))
+        return seriesCards(s.id, chosen).every((c) => have.has(`${c.front}|${c.back}`))
+      })
+    }).map((s) => s.id),
+  )
+  // What to add: what you tick, starting with the first group that isn't in the sets yet.
+  const [picked, setPicked] = useState<Set<string> | null>(null)
+  const scopes = picked ?? new Set(SCOPES.filter((s) => !inSets.has(s.id)).slice(0, 1).map((s) => s.id))
+  const setScopes = setPicked
+  const allIn = SCOPES.every((s) => inSets.has(s.id))
   if (!app.isMember) return null
 
   async function make() {
@@ -57,6 +72,7 @@ export function ElementDecks({ elements }: { elements: Element[] }) {
       let saved = 0
       setNote(`Saving ${added} cards…`)
       await Promise.all(writes.map((w) => w.then(() => setNote(`Saving ${added} cards… ${++saved} done`))))
+      setPicked(null) // the next choice follows what the sets now hold
       setNote(made ? `Made ${made} set${made > 1 ? 's' : ''} with ${added} cards. Study them under Flashcards.` : added ? `Added ${added} cards to your sets.` : 'Your sets already have these cards.')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -73,7 +89,12 @@ export function ElementDecks({ elements }: { elements: Element[] }) {
         Five sets, each a different way to remember: the symbol, the family, the atomic number, what a family has in common, and which element belongs to a family. Every answer shows the
         element in the table and its family. Review them by flipping, or play Challenge for the leaderboard.
       </p>
-      {SCOPES.map((s) => (
+      {SCOPES.map((s) =>
+        inSets.has(s.id) ? (
+          <p key={s.id} className="small element-scope-done">
+            <Icon name="check" /> {s.label} <span className="muted">({s.symbols.length}): in your sets</span>
+          </p>
+        ) : (
         <label key={s.id} className="inline small">
           <input
             type="checkbox"
@@ -87,12 +108,17 @@ export function ElementDecks({ elements }: { elements: Element[] }) {
           />{' '}
           {s.label} <span className="muted">({s.symbols.length})</span>
         </label>
-      ))}
-      <div className="row wrap">
-        <button type="button" className="small" onClick={make} disabled={busy || !scopes.size}>
-          <Icon name="plus" /> {sets.some((s) => s.list) ? 'Add these to the sets' : 'Make the flashcard sets'}
-        </button>
-      </div>
+        ),
+      )}
+      {allIn ? (
+        <p className="muted small">All of these are in your sets: study them below.</p>
+      ) : (
+        <div className="row wrap">
+          <button type="button" className="small" onClick={make} disabled={busy || ![...scopes].some((id) => !inSets.has(id))}>
+            <Icon name="plus" /> {sets.some((s) => s.list) ? 'Add these to the sets' : 'Make the flashcard sets'}
+          </button>
+        </div>
+      )}
       {note && <p className="small sent-note"><Icon name="check" /> {note}</p>}
       {error && <p className="error small">{error}</p>}
       {sets.some((s) => s.list) && (
