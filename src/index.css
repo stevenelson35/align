@@ -5145,9 +5145,10 @@ input.ladder-sparks {
 .game-invitations-list {
   display: grid;
   gap: 0.6rem;
-  margin-bottom: 0.75rem;
+  margin: 0.75rem 0 0;
   padding: 0.6rem;
-  border: 1px solid color-mix(in srgb, var(--brand) 38%, var(--border));
+  border: 1px solid var(--border);
+  background: var(--surface);
   border-radius: var(--radius);
   min-width: 0;
   max-width: 100%;
@@ -5245,8 +5246,6 @@ input.ladder-sparks {
 .game-invitations-list .wordle-challenge-updates {
   display: grid;
   gap: 0.45rem;
-  padding-top: 0.6rem;
-  border-top: 1px solid var(--border);
 }
 .wordle-challenge-update {
   display: grid;
@@ -6460,21 +6459,56 @@ a.entry-title .icon:last-child {
 /* Share a Wordle result: the score and colored squares (no letters). */
 .inbox-row.game .inbox-note,
 .inbox-banner .inbox-note {
+  display: block;
   font-style: normal;
   line-height: 1.15;
 }
-.wordle-share {
+
+/* Languages: phrases with 🔊, and a phrase card's answer. */
+.languages-view {
   display: grid;
-  gap: 0.35rem;
-  justify-items: center;
-  margin-top: 0.4rem;
+  gap: 0.6rem;
+  max-width: 40rem;
 }
-.wordle-share-grid {
+.language-card {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.language-card h3 {
   margin: 0;
-  font-family: inherit;
-  line-height: 1.25;
-  text-align: center;
 }
-.wordle-share select {
-  width: auto;
+.phrase-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.phrase-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.hear {
+  flex: none;
+}
+.phrase-answer {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+}
+.phrase-text {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+.phrase-romanized {
+  color: var(--muted);
+  font-style: italic;
 }

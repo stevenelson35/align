@@ -26,6 +26,8 @@ import { loadElements, type Element } from '../../utils/elements'
 /** A quick look for element cards before loading the table data. */
 const ELEMENT_FRONT = /^(What is the symbol for|Which family is|What is the atomic number of|Which family: |Which of these is an? )/i
 import { earnPlay, playClock, roundEarns } from '../../firebase/play'
+import { Hear, PhraseAnswer } from '../Languages/Hear'
+import { phraseChoices, readPhraseCard } from '../../utils/phrases'
 import { useEntrySize } from '../../hooks/useEntrySize'
 
 /** When a card was added, so "In order" follows the order they were added (or imported). */
@@ -178,14 +180,17 @@ export function CardsView({ list }: { list: List }) {
   // In Map first the answer is the front's words (the place); otherwise the back.
   const answerText = current ? (mapFirstHere ? current.title : (current.notes ?? '')).trim() : ''
   const currentElement = current ? elementInfo.get(current.id) : undefined
+  // Language phrase cards: 🔊 to hear the phrase, and choices from the same language, the same way round.
+  const currentPhrase = current ? readPhraseCard(current.title) : null
   const choices = useMemo(() => {
     if (!current || !answerText) return []
     if (currentElement && elements) return elementChoices(currentElement, answerText, elements, Math.random)
+    if (currentPhrase) return phraseChoices(currentPhrase, answerText, Math.random)
     const pool = cards.filter((c) => c.id !== current.id).map((c) => (mapFirstHere ? c.title : (c.notes ?? '')))
     return choicesFor(answerText, pool, currentPlace && geo ? nearbyAnswers(currentPlace, geo.meta, answerText) : [], Math.random)
     // A new card (or a new turn of the same one) deals new choices.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, session?.at, mapFirstHere, answerText, !!currentElement])
+  }, [current?.id, session?.at, mapFirstHere, answerText, !!currentElement, !!currentPhrase])
   // "Which of these is a halogen?" only makes sense with the choices to pick from.
   const showChoices = choices.length > 1 && (choicesAlways || choicesOpen || inChallenge || currentElement?.series === 'member')
   // Keep the card in view: a turned card (with its map) can push Got it / Next below the screen, so scroll down to
@@ -294,11 +299,13 @@ export function CardsView({ list }: { list: List }) {
                   answer={answerText}
                   picked={picked}
                   onPick={pick}
+                  extra={currentPhrase?.way === 'from' && <Hear phrase={currentPhrase.phrase} lang={currentPhrase.lang} label="Hear it" />}
                 />
               }
               back={
                 <FlashBack title={current.title} customIcon={current.customIcon} notes={current.notes} place={geo ? places.get(current.id) : undefined} geo={geo} mapFirst={mapFirst && canMapFirst}>
                   {currentElement && elements && <ElementAnswer info={currentElement} elements={elements} />}
+                  {currentPhrase && <PhraseAnswer phrase={currentPhrase.phrase} lang={currentPhrase.lang} />}
                 </FlashBack>
               }
               open={revealed}
@@ -557,7 +564,10 @@ function FlashFront({
   answer,
   picked,
   onPick,
+  extra,
 }: {
+  /** Under the question (a phrase card: 🔊 to hear the phrase asked about). */
+  extra?: React.ReactNode
   title: string
   customIcon?: string
   place?: Place
@@ -603,6 +613,7 @@ function FlashFront({
   return (
     <>
       <span className="flash-front"><ItemIcon value={customIcon} /> {title}</span>
+      {extra}
       <div className="flash-extra">{help}</div>
     </>
   )

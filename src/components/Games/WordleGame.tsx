@@ -14,16 +14,15 @@ import {
   type WordleGameState,
   type WordleChallengeType,
 } from '../../firebase/wordle'
-import { useGameScores, useWordleChallengeProgress, type GameChallenge } from '../../firebase/games'
+import { announceDailyWordle, useGameScores, useWordleChallengeProgress, type GameChallenge } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
 import { formatGameResult } from '../../games/catalog'
-import { hardModeError, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES, shareGrid, shareTitle } from '../../games/wordle'
+import { hardModeError, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES } from '../../games/wordle'
 import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
 import { WordleProgressBoard } from './WordleProgressBoard'
-import { sendToInbox } from '../../firebase/inbox'
 import { earnDaily } from '../../firebase/play'
-import { people } from '../../utils/tasks'
+import { sendToInbox } from '../../firebase/inbox'
 import { today } from '../../engine/dates'
 import { challengeNotification } from './wordleNotification'
 
@@ -32,6 +31,8 @@ const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(m
 export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; onBack: () => void }) {
   const app = useApp()
   const [game, setGame] = useState<WordleGameState | null>(null)
+  // How many people were told when you finished today's Wordle (0: not this time).
+  const [announced, setAnnounced] = useState(0)
   const [dailyPreview, setDailyPreview] = useState<DailyWordlePreview | null>(null)
   const [receivedAt, setReceivedAt] = useState(0)
   const [elapsed, setElapsed] = useState(0)
@@ -202,7 +203,11 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
       setReceivedAt(Date.now())
       setGuess('')
       // Finishing Wordle of the day (solved or not) earns Glider play time, once a day.
-      if (next.complete && game.mode === 'daily') void earnDaily(app.uid, 'wordle', today()).catch(() => undefined)
+      if (next.complete && game.mode === 'daily') {
+        void earnDaily(app.uid, 'wordle', today()).catch(() => undefined)
+        // Tell the family (score, time, squares, today's ranking), once a day.
+        void announceDailyWordle(app.uid, app.household.members, next).then((n) => n && setAnnounced(n), () => undefined)
+      }
       if (next.solved) {
         celebratedProgress.current.add(app.uid)
         celebrate({ done: 1, total: 1, message: 'You solved the Wordle!' })
@@ -698,7 +703,11 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
                     Return to games
                   </button>
                 )}
-                {!challenge && game.mode === 'daily' && <ShareResult game={game} />}
+                {!challenge && game.mode === 'daily' && announced > 0 && (
+                  <p className="small sent-note">
+                    <Icon name="send" /> Everyone was told your score, with Play to try today’s word.
+                  </p>
+                )}
               </>
             )}
             </>
@@ -729,55 +738,5 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
         )}
       </article>}
     </section>
-  )
-}
-
-/**
- * Share how your Wordle of the day went: pick someone (or everyone); they get an Inbox message (and a notification)
- * with your score and the colored squares, no letters, and Play opens today's Wordle.
- */
-function ShareResult({ game }: { game: WordleGameState }) {
-  const app = useApp()
-  const others = people(app.household).filter(([id]) => id !== app.uid)
-  const [to, setTo] = useState('everyone')
-  const [sent, setSent] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  if (!app.canPlay || !others.length) return null
-  const title = shareTitle(game.date, game.solved, game.guesses.length)
-  const grid = shareGrid(game.guesses)
-  async function send() {
-    setError(null)
-    try {
-      const recipients = to === 'everyone' ? others.map(([id]) => id) : [to]
-      await sendToInbox(app.uid, recipients, { kind: 'game', title, text: grid, link: '#/games/play/wordle' })
-      setSent(to === 'everyone' ? 'Sent to everyone.' : `Sent to ${app.household.members[to]?.displayName}.`)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    }
-  }
-  return (
-    <div className="wordle-share">
-      <strong>Share your result</strong>
-      <pre className="wordle-share-grid" aria-label={title}>
-        {title}
-        {'\n'}
-        {grid}
-      </pre>
-      <div className="row wrap">
-        <select value={to} onChange={(e) => (setTo(e.target.value), setSent(null))} aria-label="Send to">
-          <option value="everyone">Everyone</option>
-          {others.map(([id, m]) => (
-            <option key={id} value={id}>
-              {m.displayName}
-            </option>
-          ))}
-        </select>
-        <button type="button" className="small" onClick={() => void send()}>
-          <Icon name="send" /> Send
-        </button>
-      </div>
-      {sent && <p className="small sent-note">{sent} They can tap Play to try today’s word.</p>}
-      {error && <p className="error small">{error}</p>}
-    </div>
   )
 }

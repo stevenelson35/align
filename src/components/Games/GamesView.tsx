@@ -12,6 +12,7 @@ import { TowerOfHanoiGame } from './TowerOfHanoiGame'
 import { SlidingTilesGame } from './SlidingTilesGame'
 import { GameInvitationsBlock } from './GameInvitationsBlock'
 import { GliderGame } from './GliderGame'
+import { earnDaily } from '../../firebase/play'
 import { WordleGame } from './WordleGame'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
@@ -25,6 +26,10 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
   const [board, setBoard] = useState(() => lightsOutBoard(seed))
   const [moves, setMoves] = useState(0)
   const [solved, setSolved] = useState(false)
+  // Solving a puzzle (Lights Out, Tower of Hanoi, Picture Slider) earns Glider play time, once a day each.
+  useEffect(() => {
+    if (solved && selectedGame && app.canPlay) void earnDaily(app.uid, selectedGame, today()).catch(() => undefined)
+  }, [solved, selectedGame, app.canPlay, app.uid])
   const [elapsed, setElapsed] = useState(0)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)

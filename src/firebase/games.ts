@@ -1,8 +1,9 @@
-import { Timestamp, collection, doc, onSnapshot, query, runTransaction, serverTimestamp, updateDoc, where, writeBatch } from 'firebase/firestore'
+import { Timestamp, collection, doc, getDocs, onSnapshot, query, runTransaction, serverTimestamp, updateDoc, where, writeBatch } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { db } from './config'
 import { sendToInbox } from './inbox'
 import { compareGameResults, gameById, type GameId, type GameResult } from '../games/catalog'
+import { announceTitle, rankingLine, shareGrid, type WordleGuess } from '../games/wordle'
 
 export interface GameScore {
   uid: string
@@ -244,4 +245,34 @@ export function declineGameChallenge(id: string) {
 
 export function dismissGameChallenge(id: string) {
   return updateDoc(doc(db, 'gameChallenges', id), { dismissed: true })
+}
+
+/**
+ * Finishing Wordle of the day tells the family (refactor follow-up 2026-11-18): everyone (members and view-only
+ * family, not the calendar helper) gets an Inbox message and a notification with your score and time, the colored
+ * squares (no letters) and today's ranking so far; Play there opens today's Wordle. Once a day per person (this
+ * device remembers it was sent).
+ */
+export async function announceDailyWordle(
+  uid: string,
+  members: Record<string, { displayName: string; role: string; bot?: boolean }>,
+  game: { seed: string; date?: string; solved: boolean; guesses: WordleGuess[]; elapsedMs: number },
+): Promise<number> {
+  const key = `align-wordle-announced:${game.seed}`
+  if (localStorage.getItem(key)) return 0
+  const to = Object.entries(members)
+    .filter(([id, m]) => id !== uid && !m.bot && (m.role === 'member' || m.role === 'viewer'))
+    .map(([id]) => id)
+  if (!to.length) return 0
+  localStorage.setItem(key, '1')
+  // Today's scores, saved by the Wordle server as each person finishes (yours too, by now).
+  const snap = await getDocs(query(collection(db, 'gameScores'), where('gameId', '==', 'wordle'), where('seed', '==', game.seed))).catch(() => null)
+  const scores = (snap?.docs ?? []).map((d) => {
+    const best = (d.data().best ?? {}) as GameResult
+    return { uid: d.data().uid as string, guesses: best.guesses, ms: best.ms }
+  })
+  const ranking = rankingLine(scores, (id) => members[id]?.displayName ?? 'Someone')
+  const text = [shareGrid(game.guesses), ranking].filter(Boolean).join('\n\n')
+  await sendToInbox(uid, to, { kind: 'game', title: announceTitle(game.date, game.solved, game.guesses.length, game.elapsedMs), text, link: '#/games/play/wordle' })
+  return to.length
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareWordleResults, decodeWordleProgressRow, hardModeError, markGuess, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, wordleProgressLabel, shareGrid, shareTitle, type WordleGuess } from './wordle'
+import { compareWordleResults, decodeWordleProgressRow, hardModeError, markGuess, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, wordleProgressLabel, shareGrid, shareTitle, announceTitle, rankingLine, type WordleGuess } from './wordle'
 
 describe('Wordle rules', () => {
   it('marks exact, present and absent letters', () => {
@@ -99,5 +99,15 @@ describe('sharing a result', () => {
     expect(shareGrid([{ word: 'CRANE', marks: ['absent', 'present', 'correct', 'absent', 'absent'] }, { word: 'GRASP', marks: ['correct', 'correct', 'correct', 'correct', 'correct'] }])).toBe('⬛🟨🟩⬛⬛\n🟩🟩🟩🟩🟩')
     expect(shareTitle('2026-11-17', true, 4)).toBe('Wordle 4/6 · 2026-11-17')
     expect(shareTitle('2026-11-17', false, 6)).toBe('Wordle X/6 · 2026-11-17')
+  })
+})
+
+describe('announcing a finished Wordle of the day', () => {
+  it('leads with the score and time, and ranks today by guesses then time', () => {
+    expect(announceTitle('2026-11-18', true, 4, 125000)).toBe('Wordle 4/6 in 2:05 · 2026-11-18')
+    expect(announceTitle('2026-11-18', false, 6, 300000)).toBe('Wordle X/6 · 2026-11-18')
+    const names: Record<string, string> = { s: 'Steve', l: 'Linda', c: 'Camilla' }
+    expect(rankingLine([{ uid: 's', guesses: 4, ms: 125000 }, { uid: 'l', guesses: 3, ms: 80000 }, { uid: 'c', guesses: 4, ms: 90000 }], (u) => names[u])).toBe('Today: 1. Linda 3 · 1:20, 2. Camilla 4 · 1:30, 3. Steve 4 · 2:05')
+    expect(rankingLine([], (u) => u)).toBe('')
   })
 })

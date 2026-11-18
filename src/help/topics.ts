@@ -23,6 +23,7 @@ export type HelpTopicId =
   | 'texting'
   | 'inbox'
   | 'elements'
+  | 'languages'
   | 'goals'
   | 'rewards'
   | 'games'
@@ -310,6 +311,16 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: 'languages',
+    title: 'Languages',
+    tip: 'Everyday phrases in French, Mandarin Chinese and Japanese, with 🔊 to hear them and a flashcard set for each.',
+    body: [
+      'Open Languages from the Library. Each language has 15 everyday phrases (hello, thank you, where is the bathroom…); See the phrases lists them with how to read them and 🔊 to hear each one.',
+      '• 🔊 uses your device’s own voices: free and offline. If a language’s button is greyed out, add its voice in the phone’s settings (Android: Text-to-speech; iPhone: Accessibility → Spoken Content → Voices).',
+      '• Make the flashcard set creates a set for the language, both ways round: “How do you say ‘Thank you’ in Japanese?” and “What does ‘ありがとうございます’ mean?”. Answers show the phrase, how to read it and 🔊; multiple choice stays in the same language. Rounds earn Glider play time like any set.',
+    ],
+  },
+  {
     id: 'goals',
     title: 'Goals',
     tip: 'Daily goals you log: done or not, a tally, a number that moves toward a goal, a measurement, or a running total. Others can see them without logging unless you allow it.',
@@ -345,8 +356,8 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: 'Family games',
     tip: 'Short family puzzles with leaderboards. Invite someone to solve the same puzzle, then compare moves, guesses or time.',
     body: [
-      'Glider: tap (or Space) to keep the paper plane up between the cloud towers. It runs on play time you earn by learning: Wordle of the day (1 minute) and each item of The Daily you open (15 seconds; once a day each), a finished flashcard round of 5 or more cards (a minute, plus 5 seconds for each card after 5; a Challenge round 1½ minutes), and each element you open for the first time in the periodic table (10 seconds). You can hold up to 15 minutes; the clock runs only while you fly. Earn play time (below the game) lists each of these with a link straight to it, ✓ once done today. Family best shows everyone’s top score.',
-      'Finished Wordle of the day? Share your result sends someone (or everyone) your score and the colored squares, no letters, to their Inbox with a notification; Play there opens today’s Wordle for them.',
+      'Glider: tap (or Space) to keep the paper plane up between the cloud towers. It runs on play time you earn by learning: Wordle of the day (1 minute), solving Lights Out, the Tower of Hanoi or a Picture Slider (30 seconds each), and each item of The Daily you open (15 seconds; once a day each), a finished flashcard round of 5 or more cards (a minute, plus 5 seconds for each card after 5; a Challenge round 1½ minutes), and each element you open for the first time in the periodic table (10 seconds). You can hold up to 15 minutes; the clock runs only while you fly. Earn play time (below the game) lists each of these with a link straight to it, ✓ once done today. Family best shows everyone’s top score.',
+      'Finishing Wordle of the day tells the family by itself: everyone gets an Inbox message (and a notification, if they turned them on) with your score and time, the colored squares (no letters) and today’s ranking so far; Play there opens today’s Wordle. Once a day each. (Settings → Notifications turns Inbox notifications off.)',
       'On Today, Games shows your pinned games, a search and all games, then Invitations (games someone sent you: Play or Decline), then Live Wordle Updates: live challenges you’re in or started, where everyone plays the same word at once and you can watch each player’s progress and who finished.',
       'Games has Lights Out, Tower of Hanoi, Picture Slider and Wordle. Choose a favorite photo and a 3 × 3, 4 × 4 or 5 × 5 slider board; invitations replay the same picture and board size.',
       'Wordle gives the family the same daily five-letter word, or lets you choose a 2–12 letter word and invite members to guess it. Five-letter games accept the Wordle guess list and require hard mode; other word lengths accept any letters-only guess. Leaderboards rank fewest guesses, then fastest time, and identify hard-mode scores.',

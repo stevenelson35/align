@@ -24,6 +24,8 @@ const REQUIRED = [
   '.ptable', '.pcell', '.fam-halogen', '.element-detail', '.term-pop', '.family-strip', '.element-answer', '.element-decks',
   // Glider and play time
   '.glider-canvas', '.glider-overlay', '.earn-more', '.flash-earned',
+  // Languages
+  '.language-card', '.phrase-answer', '.hear',
   // Games
   '.game-invitations-list', '.game-invitation-row',
 ]

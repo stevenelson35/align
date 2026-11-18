@@ -3,8 +3,11 @@ import { DAILY_EARNERS, doneToday, EARN, MAX_PLAY_SECONDS, MIN_ROUND, playClock,
 import { today } from '../../engine/dates'
 import { flap, H, newWorld, PLANE_R, PLANE_X, step, TOWER, W, type World } from '../../games/glider'
 import { useApp, useData } from '../../hooks/useApp'
-import { useDailySettings, type DailyItem } from '../../daily/settings'
+import { DAILY_ITEMS, useDailySettings, type DailyItem } from '../../daily/settings'
 import { Icon } from '../UI/Icon'
+
+/** The Daily's own items (others, like the games, aren't affected by its settings). */
+const DAILY_ITEM_IDS = new Set<string>(DAILY_ITEMS.map((i) => i.value))
 
 type Phase = 'ready' | 'flying' | 'crashed'
 
@@ -226,8 +229,8 @@ export function EarnMore({ emphasize = false, play }: { emphasize?: boolean; pla
       <p className="muted small">Pick something to learn; the time is added as soon as you finish it. You can hold up to {playClock(MAX_PLAY_SECONDS)}.</p>
       <h4 className="small">Today</h4>
       <ul className="earn-list">
-        {DAILY_EARNERS.filter((d) => d.id === 'wordle' || !dailySettings.hidden.has(d.id as DailyItem)).map((d) =>
-          item(d.id, d.label, `+${d.seconds < 60 ? `${d.seconds} s` : playClock(d.seconds)}`, () => app.navigate(d.id === 'wordle' ? { view: 'games', gameId: 'wordle' } : { view: 'daily' }), done.includes(d.id)),
+        {DAILY_EARNERS.filter((d) => !DAILY_ITEM_IDS.has(d.id) || !dailySettings.hidden.has(d.id as DailyItem)).map((d) =>
+          item(d.id, d.label, `+${d.seconds < 60 ? `${d.seconds} s` : playClock(d.seconds)}`, () => app.navigate(['wordle', 'lights-out', 'tower-of-hanoi', 'sliding-tiles'].includes(d.id) ? { view: 'games', gameId: d.id } : { view: 'daily' }), done.includes(d.id)),
         )}
       </ul>
       {sets.length > 0 && (

@@ -314,6 +314,17 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
   flashcards (their own `results` only, a separate rule; no ratings), card and game leaderboards, game invitations
   both ways, and Inbox messages. The family map stays members-only (it would need the location setup and add reads).
 
+### 5.18 Languages (no stored data beyond flashcards)
+- `utils/phrases.ts`: 15 everyday phrases each in French, Mandarin Chinese (characters + pinyin) and Japanese (kana /
+  kanji + romaji). `#/languages` (`LanguagesView`) lists them with 🔊 (`hooks/useSpeech.ts`: the Web Speech API, the
+  device's own voices, rate 0.8; greyed when the device has no voice for the language) and makes one `cards` set per
+  language (`phraseCards`: both ways round, Everyone can see it). In flashcards, `readPhraseCard` recognizes them:
+  🔊 on the front of "What does … mean?" cards, `PhraseAnswer` on the back, `phraseChoices` from the same language
+  and direction.
+- Also this round: finishing Wordle of the day announces itself (`announceDailyWordle`: everyone but the bot, once a
+  day per device, score + time + squares + `rankingLine` from today's `gameScores`), replacing Share your result;
+  solving Lights Out, Tower of Hanoi or Picture Slider earns 30 s of play time once a day each.
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts

@@ -3,11 +3,14 @@
 /** The most play time anyone can hold (15 minutes): earn, play, earn again. */
 export const MAX_PLAY_SECONDS = 900
 /** What learning earns. */
-export const EARN = { round: 60, perCard: 5, challenge: 90, element: 10, daily: 15, wordle: 60 } as const
+export const EARN = { round: 60, perCard: 5, challenge: 90, element: 10, daily: 15, wordle: 60, puzzle: 30 } as const
 
 /** Daily things that earn play time once a day each: The Daily's items (opening the answer) and Wordle of the day. */
 export const DAILY_EARNERS: { id: string; label: string; seconds: number }[] = [
   { id: 'wordle', label: 'Wordle of the day', seconds: EARN.wordle },
+  { id: 'lights-out', label: 'Solve Lights Out', seconds: EARN.puzzle },
+  { id: 'tower-of-hanoi', label: 'Solve the Tower of Hanoi', seconds: EARN.puzzle },
+  { id: 'sliding-tiles', label: 'Solve a Picture Slider', seconds: EARN.puzzle },
   { id: 'word', label: 'Word of the day', seconds: EARN.daily },
   { id: 'quote', label: 'Quote of the day', seconds: EARN.daily },
   { id: 'fact', label: 'Science fact', seconds: EARN.daily },

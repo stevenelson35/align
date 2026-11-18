@@ -135,3 +135,23 @@ export function shareGrid(guesses: WordleGuess[]): string {
 
 /** "Wordle 4/6 · 2026-11-17" (X/6 when not solved): the score first, so it shows on a short line. */
 export const shareTitle = (date: string | undefined, solved: boolean, guesses: number, max = 6) => `Wordle ${solved ? guesses : 'X'}/${max}${date ? ` · ${date}` : ''}`
+
+/** "1:05". */
+const clock = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
+
+/** "Wordle 4/6 in 2:05 · 2026-11-18" (or "Wordle X/6 · …" when not solved). */
+export const announceTitle = (date: string | undefined, solved: boolean, guesses: number, ms: number, max = 6) =>
+  `Wordle ${solved ? `${guesses}/${max} in ${clock(ms)}` : `X/${max}`}${date ? ` · ${date}` : ''}`
+
+/**
+ * Today's ranking under the squares: "Today: 1. Linda 3 · 1:20, 2. Steve 4 · 2:05" (fewest guesses, then fastest;
+ * people's names, at most five).
+ */
+export function rankingLine(scores: { uid: string; guesses?: number; ms?: number }[], name: (uid: string) => string): string {
+  const ranked = scores
+    .filter((s) => s.guesses !== undefined)
+    .sort((a, b) => a.guesses! - b.guesses! || (a.ms ?? Infinity) - (b.ms ?? Infinity))
+    .slice(0, 5)
+  if (!ranked.length) return ''
+  return `Today: ${ranked.map((s, i) => `${i + 1}. ${name(s.uid)} ${s.guesses}${s.ms !== undefined ? ` · ${clock(s.ms)}` : ''}`).join(', ')}`
+}
