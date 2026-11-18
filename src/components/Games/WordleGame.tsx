@@ -49,19 +49,19 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   const [inviting, setInviting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const scoreSeed = game?.seed ?? dailyPreview?.seed ?? ''
-  const { scores, error: scoreError } = useGameScores('wordle', scoreSeed, !challenge && !!scoreSeed && app.isMember)
-  const { progress: challengeProgress, error: challengeProgressError, loaded: challengeProgressLoaded } = useWordleChallengeProgress(app.uid, app.isMember && !!challenge)
+  const { scores, error: scoreError } = useGameScores('wordle', scoreSeed, !challenge && !!scoreSeed && app.canPlay)
+  const { progress: challengeProgress, error: challengeProgressError, loaded: challengeProgressLoaded } = useWordleChallengeProgress(app.uid, app.canPlay && !!challenge)
   const celebratedProgress = useRef(new Set<string>())
   const progressInitialized = useRef(false)
   const lobbyRefreshAt = useRef(0)
   const realtimeTransitionLoading = useRef(false)
   const people = Object.entries(app.household.members)
-    .filter(([id, member]) => id !== app.uid && member.role === 'member' && !member.bot)
+    .filter(([id, member]) => id !== app.uid && (member.role === 'member' || member.role === 'viewer') && !member.bot)
     .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
   const isRandomChallenge = challengeType === 'random-live' || challengeType === 'realtime-live'
   const challengePlayers = isRandomChallenge
     ? Object.entries(app.household.members)
-      .filter(([, member]) => member.role === 'member' && !member.bot)
+      .filter(([, member]) => (member.role === 'member' || member.role === 'viewer') && !member.bot)
       .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
     : people
   const canSendChallenge = selected.length >= (isRandomChallenge ? 2 : 1)
@@ -348,7 +348,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     }
   }
 
-  if (!app.isMember) return <p className="muted">Wordle is for household members.</p>
+  if (!app.canPlay) return <p className="muted">Wordle is for the family.</p>
 
   return (
     <section className="games-view">
@@ -738,11 +738,11 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
  */
 function ShareResult({ game }: { game: WordleGameState }) {
   const app = useApp()
-  const others = people(app.household, true).filter(([id]) => id !== app.uid)
+  const others = people(app.household).filter(([id]) => id !== app.uid)
   const [to, setTo] = useState('everyone')
   const [sent, setSent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  if (!app.isMember || !others.length) return null
+  if (!app.canPlay || !others.length) return null
   const title = shareTitle(game.date, game.solved, game.guesses.length)
   const grid = shareGrid(game.guesses)
   async function send() {

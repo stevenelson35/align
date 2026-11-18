@@ -85,7 +85,7 @@ export function TheDaily({ day, only, page = false }: { day: string; /** Just th
   // Opening today's answers earns Glider play time (once a day each; members).
   const app = useApp()
   const earn = (id: string) => () => {
-    if (app.isMember && day === today()) void earnDaily(app.uid, id, day).catch(() => undefined)
+    if (app.canPlay && day === today()) void earnDaily(app.uid, id, day).catch(() => undefined)
   }
 
   const pic = (p: DailyPicture | null, label: string, icon: 'star' | 'photo', id: string) =>

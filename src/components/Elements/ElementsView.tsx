@@ -22,10 +22,10 @@ export function ElementsView({ symbol }: { symbol?: string }) {
   // Opening an element you haven't seen before earns Glider play time (once per element).
   const [earned, setEarned] = useState<{ symbol: string; s: number } | null>(null)
   useEffect(() => {
-    if (!symbol || !elements || !app.isMember) return
+    if (!symbol || !elements || !app.canPlay) return
     const e = elements.find((x) => x.symbol === symbol)
     if (e) void seeElement(app.uid, e.number).then((s) => s > 0 && setEarned({ symbol, s }), () => undefined)
-  }, [symbol, elements, app.isMember, app.uid])
+  }, [symbol, elements, app.canPlay, app.uid])
   // Picking an element brings its details into view (the table stays where it was).
   useEffect(() => {
     if (symbol) requestAnimationFrame(() => document.querySelector('.element-detail')?.scrollIntoView({ block: 'start', behavior: 'smooth' }))

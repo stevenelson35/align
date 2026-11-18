@@ -14,7 +14,7 @@ export function TowerOfHanoiGame({ challenge, onBack, onSolved }: { challenge?: 
   const challengeDisks = isHanoiDiskCount(challenge?.payload?.diskCount) ? challenge.payload.diskCount : HANOI_DISKS
   const [disks, setDisks] = useState(challengeDisks)
   const seed = challenge?.payload?.puzzleId ?? challenge?.seed ?? (disks === HANOI_DISKS ? today() : `hanoi-${disks}-${today()}`)
-  const { scores, error: scoreError } = useGameScores('tower-of-hanoi', seed, app.isMember)
+  const { scores, error: scoreError } = useGameScores('tower-of-hanoi', seed, app.canPlay)
   const [board, setBoard] = useState<HanoiBoard>(() => newHanoiBoard(challengeDisks))
   const [source, setSource] = useState<HanoiRod | null>(null)
   const [moves, setMoves] = useState(0)
@@ -28,7 +28,7 @@ export function TowerOfHanoiGame({ challenge, onBack, onSolved }: { challenge?: 
   const [error, setError] = useState<string | null>(null)
   const startedAt = useRef(0)
   const people = Object.entries(app.household.members)
-    .filter(([id, member]) => id !== app.uid && member.role === 'member' && !member.bot)
+    .filter(([id, member]) => id !== app.uid && (member.role === 'member' || member.role === 'viewer') && !member.bot)
     .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
 
   useEffect(() => { startedAt.current = Date.now() }, [disks])

@@ -134,9 +134,9 @@ export function LibraryView() {
       <header className="view-header">
         <h2>Library</h2>
         <span className="grow" />
-        {app.isMember && (
-          <button type="button" className="secondary small" onClick={() => app.editList(null)}>
-            <Icon name="plus" /> New list
+        {app.canPlay && (
+          <button type="button" className="secondary small" onClick={() => app.editList(null, app.isMember ? undefined : 'gifts')}>
+            <Icon name="plus" /> {app.isMember ? 'New list' : 'New gift list'}
           </button>
         )}
       </header>

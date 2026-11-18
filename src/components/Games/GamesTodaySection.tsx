@@ -57,7 +57,7 @@ export function GamesTodaySection() {
               <button type="button" className="link small" onClick={() => app.navigate({ view: 'games', gameId: g.id })}>
                 Play
               </button>
-              {app.isMember && <PinButton pinned={pinnedIds.includes(g.id)} onToggle={() => togglePin(g.id)} label={g.name} />}
+              {app.canPlay && <PinButton pinned={pinnedIds.includes(g.id)} onToggle={() => togglePin(g.id)} label={g.name} />}
             </div>
           )}
         />

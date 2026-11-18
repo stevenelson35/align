@@ -76,7 +76,7 @@ Roles:
 | Who | `role` | What they get |
 |---|---|---|
 | Family (adults and children) | `member` | Everything: tasks, lists, goals, flashcards, the family map, settings. |
-| Someone outside the family (grandparents, a sitter, relatives) | `viewer` | Read-only: lists and boards marked *visible to viewers*, and lists shared with them by name. No goals, map or editing. |
+| Extended family (grandparents, aunts, a sitter) | `viewer` | Sees lists and boards marked **Everyone** and lists shared with them by name; claims gifts and adds gift ideas; makes and runs **their own gift lists** (nothing else); plays the **games**, Glider and **flashcards** (with leaderboards); sends to Inboxes (game invitations, Wordle results). No goals, family map, settings for others, or editing the family's lists. |
 | The calendar / location helper | `member` plus `bot: true` | The account the Apps Script signs in as (Google Calendar sync, family map reports, Alexa). Hidden from people pickers. Keep it: without it calendar sync and location reports stop. |
 
 Afterwards: a parent can add another parent in **Settings → Parents** (only someone already in Parents can change it).

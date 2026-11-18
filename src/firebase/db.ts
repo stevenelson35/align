@@ -90,9 +90,10 @@ function subscribeUnion<T>(
 function visibleQueries(name: 'lists' | 'tasks' | 'goals' | 'investmentLists', uid: string, role: Role) {
   const c = collection(db, name)
   const shared = query(c, where('sharedWith', 'array-contains', uid))
-  return role === 'member'
-    ? [query(c, where('ownerId', '==', uid), where('visibility', '==', 'private')), query(c, where('visibility', '==', 'family')), shared]
-    : [query(c, where('visibility', '==', 'family'), where('viewerVisible', '==', true)), shared]
+  if (role === 'member') return [query(c, where('ownerId', '==', uid), where('visibility', '==', 'private')), query(c, where('visibility', '==', 'family')), shared]
+  // View-only accounts: what's shown to them, plus (lists and their entries) the gift lists they made themselves.
+  const own = name === 'lists' || name === 'tasks' ? [query(c, where('ownerId', '==', uid), where('visibility', '==', 'private')), query(c, where('ownerId', '==', uid), where('visibility', '==', 'family'))] : []
+  return [query(c, where('visibility', '==', 'family'), where('viewerVisible', '==', true)), shared, ...own]
 }
 
 export function subscribeInvestmentLists(uid: string, role: Role, onData: (lists: InvestmentList[]) => void, onError: OnError) {

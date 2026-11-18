@@ -111,6 +111,7 @@ export function AppShell({ uid, household, member }: Props) {
       household,
       member,
       isMember: member.role === 'member',
+      canPlay: (member.role === 'member' || member.role === 'viewer') && !member.bot,
       route,
       navigate: go,
       selectedTaskId: shownTaskId,

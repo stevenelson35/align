@@ -292,11 +292,11 @@ function FamilyPersonTile({ person, uid }: { person: Task; uid: string }) {
 /** A game on Today; Wordle shows whether you've done today's. */
 function GameTodayTile({ id }: { id: string }) {
   const app = useApp()
-  const play = usePlay(app.uid, id === 'glider' && app.isMember)
+  const play = usePlay(app.uid, id === 'glider' && app.canPlay)
   const game = gameById(id)
   const [daily, setDaily] = useState<DailyWordlePreview | null>(null)
   useEffect(() => {
-    if (id !== 'wordle' || !app.isMember) return
+    if (id !== 'wordle' || !app.canPlay) return
     let live = true
     getDailyWordlePreview()
       .then((p) => live && setDaily(p))
@@ -304,7 +304,7 @@ function GameTodayTile({ id }: { id: string }) {
     return () => {
       live = false
     }
-  }, [id, app.isMember])
+  }, [id, app.canPlay])
   if (!game) return null
   const status = id === 'glider' ? (play ? (play.seconds > 0 ? `${playClock(play.seconds)} of play time` : 'No play time: study some flashcards to earn it') : '') : id !== 'wordle' ? game.description : !daily ? '' : daily.complete ? (daily.solved ? `Solved in ${daily.guessCount}` : 'Not solved today') : daily.guessCount ? `${daily.guessCount} guesses so far` : 'Not played yet'
   return (

@@ -118,9 +118,9 @@ export function CardsView({ list }: { list: List }) {
   // Play time this round earned (shown in the round's summary).
   const [earned, setEarned] = useState<number | null>(null)
 
-  const board = useCardBoard(list.id, app.isMember)
+  const board = useCardBoard(list.id, app.canPlay)
   const answered = cards.filter((c) => (c.notes ?? '').trim())
-  const canChallenge = app.isMember && answered.length >= CHALLENGE_MIN
+  const canChallenge = app.canPlay && answered.length >= CHALLENGE_MIN
   const [lastChallenge, setLastChallenge] = useState<{ score: ChallengeScore; best: boolean; first: boolean } | null>(null)
 
   function start(m: StudyMode, challenge = false) {
@@ -146,7 +146,7 @@ export function CardsView({ list }: { list: List }) {
 
   function answer(card: Task, gotIt: boolean, pickedRight = false) {
     if (!session) return
-    if (app.isMember) recordCard(card.id, app.uid, resultFor(card, app.uid), gotIt, pickedRight).catch(fail)
+    if (app.canPlay) recordCard(card.id, app.uid, resultFor(card, app.uid), gotIt, pickedRight).catch(fail)
     setRevealed(false)
     setChoicesOpen(false)
     setPicked(null)
@@ -163,7 +163,7 @@ export function CardsView({ list }: { list: List }) {
     }
     // A finished round earns play time for Glider (members; 5 answers or more).
     const answeredNow = next.right + next.wrong
-    if (app.isMember && next.at >= next.ids.length && roundEarns(answeredNow, !!next.challenge) > 0)
+    if (app.canPlay && next.at >= next.ids.length && roundEarns(answeredNow, !!next.challenge) > 0)
       void earnPlay(app.uid, roundEarns(answeredNow, !!next.challenge)).then((s) => setEarned(s), () => undefined)
     // Every card right (3 or more): the big burst.
     if (next.at >= next.ids.length && next.wrong === 0 && next.right >= 3) setTimeout(() => celebrate({ done: next.right, total: next.right, message: `All ${next.right} right!` }), 450)
@@ -255,7 +255,7 @@ export function CardsView({ list }: { list: List }) {
                 <input type="checkbox" checked={mapFirst} onChange={(e) => setMapFirst(e.target.checked)} /> Map first
               </label>
             )}
-            {known > 0 && app.isMember && (
+            {known > 0 && app.canPlay && (
               <button type="button" className="link small" onClick={() => window.confirm('Forget which cards you know, and start over?') && resetCards(cards.map((c) => c.id), app.uid).catch(fail)}>
                 Start over
               </button>
@@ -399,7 +399,7 @@ export function CardsView({ list }: { list: List }) {
         {error && <p className="error small">{error}</p>}
       </div>
 
-      {app.isMember && <Leaderboard cards={cards} scores={board} canChallenge={canChallenge} onChallenge={() => start('shuffle', true)} busy={!!session || shuffling} />}
+      {app.canPlay && <Leaderboard cards={cards} scores={board} canChallenge={canChallenge} onChallenge={() => start('shuffle', true)} busy={!!session || shuffling} />}
 
       <div className="day-section">
         <SectionHeader icon="list" title="Cards" count={cards.length} onTitleClick={() => setShowCards(!listing)} expanded={listing}>

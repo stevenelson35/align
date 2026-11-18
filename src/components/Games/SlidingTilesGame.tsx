@@ -36,14 +36,14 @@ export function SlidingTilesGame({ challenge, onBack, onSolved }: { challenge?: 
   const [message, setMessage] = useState<string | null>(null)
   const startedAt = useRef(0)
   const puzzleId = photoId ? scoreSeed(photoId, size) : ''
-  const { scores, error: scoreError } = useGameScores('sliding-tiles', puzzleId, app.isMember && !!puzzleId)
+  const { scores, error: scoreError } = useGameScores('sliding-tiles', puzzleId, app.canPlay && !!puzzleId)
   const photo = manifest?.photos.find((item) => item.id === photoId)
   const board = useMemo(
     () => photoId ? position?.puzzleId === puzzleId ? position.tiles : scrambleSlidingTiles(photoId, size) : [],
     [photoId, position, puzzleId, size],
   )
   const people = Object.entries(app.household.members)
-    .filter(([id, member]) => id !== app.uid && member.role === 'member' && !member.bot)
+    .filter(([id, member]) => id !== app.uid && (member.role === 'member' || member.role === 'viewer') && !member.bot)
     .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
 
   useEffect(() => { startedAt.current = Date.now() }, [puzzleId])

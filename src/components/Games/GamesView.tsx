@@ -21,7 +21,7 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
   const selectedGame = challengeId ? challenge?.gameId ?? null : gameId && gameById(gameId) ? gameId as GameId : null
   const [gameSearch, setGameSearch] = useState('')
   const [seed, setSeed] = useState(today)
-  const { scores, error: scoreError } = useGameScores('lights-out', seed, app.isMember && selectedGame === 'lights-out')
+  const { scores, error: scoreError } = useGameScores('lights-out', seed, app.canPlay && selectedGame === 'lights-out')
   const [board, setBoard] = useState(() => lightsOutBoard(seed))
   const [moves, setMoves] = useState(0)
   const [solved, setSolved] = useState(false)
@@ -83,7 +83,7 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
     ?? (challengeId && challenge === null ? 'This challenge is no longer available.' : null)
     ?? (challengeId && challenge && !validChallenge ? 'This challenge was already completed or was not meant for your account.' : null)
   const people = Object.entries(app.household.members)
-    .filter(([id, member]) => id !== app.uid && member.role === 'member' && !member.bot)
+    .filter(([id, member]) => id !== app.uid && (member.role === 'member' || member.role === 'viewer') && !member.bot)
     .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
   const pinnedGames = app.member.pinnedGames ?? ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle']
 
@@ -158,7 +158,7 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
     }
   }
 
-  if (!app.isMember) return <p className="muted">Family games are for household members.</p>
+  if (!app.canPlay) return <p className="muted">Family games are for the family’s accounts.</p>
   if (challengeId && challenge === undefined && !challengeError) return <p className="muted">Opening your challenge…</p>
   if (setupError) return <p className={challengeError ? 'error' : 'muted'}>{setupError}</p>
   if (!validChallenge) return <p className="muted">Opening Lights Out…</p>

@@ -305,6 +305,15 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
   title `shareTitle`: "Wordle 3/6 · 2026-11-17", text `shareGrid`: colored squares, no letters, link to today's
   Wordle) to one person or everyone; the Inbox shows the squares and Play.
 
+### 5.17 View-only accounts (extended family), widened 2026-11-17
+- `viewer` accounts may create lists of kind `gifts` only (rules: list create/update require `isMember() || kind ==
+  'gifts'`), and `canRead` / `canWrite` give them what they own (an entry's owner is always its list's, `validTask`).
+  The app loads their own private and family lists (`visibleQueries`), `canEditTask` lets them edit what they own,
+  and the list editor offers only Gift list (default audience Everyone). They play: `app.canPlay` (members and
+  viewers, not the bot) opens the games, Wordle (`wordle.php` accepts viewers as players and recipients), Glider,
+  flashcards (their own `results` only, a separate rule; no ratings), card and game leaderboards, game invitations
+  both ways, and Inbox messages. The family map stays members-only (it would need the location setup and add reads).
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts

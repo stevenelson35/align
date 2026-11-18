@@ -16,7 +16,7 @@ export function ListEditor({ list, kind, onClose, onCreated }: { list: List | nu
   const tasks = [...taskDocs, ...listItems]
   const [form, setForm] = useState<ListInput>(
     // New lists start with your own default privacy (Settings).
-    list ?? { name: '', kind: kind ?? 'list', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' },
+    list ?? { name: '', kind: app.isMember ? (kind ?? 'list') : 'gifts', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' },
   )
   // New lists start with your own default (Settings), which is Everyone unless you changed it.
   const [audience, setAudience] = useState<Audience>(list ? audienceOf(list) : (app.member.defaultVisibility ?? 'everyone'))
@@ -111,7 +111,7 @@ export function ListEditor({ list, kind, onClose, onCreated }: { list: List | nu
         <div className="grid2">
           <label>
             Kind
-            <select value={form.kind} onChange={(e) => set({ kind: e.target.value as List['kind'] })}>
+            <select value={form.kind} onChange={(e) => set({ kind: e.target.value as List['kind'] })} disabled={!app.isMember}>
               <option value="list">Task list</option>
               <option value="project">Project (dependencies, timeline)</option>
               <option value="checklist">Checklist (shopping, gifts, people to call…)</option>

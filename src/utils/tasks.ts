@@ -8,6 +8,8 @@ export type Shareable = Pick<Task, 'visibility' | 'ownerId' | 'sharedWith'> & Pa
 
 /** Mirrors the rules' canWrite: the owner; then "who can edit" if the list set one, else whoever can see it. */
 export function canEditTask(task: Shareable, uid: string, role: Role): boolean {
+  // View-only accounts edit what they own: their own gift lists and the ideas on them (the rules say the same).
+  if (role === 'viewer') return task.ownerId === uid
   if (role !== 'member') return false
   if (task.ownerId === uid) return true
   if (task.editAudience === undefined) return task.visibility === 'family' || !!task.sharedWith?.includes(uid)

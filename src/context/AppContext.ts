@@ -23,6 +23,8 @@ export interface AppState {
   household: Household
   member: HouseholdMember
   isMember: boolean
+  /** Members and view-only accounts (extended family): games, flashcards, Glider, their own gift lists. */
+  canPlay: boolean
   route: Route
   navigate: (route: Route) => void
   selectedTaskId: string | null

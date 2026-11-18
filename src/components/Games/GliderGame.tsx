@@ -17,7 +17,7 @@ const SAVE_EVERY = 10
  */
 export function GliderGame({ onBack }: { onBack: () => void }) {
   const app = useApp()
-  const play = usePlay(app.uid, app.isMember)
+  const play = usePlay(app.uid, app.canPlay)
   const canvas = useRef<HTMLCanvasElement>(null)
   const world = useRef<World>(newWorld())
   const [phase, setPhase] = useState<Phase>('ready')
@@ -104,7 +104,7 @@ export function GliderGame({ onBack }: { onBack: () => void }) {
     return () => window.removeEventListener('keydown', key)
   }, [tap])
 
-  if (!app.isMember) return <p className="muted">Glider is for household members.</p>
+  if (!app.canPlay) return <p className="muted">Glider is for the family.</p>
   if (!play) return <p className="muted">Getting your play time…</p>
   const out = shownLeft <= 0 && phase !== 'flying'
 
@@ -170,7 +170,7 @@ export function GliderGame({ onBack }: { onBack: () => void }) {
 /** The family's best scores, highest first. */
 function GliderBoard() {
   const app = useApp()
-  const board = useGliderBoard(app.isMember)
+  const board = useGliderBoard(app.canPlay)
   const rows = Object.entries(board)
     .filter(([uid]) => app.household.members[uid])
     .sort((a, b) => b[1].best - a[1].best)

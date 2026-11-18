@@ -14,11 +14,11 @@ type Section = (typeof SECTIONS)[number]
 export function GameInvitationsBlock({ enabled = true }: { enabled?: boolean }) {
   const app = useApp()
   const [open, setOpen] = useStoredChoice<Section>('align-today-games-panel-section', SECTIONS, 'invitations')
-  const on = app.isMember && enabled
+  const on = app.canPlay && enabled
   const { challenges, error: challengeError, loaded } = useGameChallenges(app.uid, on)
   const { challenges: wordleChallenges, error: wordleError } = useWordleChallengeUpdates(app.uid, on)
   const { progress, error: progressError } = useWordleChallengeProgress(app.uid, on)
-  if (!app.isMember) return null
+  if (!app.canPlay) return null
   return (
     <PendingGameInvitations
       challenges={challenges}

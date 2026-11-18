@@ -429,7 +429,7 @@ describe('pick lists', () => {
     await assertFails(updateDoc(doc(db('wife'), 'tasks/p1'), { 'ratings.daughter': 5 })) // not someone else's
     await assertFails(updateDoc(doc(db('wife'), 'tasks/p1'), { 'ratings.wife': 9 }))
     await assertFails(updateDoc(doc(db('wife'), 'tasks/p1'), { 'ratings.wife': 4, title: 'Paddington 2' })) // nothing else
-    await assertFails(updateDoc(doc(db('grandma'), 'tasks/p1'), { 'ratings.grandma': 5 })) // view-only accounts don't rate
+    await assertFails(updateDoc(doc(db('grandma'), 'tasks/p1'), { 'ratings.grandma': 5 })) // view-only accounts don't rate (they do keep flashcard results)
     await assertSucceeds(updateDoc(doc(db('steve'), 'tasks/p1'), { title: 'Paddington 2' }))
     // Contacts: the contact details are a map on the item (lists of kind 'contacts').
     await assertSucceeds(setDoc(doc(db('steve'), 'lists/people'), { name: 'Contacts', kind: 'contacts', visibility: 'family', ownerId: 'steve', viewerVisible: false, defaultContext: 'family' }))
@@ -462,7 +462,7 @@ describe('flashcard leaderboards', () => {
     await assertFails(setDoc(doc(db('wife'), 'cardBoards/set1'), { scores: { wife: { ...score, right: 11 } } }, { merge: true }))
     await assertFails(setDoc(doc(db('wife'), 'cardBoards/set1'), { scores: { wife: { ...score, bonus: 1 } } }, { merge: true }))
     await assertSucceeds(getDoc(doc(db('steve'), 'cardBoards/set1')))
-    await assertFails(setDoc(doc(db('grandma'), 'cardBoards/set1'), { scores: { grandma: score } }, { merge: true }))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'cardBoards/set1'), { scores: { grandma: score } }, { merge: true })) // view-only accounts play too
   })
 })
 
@@ -636,8 +636,8 @@ describe('games', () => {
       collection(db('wife'), 'gameChallenges'),
       where('participants', 'array-contains', 'wife'),
     )))
-    await assertFails(getDoc(doc(db('grandma'), 'gameChallenges/wordle-a')))
-    await assertFails(getDocs(query(
+    await assertFails(getDoc(doc(db('grandma'), 'gameChallenges/wordle-a'))) // not hers
+    await assertSucceeds(getDocs(query( // her own (view-only accounts play too); none here
       collection(db('grandma'), 'gameChallenges'),
       where('participants', 'array-contains', 'grandma'),
     )))
@@ -758,7 +758,8 @@ describe('games', () => {
     await assertFails(getDoc(doc(db('daughter'), 'gameChallenges/ch1')))
     await assertFails(getDoc(doc(db('grandma'), 'gameChallenges/ch1')))
     await assertFails(setDoc(doc(db('daughter'), 'gameChallenges/ch2'), { ...challenge, from: 'steve', to: 'daughter' }))
-    await assertFails(setDoc(doc(db('grandma'), 'gameChallenges/ch3'), { ...challenge, from: 'grandma', to: 'wife' }))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'gameChallenges/ch3'), { ...challenge, from: 'grandma', to: 'wife' })) // view-only accounts invite too
+    await assertFails(setDoc(doc(db('grandma'), 'gameChallenges/ch4'), { ...challenge, from: 'wife', to: 'steve' })) // but only as themselves
     await assertFails(updateDoc(doc(db('steve'), 'gameChallenges/ch1'), { status: 'completed', moves: 10, ms: 5000, completedAt: new Date() }))
     await assertFails(updateDoc(doc(db('wife'), 'gameChallenges/ch1'), { dismissed: true }))
     await assertSucceeds(updateDoc(doc(db('wife'), 'gameChallenges/ch1'), { status: 'playing' }))
@@ -1220,7 +1221,8 @@ describe('inbox', () => {
     await assertFails(setDoc(doc(db('steve'), 'inbox/x7'), msg({ text: 'x'.repeat(2001) })))
     await assertFails(setDoc(doc(db('steve'), 'inbox/x8'), msg({ extra: 1 })))
     await assertFails(setDoc(doc(db('steve'), 'inbox/x9'), msg({ createdAt: new Date('2026-01-01') })))
-    await assertFails(setDoc(doc(db('grandma'), 'inbox/x10'), msg({ from: 'grandma' })))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'inbox/x10'), msg({ from: 'grandma' }))) // view-only accounts send too (game invitations, results)
+    await assertFails(setDoc(doc(db('grandma'), 'inbox/x11'), msg({ from: 'steve' })))
   })
   it('lets the recipient read, mark read and clear; the sender only read; others nothing', async () => {
     await assertSucceeds(setDoc(doc(db('steve'), 'inbox/m1'), msg()))
@@ -1265,5 +1267,47 @@ describe('play time', () => {
     await assertFails(setDoc(doc(db('wife'), 'gliderBest/steve'), { best: 99, at: '2026-11-17' }))
     await assertFails(setDoc(doc(db('steve'), 'gliderBest/steve'), { best: '12', at: '2026-11-17' }))
     await assertFails(getDoc(doc(db(), 'gliderBest/steve')))
+  })
+})
+
+describe('view-only accounts (extended family): their own gift lists, games and flashcards', () => {
+  const myList = { name: 'Grandma wish list', kind: 'gifts', recipientId: 'grandma', visibility: 'family', ownerId: 'grandma', viewerVisible: true, defaultContext: 'family' }
+  const idea = (l: Record<string, unknown>, extra: Record<string, unknown> = {}) => ({
+    listId: 'gm', visibility: l.visibility, ownerId: l.ownerId, viewerVisible: l.viewerVisible,
+    title: 'Garden gloves', priority: 2, status: 'todo', context: 'family', durationDays: 1, dependsOn: [], createdBy: 'grandma', ...extra,
+  })
+  it('makes and keeps their own gift lists, and nothing else', async () => {
+    await assertSucceeds(setDoc(doc(db('grandma'), 'lists/gm'), myList))
+    await assertSucceeds(getDoc(doc(db('grandma'), 'lists/gm')))
+    await assertSucceeds(updateDoc(doc(db('grandma'), 'lists/gm'), { name: 'Grandma 2026' }))
+    await assertFails(updateDoc(doc(db('grandma'), 'lists/gm'), { kind: 'checklist' }))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'tasks/i1'), idea(myList)))
+    await assertSucceeds(updateDoc(doc(db('grandma'), 'tasks/i1'), { title: 'Garden gloves (M)' }))
+    // Family only (not shown to view-only accounts): still theirs to read and change.
+    await assertSucceeds(setDoc(doc(db('grandma'), 'lists/gm2'), { ...myList, viewerVisible: false }))
+    await assertSucceeds(getDoc(doc(db('grandma'), 'lists/gm2')))
+    await assertFails(setDoc(doc(db('grandma'), 'lists/cl'), { ...myList, kind: 'checklist' }))
+    await assertFails(setDoc(doc(db('grandma'), 'lists/x'), { ...myList, ownerId: 'steve' }))
+    // Not someone else's list, nor an entry claiming to be theirs on someone else's list.
+    await assertFails(updateDoc(doc(db('grandma'), 'lists/familyVisible'), { name: 'mine now' }))
+    await assertFails(setDoc(doc(db('grandma'), 'tasks/i2'), { ...idea(myList), listId: 'familyVisible' }))
+    // The family can still see it (and the owner decides who edits).
+    await assertSucceeds(getDoc(doc(db('wife'), 'lists/gm')))
+    await assertSucceeds(deleteDoc(doc(db('grandma'), 'tasks/i1')))
+  })
+  it('plays games: scores, invitations both ways, flashcard results', async () => {
+    await assertSucceeds(setDoc(doc(db('grandma'), 'gameScores/grandma_lights-out_2026-10-30'), {
+      uid: 'grandma', gameId: 'lights-out', seed: '2026-10-30', bestMoves: 12, bestMs: 20000, plays: 1, updatedAt: new Date(),
+    }))
+    await assertSucceeds(setDoc(doc(db('steve'), 'gameChallenges/g1'), { gameId: 'lights-out', from: 'steve', to: 'grandma', seed: 'same', status: 'pending', createdAt: new Date() }))
+    await assertSucceeds(getDoc(doc(db('grandma'), 'gameChallenges/g1')))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'gameChallenges/g2'), { gameId: 'lights-out', from: 'grandma', to: 'steve', seed: 'same', status: 'pending', createdAt: new Date() }))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'inbox/m1'), { to: 'steve', from: 'grandma', kind: 'game', title: 'Wordle 3/6', link: '#/games', read: false, pushed: false, createdAt: serverTimestamp() }))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'cardBoards/familyVisible'), { scores: { grandma: { right: 8, of: 10, ms: 50000, at: '2026-11-17' } } }))
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore() as unknown as Firestore, 'tasks/card1'), { ...idea({ visibility: 'family', ownerId: 'steve', viewerVisible: true }), listId: 'familyVisible', createdBy: 'steve' })
+    })
+    await assertSucceeds(updateDoc(doc(db('grandma'), 'tasks/card1'), { 'results.grandma': { right: 1 } }))
+    await assertFails(updateDoc(doc(db('grandma'), 'tasks/card1'), { title: 'changed' }))
   })
 })

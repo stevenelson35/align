@@ -231,7 +231,8 @@ function firestoreTryPatch($config, $token, $collection, $id, $fields, $updateTi
 function requireMember($config, $token, $uid) {
     $household = firestoreGet($config, $token, 'household', 'main');
     $member = $household['fields']['members'][$uid] ?? null;
-    if (!is_array($member) || ($member['role'] ?? '') !== 'member') fail(403, 'Wordle is for household members.');
+    // Members and view-only accounts (extended family) play; the calendar helper doesn't.
+    if (!is_array($member) || !in_array($member['role'] ?? '', ['member', 'viewer'], true) || !empty($member['bot'])) fail(403, 'Wordle is for the family.');
     return $household['fields'];
 }
 
@@ -911,7 +912,8 @@ function createCustomChallenges($config, $token, $uid, $body) {
     $viewers = array_values(array_unique(array_merge([$uid], $players)));
     $household = requireMember($config, $token, $uid);
     foreach ($players as $to) {
-        if (($household['members'][$to]['role'] ?? '') !== 'member') fail(400, 'Every recipient must be a household member.');
+        $role = $household['members'][$to]['role'] ?? '';
+        if (!in_array($role, ['member', 'viewer'], true) || !empty($household['members'][$to]['bot'])) fail(400, 'Every recipient must be in the family.');
     }
     $groupId = bin2hex(random_bytes(16));
     $seed = 'custom-' . $groupId;
