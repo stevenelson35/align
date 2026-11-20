@@ -775,7 +775,7 @@ service cloud.firestore {
       return d.keys().hasOnly(['to', 'from', 'kind', 'title', 'text', 'link', 'read', 'pushed', 'createdAt'])
         && d.from == request.auth.uid
         && d.to is string && d.to != d.from && roleOf(d.to) in ['member', 'viewer']
-        && d.kind in ['entry', 'link', 'board', 'photo', 'game', 'note']
+        && d.kind in ['entry', 'link', 'board', 'photo', 'game', 'result', 'note']
         && d.title is string && d.title.size() > 0 && d.title.size() <= 300
         && (!('text' in d) || (d.text is string && d.text.size() <= 2000))
         && d.link is string && d.link.size() <= 500

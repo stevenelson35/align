@@ -140,18 +140,53 @@ export const shareTitle = (date: string | undefined, solved: boolean, guesses: n
 const clock = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 
 /** "Wordle 4/6 in 2:05 · 2026-11-18" (or "Wordle X/6 · …" when not solved). */
-export const announceTitle = (date: string | undefined, solved: boolean, guesses: number, ms: number, max = 6) =>
-  `Wordle ${solved ? `${guesses}/${max} in ${clock(ms)}` : `X/${max}`}${date ? ` · ${date}` : ''}`
+/** "Fri, Nov 20" for "2026-11-20" (the day as written, whatever the time zone). */
+export function wordleDay(date: string): string {
+  const d = new Date(`${date}T12:00:00Z`)
+  if (Number.isNaN(d.getTime())) return date
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
+/**
+ * What finishing a daily Wordle says to the family, after the player's name: "completed today's Wordle (Fri, Nov 20):
+ * 3/6 in 2:03", "missed …: X/6", "gave up on …". A day other than today is "the Wordle for Thu, Nov 19". Always the
+ * date, so it still reads right when seen the next day.
+ */
+export function resultTitle(date: string, today: string, game: { solved: boolean; abandoned?: boolean; guesses: number; ms: number }, max = 6): string {
+  const which = date === today ? `today’s Wordle (${wordleDay(date)})` : `the Wordle for ${wordleDay(date)}`
+  if (game.solved) return `completed ${which}: ${game.guesses}/${max} in ${clock(game.ms)}`
+  return game.abandoned ? `gave up on ${which}` : `missed ${which}: X/${max}`
+}
+
+/**
+ * What a Wordle challenge says, after the sender's name (title), and how it works (text). others: how many besides
+ * you were invited.
+ */
+export function challengeMessage(type: WordleChallengeKind, others: number): { title: string; text: string } {
+  const you = others ? `you and ${others} other${others === 1 ? '' : 's'}` : 'you'
+  switch (type) {
+    case 'invite':
+      return { title: 'sent you their own word to guess in Wordle', text: 'A word they picked. Play it whenever you like.' }
+    case 'live-chosen':
+      return { title: `challenged ${you} to a Wordle with a word they picked`, text: 'Not real time: play whenever you like and watch each other’s progress.' }
+    case 'random-live':
+      return { title: `challenged ${you} to a Wordle with a random word`, text: 'Not real time: play whenever you like and watch each other’s progress.' }
+    case 'realtime-live':
+      return { title: `invited ${you} to a real-time Wordle race`, text: 'Join now: it starts when everyone is ready.' }
+  }
+}
+
+export type WordleChallengeKind = 'invite' | 'live-chosen' | 'random-live' | 'realtime-live'
 
 /**
  * Today's ranking under the squares: "Today: 1. Linda 3 · 1:20, 2. Steve 4 · 2:05" (fewest guesses, then fastest;
  * people's names, at most five).
  */
-export function rankingLine(scores: { uid: string; guesses?: number; ms?: number }[], name: (uid: string) => string): string {
+export function rankingLine(scores: { uid: string; guesses?: number; ms?: number }[], name: (uid: string) => string, label = 'Today'): string {
   const ranked = scores
     .filter((s) => s.guesses !== undefined)
     .sort((a, b) => a.guesses! - b.guesses! || (a.ms ?? Infinity) - (b.ms ?? Infinity))
     .slice(0, 5)
   if (!ranked.length) return ''
-  return `Today: ${ranked.map((s, i) => `${i + 1}. ${name(s.uid)} ${s.guesses}${s.ms !== undefined ? ` · ${clock(s.ms)}` : ''}`).join(', ')}`
+  return `${label}: ${ranked.map((s, i) => `${i + 1}. ${name(s.uid)} ${s.guesses}${s.ms !== undefined ? ` · ${clock(s.ms)}` : ''}`).join(', ')}`
 }

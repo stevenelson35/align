@@ -411,8 +411,16 @@ function sweepInbox() {
 
 /** "Steve: Buy milk" / "Steve invited you: Lights Out", with the note (or a nudge) as the body. */
 function inboxText_(fromName, m) {
-  var title = m.kind === 'game' ? fromName + ' invited you: ' + m.title : fromName + ': ' + m.title
-  return { title: title.slice(0, 120), body: (m.text || (m.kind === 'game' ? 'Tap to play.' : 'Sent to your Align Inbox.')).slice(0, 240) }
+  // As the app words it (src/utils/inboxHeadline.ts): game messages say what the sender did ("invited you to a
+  // real-time Wordle race", "completed today's Wordle (Fri, Nov 20): 3/6 in 2:03"); older ones keep the old wording.
+  var game = m.kind === 'game' || m.kind === 'result'
+  var link = m.link || ''
+  var after = !game ? ': ' + m.title
+    : /^[a-z]/.test(m.title) ? ' ' + m.title
+    : m.kind === 'result' || link.indexOf('#/games/play/') === 0 ? ' shared a result: ' + m.title
+    : ' invited you: ' + m.title
+  var tap = m.kind === 'result' ? 'Tap to play it too.' : 'Tap to play.'
+  return { title: (fromName + after).slice(0, 120), body: (m.text || (game ? tap : 'Sent to your Align Inbox.')).slice(0, 240) }
 }
 
 /** Pushes each message once (to every device its recipient turned on, unless they turned Inbox alerts off). */

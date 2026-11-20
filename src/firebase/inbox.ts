@@ -7,14 +7,14 @@ import { auth, db } from './config'
 import { calendarSyncUrl } from './calendarSync'
 import { inboxLink } from '../utils/inboxLink'
 
-export type InboxKind = 'entry' | 'link' | 'board' | 'photo' | 'game' | 'note'
+export type InboxKind = 'entry' | 'link' | 'board' | 'photo' | 'game' | 'result' | 'note'
 
 export interface InboxMessage {
   id: string
   to: string
   from: string
   kind: InboxKind
-  /** What it's about ("Buy milk", "Voting: Movies", "Lights Out"). */
+  /** What it's about ("Buy milk", "Voting: Movies"); for games, what the sender did ("invited you to play Lights Out"). */
   title: string
   /** The sender's note. */
   text?: string

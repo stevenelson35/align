@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { db } from './config'
 import { sendToInbox } from './inbox'
 import { compareGameResults, gameById, type GameId, type GameResult } from '../games/catalog'
-import { announceTitle, rankingLine, shareGrid, type WordleGuess } from '../games/wordle'
+import { rankingLine, resultTitle, shareGrid, wordleDay, type WordleGuess } from '../games/wordle'
 
 export interface GameScore {
   uid: string
@@ -204,7 +204,7 @@ export async function inviteToGame(from: string, recipients: string[], gameId: G
   await batch.commit()
   // Each invitation also goes to their Inbox, which notifies them at once (best effort: the invitation stands anyway).
   const name = gameById(gameId)?.name ?? 'a game'
-  await Promise.all(invites.map((i) => sendToInbox(from, [i.to], { kind: 'game', title: name, link: `#/games/${i.id}` }).catch(() => undefined)))
+  await Promise.all(invites.map((i) => sendToInbox(from, [i.to], { kind: 'game', title: `invited you to play ${name}`, link: `#/games/${i.id}` }).catch(() => undefined)))
 }
 
 export async function recordGameScore(uid: string, gameId: GameId, seed: string, result: GameResult): Promise<boolean> {
@@ -250,13 +250,14 @@ export function dismissGameChallenge(id: string) {
 /**
  * Finishing Wordle of the day tells the family (refactor follow-up 2026-11-18): everyone (members and view-only
  * family, not the calendar helper) gets an Inbox message and a notification with your score and time, the colored
- * squares (no letters) and today's ranking so far; Play there opens today's Wordle. Once a day per person (this
- * device remembers it was sent).
+ * squares (no letters) and that day's ranking so far; "Play it too" opens that same day's Wordle (the server keeps a
+ * week of them), so results stay comparable. Once per puzzle per person (this device remembers it was sent).
  */
 export async function announceDailyWordle(
   uid: string,
   members: Record<string, { displayName: string; role: string; bot?: boolean }>,
-  game: { seed: string; date?: string; solved: boolean; guesses: WordleGuess[]; elapsedMs: number },
+  game: { seed: string; date?: string; solved: boolean; abandoned?: boolean; guesses: WordleGuess[]; elapsedMs: number },
+  today: string,
 ): Promise<number> {
   const key = `align-wordle-announced:${game.seed}`
   if (localStorage.getItem(key)) return 0
@@ -271,8 +272,11 @@ export async function announceDailyWordle(
     const best = (d.data().best ?? {}) as GameResult
     return { uid: d.data().uid as string, guesses: best.guesses, ms: best.ms }
   })
-  const ranking = rankingLine(scores, (id) => members[id]?.displayName ?? 'Someone')
+  const date = game.date ?? today
+  const ranking = rankingLine(scores, (id) => members[id]?.displayName ?? 'Someone', date === today ? 'Today' : wordleDay(date))
   const text = [shareGrid(game.guesses), ranking].filter(Boolean).join('\n\n')
-  await sendToInbox(uid, to, { kind: 'game', title: announceTitle(game.date, game.solved, game.guesses.length, game.elapsedMs), text, link: '#/games/play/wordle' })
+  // Its link opens that day's puzzle, so whoever plays it later (even the next day) plays the same word and ranks with them.
+  const title = resultTitle(date, today, { solved: game.solved, abandoned: game.abandoned, guesses: game.guesses.length, ms: game.elapsedMs })
+  await sendToInbox(uid, to, { kind: 'result', title, text, link: `#/games/play/wordle/${date}` })
   return to.length
 }

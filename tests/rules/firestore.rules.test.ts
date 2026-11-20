@@ -1303,6 +1303,8 @@ describe('view-only accounts (extended family): their own gift lists, games and 
     await assertSucceeds(getDoc(doc(db('grandma'), 'gameChallenges/g1')))
     await assertSucceeds(setDoc(doc(db('grandma'), 'gameChallenges/g2'), { gameId: 'lights-out', from: 'grandma', to: 'steve', seed: 'same', status: 'pending', createdAt: new Date() }))
     await assertSucceeds(setDoc(doc(db('grandma'), 'inbox/m1'), { to: 'steve', from: 'grandma', kind: 'game', title: 'Wordle 3/6', link: '#/games', read: false, pushed: false, createdAt: serverTimestamp() }))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'inbox/m1b'), { to: 'steve', from: 'grandma', kind: 'result', title: 'completed today’s Wordle (Fri, Nov 20): 3/6 in 2:03', link: '#/games/play/wordle/2026-11-20', read: false, pushed: false, createdAt: serverTimestamp() }))
+    await assertFails(setDoc(doc(db('grandma'), 'inbox/m1c'), { to: 'steve', from: 'grandma', kind: 'score', title: 'x', link: '#/games', read: false, pushed: false, createdAt: serverTimestamp() }))
     await assertSucceeds(setDoc(doc(db('grandma'), 'cardBoards/familyVisible'), { scores: { grandma: { right: 8, of: 10, ms: 50000, at: '2026-11-17' } } }))
     await env.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore() as unknown as Firestore, 'tasks/card1'), { ...idea({ visibility: 'family', ownerId: 'steve', viewerVisible: true }), listId: 'familyVisible', createdBy: 'steve' })

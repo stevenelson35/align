@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareWordleResults, decodeWordleProgressRow, hardModeError, markGuess, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, wordleProgressLabel, shareGrid, shareTitle, announceTitle, rankingLine, type WordleGuess } from './wordle'
+import { compareWordleResults, decodeWordleProgressRow, hardModeError, markGuess, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, wordleProgressLabel, shareGrid, shareTitle, resultTitle, challengeMessage, wordleDay, rankingLine, type WordleGuess } from './wordle'
 
 describe('Wordle rules', () => {
   it('marks exact, present and absent letters', () => {
@@ -104,10 +104,23 @@ describe('sharing a result', () => {
 
 describe('announcing a finished Wordle of the day', () => {
   it('leads with the score and time, and ranks today by guesses then time', () => {
-    expect(announceTitle('2026-11-18', true, 4, 125000)).toBe('Wordle 4/6 in 2:05 · 2026-11-18')
-    expect(announceTitle('2026-11-18', false, 6, 300000)).toBe('Wordle X/6 · 2026-11-18')
+    expect(wordleDay('2026-11-20')).toBe('Fri, Nov 20')
+    expect(resultTitle('2026-11-20', '2026-11-20', { solved: true, guesses: 3, ms: 123000 })).toBe('completed today’s Wordle (Fri, Nov 20): 3/6 in 2:03')
+    expect(resultTitle('2026-11-19', '2026-11-20', { solved: false, guesses: 6, ms: 300000 })).toBe('missed the Wordle for Thu, Nov 19: X/6')
+    expect(resultTitle('2026-11-20', '2026-11-20', { solved: false, abandoned: true, guesses: 2, ms: 1 })).toBe('gave up on today’s Wordle (Fri, Nov 20)')
     const names: Record<string, string> = { s: 'Steve', l: 'Linda', c: 'Camilla' }
     expect(rankingLine([{ uid: 's', guesses: 4, ms: 125000 }, { uid: 'l', guesses: 3, ms: 80000 }, { uid: 'c', guesses: 4, ms: 90000 }], (u) => names[u])).toBe('Today: 1. Linda 3 · 1:20, 2. Camilla 4 · 1:30, 3. Steve 4 · 2:05')
     expect(rankingLine([], (u) => u)).toBe('')
+    expect(rankingLine([{ uid: 's', guesses: 2 }], (u) => names[u], 'Thu, Nov 19')).toBe('Thu, Nov 19: 1. Steve 2')
+  })
+})
+
+describe('what a Wordle challenge says', () => {
+  it('names the kind of challenge and who else is in it', () => {
+    expect(challengeMessage('invite', 0).title).toBe('sent you their own word to guess in Wordle')
+    expect(challengeMessage('live-chosen', 2).title).toBe('challenged you and 2 others to a Wordle with a word they picked')
+    expect(challengeMessage('random-live', 1).title).toBe('challenged you and 1 other to a Wordle with a random word')
+    expect(challengeMessage('random-live', 1).text).toMatch(/^Not real time/)
+    expect(challengeMessage('realtime-live', 0).title).toBe('invited you to a real-time Wordle race')
   })
 })

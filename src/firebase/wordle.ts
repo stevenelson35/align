@@ -47,14 +47,18 @@ async function wordleRequest<T>(action: string, values: Record<string, unknown> 
   return result
 }
 
-export const getDailyWordlePreview = () => wordleRequest<DailyWordlePreview>('daily_preview')
+// The daily Wordle: today's, or (day: "2026-11-19") one from the last week, so a result someone shared yesterday
+// plays the same word.
+const onDay = (day?: string) => (day ? { date: day } : {})
 
-export const getDailyWordle = () => wordleRequest<WordleGameState>('daily_status')
+export const getDailyWordlePreview = (day?: string) => wordleRequest<DailyWordlePreview>('daily_preview', onDay(day))
 
-export const guessDailyWordle = (guess: string) =>
-  wordleRequest<WordleGameState>('daily_guess', { guess })
+export const getDailyWordle = (day?: string) => wordleRequest<WordleGameState>('daily_status', onDay(day))
 
-export const abandonDailyWordle = () => wordleRequest<WordleGameState>('daily_abandon')
+export const guessDailyWordle = (guess: string, day?: string) =>
+  wordleRequest<WordleGameState>('daily_guess', { guess, ...onDay(day) })
+
+export const abandonDailyWordle = (day?: string) => wordleRequest<WordleGameState>('daily_abandon', onDay(day))
 
 export const getWordleChallenge = (challengeId: string) =>
   wordleRequest<WordleGameState>('challenge_status', { challengeId })

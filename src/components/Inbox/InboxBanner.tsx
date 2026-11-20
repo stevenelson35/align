@@ -4,6 +4,7 @@ import { useApp } from '../../hooks/useApp'
 import { useInbox } from '../../hooks/useInbox'
 import { Icon } from '../UI/Icon'
 import { useOpenMessage } from '../../hooks/useOpenMessage'
+import { actionLabel, afterName } from '../../utils/inboxHeadline'
 
 /** How long the banner stays (a game invitation a little longer). */
 const SHOW_MS = 10_000
@@ -32,19 +33,18 @@ export function InboxBanner() {
   }, [messages, loaded])
   useEffect(() => {
     if (!shown) return
-    const t = setTimeout(() => setShown(null), shown.kind === 'game' ? GAME_MS : SHOW_MS)
+    const t = setTimeout(() => setShown(null), shown.kind === 'game' || shown.kind === 'result' ? GAME_MS : SHOW_MS)
     return () => clearTimeout(t)
   }, [shown])
   if (!shown) return null
   const from = app.household.members[shown.from]?.displayName ?? 'Someone'
   return (
     <div className="inbox-banner" role="status">
-      <Icon name={shown.kind === 'game' ? 'sparkle' : 'mail'} />
+      <Icon name={shown.kind === 'game' || shown.kind === 'result' ? 'sparkle' : 'mail'} />
       <span className="grow">
         <strong>{from}</strong>
-        {shown.kind === 'game' ? ' invited you: ' : ': '}
-        {shown.title}
-        {shown.text && <span className="muted inbox-note"> {shown.kind === 'game' ? shown.text : `“${shown.text}”`}</span>}
+        {afterName(shown)}
+        {shown.text && <span className="muted inbox-note"> {shown.kind === 'game' || shown.kind === 'result' ? shown.text : `“${shown.text}”`}</span>}
       </span>
       <button
         type="button"
@@ -54,7 +54,7 @@ export function InboxBanner() {
           setShown(null)
         }}
       >
-        {shown.kind === 'game' ? 'Play' : 'Open'}
+        {actionLabel(shown)}
       </button>
       <button type="button" className="link" onClick={() => setShown(null)} aria-label="Close">
         <Icon name="close" />

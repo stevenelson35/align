@@ -16,7 +16,7 @@ import { earnDaily } from '../../firebase/play'
 import { WordleGame } from './WordleGame'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
-export function GamesView({ challengeId, gameId }: { challengeId?: string; gameId?: string }) {
+export function GamesView({ challengeId, gameId, day }: { challengeId?: string; gameId?: string; day?: string }) {
   const app = useApp()
   const { challenge, error: challengeError } = useGameChallenge(challengeId)
   const selectedGame = challengeId ? challenge?.gameId ?? null : gameId && gameById(gameId) ? gameId as GameId : null
@@ -175,7 +175,7 @@ export function GamesView({ challengeId, gameId }: { challengeId?: string; gameI
   }
   if (selectedGame === 'glider') return <GliderGame onBack={() => app.navigate({ view: 'games' })} />
   if (selectedGame === 'wordle') {
-    return <WordleGame key={challengeId ?? 'daily'} challenge={challengeId ? challenge ?? undefined : undefined} onBack={() => app.navigate({ view: 'games' })} />
+    return <WordleGame key={challengeId ?? `daily${day ?? ''}`} challenge={challengeId ? challenge ?? undefined : undefined} day={challengeId ? undefined : day} onBack={() => app.navigate({ view: 'games' })} />
   }
   if (!selectedGame) {
     const visibleGames = GAMES.filter((game) => `${game.name} ${game.description}`.toLowerCase().includes(gameSearch.trim().toLowerCase()))

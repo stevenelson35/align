@@ -263,6 +263,24 @@ function currentDate() {
     return new DateTimeImmutable('now', new DateTimeZone('America/New_York'));
 }
 
+// Which day's Wordle: today's (New York), or one from the last week, so a result someone shared yesterday plays the
+// same word and ranks with theirs.
+const DAILY_DAYS_BACK = 7;
+
+function dailyDate($body) {
+    $today = currentDate()->format('Y-m-d');
+    $date = $body['date'] ?? null;
+    if ($date === null || $date === '' || $date === $today) return $today;
+    if (!is_string($date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) fail(400, 'That Wordle date is invalid.');
+    $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date, new DateTimeZone('America/New_York'));
+    if (!$parsed || $parsed->format('Y-m-d') !== $date) fail(400, 'That Wordle date is invalid.');
+    if ($date > $today) fail(400, 'That day\'s Wordle is not out yet.');
+    if ($date < currentDate()->modify('-' . DAILY_DAYS_BACK . ' days')->format('Y-m-d')) {
+        fail(400, 'Daily Wordles can be played for a week; that one has closed. Try today\'s.');
+    }
+    return $date;
+}
+
 function dailySecret($config, $token, $date) {
     $id = 'daily_' . str_replace('-', '', $date);
     $existing = firestoreGet($config, $token, 'wordleSecrets', $id);
@@ -391,8 +409,7 @@ function stateResponse($mode, $seed, $length, $progress, $date = null, $challeng
     return $state;
 }
 
-function dailyState($config, $token, $uid, $guess = null) {
-    $date = currentDate()->format('Y-m-d');
+function dailyState($config, $token, $uid, $date, $guess = null) {
     $secret = dailySecret($config, $token, $date);
     $seed = 'daily-' . $date;
     $progressId = 'daily_' . str_replace('-', '', $date) . '_' . $uid;
@@ -402,8 +419,7 @@ function dailyState($config, $token, $uid, $guess = null) {
     return stateResponse('daily', $seed, 5, $progress, $date);
 }
 
-function dailyPreview($config, $token, $uid) {
-    $date = currentDate()->format('Y-m-d');
+function dailyPreview($config, $token, $uid, $date) {
     $progressId = 'daily_' . str_replace('-', '', $date) . '_' . $uid;
     $progress = firestoreGet($config, $token, 'wordleProgress', $progressId);
     $fields = $progress['fields'] ?? [];
@@ -419,8 +435,7 @@ function dailyPreview($config, $token, $uid) {
     ];
 }
 
-function abandonDailyWordle($config, $token, $uid) {
-    $date = currentDate()->format('Y-m-d');
+function abandonDailyWordle($config, $token, $uid, $date) {
     $secret = dailySecret($config, $token, $date);
     $seed = 'daily-' . $date;
     $progressId = 'daily_' . str_replace('-', '', $date) . '_' . $uid;
@@ -1000,13 +1015,13 @@ try {
     $action = $body['action'] ?? '';
     switch ($action) {
         case 'daily_preview':
-            reply(200, dailyPreview($config, $token, $uid));
+            reply(200, dailyPreview($config, $token, $uid, dailyDate($body)));
         case 'daily_status':
-            reply(200, dailyState($config, $token, $uid));
+            reply(200, dailyState($config, $token, $uid, dailyDate($body)));
         case 'daily_guess':
-            reply(200, dailyState($config, $token, $uid, $body['guess'] ?? null));
+            reply(200, dailyState($config, $token, $uid, dailyDate($body), $body['guess'] ?? null));
         case 'daily_abandon':
-            reply(200, abandonDailyWordle($config, $token, $uid));
+            reply(200, abandonDailyWordle($config, $token, $uid, dailyDate($body)));
         case 'challenge_status':
             reply(200, challengeState($config, $token, $uid, $body['challengeId'] ?? null));
         case 'challenge_guess':

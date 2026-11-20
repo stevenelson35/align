@@ -17,7 +17,7 @@ import {
 import { announceDailyWordle, useGameScores, useWordleChallengeProgress, type GameChallenge } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
 import { formatGameResult } from '../../games/catalog'
-import { hardModeError, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES } from '../../games/wordle'
+import { challengeMessage, hardModeError, normalizeWord, wordleDay, validWord, wordleChallengeFinished, wordleKeyboardMarks, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES } from '../../games/wordle'
 import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
 import { WordleProgressBoard } from './WordleProgressBoard'
@@ -28,7 +28,8 @@ import { challengeNotification } from './wordleNotification'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 
-export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; onBack: () => void }) {
+/** day: play the daily Wordle of that date (one from the last week, opened from someone's result) instead of today's. */
+export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallenge; day?: string; onBack: () => void }) {
   const app = useApp()
   const [game, setGame] = useState<WordleGameState | null>(null)
   // How many people were told when you finished today's Wordle (0: not this time).
@@ -72,6 +73,8 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
   const keyboardMarks = useMemo(() => wordleKeyboardMarks(game?.guesses ?? []), [game])
 
   const challengeId = challenge?.id
+  // Playing an earlier day's puzzle (from someone's result).
+  const earlier = !challenge && !!day && day !== today()
   const isRealtimeChallenge = challenge?.challengeType === 'realtime-live'
   const waitingForPlayers = isRealtimeChallenge && game?.challengeStatus === 'waiting'
   const realtimeEnded = isRealtimeChallenge && (game?.challengeStatus === 'cancelled' || game?.challengeStatus === 'expired')
@@ -120,7 +123,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     let cancelled = false
     async function loadDailyPreview() {
       try {
-        const preview = await getDailyWordlePreview()
+        const preview = await getDailyWordlePreview(day)
         if (!cancelled) {
           setDailyPreview((current) => current?.complete && !preview.complete ? current : preview)
         }
@@ -147,7 +150,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     if (challengeId) void loadChallenge()
     else void loadDailyPreview()
     return () => { cancelled = true }
-  }, [challengeId])
+  }, [challengeId, day])
 
   useEffect(() => {
     if (!game || game.complete || game.challengeStatus === 'waiting') return
@@ -193,7 +196,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     setGuessError(null)
     try {
       let next: WordleGameState
-      if (game.mode === 'daily') next = await guessDailyWordle(normalized)
+      if (game.mode === 'daily') next = await guessDailyWordle(normalized, day)
       else {
         if (!challengeId) throw new Error('This Wordle challenge is unavailable.')
         next = await guessWordleChallenge(challengeId, normalized)
@@ -206,7 +209,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
       if (next.complete && game.mode === 'daily') {
         void earnDaily(app.uid, 'wordle', today()).catch(() => undefined)
         // Tell the family (score, time, squares, today's ranking), once a day.
-        void announceDailyWordle(app.uid, app.household.members, next).then((n) => n && setAnnounced(n), () => undefined)
+        void announceDailyWordle(app.uid, app.household.members, next, today()).then((n) => n && setAnnounced(n), () => undefined)
       }
       if (next.solved) {
         celebratedProgress.current.add(app.uid)
@@ -224,7 +227,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     setLoading(true)
     setError(null)
     try {
-      const state = await getDailyWordle()
+      const state = await getDailyWordle(day)
       setGame(state)
       setElapsed(state.elapsedMs)
       setReceivedAt(Date.now())
@@ -280,8 +283,10 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
       )
       // The invitation also lands in each person's Inbox, with a notification within seconds (best effort). Without a
       // challenge id it opens the Games page, whose Invitations list it.
-      const title = challengeType === 'invite' ? 'Wordle (your word to guess)' : challengeType === 'realtime-live' ? 'Wordle, real time' : 'Wordle, live'
-      void sendToInbox(app.uid, selected, { kind: 'game', title, link: result.challengeId ? `#/games/${result.challengeId}` : '#/games' }).catch(() => undefined)
+      // It says which kind it is: your own word for them, a play-any-time challenge (chosen or random word), or a race.
+      const recipients = selected.filter((id) => id !== app.uid)
+      const { title, text } = challengeMessage(challengeType, challengeType === 'invite' ? 0 : recipients.length - 1)
+      void sendToInbox(app.uid, recipients, { kind: 'game', title, text, link: result.challengeId ? `#/games/${result.challengeId}` : '#/games' }).catch(() => undefined)
       setWord('')
       setSelected([])
       if (isRandomChallenge && result.challengeId) {
@@ -309,7 +314,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
     setError(null)
     try {
       let next: WordleGameState
-      if (game.mode === 'daily') next = await abandonDailyWordle()
+      if (game.mode === 'daily') next = await abandonDailyWordle(day)
       else if (challengeId) next = await abandonWordleChallenge(challengeId)
       else throw new Error('This Wordle challenge is unavailable.')
       setGame(next)
@@ -490,7 +495,15 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
         <article className="card game-invite-form">
           <div className="row">
             <div className="grow">
-              <h3>Daily word{dailyPreview ? ` · ${dailyPreview.date}` : ''}</h3>
+              <h3>Daily word{dailyPreview ? ` · ${earlier ? wordleDay(dailyPreview.date) : dailyPreview.date}` : ''}</h3>
+              {earlier && (
+                <p className="small">
+                  An earlier day’s Wordle: the same word everyone had that day, so your result ranks with theirs.{' '}
+                  <button type="button" className="link small" onClick={() => app.navigate({ view: 'games', gameId: 'wordle' })}>
+                    Today’s instead
+                  </button>
+                </p>
+              )}
               <p className="muted small">
                 {dailyPreview?.complete
                   ? dailyPreview.solved
@@ -513,7 +526,7 @@ export function WordleGame({ challenge, onBack }: { challenge?: GameChallenge; o
           <article className={`game-card card wordle-game${!game.complete ? ' wordle-game-playing' : ''}${challenge ? ' wordle-game-challenge' : ''}`}>
             <header className="row wrap">
               <div className="grow">
-                <h3>{game.mode === 'daily' ? `Daily word · ${game.date}` : `${game.length}-letter challenge`}</h3>
+                <h3>{game.mode === 'daily' ? `Daily word · ${earlier && game.date ? wordleDay(game.date) : game.date}` : `${game.length}-letter challenge`}</h3>
                 <p className="muted small">
                   {game.length} letters · six guesses
                   {game.length === 5 ? ' · hard mode (use every revealed hint)' : ''}

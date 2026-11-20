@@ -5,12 +5,13 @@ import { useApp } from '../../hooks/useApp'
 import { useInbox } from '../../hooks/useInbox'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { useTodayExpansion } from '../../hooks/useTodaySection'
+import { actionLabel, afterName } from '../../utils/inboxHeadline'
 import { agoText } from '../../utils/location'
 import { Icon, type IconName } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { NotifyToggle } from './NotifyToggle'
 
-const KIND_ICON: Record<InboxMessage['kind'], IconName> = { entry: 'note', link: 'link', board: 'star', photo: 'photo', game: 'sparkle', note: 'message' }
+const KIND_ICON: Record<InboxMessage['kind'], IconName> = { entry: 'note', link: 'link', board: 'star', photo: 'photo', game: 'sparkle', result: 'sparkle', note: 'message' }
 
 /** How many read messages the Today tile shows (the Inbox page shows all). */
 const TILE_READ = 3
@@ -59,23 +60,22 @@ export function InboxPanel({ page = false }: { page?: boolean }) {
           )}
           <ul className="inbox-list">
             {shown.map((m) => (
-              <li key={m.id} className={`inbox-row${m.read ? ' read' : ' unread'}${m.kind === 'game' ? ' game' : ''}`}>
+              <li key={m.id} className={`inbox-row${m.read ? ' read' : ' unread'}${m.kind === 'game' || m.kind === 'result' ? ' game' : ''}`}>
                 <button type="button" className="inbox-open" onClick={() => openMessage(m)} title={m.read ? 'Opened before; open again' : 'Open'}>
                   {m.read ? <span className="inbox-seen" aria-label="Opened"><Icon name="check" /></span> : <span className="inbox-dot" aria-label="New" />}
                   <Icon name={KIND_ICON[m.kind] ?? 'mail'} />
                   <span className="inbox-text">
                     <span className="inbox-line">
                       <strong>{name(m.from)}</strong>
-                      {m.kind === 'game' ? ' · ' : ': '}
-                      {m.title}
+                      {afterName(m)}
                     </span>
-                    {m.text && <span className="inbox-note">{m.kind === 'game' ? m.text : `“${m.text}”`}</span>}
+                    {m.text && <span className="inbox-note">{m.kind === 'game' || m.kind === 'result' ? m.text : `“${m.text}”`}</span>}
                   </span>
                   <span className="inbox-when muted small">{m.read ? 'seen · ' : ''}{m.createdAt ? agoText(m.createdAt.toMillis(), now) : 'just now'}</span>
                 </button>
-                {m.kind === 'game' && (
-                  <button type="button" className={`small inbox-play${m.read ? ' secondary' : ''}`} onClick={() => openMessage(m)} title={m.read ? 'You opened this invitation; open it again' : 'Play'}>
-                    {m.read ? <><Icon name="check" /> Opened</> : 'Play'}
+                {(m.kind === 'game' || m.kind === 'result') && (
+                  <button type="button" className={`small inbox-play${m.read ? ' secondary' : ''}`} onClick={() => openMessage(m)} title={m.read ? 'You opened this; open it again' : actionLabel(m)}>
+                    {m.read ? <><Icon name="check" /> Opened</> : actionLabel(m)}
                   </button>
                 )}
                 <button type="button" className="row-action" onClick={() => clearOne(m.id).catch(fail)} aria-label={`Clear ${m.title} from your Inbox`} title="Clear">
