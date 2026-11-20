@@ -4,7 +4,7 @@ import { useApp } from '../../hooks/useApp'
 import { Icon } from '../UI/Icon'
 
 /**
- * Notifications on this device (members): one switch for the Inbox and family map alerts alike (they share this
+ * Notifications on this device (members and view-only family): one switch for the Inbox and family map alerts alike (they share this
  * device's push address), plus whether Inbox messages notify at all. `compact`: only a "Turn on" nudge, shown while
  * they're off here (the Inbox tile).
  */
@@ -20,7 +20,7 @@ export function NotifyToggle({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     void pushProblem().then(setProblem)
   }, [])
-  if (!app.isMember) return null
+  if (!app.canPlay) return null
 
   async function toggle() {
     setBusy(true)
@@ -73,8 +73,8 @@ export function NotifyToggle({ compact = false }: { compact?: boolean }) {
         Notify me when something arrives in my Inbox (messages, game invitations)
       </label>
       <p className="muted small">
-        One switch per device: a phone with notifications on gets your Inbox and any family map alerts you set up. They arrive within seconds of being sent. On iPhone and iPad,
-        add Align to the Home Screen first.
+        One switch per device: a phone with notifications on gets your Inbox{app.isMember ? ' and any family map alerts you set up' : ''}. They arrive within seconds of being
+        sent. On iPhone and iPad, add Align to the Home Screen first.
       </p>
       {error && <p className="error small">{error}</p>}
     </div>

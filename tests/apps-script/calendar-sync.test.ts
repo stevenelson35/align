@@ -315,16 +315,19 @@ describe('places and alerts (family map)', () => {
     expect(changes(prevAt(28.62, t0, []), at(28.6, t0 + 60000), [fresh])).toEqual({ inside: ['home'], events: [] })
     expect(changes(prevAt(28.6, t0, ['gone']), null, [home]).inside).toEqual([])
   })
-  it('finds who asked to be told, never the person themselves', () => {
-    const targets = gs.alertTargets_ as (prefs: object[], uid: string, ev: object) => { id: string }[]
+  it('finds who asked to be told, never the person themselves, and members only', () => {
+    const targets = gs.alertTargets_ as (prefs: object[], uid: string, ev: object, members: object) => { id: string }[]
+    const everyone = { person: '*', place: '*', enter: true, leave: true }
     const prefs = [
       { id: 'steve', fields: { rules: [{ person: 'daughter', place: 'school', enter: true, leave: false }] } },
-      { id: 'wife', fields: { rules: [{ person: '*', place: '*', enter: true, leave: true }] } },
-      { id: 'daughter', fields: { rules: [{ person: '*', place: '*', enter: true, leave: true }] } },
+      { id: 'wife', fields: { rules: [everyone] } },
+      { id: 'daughter', fields: { rules: [everyone] } },
+      { id: 'grandma', fields: { rules: [everyone] } },
     ]
-    expect(targets(prefs, 'daughter', { place: 'school', kind: 'enter' }).map((p) => p.id)).toEqual(['steve', 'wife'])
-    expect(targets(prefs, 'daughter', { place: 'school', kind: 'leave' }).map((p) => p.id)).toEqual(['wife'])
-    expect(targets(prefs, 'steve', { place: 'home', kind: 'enter' }).map((p) => p.id)).toEqual(['wife', 'daughter'])
+    const members = { steve: { role: 'member' }, wife: { role: 'member' }, daughter: { role: 'member' }, grandma: { role: 'viewer' } }
+    expect(targets(prefs, 'daughter', { place: 'school', kind: 'enter' }, members).map((p) => p.id)).toEqual(['steve', 'wife'])
+    expect(targets(prefs, 'daughter', { place: 'school', kind: 'leave' }, members).map((p) => p.id)).toEqual(['wife'])
+    expect(targets(prefs, 'steve', { place: 'home', kind: 'enter' }, members).map((p) => p.id)).toEqual(['wife', 'daughter'])
   })
 })
 

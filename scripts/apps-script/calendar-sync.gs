@@ -296,10 +296,15 @@ function freshEvents_(events, now) {
   })
 }
 
-/** Who wants to hear about this: alertPrefs whose rules match the person, place and kind (never yourself). */
-function alertTargets_(prefs, personUid, event) {
+/**
+ * Who wants to hear about this: alertPrefs whose rules match the person, place and kind (never yourself; members
+ * only: view-only family turn on notifications for their Inbox, not the map).
+ */
+function alertTargets_(prefs, personUid, event, members) {
   return prefs.filter(function (p) {
     if (p.id === personUid) return false
+    var who = members && members[p.id]
+    if (!who || who.role !== 'member' || who.bot) return false
     return (p.fields.rules || []).some(function (r) {
       return (r.person === '*' || r.person === personUid) && (r.place === '*' || r.place === event.place) && !!r[event.kind]
     })
@@ -318,11 +323,12 @@ function sendAlerts_(cfg, api, uid, events) {
   var prefs = api.all('alertPrefs')
   if (!prefs.length) return
   var household = api.get('household/main')
-  var name = (((household && household.fields.members) || {})[uid] || {}).displayName || 'Someone'
+  var members = (household && household.fields.members) || {}
+  var name = (members[uid] || {}).displayName || 'Someone'
   var tz = cfg.TIME_ZONE || Session.getScriptTimeZone()
   events.forEach(function (ev) {
     var text = alertText_(name, ev, tz)
-    alertTargets_(prefs, uid, ev).forEach(function (p) {
+    alertTargets_(prefs, uid, ev, members).forEach(function (p) {
       ;(p.fields.push || []).forEach(function (token) {
         try {
           sendPush_(cfg, token, text, ev.place + ':' + uid)

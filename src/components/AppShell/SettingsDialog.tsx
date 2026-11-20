@@ -33,7 +33,7 @@ const PREVIEW: IconName[] = ['compose', 'goal', 'message', 'lock', 'family', 'bo
 
 /** Your own settings. Default privacy is saved with your household entry (every device); the theme is per device. */
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
-  const { uid, member, isMember, household } = useApp()
+  const { uid, member, isMember, canPlay, household } = useApp()
   const [phone, setPhoneDraft] = useState(member.phone ?? '')
   const [token, setToken] = useState('')
   const [hasToken, setHasToken] = useState(!!githubToken())
@@ -171,7 +171,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             </label>
           </fieldset>
         )}
-        {isMember && (
+        {canPlay && (
           <fieldset className="setting">
             <legend>
               Notifications <HelpTip topic="inbox" />

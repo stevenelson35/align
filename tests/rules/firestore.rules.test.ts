@@ -1160,7 +1160,14 @@ describe('places and alerts', () => {
     await assertSucceeds(getDocs(collection(db('bot'), 'alertPrefs')))
     await assertFails(getDocs(collection(db('wife'), 'alertPrefs')))
     await assertFails(setDoc(doc(db('steve'), 'alertPrefs/steve'), { ...prefs, push: Array(11).fill('t') }))
+    // View-only family: notifications for their Inbox, but no map alerts or email.
     await assertFails(setDoc(doc(db('grandma'), 'alertPrefs/grandma'), prefs))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'alertPrefs/grandma'), { push: ['tok'], updatedAt: serverTimestamp() }))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'alertPrefs/grandma'), { inboxOff: true }, { merge: true }))
+    await assertSucceeds(getDoc(doc(db('grandma'), 'alertPrefs/grandma')))
+    await assertFails(setDoc(doc(db('grandma'), 'alertPrefs/grandma'), { rules: [] }, { merge: true }))
+    await assertFails(setDoc(doc(db('grandma'), 'alertPrefs/steve'), { push: ['tok'] }))
+    await assertFails(getDoc(doc(db('grandma'), 'alertPrefs/steve')))
   })
   it('lets the helper account record who is at which place, and recent arrivals', async () => {
     const loc = { lat: 28.65, lon: -81.35, tst: 1, trail: [], off: false, inside: ['school'], events: [{ place: 'school', name: 'School', kind: 'enter', tst: 1 }] }
