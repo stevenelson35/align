@@ -3,10 +3,10 @@ import { TODAY_SECTIONS } from './today'
 import { addGroup, addTile, closeGroup, closedAt, runsToMore, tilesInGroup, dayTiles, defaultTiles, groupNames, grouped, known, MORE, placeOf, moveTile, newGroupName, parseTile, removeTile, renameGroup, splitMore, tilesOf } from './tiles'
 
 describe('Today tiles', () => {
-  it('starts someone new with the family layout: On this day, Inbox, Goals, Fun, People, To Do, the rest in More…', () => {
+  it('starts someone new with the family layout: On this day, Inbox, Goals, Fun, People, Gifts, To Do, the rest in More…', () => {
     const t = defaultTiles()
-    expect(splitMore(t).main).toEqual(['panel:photos', 'panel:inbox', 'panel:goals', 'group:Fun', 'panel:daily', 'panel:games', 'panel:rewards', 'panel:cards', 'panel:elements', 'game:glider', 'group:People', 'panel:map', 'panel:contacts', 'end:1', 'panel:todo'])
-    expect(splitMore(t).more).toEqual(['panel:gifts', 'panel:lists', 'panel:links', 'panel:projects', 'panel:voting', 'panel:invest'])
+    expect(splitMore(t).main).toEqual(['panel:photos', 'panel:inbox', 'panel:goals', 'group:Fun', 'panel:daily', 'panel:games', 'game:wordle', 'panel:rewards', 'panel:cards', 'panel:elements', 'game:glider', 'group:People', 'panel:map', 'panel:contacts', 'end:1', 'panel:gifts', 'panel:todo'])
+    expect(splitMore(t).more).toEqual(['panel:lists', 'panel:links', 'panel:projects', 'panel:voting', 'panel:invest'])
     // Every panel is somewhere, once (a new panel added to TODAY_SECTIONS lands in More… by itself).
     expect(TODAY_SECTIONS.every((s) => t.filter((x) => x === `panel:${s.id}`).length === 1)).toBe(true)
     expect(tilesOf({})).toEqual(t)

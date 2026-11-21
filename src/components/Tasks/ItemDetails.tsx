@@ -18,6 +18,8 @@ import { StarRating } from '../Picks/StarRating'
 import { AutoTextarea } from '../UI/AutoTextarea'
 import { ContactDetails } from '../Contacts/ContactDetails'
 import { GiftClaimPanel } from '../Gifts/GiftDetails'
+import { AddToGiftList, MakeItANote } from '../Gifts/GiftNotes'
+import { hasGiftDetails } from '../../utils/giftNotes'
 import { cleanGift, giftSummary, isRecipient, ownGiftIdea, recipientLabel } from '../../utils/gifts'
 import { PinToToday } from '../Today/PinToToday'
 import { tile } from '../../utils/tiles'
@@ -96,6 +98,8 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
         text={{ title: item.title, when: '', link: shareLink(item), readers: item }}
         startTextOpen={app.textingId === item.id}
         noteIds={item.noteIds}
+        notesOpen={isGift && !hasGiftDetails(item)}
+        afterDetails={isGift ? <MakeItANote item={item} list={list} /> : isNote ? <AddToGiftList note={item} noteList={home} /> : undefined}
         commentsNote={isGift && list.recipientId && !list.giftSecret && !isRecipient(list, app.uid) ? `${forName} can read these comments: keep surprises in your claim note above.` : undefined}
       />
     </EntryPanel>

@@ -32,6 +32,8 @@ export function EntryExtras({
   text,
   startTextOpen = false,
   noteIds,
+  notesOpen = false,
+  afterDetails,
   commentsNote,
 }: {
   details: Partial<Details>
@@ -42,6 +44,10 @@ export function EntryExtras({
   startTextOpen?: boolean
   /** Notes it refers to (shown, each opening in place). */
   noteIds?: string[]
+  /** Open the notes in place (a gift idea whose details live in its note). */
+  notesOpen?: boolean
+  /** Below the details (a gift idea's "Make it a note…"). */
+  afterDetails?: ReactNode
   /** A line above the comments (e.g. a gift: the recipient can read them). */
   commentsNote?: ReactNode
 }) {
@@ -60,7 +66,8 @@ export function EntryExtras({
   return (
     <div className="entry-extras">
       <DetailsView note={details.note} links={details.links} images={details.images} alt={alt} />
-      <RelatedNotes noteIds={noteIds} />
+      {afterDetails}
+      <RelatedNotes noteIds={noteIds} open={notesOpen} />
       <div className="entry-section" ref={commentsRef}>
         <h4>
           <Icon name="message" /> Comments

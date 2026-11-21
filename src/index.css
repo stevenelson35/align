@@ -3045,6 +3045,38 @@ a.nav-link {
   white-space: pre-wrap;
   margin: 0.3rem 0;
 }
+.related-note[open] {
+  margin-bottom: 0.4rem;
+}
+.gift-note-form .warning {
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: var(--radius);
+  background: var(--tint-yellow-bg);
+}
+.gift-note-action {
+  margin: 0.2rem 0;
+}
+.gift-note-form {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.4rem 0;
+}
+.gift-note-form h4 {
+  margin: 0;
+}
+.gift-note-form label {
+  display: grid;
+  gap: 0.2rem;
+}
+.gift-note-links {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0.3rem 0;
+}
+.gift-note-links > p {
+  margin: 0;
+}
 .note-picker {
   display: grid;
   gap: 0.3rem;

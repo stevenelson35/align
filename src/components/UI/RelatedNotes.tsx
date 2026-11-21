@@ -1,5 +1,8 @@
+import type { Task } from '../../types'
 import { useApp, useData } from '../../hooks/useApp'
 import { audienceLabel, audienceOf } from '../../utils/audience'
+import { detailsOf } from '../../utils/details'
+import { DetailsView } from './Details'
 import { Icon } from './Icon'
 
 /** Notes you can see, A–Z within their notes lists, for linking. */
@@ -11,10 +14,11 @@ function useNotes() {
 }
 
 /**
- * The notes an entry refers to (a gift → "Steve's clothes sizes"): each opens in place to show its text, with Open
- * for the note itself. A note you can't see (private to someone else, or deleted) says so.
+ * The notes an entry refers to (a gift → "Steve's clothes sizes"): each opens in place to show all of it (text, links,
+ * pictures), with Open for the note itself. A note you can't see (private to someone else, or deleted) says so.
+ * `open`: start them open (a gift idea whose details live in its note).
  */
-export function RelatedNotes({ noteIds }: { noteIds?: string[] }) {
+export function RelatedNotes({ noteIds, open = false }: { noteIds?: string[]; open?: boolean }) {
   const app = useApp()
   const { notes } = useNotes()
   if (!noteIds?.length) return null
@@ -27,9 +31,9 @@ export function RelatedNotes({ noteIds }: { noteIds?: string[] }) {
         const note = notes.find((n) => n.id === id)
         if (!note) return <p key={id} className="muted small">A note you can’t see (it’s private, or was deleted).</p>
         return (
-          <details key={id} className="related-note">
+          <details key={id} className="related-note" open={open}>
             <summary>{note.title}</summary>
-            {note.notes ? <p className="related-note-text">{note.notes}</p> : <p className="muted small">(no text)</p>}
+            <RelatedNoteBody note={note} />
             <button type="button" className="link small" onClick={() => app.selectTask(note.id)}>
               Open the note
             </button>
@@ -38,6 +42,13 @@ export function RelatedNotes({ noteIds }: { noteIds?: string[] }) {
       })}
     </div>
   )
+}
+
+/** A linked note's text, links and pictures, the way the note itself shows them. */
+function RelatedNoteBody({ note }: { note: Task }) {
+  const d = detailsOf(note, false)
+  if (!note.notes && !d.links.length && !d.images.length) return <p className="muted small">(nothing written yet)</p>
+  return <DetailsView note={note.notes} links={d.links} images={d.images} alt={note.title} />
 }
 
 /**

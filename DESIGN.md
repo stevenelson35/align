@@ -325,6 +325,19 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
   day per device, score + time + squares + `rankingLine` from today's `gameScores`), replacing Share your result;
   solving Lights Out, Tower of Hanoi or Picture Slider earns 30 s of play time once a day each.
 
+### 5.19 Gift ideas and notes (no new fields: `noteIds` on the idea)
+- **Make it a note…** (a gift idea you can edit, with a description, links or pictures; `MakeItANote`): moves the
+  description, links and pictures, plus size and color as a line (`noteFromGift`; not how many, price, rank or
+  claims), into a new note in a notes list you can edit (last one remembered on the device), then clears them on the
+  idea and links the note (`giftAfterMove`). Stored pictures move by reference, not deleted.
+- **Add to a gift list…** (a note; `AddToGiftList`): an idea named like the note on a gift list you can add to
+  (`canAddIdeas`, not secret companions), linking the note; the note lists the gift ideas that link it ("On gift
+  lists"). Both warn when the note reaches fewer people than the gift list (`noteReachWarning`: e.g. a Family note on
+  an Everyone list, which relatives can't open).
+- Linked notes (`RelatedNotes`) now show all of the note (text, links, pictures), open from the start on a gift idea
+  whose own details are empty.
+- Today's default (`defaultTiles`) now has Wordle of the day in Fun and Gifts on the main page above To Do.
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts

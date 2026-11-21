@@ -41,11 +41,12 @@ export function known(t: Tile): boolean {
 }
 
 /** Today's panels in the order someone new starts with (the family's own layout, without their personal links). */
-const DEFAULT_MAIN = ['photos', 'inbox', 'goals', 'group:Fun', 'daily', 'games', 'rewards', 'cards', 'elements', 'game:glider', 'group:People', 'map', 'contacts', 'end:1', 'todo']
+const DEFAULT_MAIN = ['photos', 'inbox', 'goals', 'group:Fun', 'daily', 'games', 'game:wordle', 'rewards', 'cards', 'elements', 'game:glider', 'group:People', 'map', 'contacts', 'end:1', 'gifts', 'todo']
 
 /**
- * Today for someone who hasn't arranged it (a new member or relative): On this day, Inbox, Goals, a Fun group, a
- * People group, To Do below them, and every other panel in More…. "Back to the usual arrangement" returns to it.
+ * Today for someone who hasn't arranged it (a new member or relative): On this day, Inbox, Goals, a Fun group (with
+ * Wordle of the day and Glider), a People group, Gifts and To Do below them, and every other panel in More….
+ * "Back to the usual arrangement" returns to it.
  */
 export function defaultTiles(): Tile[] {
   const main = DEFAULT_MAIN.map((id) => (id.includes(':') ? id : tile('panel', id)))
