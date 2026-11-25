@@ -369,7 +369,8 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
 - **Notifications follow who's signed in**: a phone turned on under several accounts goes only to the last one signed
   in on it (`devices/{sha256(token)}` = { uid }, written by `claimDevice` on sign-in and when turning notifications
   on; the Apps Script's `deviceIsFor_` skips a device claimed by someone else; unclaimed devices get everything, as
-  before).
+  before). Only someone who turned notifications on for that phone takes it over: opening Align as a child who never
+  did (Switch to) leaves it with whoever had it.
 
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 

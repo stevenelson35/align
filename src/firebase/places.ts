@@ -1,7 +1,7 @@
 // The family map's places (geofences) and each member's alerts: rules, this device's notifications (Firebase Cloud
 // Messaging, through the service worker public/sw.js), and email. The Apps Script notices arrivals / departures in
 // each OwnTracks report and sends the alerts (scripts/location/README.md).
-import { addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import type { AlertPrefs, Place } from '../utils/location'
 import { app, db } from './config'
@@ -74,20 +74,27 @@ export async function enablePushHere(uid: string, current: string[]): Promise<st
   if (!token) throw new Error('Couldn’t get a notification address for this device.')
   localStorage.setItem('align-push-token', token)
   await saveAlertPrefs(uid, { push: [...current.filter((t) => t !== token), token].slice(-10) })
-  await claimDevice(uid).catch(() => undefined)
+  await claimDevice(uid, true).catch(() => undefined)
   return token
 }
 
 /**
- * This phone's notifications go to whoever is signed in on it now (devices/{sha256(token)}: the Apps Script skips a
- * device claimed by someone else), so people who switch logins on one phone get only their own. Once per person per
- * device; best effort.
+ * This phone's notifications go to whoever is signed in on it now, among the people who turned notifications on
+ * here (devices/{sha256(token)}: the Apps Script skips a device claimed by someone else), so people who switch logins
+ * on one phone get only their own. Someone who never turned them on here (a child opened with Switch to) doesn't take
+ * the phone over: it stays with whoever had it. Once per person per device; best effort. `on`: they just turned
+ * notifications on here (no need to check).
  */
-export async function claimDevice(uid: string) {
+export async function claimDevice(uid: string, on = false) {
   const token = pushTokenHere()
   if (!token || !crypto?.subtle) return
   const mark = `${uid}:${token.slice(-16)}`
-  if (localStorage.getItem('align-push-claimed') === mark) return
+  if (!on && localStorage.getItem('align-push-claimed') === mark) return
+  if (!on) {
+    const prefs = await getDoc(doc(db, 'alertPrefs', uid))
+    const push = (prefs.data()?.push ?? []) as string[]
+    if (!push.includes(token)) return
+  }
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
   const id = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
   await setDoc(doc(db, 'devices', id), { uid, at: serverTimestamp() })
