@@ -132,3 +132,11 @@ export function describeWeather(code: number): { text: string; icon: IconName } 
   if (code >= 95) return { text: 'Thunderstorms', icon: 'storm' }
   return { text: 'Weather', icon: 'cloud' }
 }
+
+/** "67° Drizzle, rain later · 68°/63° · 90% rain": the weather in one line. */
+export function weatherLine(w: Weather): string {
+  const now = describeWeather(w.code)
+  const day = describeWeather(w.dayCode)
+  const later = day.text !== now.text ? `, ${day.text.toLowerCase()} later` : ''
+  return `${w.temp}° ${now.text}${later} · ${w.high}°/${w.low}°${w.rain ? ` · ${w.rain}% rain` : ''}`
+}

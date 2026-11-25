@@ -6,12 +6,13 @@ import type { List, Task } from '../../types'
 import { LIST_KIND } from '../../utils/listKinds'
 import { formatDay } from '../../engine/dates'
 import { isItemList } from '../../utils/tasks'
-import { parseTile, type Tile } from '../../utils/tiles'
+import { folderLabel, parseTile, type Tile } from '../../utils/tiles'
 import { TODAY_SECTIONS } from '../../utils/today'
 import type { IconName } from '../UI/Icon'
 
 export const PANEL_ICON: Record<string, IconName> = {
   todo: 'todo',
+  weather: 'sun',
   inbox: 'mail',
   goals: 'goal',
   rewards: 'photo',
@@ -79,9 +80,9 @@ export function useTileInfo(): (t: Tile) => TileInfo {
       case 'daily':
         return { label: dailyLabel(id), kind: 'The Daily', icon: 'sun', missing: !DAILY_ITEMS.some((i) => i.value === id) }
       case 'group':
-        return { label: id, kind: 'Group', icon: 'folder' }
+        return { label: folderLabel(id), kind: 'Folder', icon: 'folder' }
       case 'end':
-        return { label: 'End of group', kind: '', icon: 'folder' }
+        return { label: 'End of folder', kind: '', icon: 'folder' }
       default:
         return { label: 'More…', kind: '', icon: 'more' }
     }

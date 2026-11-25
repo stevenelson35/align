@@ -263,6 +263,8 @@ export function setPinned(uid: string, current: string[] | undefined, id: string
 
 /** Your Today tiles, in order (for every device). */
 export const setTodayTiles = (uid: string, tiles: string[]) => updateDoc(householdRef, { [`members.${uid}.today`]: tiles.slice(0, 150) })
+/** The tiles on your Home that show only when something's waiting (utils/waiting.ts). */
+export const setTodayWhenNew = (uid: string, tiles: string[]) => updateDoc(householdRef, { [`members.${uid}.todayWhenNew`]: tiles.slice(0, 60) })
 
 /** Personal colors and stickers for the Today surfaces (Settings). */
 export function setTodayPanelStyles(uid: string, styles: Partial<Record<TodaySurface, TodayPanelStyle>>) {

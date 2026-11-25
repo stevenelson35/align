@@ -21,5 +21,12 @@ export function afterName(m: HeadlineMessage): string {
 
 export const headline = (from: string, m: HeadlineMessage) => `${from}${afterName(m)}`
 
-/** The button: a result is something you can play too; an invitation, play; the rest, open. */
-export const actionLabel = (m: HeadlineMessage) => (m.kind === 'result' || (m.kind === 'game' && m.link.startsWith('#/games/play/')) ? 'Play it too' : m.kind === 'game' ? 'Play' : 'Open')
+/**
+ * The button: a result you've played already, see the results; one you haven't, play it too; an invitation, play;
+ * the rest, open.
+ */
+export function actionLabel(m: HeadlineMessage): string {
+  if (m.kind === 'result' && m.link.endsWith('/results')) return 'See results'
+  if (m.kind === 'result' || (m.kind === 'game' && m.link.startsWith('#/games/play/'))) return 'Play it too'
+  return m.kind === 'game' ? 'Play' : 'Open'
+}

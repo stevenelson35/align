@@ -415,8 +415,40 @@ function dailyState($config, $token, $uid, $date, $guess = null) {
     $progressId = 'daily_' . str_replace('-', '', $date) . '_' . $uid;
     $progress = firestoreGet($config, $token, 'wordleProgress', $progressId);
     if (!$progress) $progress = newProgress($config, $token, $progressId, $uid, $seed, 5, $secret['answer']);
-    if ($guess !== null) $progress = submitGuess($config, $token, $progressId, $progress, $guess, $uid, $seed);
+    if ($guess !== null) {
+        $progress = submitGuess($config, $token, $progressId, $progress, $guess, $uid, $seed);
+        publishDailyBoard($config, $token, $uid, $date, $progress);
+    }
     return stateResponse('daily', $seed, 5, $progress, $date);
+}
+
+// Each player's daily board as colors only (C correct, P present, A absent; no letters), for the family's side-by-side
+// results: wordleDailyBoards/{date}_{uid}. Readable by the family; written only here. Best effort.
+function publishDailyBoard($config, $token, $uid, $date, $progress) {
+    $fields = $progress['fields'] ?? [];
+    $guesses = json_decode($fields['guessesJson'] ?? '[]', true);
+    if (!is_array($guesses)) $guesses = [];
+    $rows = array_map(static fn($row) => implode('', array_map(
+        static fn($mark) => ['correct' => 'C', 'present' => 'P', 'absent' => 'A'][$mark] ?? 'A',
+        $row['marks'] ?? [],
+    )), $guesses);
+    $board = [
+        'uid' => $uid,
+        'date' => $date,
+        'rows' => $rows,
+        'complete' => (bool) ($fields['complete'] ?? false),
+        'solved' => (bool) ($fields['solved'] ?? false),
+        'abandoned' => (bool) ($fields['abandoned'] ?? false),
+        'updatedAt' => gmdate('Y-m-d\TH:i:s\Z'),
+    ];
+    if (!empty($fields['complete'])) $board['ms'] = (int) ($fields['elapsedMs'] ?? 0);
+    // Not firestoreTryPatch: that fails the request, and the game itself is already saved.
+    $query = implode('&', array_map(static fn($f) => 'updateMask.fieldPaths=' . rawurlencode($f), array_keys($board)));
+    try {
+        httpJson('PATCH', firestoreUrl($config, 'wordleDailyBoards', $date . '_' . $uid) . '?' . $query, ['fields' => encodeFields($board)], $token);
+    } catch (Throwable $e) {
+        // The shared board can miss one update.
+    }
 }
 
 function dailyPreview($config, $token, $uid, $date) {
@@ -451,6 +483,7 @@ function abandonDailyWordle($config, $token, $uid, $date) {
         'abandoned' => true,
     ], $progress['updateTime']);
     $finished = firestoreGet($config, $token, 'wordleProgress', $progressId);
+    publishDailyBoard($config, $token, $uid, $date, $finished);
     return stateResponse('daily', $seed, 5, $finished, $date);
 }
 

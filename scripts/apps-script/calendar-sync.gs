@@ -326,11 +326,13 @@ function sendAlerts_(cfg, api, uid, events) {
   var members = (household && household.fields.members) || {}
   var name = (members[uid] || {}).displayName || 'Someone'
   var tz = cfg.TIME_ZONE || Session.getScriptTimeZone()
+  var owners = {}
   events.forEach(function (ev) {
     var text = alertText_(name, ev, tz)
     alertTargets_(prefs, uid, ev, members).forEach(function (p) {
       ;(p.fields.push || []).forEach(function (token) {
         try {
+          if (!deviceIsFor_(api, token, p.id, owners)) return
           sendPush_(cfg, token, text, ev.place + ':' + uid)
         } catch (err) {
           console.log('Push failed: ' + err)
@@ -429,12 +431,31 @@ function inboxText_(fromName, m) {
   return { title: (fromName + after).slice(0, 120), body: (m.text || (game ? tap : 'Sent to your Align Inbox.')).slice(0, 240) }
 }
 
+/**
+ * Whether a device should get a person's notifications: one phone can be turned on under several accounts (people
+ * who switch logins), so a device goes only to whoever signed in on it last (devices/{sha256(token)}.uid, written by
+ * the app). A device that never said is sent to, as before. `owners` caches lookups for one run.
+ */
+function deviceIsFor_(api, token, uid, owners) {
+  if (!(token in owners)) {
+    var hex = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, token, Utilities.Charset.UTF_8)
+      .map(function (b) {
+        return ('0' + (b & 0xff).toString(16)).slice(-2)
+      })
+      .join('')
+    var d = api.get('devices/' + hex)
+    owners[token] = d && d.fields.uid ? d.fields.uid : ''
+  }
+  return !owners[token] || owners[token] === uid
+}
+
 /** Pushes each message once (to every device its recipient turned on, unless they turned Inbox alerts off). */
 function pushInbox_(cfg, api, messages) {
   if (!messages.length) return 0
   var members = ((api.get('household/main') || { fields: {} }).fields.members) || {}
   var cache = CacheService.getScriptCache()
   var prefs = {}
+  var owners = {}
   var sent = 0
   messages.forEach(function (m) {
     var f = m.fields
@@ -448,6 +469,7 @@ function pushInbox_(cfg, api, messages) {
     var url = String(f.link || '').indexOf('#/') === 0 ? f.link : '#/inbox'
     tokens.forEach(function (token) {
       try {
+        if (!deviceIsFor_(api, token, f.to, owners)) return
         if (sendPush_(cfg, token, text, 'inbox:' + m.id, url)) sent++
       } catch (err) {
         console.log('Inbox push failed: ' + err)

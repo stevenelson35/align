@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareWordleResults, decodeWordleProgressRow, hardModeError, markGuess, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, wordleProgressLabel, shareGrid, shareTitle, resultTitle, challengeMessage, wordleDay, rankingLine, type WordleGuess } from './wordle'
+import { compareWordleResults, decodeWordleProgressRow, hardModeError, markGuess, normalizeWord, validWord, wordleChallengeFinished, wordleKeyboardMarks, wordleProgressLabel, shareGrid, shareTitle, resultTitle, challengeMessage, wordleDay, rankingLine, dailyStandings, type WordleGuess } from './wordle'
 
 describe('Wordle rules', () => {
   it('marks exact, present and absent letters', () => {
@@ -122,5 +122,39 @@ describe('what a Wordle challenge says', () => {
     expect(challengeMessage('random-live', 1).title).toBe('challenged you and 1 other to a Wordle with a random word')
     expect(challengeMessage('random-live', 1).text).toMatch(/^Not real time/)
     expect(challengeMessage('realtime-live', 0).title).toBe('invited you to a real-time Wordle race')
+  })
+})
+
+describe("a day's standings", () => {
+  it('ranks solvers by guesses then time, then missed, gave up, playing and not played', () => {
+    const people = [
+      { uid: 'a', name: 'Ann' },
+      { uid: 'b', name: 'Bo' },
+      { uid: 'c', name: 'Cy' },
+      { uid: 'd', name: 'Di' },
+      { uid: 'e', name: 'Ed' },
+      { uid: 'f', name: 'Flo' },
+    ]
+    const scores = [
+      { uid: 'b', guesses: 5, ms: 148000 },
+      { uid: 'a', guesses: 3, ms: 106000 },
+    ]
+    const boards = [
+      { uid: 'a', date: 'd', rows: ['AAPAA', 'CPAAC', 'CCCCC'], complete: true, solved: true },
+      { uid: 'c', date: 'd', rows: ['AAAAA', 'AAAAA', 'AAAAA', 'AAAAA', 'AAAAA', 'AAAAA'], complete: true, solved: false },
+      { uid: 'd', date: 'd', rows: ['AAAAA'], complete: true, solved: false, abandoned: true },
+      { uid: 'e', date: 'd', rows: ['APAAA'], complete: false, solved: false },
+    ]
+    const s = dailyStandings(people, scores, boards)
+    expect(s.map((x) => `${x.place ?? '-'} ${x.name} ${x.text}`)).toEqual([
+      '1 Ann 3 guesses · 1:46',
+      '2 Bo 5 guesses · 2:28',
+      '- Cy X/6',
+      '- Di Gave up',
+      '- Ed Playing now',
+      '- Flo Not played yet',
+    ])
+    expect(s[0].rows).toHaveLength(3)
+    expect(s[5].state).toBe('waiting')
   })
 })

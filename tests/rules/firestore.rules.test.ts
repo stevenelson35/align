@@ -1208,6 +1208,32 @@ describe('investing', () => {
   })
 })
 
+describe('phones and daily Wordle boards', () => {
+  const id = 'a'.repeat(64)
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore() as unknown as Firestore, 'household/main'), { 'members.bot': { role: 'member', displayName: 'Calendar', color: '#57606a', bot: true } })
+    })
+  })
+  it('lets whoever signs in on a phone claim its notifications, read only by the helper', async () => {
+    await assertSucceeds(setDoc(doc(db('steve'), `devices/${id}`), { uid: 'steve', at: serverTimestamp() }))
+    await assertSucceeds(setDoc(doc(db('wife'), `devices/${id}`), { uid: 'wife', at: serverTimestamp() }))
+    await assertSucceeds(setDoc(doc(db('grandma'), `devices/${id}`), { uid: 'grandma', at: serverTimestamp() }))
+    await assertFails(setDoc(doc(db('wife'), `devices/${id}`), { uid: 'steve', at: serverTimestamp() }))
+    await assertFails(setDoc(doc(db('wife'), 'devices/short'), { uid: 'wife', at: serverTimestamp() }))
+    await assertFails(getDoc(doc(db('wife'), `devices/${id}`)))
+    await assertSucceeds(getDoc(doc(db('bot'), `devices/${id}`)))
+  })
+  it('lets the family read daily boards, written only by the Wordle server', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore() as unknown as Firestore, 'wordleDailyBoards/2026-11-25_wife'), { uid: 'wife', date: '2026-11-25', rows: ['APAAC', 'CCCCC'], complete: true, solved: true })
+    })
+    await assertSucceeds(getDoc(doc(db('steve'), 'wordleDailyBoards/2026-11-25_wife')))
+    await assertSucceeds(getDoc(doc(db('grandma'), 'wordleDailyBoards/2026-11-25_wife')))
+    await assertFails(setDoc(doc(db('wife'), 'wordleDailyBoards/2026-11-25_wife'), { uid: 'wife', rows: [] }))
+  })
+})
+
 describe('inbox', () => {
   const msg = (over: Record<string, unknown> = {}) => ({ to: 'wife', from: 'steve', kind: 'entry', title: 'Buy milk', text: 'On your way home?', link: '#/task/t1', read: false, pushed: false, createdAt: serverTimestamp(), ...over })
   beforeEach(async () => {
@@ -1221,6 +1247,9 @@ describe('inbox', () => {
     await assertSucceeds(setDoc(doc(db('steve'), 'inbox/m2'), noText)) // a view-only account can receive, no note needed
     await assertFails(setDoc(doc(db('steve'), 'inbox/x1'), msg({ from: 'wife' })))
     await assertFails(setDoc(doc(db('steve'), 'inbox/x2'), msg({ to: 'steve' })))
+    // A quiet result (already played that day): no notification; only results may start out pushed.
+    await assertSucceeds(setDoc(doc(db('steve'), 'inbox/q1'), msg({ kind: 'result', pushed: true })))
+    await assertFails(setDoc(doc(db('steve'), 'inbox/q2'), msg({ pushed: true })))
     await assertFails(setDoc(doc(db('steve'), 'inbox/x3'), msg({ to: 'stranger' })))
     await assertFails(setDoc(doc(db('steve'), 'inbox/x4'), msg({ read: true })))
     await assertFails(setDoc(doc(db('steve'), 'inbox/x5'), msg({ pushed: true })))

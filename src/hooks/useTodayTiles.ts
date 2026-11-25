@@ -1,4 +1,4 @@
-import { setTodayTiles } from '../firebase/db'
+import { setTodayTiles, setTodayWhenNew } from '../firebase/db'
 import { addTile, removeTile, tilesOf, type Tile, type TilePlace } from '../utils/tiles'
 import { useApp } from './useApp'
 
@@ -7,6 +7,7 @@ export function useTodayTiles() {
   const { uid, member, isMember } = useApp()
   const tiles = tilesOf(member)
   const save = (next: Tile[]) => setTodayTiles(uid, next)
+  const whenNew = new Set(member.todayWhenNew ?? [])
   return {
     tiles,
     /** Members only (viewers can't save an arrangement). */
@@ -16,5 +17,8 @@ export function useTodayTiles() {
     add: (t: Tile, place: TilePlace = 'top') => save(addTile(tiles, t, place)),
     remove: (t: Tile) => save(removeTile(tiles, t)),
     toggle: (t: Tile) => save(tiles.includes(t) ? removeTile(tiles, t) : addTile(tiles, t)),
+    /** Tiles shown only when something's waiting. */
+    whenNew,
+    setWhenNew: (t: Tile, on: boolean) => setTodayWhenNew(uid, on ? [...whenNew, t] : [...whenNew].filter((x) => x !== t)),
   }
 }

@@ -77,6 +77,7 @@ const sandbox = createContext({
     getUuid: () => crypto.randomUUID(),
     // Apps Script returns signed bytes.
     DigestAlgorithm: { SHA_256: 'sha256' },
+    Charset: { UTF_8: 'utf8' },
     computeDigest: (algorithm, value) => [...createHash(algorithm).update(value).digest()].map((b) => (b > 127 ? b - 256 : b)),
     computeRsaSha256Signature: (value, pem) => [...createSign('RSA-SHA256').update(value).sign(pem)].map((b) => (b > 127 ? b - 256 : b)),
     base64EncodeWebSafe: (v) => Buffer.from(typeof v === 'string' ? v : v.map((b) => b & 255)).toString('base64url') + '=',
@@ -312,6 +313,19 @@ await admin.doc('inbox/m3').set(message())
 before = pushes().length
 sandbox.sweepInbox()
 check(pushes().length === before && (await admin.doc('inbox/m3').get()).data().pushed === true, 'inbox: someone who turned Inbox alerts off gets none (the message still waits in the Inbox)')
+// A phone turned on under two accounts goes only to whoever signed in on it last (devices/{sha256(token)}).
+await admin.doc('alertPrefs/wife').update({ inboxOff: false })
+const phone = admin.doc(`devices/${createHash('sha256').update('wife-phone').digest('hex')}`)
+await phone.set({ uid: 'steve', at: new Date() })
+await admin.doc('inbox/m4').set(message())
+before = pushes().length
+sandbox.sweepInbox()
+check(pushes().length === before && (await admin.doc('inbox/m4').get()).data().pushed === true, "inbox: a phone now signed in as someone else doesn't get it")
+await phone.set({ uid: 'wife', at: new Date() })
+await admin.doc('inbox/m5').set(message())
+before = pushes().length
+sandbox.sweepInbox()
+check(pushes().slice(before).some((m) => m.token === 'wife-phone'), 'inbox: the phone signed in as the recipient does')
 
 stub.kill()
 console.log('Calendar sync works against the emulator.')

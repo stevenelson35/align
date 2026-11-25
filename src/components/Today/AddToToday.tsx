@@ -9,7 +9,7 @@ import { defaultName, safeUrl } from '../../utils/links'
 import { LIST_KIND } from '../../utils/listKinds'
 import { splitTitleNote } from '../../utils/quickAdd'
 import { people } from '../../utils/tasks'
-import { addGroup, addTile, groupNames, known, placeOf, splitMore, tile, tilesInGroup, type Tile, type TilePlace } from '../../utils/tiles'
+import { addGroup, addTile, folderLabel, groupNames, known, placeOf, splitMore, tile, tilesInGroup, type Tile, type TilePlace } from '../../utils/tiles'
 import { TODAY_SECTIONS } from '../../utils/today'
 import { Icon } from '../UI/Icon'
 import { useTileInfo } from './useTileInfo'
@@ -91,7 +91,7 @@ export function AddToToday({ onClose, start = 'top' }: { onClose: () => void; /*
     ;(today.has(t) ? today.remove(t) : today.add(t, where)).catch(fail)
   }
 
-  const whereText = place === 'top' ? 'at the top of Today' : place === 'bottom' ? 'on Today, below your groups' : place === 'more' ? 'in More…' : `in “${group}”`
+  const whereText = place === 'top' ? 'at the top of Home' : place === 'bottom' ? 'on Home, below your folders' : place === 'more' ? 'in More…' : `in “${folderLabel(group ?? '')}”`
 
   function newList() {
     setError(null)
@@ -120,16 +120,16 @@ export function AddToToday({ onClose, start = 'top' }: { onClose: () => void; /*
     e.preventDefault()
     const name = groupName.trim().replace(/\s+/g, ' ').slice(0, 40)
     if (!name) return
-    if (yourGroups.includes(name)) return setError(`There’s already a group called “${name}”.`)
+    if (yourGroups.includes(name)) return setError(`There’s already a folder called “${name}”.`)
     setError(null)
     today.save(addGroup(today.tiles, name)).catch(fail)
     setPlace(`g:${name}`)
     setGroupName('')
-    setNote(`Made the “${name}” group. Add something to it?`)
+    setNote(`Made the “${name}” folder. Add something to it?`)
     setStep('choose')
   }
 
-  const title = group ? `“${group}”` : place === 'more' ? 'More…' : 'Today'
+  const title = group ? `“${folderLabel(group)}”` : place === 'more' ? 'More…' : 'Home'
   const row = (t: Tile, action: ReactNode) => {
     const it = info(t)
     return (
@@ -186,14 +186,14 @@ export function AddToToday({ onClose, start = 'top' }: { onClose: () => void; /*
         }}
         aria-label="Where new tiles go"
       >
-        <option value="top">Today, above your groups</option>
-        <option value="bottom">Today, below your groups</option>
+        <option value="top">Home, above your folders</option>
+        <option value="bottom">Home, below your folders</option>
         {yourGroups.map((g) => (
           <option key={g} value={`g:${g}`}>
-            The “{g}” group
+            The “{folderLabel(g)}” folder
           </option>
         ))}
-        <option value="new">A new group…</option>
+        <option value="new">A new folder…</option>
         <option value="more">More…</option>
       </select>
     </label>
@@ -208,7 +208,7 @@ export function AddToToday({ onClose, start = 'top' }: { onClose: () => void; /*
     <div className="modal-backdrop" onClick={onClose}>
       <div className="card modal add-to-today" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={`Add to ${title}`}>
         <div className="row">
-          <strong className="grow">{step === 'remove' ? `Take something out of ${title}` : step === 'group' ? 'Make a new group' : `Add to ${title}`}</strong>
+          <strong className="grow">{step === 'remove' ? `Take something out of ${title}` : step === 'group' ? 'Make a new folder' : `Add to ${title}`}</strong>
           <button type="button" className="link" onClick={onClose} aria-label="Close">
             <Icon name="close" />
           </button>
@@ -230,7 +230,7 @@ export function AddToToday({ onClose, start = 'top' }: { onClose: () => void; /*
             )}
             <button type="button" className="add-choice" onClick={() => go('group')}>
               <span className="section-icon"><Icon name="folder" /></span>
-              <span><strong>Make a new group</strong><span className="muted small">A heading you name, to gather tiles under</span></span>
+              <span><strong>Make a new folder</strong><span className="muted small">One line on Home you name, that opens to what’s in it</span></span>
             </button>
             {removable.length > 0 && (
               <button type="button" className="add-choice" onClick={() => go('remove')}>
@@ -289,7 +289,7 @@ export function AddToToday({ onClose, start = 'top' }: { onClose: () => void; /*
         {step === 'group' && (
           <form className="add-step" onSubmit={makeGroup}>
             {back}
-            <p className="muted small">A group is a heading on Today with its own tiles under it (like Fun or Links). Name it; then add things to it.</p>
+            <p className="muted small">A folder is one line on Home that opens to what’s in it (like Fun or Info). Name it; then add things to it. (Arrange can put folders inside folders.)</p>
             <div className="row">
               <input autoFocus value={groupName} maxLength={40} onChange={(e) => setGroupName(e.target.value)} placeholder="e.g. Kids, School, Call" aria-label="Group name" />
               <button type="submit" className="small" disabled={!groupName.trim()}>
@@ -317,7 +317,7 @@ export function AddToToday({ onClose, start = 'top' }: { onClose: () => void; /*
             <div className="add-to-today-results">
               {group && (
                 <section>
-                  <h4 className="muted small">In “{group}” now</h4>
+                  <h4 className="muted small">In “{folderLabel(group)}” now</h4>
                   {inGroup.length ? <ul>{inGroup.map((t) => row(t, removeButton(t)))}</ul> : <p className="muted small">Nothing yet: add something below.</p>}
                 </section>
               )}
@@ -332,7 +332,7 @@ export function AddToToday({ onClose, start = 'top' }: { onClose: () => void; /*
                       <Icon name="list" /> New list
                     </button>
                     <button type="button" className="secondary small" onClick={() => go('group')}>
-                      <Icon name="folder" /> New group
+                      <Icon name="folder" /> New folder
                     </button>
                   </div>
                   {making === 'entry' && (

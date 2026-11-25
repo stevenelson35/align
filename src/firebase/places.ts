@@ -74,7 +74,24 @@ export async function enablePushHere(uid: string, current: string[]): Promise<st
   if (!token) throw new Error('Couldn’t get a notification address for this device.')
   localStorage.setItem('align-push-token', token)
   await saveAlertPrefs(uid, { push: [...current.filter((t) => t !== token), token].slice(-10) })
+  await claimDevice(uid).catch(() => undefined)
   return token
+}
+
+/**
+ * This phone's notifications go to whoever is signed in on it now (devices/{sha256(token)}: the Apps Script skips a
+ * device claimed by someone else), so people who switch logins on one phone get only their own. Once per person per
+ * device; best effort.
+ */
+export async function claimDevice(uid: string) {
+  const token = pushTokenHere()
+  if (!token || !crypto?.subtle) return
+  const mark = `${uid}:${token.slice(-16)}`
+  if (localStorage.getItem('align-push-claimed') === mark) return
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
+  const id = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+  await setDoc(doc(db, 'devices', id), { uid, at: serverTimestamp() })
+  localStorage.setItem('align-push-claimed', mark)
 }
 
 /** This device's push token, if notifications were turned on here. */

@@ -45,7 +45,13 @@ export function subscribeInbox(uid: string, onData: (messages: InboxMessage[]) =
  * Sends a message to each person's Inbox and asks for their notifications at once. Returns the new ids. The push is
  * best effort: if the web app can't be reached, the 15-minute sweep sends it.
  */
-export async function sendToInbox(from: string, to: string[], message: { kind: InboxKind; title: string; text?: string; link: string }): Promise<string[]> {
+export async function sendToInbox(
+  from: string,
+  to: string[],
+  message: { kind: InboxKind; title: string; text?: string; link: string },
+  /** In the Inbox without a notification (only results: someone who already played that day). */
+  quiet = false,
+): Promise<string[]> {
   const ids: string[] = []
   for (const person of new Set(to)) {
     if (person === from) continue
@@ -57,12 +63,12 @@ export async function sendToInbox(from: string, to: string[], message: { kind: I
       ...(message.text?.trim() ? { text: message.text.trim().slice(0, MAX_TEXT) } : {}),
       link: inboxLink(message.link),
       read: false,
-      pushed: false,
+      pushed: quiet && message.kind === 'result',
       createdAt: serverTimestamp(),
     })
     ids.push(ref.id)
   }
-  if (ids.length) void notifyNow(ids)
+  if (ids.length && !quiet) void notifyNow(ids)
   return ids
 }
 

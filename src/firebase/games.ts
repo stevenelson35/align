@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { db } from './config'
 import { sendToInbox } from './inbox'
 import { compareGameResults, gameById, type GameId, type GameResult } from '../games/catalog'
-import { rankingLine, resultTitle, shareGrid, wordleDay, type WordleGuess } from '../games/wordle'
+import { rankingLine, resultTitle, shareGrid, wordleDay, type DailyBoard, type WordleGuess } from '../games/wordle'
 
 export interface GameScore {
   uid: string
@@ -56,6 +56,20 @@ export interface GameChallengePayload {
   diskCount?: number
   wordLength?: number
   version: number
+}
+
+/** Everyone's Wordle boards for a day (colors only, wordleDailyBoards), live. `date` empty: none (no reads). */
+export function useDailyBoards(date: string) {
+  const [boards, setBoards] = useState<DailyBoard[]>([])
+  useEffect(() => {
+    if (!date) return
+    return onSnapshot(
+      query(collection(db, 'wordleDailyBoards'), where('date', '==', date)),
+      (snap) => setBoards(snap.docs.map((d) => d.data() as DailyBoard)),
+      () => undefined,
+    )
+  }, [date])
+  return boards
 }
 
 export function useGameScores(gameId: GameId, seed: string, enabled = true) {
@@ -249,9 +263,10 @@ export function dismissGameChallenge(id: string) {
 
 /**
  * Finishing Wordle of the day tells the family (refactor follow-up 2026-11-18): everyone (members and view-only
- * family, not the calendar helper) gets an Inbox message and a notification with your score and time, the colored
- * squares (no letters) and that day's ranking so far; "Play it too" opens that same day's Wordle (the server keeps a
- * week of them), so results stay comparable. Once per puzzle per person (this device remembers it was sent).
+ * family, not the calendar helper) gets an Inbox message with your score and time, the colored squares (no letters)
+ * and that day's ranking so far. Those who haven't played that day's puzzle also get a notification, and "Play it
+ * too" opens that same day's Wordle (the server keeps a week of them), so results stay comparable; those who have
+ * get it quietly (no notification), with "See results". Once per puzzle per person (this device remembers it).
  */
 export async function announceDailyWordle(
   uid: string,
@@ -273,10 +288,19 @@ export async function announceDailyWordle(
     return { uid: d.data().uid as string, guesses: best.guesses, ms: best.ms }
   })
   const date = game.date ?? today
+  // Who has finished that day's puzzle already (solved: a score; missed or gave up: their board).
+  const boards = await getDocs(query(collection(db, 'wordleDailyBoards'), where('date', '==', date))).catch(() => null)
+  const played = new Set([...scores.map((s) => s.uid), ...(boards?.docs ?? []).filter((d) => d.data().complete).map((d) => d.data().uid as string)])
   const ranking = rankingLine(scores, (id) => members[id]?.displayName ?? 'Someone', date === today ? 'Today' : wordleDay(date))
   const text = [shareGrid(game.guesses), ranking].filter(Boolean).join('\n\n')
   // Its link opens that day's puzzle, so whoever plays it later (even the next day) plays the same word and ranks with them.
   const title = resultTitle(date, today, { solved: game.solved, abandoned: game.abandoned, guesses: game.guesses.length, ms: game.elapsedMs })
-  await sendToInbox(uid, to, { kind: 'result', title, text, link: `#/games/play/wordle/${date}` })
+  const link = `#/games/play/wordle/${date}`
+  const waiting = to.filter((id) => !played.has(id))
+  const done = to.filter((id) => played.has(id))
+  await Promise.all([
+    waiting.length ? sendToInbox(uid, waiting, { kind: 'result', title, text, link }) : null,
+    done.length ? sendToInbox(uid, done, { kind: 'result', title, text, link: `${link}/results` }, true) : null,
+  ])
   return to.length
 }

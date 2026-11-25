@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { BLOG_URL } from '../../blog/post'
 import { useApp, useData } from '../../hooks/useApp'
-import { useInbox } from '../../hooks/useInbox'
+import { LIBRARY_FIND_KEY, useLibraryPages } from '../../hooks/useLibraryPages'
 import { useStoredSet } from '../../hooks/useStoredSet'
 import { useTodayTiles } from '../../hooks/useTodayTiles'
 import type { List, Task } from '../../types'
@@ -9,7 +9,8 @@ import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 import { safeUrl } from '../../utils/links'
 import { LIST_KIND } from '../../utils/listKinds'
 import { MENU_SCROLL_KEY, menuSectionOf } from '../../utils/menu'
-import type { Route } from '../../utils/routes'
+import { searchAll } from '../../utils/search'
+import { EntryResults } from './FindAnything'
 import { isFinished, isItemList } from '../../utils/tasks'
 import { placeOf, tile, type Tile } from '../../utils/tiles'
 import { Icon, type IconName } from '../UI/Icon'
@@ -42,9 +43,13 @@ function whereText(tiles: Tile[], t: Tile): string | null {
 export function LibraryView() {
   const app = useApp()
   const { lists, boards, tasks, listItems } = useData()
-  const { unread } = useInbox()
   const today = useTodayTiles()
-  const [filter, setFilter] = useState('')
+  // Find… on Home's More sheet can send what you typed here ("See everything").
+  const [filter, setFilter] = useState(() => {
+    const sent = sessionStorage.getItem(LIBRARY_FIND_KEY) ?? ''
+    sessionStorage.removeItem(LIBRARY_FIND_KEY)
+    return sent
+  })
   const [open, toggleOpen] = useStoredSet('align-library-open')
   // From a list page's breadcrumb ("Links ›"): open that section and bring it to the top, once.
   useEffect(() => {
@@ -60,23 +65,8 @@ export function LibraryView() {
   const hit = (...text: string[]) => words.every((w) => text.join(' ').toLowerCase().includes(w))
   const finding = words.length > 0
 
-  const pages: { label: string; icon: IconName; route?: Route; onClick?: () => void; badge?: number; tile?: Tile; members?: boolean }[] = [
-    { label: 'Today', icon: 'sun', route: { view: 'today' } },
-    { label: 'Inbox', icon: 'mail', route: { view: 'inbox' }, badge: unread, tile: 'panel:inbox' },
-    { label: 'Tasks', icon: 'todo', route: { view: 'home' } },
-    { label: 'Goals', icon: 'goal', route: { view: 'goals' }, tile: 'panel:goals' },
-    { label: 'Games', icon: 'sparkle', route: { view: 'games' }, tile: 'panel:games', members: true },
-    { label: 'Family map', icon: 'map', route: { view: 'map' }, tile: 'panel:map', members: true },
-    { label: 'Photos', icon: 'photo', route: { view: 'photos' } },
-    { label: 'Periodic table', icon: 'sparkle', route: { view: 'elements' }, tile: 'panel:elements' },
-    { label: 'Languages', icon: 'message', route: { view: 'languages' } },
-    { label: 'Voting boards', icon: 'star', route: { view: 'boards' }, tile: 'panel:voting' },
-    { label: 'New blog post', icon: 'compose', route: { view: 'blog' }, members: true },
-    { label: 'Wall display', icon: 'calendar', route: { view: 'wall' } },
-    { label: 'Help & about', icon: 'help', route: { view: 'help' } },
-    { label: 'Settings', icon: 'settings', onClick: app.openSettings },
-  ]
-  const shownPages = pages.filter((p) => (!p.members || app.isMember) && (!finding || hit(p.label)))
+  const pages = useLibraryPages()
+  const shownPages = pages.filter((p) => !finding || hit(p.label))
   const links = (app.member.pinnedLinks ?? []).map((id) => listItems.find((t) => t.id === id)).filter((t): t is Task => !!t && !!safeUrl(t.url))
   const shownLinks = [{ id: 'blog', title: "Travelin' On blog", url: BLOG_URL }, ...links.map((t) => ({ id: t.id, title: t.title, url: safeUrl(t.url)! }))].filter((l) => !finding || hit(l.title))
 
@@ -141,7 +131,7 @@ export function LibraryView() {
           </button>
         )}
       </header>
-      <input type="search" className="library-find" placeholder="Find a list, page or board…" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Find in the Library" />
+      <input type="search" className="library-find" placeholder="Find anything: a page, list, task, note, link…" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Find in the Library" />
       {error && <p className="error small">{error}</p>}
 
       {shownPages.length > 0 && (
@@ -235,8 +225,10 @@ export function LibraryView() {
             ))}
           </ul>,
         )}
-      {finding && !shownPages.length && !shownLinks.length && !sections.length && !shownBoards.length && <p className="muted small">Nothing matches “{filter.trim()}”.</p>}
-      {finding && <p className="muted small">Looking for an entry inside a list? Use search (top bar).</p>}
+      {finding && <EntryResults query={filter} />}
+      {finding && !shownPages.length && !shownLinks.length && !sections.length && !shownBoards.length && !searchAll(filter, tasks, listItems, lists).length && (
+        <p className="muted small">Nothing matches “{filter.trim()}”.</p>
+      )}
     </section>
   )
 }

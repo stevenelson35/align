@@ -6,6 +6,7 @@ describe('an Inbox message in one line', () => {
     const result = { kind: 'result', title: 'completed today’s Wordle (Fri, Nov 20): 3/6 in 2:03', link: '#/games/play/wordle/2026-11-20' }
     expect(headline('Ann', result)).toBe('Ann completed today’s Wordle (Fri, Nov 20): 3/6 in 2:03')
     expect(actionLabel(result)).toBe('Play it too')
+    expect(actionLabel({ ...result, link: '#/games/play/wordle/2026-11-20/results' })).toBe('See results')
     const race = { kind: 'game', title: 'invited you to a real-time Wordle race', link: '#/games/abc' }
     expect(headline('Ann', race)).toBe('Ann invited you to a real-time Wordle race')
     expect(actionLabel(race)).toBe('Play')

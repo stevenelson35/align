@@ -81,9 +81,11 @@ service cloud.firestore {
       let uid = request.auth.uid;
       return after.diff(before).affectedKeys().hasOnly([uid])
         && after[uid].role == before[uid].role
-        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'pinnedGames', 'newTaskDue', 'pinned', 'todayPanels', 'today'])
+        && after[uid].keys().hasOnly(['role', 'displayName', 'color', 'defaultVisibility', 'phone', 'pinnedLinks', 'pinnedGames', 'newTaskDue', 'pinned', 'todayPanels', 'today', 'todayWhenNew'])
         // Their Today tiles, in order ("kind:id" strings: panels, lists, entries, parts, group names, the More… mark).
         && (!('today' in after[uid]) || (after[uid].today is list && after[uid].today.size() <= 150))
+        // The tiles shown only when something's waiting there.
+        && (!('todayWhenNew' in after[uid]) || (after[uid].todayWhenNew is list && after[uid].todayWhenNew.size() <= 60))
         && (!('pinnedGames' in after[uid]) || (after[uid].pinnedGames is list && after[uid].pinnedGames.size() <= 30))
         && (!('todayPanels' in after[uid]) || validTodayPanels(after[uid].todayPanels))
         // Lists and contacts they pinned to the top of their Today sections (ids).
@@ -781,7 +783,8 @@ service cloud.firestore {
         && d.title is string && d.title.size() > 0 && d.title.size() <= 300
         && (!('text' in d) || (d.text is string && d.text.size() <= 2000))
         && d.link is string && d.link.size() <= 500
-        && d.read == false && d.pushed == false
+        // pushed: true at the start = no notification (a result for someone who already played that day).
+        && d.read == false && (d.pushed == false || (d.pushed == true && d.kind == 'result'))
         && d.createdAt == request.time;
     }
 
@@ -854,6 +857,23 @@ service cloud.firestore {
 
     match /wordleProgress/{id} {
       allow read, write: if false;
+    }
+
+    // Each player's daily board as colors only (no letters), written by wordle.php, for the family's results.
+    match /wordleDailyBoards/{id} {
+      allow read: if isMember() || isViewer();
+      allow write: if false;
+    }
+
+    // Which account a phone's notifications go to now (people who switch logins on one phone): the id is the SHA-256
+    // of the device's push address; whoever signs in on it says so. Only the helper account reads them.
+    match /devices/{id} {
+      allow read: if isBot();
+      allow create, update: if (isMember() || isViewer())
+        && id.matches('^[0-9a-f]{64}$')
+        && request.resource.data.keys().hasOnly(['uid', 'at'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.at == request.time;
     }
 
     match /wordleChallengeProgress/{id} {

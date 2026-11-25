@@ -16,7 +16,7 @@ export const MAX_TILES = 120
  * Tiles added after people had arranged Today: put at the top of their tiles once. Taking one off is remembered as
  * "-tile" (at the end, never shown), so it doesn't come back.
  */
-export const AUTO_TILES: Tile[] = ['panel:inbox']
+export const AUTO_TILES: Tile[] = ['panel:weather', 'panel:inbox']
 const removedMark = (t: Tile) => `-${t}`
 
 /** Panels that belong to a day (shown on other days too). To Do is one of them. */
@@ -41,7 +41,7 @@ export function known(t: Tile): boolean {
 }
 
 /** Today's panels in the order someone new starts with (the family's own layout, without their personal links). */
-const DEFAULT_MAIN = ['photos', 'inbox', 'goals', 'group:Fun', 'daily', 'games', 'game:wordle', 'rewards', 'cards', 'elements', 'game:glider', 'group:People', 'map', 'contacts', 'end:1', 'gifts', 'todo']
+const DEFAULT_MAIN = ['weather', 'photos', 'inbox', 'goals', 'group:Fun', 'daily', 'games', 'game:wordle', 'rewards', 'cards', 'elements', 'game:glider', 'group:People', 'map', 'contacts', 'end:1', 'gifts', 'todo']
 
 /**
  * Today for someone who hasn't arranged it (a new member or relative): On this day, Inbox, Goals, a Fun group (with
@@ -106,11 +106,18 @@ export function addTile(tiles: Tile[], t: Tile, place: TilePlace = 'top'): Tile[
 export function removeTile(tiles: Tile[], t: Tile): Tile[] {
   if (t === MORE) return tiles
   let out = tiles.filter((x) => x !== t)
-  // A group heading takes its own end line with it (its tiles join what's above).
+  // A group heading takes its own end line with it (its tiles join what's above); folders inside it move up a level.
   if (t.startsWith('group:')) {
     const at = tiles.indexOf(t)
     const close = tiles.findIndex((x, i) => i > at && (x === MORE || x.startsWith('group:') || x.startsWith('end:')))
     if (close >= 0 && tiles[close].startsWith('end:')) out = out.filter((x) => x !== tiles[close])
+    const name = t.slice(6)
+    const up = parentOf(name)
+    out = out.map((x) => {
+      if (!x.startsWith(`group:${name}${FOLDER_SEP}`)) return x
+      const moved = `group:${up ? `${up}${FOLDER_SEP}` : ''}${x.slice(7 + name.length)}`
+      return out.includes(moved) ? x : moved
+    })
   }
   return AUTO_TILES.includes(t) && !out.includes(removedMark(t)) ? [...out, removedMark(t)] : out
 }
@@ -126,11 +133,91 @@ export function moveTile(tiles: Tile[], from: number, to: number): Tile[] {
   return out
 }
 
-/** Renames a group (keeping its place). Empty or taken names are refused (unchanged). */
+/**
+ * Renames a group (keeping its place, and its place inside another group). Folders inside it follow. Empty or taken
+ * names are refused (unchanged).
+ */
 export function renameGroup(tiles: Tile[], from: string, to: string): Tile[] {
-  const name = to.trim().replace(/\s+/g, ' ').slice(0, 40)
-  if (!name || tiles.includes(tile('group', name))) return tiles
-  return tiles.map((t) => (t === tile('group', from) ? tile('group', name) : t))
+  const leaf = cleanFolderName(to)
+  const parent = parentOf(from)
+  const name = parent ? `${parent}${FOLDER_SEP}${leaf}` : leaf
+  if (!leaf || tiles.includes(tile('group', name))) return tiles
+  return tiles.map((t) => (t === tile('group', from) ? tile('group', name) : t.startsWith(`group:${from}${FOLDER_SEP}`) ? `group:${name}${t.slice(6 + from.length)}` : t))
+}
+
+// ---- Folders inside folders (2026-11-25) ----
+// A group is a folder; one named "Info/People" is inside Info. The list stays flat (each group runs from its
+// heading to the next heading, an end line or More…), so older arrangements read the same; the nesting is only in
+// the names. A folder whose parent is missing shows on its own, with its whole name.
+
+export const FOLDER_SEP = '/'
+/** A folder's name as typed: one line, no "/", at most 40 characters. */
+export const cleanFolderName = (name: string) => name.replace(/\//g, '-').trim().replace(/\s+/g, ' ').slice(0, 40)
+/** "Info" for "Info/People"; undefined at the top. */
+export const parentOf = (name: string) => (name.includes(FOLDER_SEP) ? name.slice(0, name.lastIndexOf(FOLDER_SEP)) : undefined)
+/** "People" for "Info/People". */
+export const leafName = (name: string) => name.slice(name.lastIndexOf(FOLDER_SEP) + 1)
+/** "Info › People". */
+export const folderLabel = (name: string) => name.split(FOLDER_SEP).join(' › ')
+
+export interface FolderNode {
+  /** The whole name ("Info/People"). */
+  name: string
+  /** What it shows ("People"; the whole path when its parent is missing). */
+  label: string
+  tiles: Tile[]
+  children: FolderNode[]
+}
+export type HomeNode = { kind: 'tiles'; tiles: Tile[] } | { kind: 'folder'; folder: FolderNode }
+
+/** The tiles as Home shows them: runs of loose tiles and folders, each folder holding its tiles then its folders. */
+export function folderTree(tiles: Tile[]): HomeNode[] {
+  const groups = grouped(tiles)
+  const nodes = new Map<string, FolderNode>()
+  for (const g of groups) if (g.name !== undefined && !nodes.has(g.name)) nodes.set(g.name, { name: g.name, label: leafName(g.name), tiles: g.tiles, children: [] })
+  const out: HomeNode[] = []
+  for (const g of groups) {
+    if (g.name === undefined) {
+      out.push({ kind: 'tiles', tiles: g.tiles })
+      continue
+    }
+    const node = nodes.get(g.name)!
+    let parent = parentOf(g.name)
+    while (parent !== undefined && !nodes.has(parent)) parent = parentOf(parent)
+    if (parent !== undefined) nodes.get(parent)!.children.push(node)
+    else {
+      if (parentOf(g.name) !== undefined) node.label = folderLabel(g.name)
+      out.push({ kind: 'folder', folder: node })
+    }
+  }
+  return out
+}
+
+/** Everything in a folder, its folders' contents too. */
+export const allInFolder = (f: FolderNode): Tile[] => [...f.tiles, ...f.children.flatMap(allInFolder)]
+
+/** A new folder inside another (after the parent's tiles and folders). Taken names: unchanged. */
+export function addSubgroup(tiles: Tile[], parent: string, name: string): Tile[] {
+  const leaf = cleanFolderName(name)
+  const g = tile('group', `${parent}${FOLDER_SEP}${leaf}`)
+  if (!leaf || tiles.includes(g) || !tiles.includes(tile('group', parent))) return tiles
+  // The last heading in the parent's family, then the end of its run.
+  let last = -1
+  tiles.forEach((t, i) => {
+    if (t === tile('group', parent) || t.startsWith(`group:${parent}${FOLDER_SEP}`)) last = i
+  })
+  const close = tiles.findIndex((x, i) => i > last && (x === MORE || x.startsWith('group:') || x.startsWith('end:') || isMark(x)))
+  const at = close < 0 ? tiles.length : close
+  return [...tiles.slice(0, at), g, ...tiles.slice(at)]
+}
+
+/**
+ * Moves a tile into a folder (at its end), out of any folder (null: the end of the main page), or into More….
+ */
+export function moveToFolder(tiles: Tile[], t: Tile, where: string | null | 'more'): Tile[] {
+  if (!tiles.includes(t) || t === MORE) return tiles
+  const without = tiles.filter((x) => x !== t)
+  return addTile(without, t, where === 'more' ? 'more' : where === null ? 'bottom' : { group: where })
 }
 
 /** Where a tile is: on the main page or in More…, and under which group (null: not on Today). */

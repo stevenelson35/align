@@ -92,7 +92,7 @@ export function BlogPostView() {
             Write another
           </button>
           <button type="button" className="secondary small" onClick={() => app.navigate({ view: 'today' })}>
-            Back to Today
+            Back to Home
           </button>
         </div>
       </section>

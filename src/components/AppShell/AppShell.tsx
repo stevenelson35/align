@@ -23,6 +23,7 @@ import { TopBar } from './TopBar'
 import { routeHash } from '../../utils/routes'
 import { MENU_OPEN_KEY, MENU_SCROLL_KEY } from '../../utils/menu'
 import { InboxProvider } from '../../context/InboxProvider'
+import { claimDevice } from '../../firebase/places'
 import { InboxBanner } from '../Inbox/InboxBanner'
 import { WallView } from '../Wall/WallView'
 
@@ -34,6 +35,10 @@ interface Props {
 
 export function AppShell({ uid, household, member }: Props) {
   const data = useData()
+  // Notifications on this phone follow whoever signs in on it (people who switch logins on one phone).
+  useEffect(() => {
+    if (!member.bot) void claimDevice(uid).catch(() => undefined)
+  }, [uid, member.bot])
   const [route, navigate] = useHashRoute()
   const [selectedTaskId, selectTask] = useState<string | null>(null)
   const [shift, proposeShift] = useState<PendingShift | null>(null)
@@ -196,6 +201,7 @@ export function AppShell({ uid, household, member }: Props) {
         <TopBar
           member={member}
           onInbox={() => go({ view: 'inbox' })}
+          onHome={() => go({ view: 'today' })}
           onMenu={() => (!narrow ? setSidebarOpen((o) => !o) : route.view !== 'library' ? go({ view: 'library' }) : window.history.length > 1 ? window.history.back() : go({ view: 'today' }))}
           onChat={() => setChat((c) => ({ ...c, open: !c.open }))}
           onSettings={openSettings}
@@ -213,7 +219,7 @@ export function AppShell({ uid, household, member }: Props) {
                 </button>
               </p>
             )}
-            {/* Every page but Today gets a way back to Today (list pages put it beside their breadcrumb). */}
+            {/* Every page but Home gets a way back Home (list pages put it beside their breadcrumb). */}
             {data.loaded && !['today', 'list', 'task'].includes(route.view) && <PageBar crumbs={pageCrumbs} />}
             {data.loaded ? (
               <>

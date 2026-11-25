@@ -16,11 +16,11 @@ import {
 } from '../../firebase/wordle'
 import { announceDailyWordle, useGameScores, useWordleChallengeProgress, type GameChallenge } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
-import { formatGameResult } from '../../games/catalog'
 import { challengeMessage, hardModeError, normalizeWord, wordleDay, validWord, wordleChallengeFinished, wordleKeyboardMarks, WORDLE_MAX_LENGTH, WORDLE_MIN_LENGTH, WORDLE_MAX_GUESSES } from '../../games/wordle'
 import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
 import { WordleProgressBoard } from './WordleProgressBoard'
+import { WordleDailyResults } from './WordleDailyResults'
 import { earnDaily } from '../../firebase/play'
 import { sendToInbox } from '../../firebase/inbox'
 import { today } from '../../engine/dates'
@@ -369,7 +369,7 @@ export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallen
             ? isRealtimeChallenge
               ? 'Real-time Live Wordle'
               : challenge.from === app.uid ? 'Your live challenge' : `Challenge from ${app.household.members[challenge.from]?.displayName ?? 'a family member'}`
-            : 'A shared daily word, or a word challenge you create.'}
+            : 'The same word for the whole family each day.'}
         </span>
         <button type="button" className="secondary small" onClick={onBack}>Show All Games</button>
       </header>
@@ -378,124 +378,11 @@ export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallen
       {error && <p className="error small" role="alert">{error}</p>}
       {challengeProgressError && <p className="error small">{challengeProgressError}</p>}
 
-      {!challenge && (
-        <article className="card game-invite-form">
-          <div className="row">
-            <h3 className="grow">Create challenge</h3>
-            <button type="button" className="secondary small" aria-expanded={showCreate} onClick={() => setShowCreate((open) => !open)}>
-              {showCreate ? 'Hide' : 'Create challenge'}
-            </button>
-          </div>
-          {showCreate && (
-            <form onSubmit={(event) => void sendChallenge(event)}>
-              <fieldset className="wordle-challenge-mode">
-                <legend className="small">Challenge type</legend>
-                <label className="wordle-challenge-option">
-                  <input
-                    type="radio"
-                    name="wordle-challenge-type"
-                    checked={challengeType === 'invite'}
-                    onChange={() => {
-                      setChallengeType('invite')
-                      setSelected((current) => current.filter((id) => id !== app.uid))
-                    }}
-                  />
-                  <span>
-                    <strong>Choose a word invite</strong>
-                    <span className="muted small">Invite one or more others to play your word separately. You don’t play.</span>
-                  </span>
-                </label>
-                <label className="wordle-challenge-option">
-                  <input
-                    type="radio"
-                    name="wordle-challenge-type"
-                    checked={challengeType === 'live-chosen'}
-                    onChange={() => {
-                      setChallengeType('live-chosen')
-                      setSelected((current) => current.filter((id) => id !== app.uid))
-                    }}
-                  />
-                  <span>
-                    <strong>Live chosen word</strong>
-                    <span className="muted small">Challenge one or more others to play your word live. You know the answer, so you don’t play.</span>
-                  </span>
-                </label>
-                <label className="wordle-challenge-option">
-                  <input
-                    type="radio"
-                    name="wordle-challenge-type"
-                    checked={challengeType === 'random-live'}
-                    onChange={() => setChallengeType('random-live')}
-                  />
-                  <span>
-                    <strong>Live random word</strong>
-                    <span className="muted small">Play with one or more others. Select yourself and at least one other player.</span>
-                  </span>
-                </label>
-                <label className="wordle-challenge-option">
-                  <input
-                    type="radio"
-                    name="wordle-challenge-type"
-                    checked={challengeType === 'realtime-live'}
-                    onChange={() => setChallengeType('realtime-live')}
-                  />
-                  <span>
-                    <strong>Real-time Live Wordle</strong>
-                    <span className="muted small">Everyone marks Ready before the shared timer and game begin. The lobby cancels after 15 minutes if everyone has not joined.</span>
-                  </span>
-                </label>
-              </fieldset>
-              {!isRandomChallenge && (
-                <>
-                  <p className="muted small">Choose a 2–12 letter word. Five-letter answers must be accepted Wordle words, and every five-letter game uses hard mode. The answer is stored privately and isn’t sent with the invitation.</p>
-                  <div className="row wrap">
-                    <label className="small">
-                      Your word
-                      <input
-                        type="text"
-                        autoComplete="off"
-                        spellCheck={false}
-                        maxLength={WORDLE_MAX_LENGTH}
-                        value={word}
-                        onChange={(event) => setWord(event.target.value.replace(/[^a-z]/gi, '').slice(0, WORDLE_MAX_LENGTH))}
-                        aria-label="Custom Wordle answer"
-                      />
-                    </label>
-                    <span className="muted small">{WORDLE_MIN_LENGTH}–{WORDLE_MAX_LENGTH} letters</span>
-                  </div>
-                </>
-              )}
-              <p className="muted small">{isRandomChallenge ? 'Players (include yourself)' : 'Invite family members'}</p>
-              <div className="chips">
-                {challengePlayers.map(([id, member]) => (
-                  <label className={`chip-toggle${selected.includes(id) ? ' on' : ''}`} key={id}>
-                    <input type="checkbox" checked={selected.includes(id)} onChange={() => setSelected((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />
-                    {member.displayName}{id === app.uid ? ' (you)' : ''}
-                  </label>
-                ))}
-              </div>
-              <button type="submit" className="small" disabled={!canSendChallenge}>
-                {inviting
-                  ? 'Starting…'
-                  : challengeType === 'realtime-live'
-                    ? `Start real-time challenge${selected.length ? ` with ${selected.filter((id) => id !== app.uid).length}` : ''}`
-                    : challengeType === 'random-live'
-                      ? `Start live challenge${selected.length ? ` with ${selected.filter((id) => id !== app.uid).length}` : ''}`
-                    : challengeType === 'live-chosen'
-                      ? `Start live challenge${selected.length ? ` with ${selected.length}` : ''}`
-                      : `Send word invite${selected.length ? ` to ${selected.length}` : ''}`}
-              </button>
-              {message && <p className="muted small" role="status">{message}</p>}
-            </form>
-          )}
-        </article>
-      )}
-
       {!challenge && !game && (
         <article className="card game-invite-form">
           <div className="row">
             <div className="grow">
-              <h3>Daily word{dailyPreview ? ` · ${earlier ? wordleDay(dailyPreview.date) : dailyPreview.date}` : ''}</h3>
+              <h3>{earlier ? 'Daily Wordle' : 'Today’s Wordle'}{dailyPreview ? ` · ${wordleDay(dailyPreview.date)}` : ''}</h3>
               {earlier && (
                 <p className="small">
                   An earlier day’s Wordle: the same word everyone had that day, so your result ranks with theirs.{' '}
@@ -515,7 +402,7 @@ export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallen
               </p>
             </div>
             <button type="button" className="small" onClick={() => void startDailyGame()} disabled={loading}>
-              {loading ? 'Opening…' : dailyPreview?.complete ? 'Show daily Wordle' : 'Play daily Wordle'}
+              {loading ? 'Opening…' : dailyPreview?.complete ? 'Show my board' : dailyPreview?.guessCount ? 'Keep playing' : 'Play'}
             </button>
           </div>
         </article>
@@ -526,7 +413,7 @@ export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallen
           <article className={`game-card card wordle-game${!game.complete ? ' wordle-game-playing' : ''}${challenge ? ' wordle-game-challenge' : ''}`}>
             <header className="row wrap">
               <div className="grow">
-                <h3>{game.mode === 'daily' ? `Daily word · ${earlier && game.date ? wordleDay(game.date) : game.date}` : `${game.length}-letter challenge`}</h3>
+                <h3>{game.mode === 'daily' ? `${earlier ? 'Daily Wordle' : 'Today’s Wordle'}${game.date ? ` · ${wordleDay(game.date)}` : ''}` : `${game.length}-letter challenge`}</h3>
                 <p className="muted small">
                   {game.length} letters · six guesses
                   {game.length === 5 ? ' · hard mode (use every revealed hint)' : ''}
@@ -730,26 +617,128 @@ export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallen
         </>
       )}
 
-      {!challenge && !game && <article className="card game-leaderboard">
-        <h3>Family leaderboard</h3>
-        <p className="muted small">Solved puzzles · fewest guesses, then fastest time</p>
-        {scoreError && <p className="error small">{scoreError}</p>}
-        {!scores.length ? <p className="muted small">Solve the word to set the first family score.</p> : (
-          <ol>
-            {scores.map((score) => (
-              <li key={score.uid} className={score.uid === app.uid ? 'game-score-me' : ''}>
-                <strong>{app.household.members[score.uid]?.displayName ?? 'Family member'}</strong>
-                <span>
-                  {formatGameResult('wordle', score.best)}
-                  <small className="wordle-mode">
-                    {score.best.hardMode === true ? 'Hard mode' : 'Mode unknown'}
-                  </small>
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </article>}
+      {/* The family's day: before you play, and under your board once you've finished. */}
+      {!challenge && (!game || (game.mode === 'daily' && game.complete)) && (game?.date ?? dailyPreview?.date) && (
+        <WordleDailyResults date={(game?.date ?? dailyPreview?.date)!} today={today()} scores={scores} finished={!!(game?.complete ?? dailyPreview?.complete)} />
+      )}
+      {scoreError && <p className="error small">{scoreError}</p>}
+
+      {!challenge && (
+        <article className="card game-invite-form">
+          <div className="row">
+            <div className="grow">
+              <h3>Challenge someone</h3>
+              <p className="muted small">Your own word for them, a play-any-time challenge, or a real-time race.</p>
+            </div>
+            <button type="button" className="secondary small" aria-expanded={showCreate} onClick={() => setShowCreate((open) => !open)}>
+              {showCreate ? 'Hide' : 'Set one up'}
+            </button>
+          </div>
+          {showCreate && (
+            <form onSubmit={(event) => void sendChallenge(event)}>
+              <fieldset className="wordle-challenge-mode">
+                <legend className="small">Challenge type</legend>
+                <label className="wordle-challenge-option">
+                  <input
+                    type="radio"
+                    name="wordle-challenge-type"
+                    checked={challengeType === 'invite'}
+                    onChange={() => {
+                      setChallengeType('invite')
+                      setSelected((current) => current.filter((id) => id !== app.uid))
+                    }}
+                  />
+                  <span>
+                    <strong>Choose a word invite</strong>
+                    <span className="muted small">Invite one or more others to play your word separately. You don’t play.</span>
+                  </span>
+                </label>
+                <label className="wordle-challenge-option">
+                  <input
+                    type="radio"
+                    name="wordle-challenge-type"
+                    checked={challengeType === 'live-chosen'}
+                    onChange={() => {
+                      setChallengeType('live-chosen')
+                      setSelected((current) => current.filter((id) => id !== app.uid))
+                    }}
+                  />
+                  <span>
+                    <strong>Live chosen word</strong>
+                    <span className="muted small">Challenge one or more others to play your word live. You know the answer, so you don’t play.</span>
+                  </span>
+                </label>
+                <label className="wordle-challenge-option">
+                  <input
+                    type="radio"
+                    name="wordle-challenge-type"
+                    checked={challengeType === 'random-live'}
+                    onChange={() => setChallengeType('random-live')}
+                  />
+                  <span>
+                    <strong>Live random word</strong>
+                    <span className="muted small">Play with one or more others. Select yourself and at least one other player.</span>
+                  </span>
+                </label>
+                <label className="wordle-challenge-option">
+                  <input
+                    type="radio"
+                    name="wordle-challenge-type"
+                    checked={challengeType === 'realtime-live'}
+                    onChange={() => setChallengeType('realtime-live')}
+                  />
+                  <span>
+                    <strong>Real-time Live Wordle</strong>
+                    <span className="muted small">Everyone marks Ready before the shared timer and game begin. The lobby cancels after 15 minutes if everyone has not joined.</span>
+                  </span>
+                </label>
+              </fieldset>
+              {!isRandomChallenge && (
+                <>
+                  <p className="muted small">Choose a 2–12 letter word. Five-letter answers must be accepted Wordle words, and every five-letter game uses hard mode. The answer is stored privately and isn’t sent with the invitation.</p>
+                  <div className="row wrap">
+                    <label className="small">
+                      Your word
+                      <input
+                        type="text"
+                        autoComplete="off"
+                        spellCheck={false}
+                        maxLength={WORDLE_MAX_LENGTH}
+                        value={word}
+                        onChange={(event) => setWord(event.target.value.replace(/[^a-z]/gi, '').slice(0, WORDLE_MAX_LENGTH))}
+                        aria-label="Custom Wordle answer"
+                      />
+                    </label>
+                    <span className="muted small">{WORDLE_MIN_LENGTH}–{WORDLE_MAX_LENGTH} letters</span>
+                  </div>
+                </>
+              )}
+              <p className="muted small">{isRandomChallenge ? 'Players (include yourself)' : 'Invite family members'}</p>
+              <div className="chips">
+                {challengePlayers.map(([id, member]) => (
+                  <label className={`chip-toggle${selected.includes(id) ? ' on' : ''}`} key={id}>
+                    <input type="checkbox" checked={selected.includes(id)} onChange={() => setSelected((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />
+                    {member.displayName}{id === app.uid ? ' (you)' : ''}
+                  </label>
+                ))}
+              </div>
+              <button type="submit" className="small" disabled={!canSendChallenge}>
+                {inviting
+                  ? 'Starting…'
+                  : challengeType === 'realtime-live'
+                    ? `Start real-time challenge${selected.length ? ` with ${selected.filter((id) => id !== app.uid).length}` : ''}`
+                    : challengeType === 'random-live'
+                      ? `Start live challenge${selected.length ? ` with ${selected.filter((id) => id !== app.uid).length}` : ''}`
+                    : challengeType === 'live-chosen'
+                      ? `Start live challenge${selected.length ? ` with ${selected.length}` : ''}`
+                      : `Send word invite${selected.length ? ` to ${selected.length}` : ''}`}
+              </button>
+              {message && <p className="muted small" role="status">{message}</p>}
+            </form>
+          )}
+        </article>
+      )}
+
     </section>
   )
 }

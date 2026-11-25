@@ -36,6 +36,7 @@ import { useFamilyOnMap } from '../../hooks/useFamilyOnMap'
 import { ItemIcon } from '../UI/ItemIcon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { InboxPanel } from '../Inbox/InboxPanel'
+import { WeatherPanel } from '../Tasks/TodayWeather'
 import { ElementsPanel } from '../Elements/ElementsPanel'
 import { playClock, usePlay } from '../../firebase/play'
 import { VotingSection } from '../Voting/VotingSection'
@@ -67,6 +68,8 @@ function PanelTile({ id, day }: { id: string; day: string }) {
       return <TodoPanel day={day} />
     case 'inbox':
       return <InboxPanel />
+    case 'weather':
+      return <WeatherPanel />
     case 'elements':
       return <ElementsPanel />
     case 'goals':
@@ -306,20 +309,16 @@ function GameTodayTile({ id }: { id: string }) {
     }
   }, [id, app.canPlay])
   if (!game) return null
-  const status = id === 'glider' ? (play ? (play.seconds > 0 ? `${playClock(play.seconds)} of play time` : 'No play time: study some flashcards to earn it') : '') : id !== 'wordle' ? game.description : !daily ? '' : daily.complete ? (daily.solved ? `Solved in ${daily.guessCount}` : 'Not solved today') : daily.guessCount ? `${daily.guessCount} guesses so far` : 'Not played yet'
+  const status = id === 'glider' ? (play ? (play.seconds > 0 ? `${playClock(play.seconds)} of play time` : 'No play time yet: earn it with flashcards') : '') : id !== 'wordle' ? game.description : !daily ? '' : daily.complete ? (daily.solved ? `Solved in ${daily.guessCount}` : 'Not solved today') : daily.guessCount ? `${daily.guessCount} guesses so far` : 'Not played yet'
+  const open = () => app.navigate({ view: 'games', gameId: id })
+  // One line like every other tile: the icon, its name, how it stands, and Play.
   return (
-    <div className="day-section tile-game">
-      <div className="collection-row">
-        <button type="button" className="collection-row-main" onClick={() => app.navigate({ view: 'games', gameId: id })}>
-          <Icon name="sparkle" />
-          <span className="grow">
-            <strong>{id === 'wordle' ? 'Wordle of the day' : game.name}</strong> <span className="muted small">{status}</span>
-          </span>
+    <section className="day-section tile-game">
+      <SectionHeader icon="sparkle" title={id === 'wordle' ? 'Wordle of the day' : game.name} onTitleClick={open} beside={status ? <span className="muted small tile-status">{status}</span> : undefined}>
+        <button type="button" className="link small" onClick={open}>
+          {daily?.complete ? 'Results' : id === 'glider' && play && play.seconds <= 0 ? 'Earn time' : 'Play'}
         </button>
-        <button type="button" className="secondary small" onClick={() => app.navigate({ view: 'games', gameId: id })}>
-          <Icon name="play" /> {daily?.complete ? 'See it' : id === 'glider' && play && play.seconds <= 0 ? 'Earn time' : 'Play'}
-        </button>
-      </div>
-    </div>
+      </SectionHeader>
+    </section>
   )
 }

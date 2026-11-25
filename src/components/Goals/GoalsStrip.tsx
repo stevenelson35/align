@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
+import { createGoal, logGoal } from '../../firebase/db'
+import { useStoredSet } from '../../hooks/useStoredSet'
+import { canLogGoal } from '../../utils/tasks'
 import { addDays, today } from '../../engine/dates'
 import { useApp, useData } from '../../hooks/useApp'
 import { useDailyFlag } from '../../hooks/useDailyFlag'
@@ -19,7 +22,8 @@ import { useTodaySelect } from '../../hooks/useTodaySection'
  */
 export function GoalsStrip({ day }: { day: string }) {
   const { navigate, uid, member, household } = useApp()
-  const [creating, setCreating] = useState(false)
+  const [creating, setCreating] = useState<string | null>(null)
+  const [quick, setQuick] = useState(false)
   const { goals } = useData()
   const [hidden, saveHidden] = useDailyFlag('align-goals-hidden', true)
   const [logAll, saveLogAll] = useStoredFlag('align-goals-log-all', false)
@@ -52,7 +56,8 @@ export function GoalsStrip({ day }: { day: string }) {
   // Only the goals you log (yours first, then shared ones); ones you can just view are on the Goals page. Goals that
   // skip this day (Walking on weekdays only) stay listed, greyed, so they don't seem to have vanished.
   const { forDay, offDay } = loggableGoals(goals, uid, member.role, household, day)
-  if (!forDay.length && !offDay.length) return null
+  // No goals of your own: members still get the heading, to add one.
+  if (!forDay.length && !offDay.length && member.role !== 'member') return null
   const metCount = forDay.filter((g) => met(g, g.log?.[day], day)).length
   const allDone = forDay.length > 0 && metCount === forDay.length
   const family = goalGroups(goals, uid, member.role, household)
@@ -68,7 +73,17 @@ export function GoalsStrip({ day }: { day: string }) {
           </button>
         )}
         {member.role === 'member' && (
-          <button type="button" className="link small header-add" onClick={() => setCreating(true)} title="New goal" aria-label="New goal">
+          <button
+            type="button"
+            className="link small header-add"
+            onClick={() => {
+              setHidden(false)
+              setQuick(!quick)
+            }}
+            aria-expanded={quick}
+            title="New goal"
+            aria-label="New goal"
+          >
             <Icon name="plus" />
           </button>
         )}
@@ -79,7 +94,8 @@ export function GoalsStrip({ day }: { day: string }) {
           {hidden ? 'Show' : 'Hide'}
         </button>
       </SectionHeader>
-      {(!hidden || !forDay.length) && (
+      {quick && <QuickGoal onDone={() => setQuick(false)} onMore={(name) => { setQuick(false); setCreating(name) }} />}
+      {(!hidden || !forDay.length) && (forDay.length > 0 || offDay.length > 0 || family.length > 0) && (
         <div className="section-content">
           {day > today() && <p className="muted small">Log goals on the day.</p>}
           <div className="goal-list">
@@ -104,22 +120,12 @@ export function GoalsStrip({ day }: { day: string }) {
               <button type="button" className="link small goals-family-toggle" onClick={() => setShowFamily(!showFamily)} aria-expanded={showFamily}>
                 {showFamily ? 'Hide the family’s goals' : `Show the family’s goals (${family.map((g) => g.title.replace(/’s goals$|'s goals$/, '')).join(', ')})`}
               </button>
-              {showFamily &&
-                family.map((g) => (
-                  <div key={g.key} className="goals-family">
-                    <h4 className="goals-family-title small">{g.title}</h4>
-                    <div className="goal-list">
-                      {g.goals.map((x) => (
-                        <GoalSummary key={x.id} goal={x} day={day} open={false} onToggle={() => {}} readOnly />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              {showFamily && <FamilyGoals groups={family} day={day} />}
             </>
           )}
         </div>
       )}
-      {creating && <GoalEditor goal={null} onClose={() => setCreating(false)} />}
+      {creating !== null && <GoalEditor goal={null} name={creating} onClose={() => setCreating(null)} />}
     </div>
   )
 }
@@ -134,12 +140,18 @@ function nextOn(goal: Goal, day: string): string {
 }
 
 /**
- * One goal as a summary line: name, where it stands (or what it asks), the trend, and a pencil. Tapping the name, the
- * trend or the pencil opens logging for just this one, in place; Manage (above) is the way to a goal's own page.
+ * One goal as a summary line: a tick (done or not) or +1 (tallies) to log it in one tap, the name, where it stands (or
+ * what it asks), the trend, and (other kinds) a pencil. Tapping the name, the trend or the pencil opens logging for
+ * just this one, in place (notes, undoing a +1); Manage (above) is the way to a goal's own page.
  */
 function GoalSummary({ goal, day, open, onToggle, who, readOnly = false }: { goal: Goal; day: string; open: boolean; onToggle: () => void; who?: string; /** Someone else's goal: no pencil. */ readOnly?: boolean }) {
+  const { uid, member } = useApp()
   const status = goalStatus(goal, goal.log?.[day], day)
   const hint = goalHint(goal, day)
+  const entry = goal.log?.[day]
+  // One tap, right on the line: tick a done-or-not goal, or +1 on a tally. (Other kinds open to log.)
+  const quickLog = !readOnly && !open && day <= today() && canLogGoal(goal, uid, member.role) && (goal.kind === 'check' || goal.kind === 'tally')
+  const tick = () => void logGoal(goal.id, day, goal.kind === 'check' ? { done: entry?.done ? undefined : true } : { count: (entry?.count ?? 0) + 1 }, uid).catch(() => undefined)
   if (open)
     return (
       <div className="goal-summary-open">
@@ -151,6 +163,16 @@ function GoalSummary({ goal, day, open, onToggle, who, readOnly = false }: { goa
     )
   return (
     <div className={`goal-summary${status.state === 'met' || status.state === 'exceeded' ? ' met' : ''}${readOnly ? ' read-only' : ''}`} data-goal-id={readOnly ? undefined : goal.id}>
+      {quickLog &&
+        (goal.kind === 'check' ? (
+          <button type="button" className={`goal-tick${entry?.done ? ' on' : ''}`} onClick={tick} aria-pressed={!!entry?.done} aria-label={entry?.done ? `Undo ${goal.name}` : `Done: ${goal.name}`} title={entry?.done ? 'Done (tap to undo)' : 'Tap when done'}>
+            <Icon name="check" />
+          </button>
+        ) : (
+          <button type="button" className="goal-plus-one small" onClick={tick} aria-label={`One more: ${goal.name}`} title="One more">
+            +1
+          </button>
+        ))}
       {readOnly ? (
         <span className="goal-name">{goal.name}</span>
       ) : (
@@ -174,11 +196,103 @@ function GoalSummary({ goal, day, open, onToggle, who, readOnly = false }: { goa
           <GoalSparkline goal={goal} />
         </button>
       )}
-      {!readOnly && (
+      {!readOnly && !quickLog && (
         <button type="button" className="icon-button small goal-log-one" onClick={onToggle} title={`Log ${goal.name}`} aria-label={`Log ${goal.name}`}>
           <Icon name="edit" />
         </button>
       )}
+    </div>
+  )
+}
+
+/**
+ * Add a goal in one line: its name and what kind, in plain words (done or not each day, or a number of times a day).
+ * Everyone can see it and only you log it, every day; More options opens the full form (other kinds, days, who logs).
+ */
+function QuickGoal({ onDone, onMore }: { onDone: () => void; onMore: (name: string) => void }) {
+  const { uid } = useApp()
+  const [name, setName] = useState('')
+  const [kind, setKind] = useState<'check' | 'tally'>('check')
+  const [times, setTimes] = useState('8')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  async function add(e: FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      await createGoal(
+        { name: name.trim().slice(0, 100), kind, ...(kind === 'tally' ? { perDay: Math.max(1, Math.min(99, Math.round(Number(times) || 1))) } : {}), visibility: 'family', viewerVisible: true, ownerId: uid, editAudience: 'private' },
+        uid,
+      )
+      setName('')
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+    setBusy(false)
+  }
+  return (
+    <form className="quick-goal" onSubmit={add}>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New goal (e.g. Walk the dogs)" aria-label="New goal" autoFocus maxLength={100} />
+      <div className="quick-goal-kind" role="radiogroup" aria-label="What kind">
+        <label>
+          <input type="radio" name="quick-goal-kind" checked={kind === 'check'} onChange={() => setKind('check')} /> Done or not, each day
+        </label>
+        <label>
+          <input type="radio" name="quick-goal-kind" checked={kind === 'tally'} onChange={() => setKind('tally')} />{' '}
+          <input type="number" min={1} max={99} value={times} onChange={(e) => { setTimes(e.target.value); setKind('tally') }} aria-label="Times a day" className="quick-goal-times" /> times a day
+        </label>
+      </div>
+      {error && <p className="error small">{error}</p>}
+      <div className="row">
+        <button type="submit" className="small" disabled={busy || !name.trim()}>
+          {busy ? 'Adding…' : 'Add goal'}
+        </button>
+        <button type="button" className="link small" onClick={() => onMore(name.trim())}>
+          More options…
+        </button>
+        <button type="button" className="link small" onClick={onDone}>
+          Cancel
+        </button>
+      </div>
+      <p className="muted small">Everyone can see it; only you log it. More options: amounts, targets, some days only, logging together.</p>
+    </form>
+  )
+}
+
+/**
+ * The family's goals for the day, one line per person (how many they've done), each opening to their goals,
+ * indented under them like a folder's tiles. Open ones are remembered on this device.
+ */
+function FamilyGoals({ groups, day }: { groups: { key: string; title: string; goals: Goal[] }[]; day: string }) {
+  const [open, toggle] = useStoredSet('align-goals-family-open')
+  return (
+    <div className="goals-family">
+      {groups.map((g) => {
+        const done = g.goals.filter((x) => met(x, x.log?.[day], day)).length
+        const isOpen = open.has(g.key)
+        return (
+          <div key={g.key} className="goals-person">
+            <button type="button" className="goals-person-head" onClick={() => toggle(g.key)} aria-expanded={isOpen}>
+              <Icon name="person" /> <strong>{g.title.replace(/’s goals$|'s goals$/, '')}</strong>
+              <span className="muted small">
+                {done} of {g.goals.length} done
+              </span>
+              <span className="grow" />
+              <Icon name={isOpen ? 'chevron-down' : 'chevron-right'} />
+            </button>
+            {isOpen && (
+              <div className="goal-list goals-person-body">
+                {g.goals.map((x) => (
+                  <GoalSummary key={x.id} goal={x} day={day} open={false} onToggle={() => {}} readOnly />
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

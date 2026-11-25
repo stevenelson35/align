@@ -338,6 +338,39 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
   whose own details are empty.
 - Today's default (`defaultTiles`) now has Wordle of the day in Fun and Gifts on the main page above To Do.
 
+### 5.20 Home cleanup and Wordle results (2026-11-25)
+- **Home** is the Today page's name in navigation: the page bar's colored ↩ Home button (was "Back to Today"),
+  tapping "Align" in the top bar, the Library's "Home (Today)". The date header stays.
+- **Folders inside folders** (`utils/tiles.ts`): groups are folders; one named `Info/People` is in Info. The list
+  stays flat (a group runs to the next heading, an end line or More…), so older arrangements read the same.
+  `folderTree` builds the nesting (a folder whose parent is missing shows with its whole name), `addSubgroup`,
+  `moveToFolder`, `renameGroup` (children follow), `removeTile` (children move up a level). Home draws a folder as
+  one line (📁, name, count, a peek at what's in it, ›), closed by default (open ones per device:
+  `align-home-open-folders`). Arrange indents by depth and adds "Move to" (folders, Home, More…) and "New folder
+  inside".
+- **One line per tile**: Weather is a tile (`panel:weather`, an AUTO_TILE at the top; the header button is gone);
+  Wordle of the day and Glider are SectionHeader rows with a status (`.tile-status`); a list tile's entries are
+  indented under it. Calendar actions are two icons (📅, ↻).
+- **When something's new** (`members.<uid>.todayWhenNew`, rules ≤ 60): Inbox, Goals, To Do and Wordle of the day can
+  leave Home while nothing's waiting (`useWaiting`: unread messages, goals not met today, today's tasks, your board
+  for today's Wordle not complete); they wait at the top of More….
+- **Find anything** (`FindAnything`, top of the More… sheet): every page as a tap before typing (`useLibraryPages`,
+  shared with the Library), pages, lists and entries (`searchAll`) as you type, and "See everything" carries the
+  words to the Library, whose find box now finds entries too.
+- **Goals**: a round tick (done or not) and +1 (tallies) log in one tap on the summary line; + is a one-line quick
+  add (done or not, or N times a day; Everyone sees, only you log; More options opens GoalEditor with the name); the
+  family's goals are one line per person ("2 of 3 done"), opening to their goals indented.
+- **Wordle**: the page is today's puzzle, then the day's results (`WordleDailyResults`, `dailyStandings`: solved by
+  guesses then time, missed, gave up, playing, not played with Remind, once per person per day on this device), then
+  Challenge someone. wordle.php writes `wordleDailyBoards/{date}_{uid}` (colors only: C / P / A rows; family reads,
+  only the server writes); everyone's squares show once you've finished. Results go as a notification only to people
+  who haven't finished that day's puzzle; the rest get it quietly (`pushed: true` at creation, allowed only for
+  `result`) with "See results" (`…/results` on the link).
+- **Notifications follow who's signed in**: a phone turned on under several accounts goes only to the last one signed
+  in on it (`devices/{sha256(token)}` = { uid }, written by `claimDevice` on sign-in and when turning notifications
+  on; the Apps Script's `deviceIsFor_` skips a device claimed by someone else; unclaimed devices get everything, as
+  before).
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts

@@ -37,6 +37,8 @@ export interface HouseholdMember {
    * follows is in More…). Absent: the default layout (utils/tiles.ts defaultTiles).
    */
   today?: string[]
+  /** Tiles on their Home shown only when something's waiting there (an unread message, today's Wordle not played…). */
+  todayWhenNew?: string[]
   /** Their personal colors and sticker decorations for Today and More. */
   todayPanels?: Partial<Record<TodaySurface, TodayPanelStyle>>
   /** The calendar-sync account: a member for the rules, hidden from people pickers. Set in the console. */

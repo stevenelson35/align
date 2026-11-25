@@ -1,6 +1,7 @@
 // Today's panels (DESIGN.md §8): the built-in tiles. How Today is arranged is tiles (utils/tiles.ts).
 
 export const TODAY_SECTIONS = [
+  { id: 'weather', label: 'Weather' },
   { id: 'inbox', label: 'Inbox' },
   { id: 'goals', label: 'Goals' },
   { id: 'rewards', label: 'Reveal' },

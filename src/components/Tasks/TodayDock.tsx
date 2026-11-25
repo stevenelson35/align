@@ -3,10 +3,12 @@ import { useApp } from '../../hooks/useApp'
 import { Icon } from '../UI/Icon'
 import { useTodaySelect } from '../../hooks/useTodaySection'
 import { panelBackground } from '../../utils/panelStyle'
+import { FindAnything } from '../AppShell/FindAnything'
 
 /**
- * Today's footer, always at the bottom of the screen: More… (the tiles below the More… line, in a panel just above
- * the footer: tapping it again, its title, ✕, Escape, or a tap anywhere outside the dock closes it), Arrange (drag
+ * Home's footer, always at the bottom of the screen: More… (Find anything, which browses every page before you type
+ * and searches everything as you do, with the Library for the rest; then the tiles that have nothing new and the
+ * ones below the More… line, in a panel just above the footer: tapping it again, its title, ✕, Escape, or a tap anywhere outside the dock closes it), Arrange (drag
  * tiles, groups, the More… line) and + (Add to Today).
  */
 export function TodayDock({ more, moreCount, onArrange, arranging = false, onAdd }: { more: ReactNode; moreCount: number; onArrange?: () => void; arranging?: boolean; onAdd?: () => void }) {
@@ -53,7 +55,8 @@ export function TodayDock({ more, moreCount, onArrange, arranging = false, onAdd
               <Icon name="close" />
             </button>
           </header>
-          {moreCount ? more : <p className="muted small">Nothing in More… yet. Arrange moves tiles here (below the More… line).</p>}
+          <FindAnything onPick={() => setOpen(null)} />
+          {moreCount > 0 && more}
         </div>
       )}
       <nav className="today-footer" aria-label="More and arranging">

@@ -4,11 +4,10 @@ import { calendarSyncUrl, refreshCalendar } from '../../firebase/calendarSync'
 import { useApp } from '../../hooks/useApp'
 import { googleCalendarDayUrl } from '../../utils/calendar'
 import { Icon } from '../UI/Icon'
-import { HelpTip } from '../UI/HelpTip'
 
 /**
- * "📅 Google Calendar ↗" (opens today in a new tab, to check or change the family calendar) and "↻ Refresh calendar"
- * (syncs it now; new events then arrive through the live data, no reload). Coming back to Align after opening
+ * Two small icons beside the date: 📅 (opens Google Calendar on today in a new tab, to check or change the family
+ * calendar) and ↻ (syncs it now; new events then arrive through the live data, no reload). Coming back to Align after opening
  * Google Calendar from here refreshes automatically, so edits made there show up without another tap.
  */
 export function CalendarActions() {
@@ -56,22 +55,22 @@ export function CalendarActions() {
   return (
     <span className="calendar-refresh">
       <a
-        className="button-link secondary small"
+        className="button-link secondary small icon-button"
         href={googleCalendarDayUrl(today())}
+        aria-label="Open Google Calendar (new tab)"
         target="_blank"
         rel="noopener noreferrer"
         title="Open the family calendar in Google Calendar (new tab)"
         onClick={() => (wentToCalendar.current = true)}
       >
-        <Icon name="calendar" /> Google Calendar <Icon name="external" />
+        <Icon name="calendar" />
       </a>
       {canRefresh && (
-        <button type="button" className="secondary small" onClick={run} disabled={busy} title="Sync Google Calendar now">
-          {busy ? 'Refreshing…' : <><Icon name="refresh" /> Refresh calendar</>}
+        <button type="button" className={`secondary small icon-button${busy ? ' spinning' : ''}`} onClick={run} disabled={busy} title="Refresh the calendar (sync Google Calendar now)" aria-label={busy ? 'Refreshing the calendar' : 'Refresh the calendar'}>
+          <Icon name="refresh" />
         </button>
       )}
-      {note && <span className={`small${note.error ? ' error-text' : ' muted'}`}>{note.text}</span>}
-      <HelpTip topic="calendar" />
+      {note && <span className={`small calendar-note${note.error ? ' error-text' : ' muted'}`}>{note.text}</span>}
     </span>
   )
 }

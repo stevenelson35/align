@@ -2337,6 +2337,27 @@ a.nav-link {
   gap: 0.3rem;
   white-space: nowrap;
 }
+/* ↩ Home: the way back from every page, in the accent color so it's easy to find. */
+.home-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  background: var(--brand);
+  color: var(--brand-contrast, white);
+  border-color: var(--brand);
+  border-radius: 999px;
+  padding-inline: 0.8rem;
+  font-weight: 600;
+}
+.home-button:hover {
+  filter: brightness(1.08);
+}
+.brand-home {
+  color: inherit;
+  text-decoration: none;
+  padding: 0;
+}
 
 /* Breadcrumb above list pages: Links › Art (the section opens the menu there) */
 .breadcrumb {
@@ -2872,6 +2893,75 @@ a.nav-link {
 .goal-summary-open > .link {
   justify-self: end;
 }
+/* One tap on the line: a round tick for done-or-not goals, +1 for tallies. */
+.goal-tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: transparent;
+  flex: 0 0 auto;
+}
+.goal-tick.on {
+  background: var(--success, #2f855a);
+  border-color: var(--success, #2f855a);
+  color: white;
+}
+.goal-plus-one {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--brand);
+  border: 1px solid var(--brand);
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+/* Add a goal in one line (the Goals tile's +). */
+.quick-goal {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0 0 0.6rem 2.25rem;
+}
+.quick-goal-kind {
+  display: grid;
+  gap: 0.25rem;
+}
+.quick-goal-kind label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.quick-goal-kind input[type='radio'] {
+  width: auto;
+}
+.quick-goal-times {
+  width: 3.5rem;
+  padding: 0.15rem 0.3rem;
+}
+.quick-goal p {
+  margin: 0;
+}
+/* The family's goals: one line per person, opening to their goals indented under them, like a folder. */
+.goals-person-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.35rem 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+.goals-person-body {
+  margin-left: 0.95rem;
+  padding-left: 0.65rem;
+  border-left: 2px solid var(--border);
+}
 .tag-picker {
   display: grid;
   gap: 0.35rem;
@@ -3382,8 +3472,21 @@ button.today-sheet-title {
   min-width: 8rem;
   max-width: 16rem;
 }
-.arrange-row.in-group {
-  margin-left: 1.1rem;
+.arrange-row.in-group,
+.arrange-row.arrange-group {
+  margin-left: calc(var(--depth, 0) * 1.1rem);
+}
+.arrange-options {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.7rem;
+  margin-left: 0.2rem;
+}
+.arrange-options select {
+  width: auto;
+  max-width: 11rem;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.85rem;
 }
 .tile-entry {
   margin: 0;
@@ -3393,6 +3496,71 @@ button.today-sheet-title {
 .tile-entry {
   list-style: none;
   padding: 0;
+}
+/* Home rows (2026-11-25): what opens under a list tile sits indented under its heading, like a folder's tiles, so
+   it's clear what belongs to it. */
+.today-tiles .tile-list .entry-list {
+  margin-left: 0.95rem;
+  padding-left: 0.65rem;
+  border-left: 2px solid var(--border);
+}
+/* A tile's status beside its name ("Not played yet", "67° Drizzle…", a folder's peek at what's in it): one line,
+   cut short with … on a narrow phone. */
+.tile-status,
+.tile-peek {
+  flex: 1 1 6rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+}
+/* A row with a status stays one line: the status gives way first. */
+.section-header:has(> .tile-status),
+.section-header:has(> .tile-peek) {
+  flex-wrap: nowrap;
+}
+.section-header:has(> .tile-status) .section-title,
+.section-header:has(> .tile-peek) .section-title {
+  white-space: nowrap;
+}
+.folder-chevron {
+  display: inline-flex;
+  padding: 0.15rem;
+}
+.weather-detail {
+  margin-left: 2.25rem;
+}
+.weather-detail p {
+  margin: 0.2rem 0;
+}
+.today-quiet-note {
+  margin: 0 0 0.4rem;
+}
+/* Find… on Home's More sheet: every page as a tap, then results as you type, then the Library. */
+.find-anything {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+.find-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.find-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.find-library {
+  justify-self: start;
 }
 .tile-task {
   list-style: none;
@@ -5156,6 +5324,66 @@ input.ladder-sparks {
 }
 .game-leaderboard li.game-score-me {
   border-color: var(--brand);
+}
+/* A day's Wordle results: place, name, result, the colored squares (once you've finished), Remind. */
+.game-leaderboard li.wordle-standing > span {
+  margin-left: 0;
+}
+.game-leaderboard li.wordle-standing {
+  display: grid;
+  grid-template-columns: 1.1rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.5rem;
+  row-gap: 0.1rem;
+}
+.wordle-standing .wordle-standing-place {
+  grid-row: 1 / span 2;
+}
+.wordle-standing .wordle-standing-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wordle-standing .wordle-standing-name {
+  grid-column: 2;
+}
+.game-leaderboard li.wordle-standing > .wordle-standing-result {
+  grid-column: 2;
+  margin-left: 0;
+  font-size: 0.85rem;
+}
+.wordle-standing .wordle-mini,
+.wordle-standing > button {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
+.wordle-standing .wordle-standing-place {
+  min-width: 1.2rem;
+  color: var(--muted);
+}
+.wordle-standing.waiting .wordle-standing-result,
+.wordle-standing.playing .wordle-standing-result {
+  color: var(--muted);
+}
+.wordle-mini {
+  display: grid;
+  gap: 2px;
+}
+.wordle-mini-row {
+  display: flex;
+  gap: 2px;
+}
+.wordle-mini-cell {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 1px;
+  background: #787c7e;
+}
+.wordle-mini-cell.correct {
+  background: #538d4e;
+}
+.wordle-mini-cell.present {
+  background: #c9b458;
 }
 .game-invite-form .chips {
   margin-block: 0.25rem;

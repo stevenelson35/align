@@ -190,3 +190,58 @@ export function rankingLine(scores: { uid: string; guesses?: number; ms?: number
   if (!ranked.length) return ''
   return `${label}: ${ranked.map((s, i) => `${i + 1}. ${name(s.uid)} ${s.guesses}${s.ms !== undefined ? ` · ${clock(s.ms)}` : ''}`).join(', ')}`
 }
+
+/** A player's daily board as wordle.php shares it (wordleDailyBoards): colors only, C / P / A per letter. */
+export interface DailyBoard {
+  uid: string
+  date: string
+  rows: string[]
+  complete: boolean
+  solved: boolean
+  abandoned?: boolean
+  ms?: number
+}
+
+export interface DailyStanding {
+  uid: string
+  name: string
+  /** solved, missed (used all six), gave-up, playing (started), waiting (not played yet). */
+  state: 'solved' | 'missed' | 'gave-up' | 'playing' | 'waiting'
+  /** 1, 2, 3… for those who solved it. */
+  place?: number
+  /** "3 guesses · 1:46", "X/6", "Gave up", "Playing now", "Not played yet". */
+  text: string
+  rows: string[]
+}
+
+/**
+ * Everyone's day, in order: solved (fewest guesses, then fastest; the score is their best), then missed, gave up,
+ * playing now, and not played yet (A–Z within each).
+ */
+export function dailyStandings(
+  people: { uid: string; name: string }[],
+  scores: { uid: string; guesses?: number; ms?: number }[],
+  boards: DailyBoard[],
+): DailyStanding[] {
+  const order = { solved: 0, missed: 1, 'gave-up': 2, playing: 3, waiting: 4 }
+  const rows = people.map((p): DailyStanding => {
+    const score = scores.find((s) => s.uid === p.uid && s.guesses !== undefined)
+    const board = boards.find((b) => b.uid === p.uid)
+    const base = { uid: p.uid, name: p.name, rows: board?.rows ?? [] }
+    if (score) return { ...base, state: 'solved', text: `${score.guesses} ${score.guesses === 1 ? 'guess' : 'guesses'}${score.ms !== undefined ? ` · ${clock(score.ms)}` : ''}` }
+    if (board?.complete) return board.abandoned ? { ...base, state: 'gave-up', text: 'Gave up' } : { ...base, state: 'missed', text: 'X/6' }
+    if (board?.rows.length) return { ...base, state: 'playing', text: 'Playing now' }
+    return { ...base, rows: [], state: 'waiting', text: 'Not played yet' }
+  })
+  const score = (r: DailyStanding) => scores.find((s) => s.uid === r.uid)!
+  rows.sort((a, b) => {
+    if (order[a.state] !== order[b.state]) return order[a.state] - order[b.state]
+    if (a.state === 'solved') return score(a).guesses! - score(b).guesses! || (score(a).ms ?? Infinity) - (score(b).ms ?? Infinity)
+    return a.name.localeCompare(b.name)
+  })
+  let place = 0
+  return rows.map((r) => (r.state === 'solved' ? { ...r, place: ++place } : r))
+}
+
+/** The daily Wordle's date now: the Wordle server's day (New York), "2026-11-25". */
+export const wordleDate = (now = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)

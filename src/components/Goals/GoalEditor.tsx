@@ -18,10 +18,10 @@ const KIND_HELP: Record<Goal['kind'], string> = {
 }
 
 /** Create or edit a goal: who can view it (default Everyone) and who can log it (default Only me) are separate. */
-export function GoalEditor({ goal, onClose }: { goal: Goal | null; onClose: () => void }) {
+export function GoalEditor({ goal, name = '', onClose }: { goal: Goal | null; /** A new goal's name, typed already (Quick add's More options). */ name?: string; onClose: () => void }) {
   const app = useApp()
   const [form, setForm] = useState<GoalInput>(
-    goal ?? { name: '', kind: 'check', visibility: 'family', ownerId: app.uid, viewerVisible: true, perDay: 8, progression: { start: 10, step: 1, every: 2, per: 'day', from: today() } },
+    goal ?? { name, kind: 'check', visibility: 'family', ownerId: app.uid, viewerVisible: true, perDay: 8, progression: { start: 10, step: 1, every: 2, per: 'day', from: today() } },
   )
   const parents = parentsOf(app.household)
   const others = (ids: string[] | undefined) => (ids ?? []).filter((id) => id !== form.ownerId)

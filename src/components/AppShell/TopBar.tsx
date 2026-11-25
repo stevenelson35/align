@@ -10,10 +10,12 @@ interface Props {
   onSettings: () => void
   onSearch: () => void
   onInbox: () => void
+  /** Tapping "Align": Home. */
+  onHome: () => void
 }
 
 // The household's name isn't shown (it can identify the family on a shared or borrowed screen).
-export function TopBar({ member, onMenu, onChat, onSettings, onSearch, onInbox }: Props) {
+export function TopBar({ member, onMenu, onChat, onSettings, onSearch, onInbox, onHome }: Props) {
   const { unread } = useInbox()
   return (
     <header className="top-bar">
@@ -21,7 +23,9 @@ export function TopBar({ member, onMenu, onChat, onSettings, onSearch, onInbox }
         <button type="button" className="link menu-button" onClick={onMenu} aria-label="Menu">
           <Icon name="menu" />
         </button>
-        <strong>Align</strong>
+        <button type="button" className="link brand-home" onClick={onHome} title="Home" aria-label="Align: go Home">
+          <strong>Align</strong>
+        </button>
       </div>
       <div className="user">
         <button type="button" className="link search-button inbox-button" onClick={onInbox} title={unread ? `Inbox: ${unread} new` : 'Inbox'} aria-label={unread ? `Inbox, ${unread} new` : 'Inbox'}>

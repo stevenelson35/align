@@ -4,9 +4,7 @@ import { useApp } from '../../hooks/useApp'
 import { relativeDay } from '../../utils/day'
 import { CalendarActions } from './CalendarActions'
 import { HelpTip } from '../UI/HelpTip'
-import { useStoredFlag } from '../../hooks/useStoredFlag'
-import { useWeather } from '../../hooks/useWeather'
-import { WeatherButton, WeatherRow } from './TodayWeather'
+import { useWaiting } from '../../hooks/useWaiting'
 import { TodayDock } from './TodayDock'
 import { TodaySections } from '../../context/TodaySections'
 import { panelBackground } from '../../utils/panelStyle'
@@ -37,8 +35,10 @@ function DayContents({ day }: { day: string }) {
   // Add to Today, open and aimed somewhere (the footer's +: the top of Today; a group's +: that group).
   const [adding, setAdding] = useState<TilePlace | null>(null)
   const canArrange = day === now && tiles.canChange
-  const [weatherOpen, setWeatherOpen] = useStoredFlag('align-weather-open', false)
-  const { weather, error: weatherError, place: weatherPlace, settings: weatherSettings } = useWeather(day === now)
+  // Tiles set to show only when something's waiting: the quiet ones wait in More….
+  const waiting = useWaiting(tiles.whenNew)
+  const quiet = day === now ? main.filter((t) => tiles.whenNew.has(t) && !waiting(t)) : []
+  const shownMain = quiet.length ? main.filter((t) => !quiet.includes(t)) : main
 
   return (
     <section
@@ -58,7 +58,6 @@ function DayContents({ day }: { day: string }) {
         <button type="button" className="secondary small" onClick={() => go(addDays(day, 1))} aria-label="Next day" title="Next day">
           ›
         </button>
-        {day === now && <WeatherButton weather={weather} place={weatherPlace} open={weatherOpen} onToggle={() => setWeatherOpen(!weatherOpen)} />}
         {day !== now && (
           <button type="button" className="link small" onClick={() => go(now)}>
             Today
@@ -67,21 +66,30 @@ function DayContents({ day }: { day: string }) {
         <span className="grow" />
         {day === now && <CalendarActions />}
       </header>
-      {day === now && weatherOpen && <WeatherRow weather={weather} error={weatherError} place={weatherPlace} settings={weatherSettings} />}
 
       {day !== now ? (
         <TodayTiles tiles={dayTiles(tiles.tiles)} day={day} />
       ) : arranging ? (
         <ArrangeTiles onDone={() => setArranging(false)} onAdd={() => setAdding('top')} />
       ) : (
-        <TodayTiles tiles={main} day={day} onArrange={canArrange ? () => setArranging(true) : undefined} onAdd={canArrange ? setAdding : undefined} />
+        <TodayTiles tiles={shownMain} day={day} onArrange={canArrange ? () => setArranging(true) : undefined} onAdd={canArrange ? setAdding : undefined} />
       )}
       {adding && <AddToToday start={adding} onClose={() => setAdding(null)} />}
       {day === now && (
         // Not wrapped in a TodaySectionScope: the dock must stay a direct child of .day-view to stick to the bottom.
         <TodayDock
-          more={<TodayTiles tiles={more} day={day} onAdd={canArrange ? setAdding : undefined} />}
-          moreCount={more.length}
+          more={
+            <>
+              {quiet.length > 0 && (
+                <>
+                  <p className="muted small today-quiet-note">Nothing new right now (they come back to Home when something arrives):</p>
+                  <TodayTiles tiles={quiet} day={day} />
+                </>
+              )}
+              {more.length > 0 && <TodayTiles tiles={more} day={day} onAdd={canArrange ? setAdding : undefined} />}
+            </>
+          }
+          moreCount={more.length + quiet.length}
           onArrange={canArrange ? () => { setArranging(!arranging); window.scrollTo({ top: 0 }) } : undefined}
           arranging={arranging}
           onAdd={canArrange ? () => setAdding('top') : undefined}
