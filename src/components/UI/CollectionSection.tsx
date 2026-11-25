@@ -21,6 +21,8 @@ type CollectionContentsProps<T> = {
   allowCards?: boolean
   /** Shown when there's nothing at all. */
   empty?: ReactNode
+  /** Show all opens a page of its own (a kind of list's page) instead of listing everything here. */
+  onShowAll?: () => void
 }
 
 /**
@@ -46,6 +48,7 @@ export function CollectionSection<T>({
   empty,
   onAdd,
   addTitle,
+  onShowAll,
 }: CollectionContentsProps<T> & {
   icon: IconName
   help?: HelpTopicId
@@ -72,13 +75,13 @@ export function CollectionSection<T>({
           {open ? 'Hide' : 'Show'}
         </button>
       </SectionHeader>
-      <CollectionContents id={id} title={title} items={items} pinned={pinned} itemKey={itemKey} matches={matches} render={render} filters={filters} searchHint={searchHint} allowCards={allowCards} empty={empty} hidden={!open} />
+      <CollectionContents id={id} title={title} items={items} pinned={pinned} itemKey={itemKey} matches={matches} render={render} filters={filters} searchHint={searchHint} allowCards={allowCards} empty={empty} hidden={!open} onShowAll={onShowAll} />
     </div>
   )
 }
 
 /** Shared collection body; the map mounts this only when open to avoid folded location subscriptions. */
-export function CollectionContents<T>({ id, title, items, pinned, itemKey, matches, render, filters, searchHint, allowCards = false, empty, hidden = false, top, bottom, startAll = false }: CollectionContentsProps<T> & { hidden?: boolean; /** Above the pinned ones. */ top?: ReactNode; /** Below everything (Games: invitations, then live Wordle updates). */ bottom?: ReactNode; /** Show all open to begin with (a short list, like the games). */ startAll?: boolean }) {
+export function CollectionContents<T>({ id, title, items, pinned, itemKey, matches, render, filters, searchHint, allowCards = false, empty, hidden = false, top, bottom, startAll = false, onShowAll }: CollectionContentsProps<T> & { hidden?: boolean; /** Above the pinned ones. */ top?: ReactNode; /** Below everything (Games: invitations, then live Wordle updates). */ bottom?: ReactNode; /** Show all open to begin with (a short list, like the games). */ startAll?: boolean }) {
   const [cards, setCards] = useStoredFlag(`align-today-${id}-cards`, false)
   const [query, setQuery] = useState('')
   const [all, setAll] = useState(startAll)
@@ -114,10 +117,18 @@ export function CollectionContents<T>({ id, title, items, pinned, itemKey, match
         found.length ? list(found) : <p className="muted small">Nothing matches “{query}”.</p>
       ) : items.length ? (
         <>
-          <button type="button" className="link small collection-all" onClick={() => setAll(!all)} aria-expanded={all}>
-            {all ? 'Hide the list' : `Show all ${items.length}`}
-          </button>
-          {all && list(items)}
+          {onShowAll ? (
+            <button type="button" className="link small collection-all" onClick={onShowAll}>
+              Show all {items.length} ›
+            </button>
+          ) : (
+            <>
+              <button type="button" className="link small collection-all" onClick={() => setAll(!all)} aria-expanded={all}>
+                {all ? 'Hide the list' : `Show all ${items.length}`}
+              </button>
+              {all && list(items)}
+            </>
+          )}
         </>
       ) : (
         (empty ?? <p className="muted small">Nothing here yet.</p>)

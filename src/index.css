@@ -3612,6 +3612,13 @@ button.today-sheet-title {
   padding-left: 0.65rem;
   border-left: 2px solid var(--border);
 }
+.kind-group + .kind-group {
+  margin-top: 0.8rem;
+}
+.kind-group-title {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
 .kind-rows {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

@@ -21,7 +21,7 @@ import { LIST_KIND } from '../../utils/listKinds'
  * kind, who sees it and how much is open; cards show the same as tiles. ☆ pins a list to the top (for you, on every
  * device).
  */
-function ListCollection({ id, title, icon, kinds, whose = false, help, addKind, addTitle }: { id: string; title: string; icon: IconName; kinds: List['kind'][]; whose?: boolean; help?: Parameters<typeof CollectionSection>[0]['help']; /** What + makes. */ addKind: List['kind']; addTitle: string }) {
+function ListCollection({ id, title, icon, kinds, whose = false, help, addKind, addTitle, page }: { id: string; title: string; icon: IconName; kinds: List['kind'][]; whose?: boolean; help?: Parameters<typeof CollectionSection>[0]['help']; /** What + makes. */ addKind: List['kind']; addTitle: string; /** Show all opens this kind's page ("Lists", "Projects"). */ page?: string }) {
   const app = useApp()
   const { lists, tasks, listItems } = useData()
   const pins = usePinned()
@@ -91,15 +91,16 @@ function ListCollection({ id, title, icon, kinds, whose = false, help, addKind, 
       onAdd={app.isMember ? () => app.editList(null, addKind) : undefined}
       addTitle={addTitle}
       filters={whose && <WhoseChips value={filter} onChange={setFilter} label="Whose lists" />}
+      onShowAll={page ? () => app.navigate({ view: 'kind', section: page }) : undefined}
     />
   )
 }
 
 /** Task lists and the other everyday lists (checklists, notes, links, pick lists), with Mine / Family / Shared. */
 export const ListsSection = () => (
-  <ListCollection id="lists" title="Lists" icon="list" kinds={['list', 'checklist', 'notes', 'links', 'picks']} whose help="tasks" addKind="list" addTitle="New list (task list, checklist, notes…)" />
+  <ListCollection id="lists" title="Lists" icon="list" kinds={['list', 'checklist', 'notes', 'links', 'picks']} whose help="tasks" addKind="list" addTitle="New list (task list, checklist, notes…)" page="Lists" />
 )
-export const ProjectsSection = () => <ListCollection id="projects" title="Projects" icon="chain" kinds={['project']} help="projects" addKind="project" addTitle="New project" />
+export const ProjectsSection = () => <ListCollection id="projects" title="Projects" icon="chain" kinds={['project']} help="projects" addKind="project" addTitle="New project" page="Projects" />
 export const FlashcardsSection = () => <ListCollection id="cards" title="Flashcards" icon="book" kinds={['cards']} help="cards" addKind="cards" addTitle="New set of flashcards" />
 
 /**
@@ -175,6 +176,7 @@ export function LinksSection() {
       allowCards
       onAdd={app.isMember ? () => setAdding(true) : undefined}
       addTitle="Add a link"
+      onShowAll={() => app.navigate({ view: 'kind', section: 'Links' })}
     />
     {adding && <AddItemDialog kind="links" onClose={() => setAdding(false)} />}
     </>
