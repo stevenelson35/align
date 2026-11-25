@@ -3606,6 +3606,82 @@ button.today-sheet-title {
 .inbox-compose select {
   width: auto;
 }
+/* Under a heading, indented along a thin line (a tile's own rows: gift lists…), like a folder's tiles. */
+.tile-body {
+  margin-left: 0.95rem;
+  padding-left: 0.65rem;
+  border-left: 2px solid var(--border);
+}
+.kind-rows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.15rem;
+}
+/* A list as one line: icon square, name, status, › (ListRow). */
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.list-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  border-radius: var(--radius);
+}
+.list-row-main:hover {
+  background: var(--bg);
+}
+.list-row-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.list-row-status {
+  /* Gives way before the name does. */
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-row-chevron {
+  display: inline-flex;
+  color: var(--muted);
+  margin-left: auto;
+}
+.crumb-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 999px;
+  padding-inline: 0.6rem 0.8rem;
+}
+/* The Library's header stays just below the top bar while its lists scroll. */
+.library-top {
+  position: sticky;
+  top: var(--top-bar-h, 3.25rem);
+  z-index: 4;
+  background: var(--bg);
+  margin: -0.75rem -0.75rem 0.5rem;
+  padding: 0.6rem 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.library-top .view-header {
+  margin-bottom: 0.45rem;
+}
+.library-top .library-find {
+  margin: 0;
+}
 .today-quiet-note {
   margin: 0 0 0.4rem;
 }

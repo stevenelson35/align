@@ -4,6 +4,7 @@ import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { canClaim, claimState, isRecipient, recipientKey, recipientLabel, secretListFor } from '../../utils/gifts'
 import { Icon } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
+import { ListRow } from '../UI/ListRow'
 import { useTodayExpansion } from '../../hooks/useTodaySection'
 
 /**
@@ -36,7 +37,7 @@ export function GiftsStrip() {
         </button>
       </SectionHeader>
       {open && (
-        <>
+        <div className="tile-body">
           {shopping.length > 0 && (
             <>
               <h4 className="small muted">You’re getting</h4>
@@ -69,25 +70,25 @@ export function GiftsStrip() {
             </>
           )}
           {!giftLists.length && <p className="muted small">No gift lists yet: + makes one (for someone in the family, yourself, or anyone).</p>}
-          <ul className="gift-lists small">
+          {/* Each gift list as a line, like a folder's tiles. */}
+          <div className="kind-rows">
             {giftLists.map((l) => {
               const mine = isRecipient(l, app.uid)
               const secret = mine ? undefined : secretListFor(l, lists)
               const items = listItems.filter((t) => t.listId === l.id || (secret && t.listId === secret.id))
               const openCount = items.filter((t) => claimState(t, claims).open > 0).length
               return (
-                <li key={l.id}>
-                  <button type="button" className="link" onClick={() => app.navigate({ view: 'list', listId: l.id, timeline: false })}>
-                    <Icon name="gift" /> {l.name}
-                  </button>{' '}
-                  <span className="muted">
-                    {mine ? `your list · ${items.length} idea${items.length === 1 ? '' : 's'}` : `for ${recipientLabel(l, app.household)} · ${openCount} of ${items.length} still open`}
-                  </span>
-                </li>
+                <ListRow
+                  key={l.id}
+                  icon="gift"
+                  name={l.name}
+                  status={mine ? `your list · ${items.length} idea${items.length === 1 ? '' : 's'}` : `for ${recipientLabel(l, app.household)} · ${openCount} of ${items.length} open`}
+                  onOpen={() => app.navigate({ view: 'list', listId: l.id, timeline: false })}
+                />
               )
             })}
-          </ul>
-        </>
+          </div>
+        </div>
       )}
     </div>
   )

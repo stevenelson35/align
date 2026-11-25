@@ -1,3 +1,4 @@
+import { SECTIONS } from './menu'
 import { HELP_TOPICS, type HelpTopicId } from '../help/topics'
 
 // Hash routes (/#/...) so Turbify's static hosting needs no rewrite rules (DESIGN.md §4).
@@ -41,6 +42,8 @@ export type Route =
   | { view: 'inbox' }
   /** Everything in Align as a page (☰ on a phone). */
   | { view: 'library' }
+  /** One kind of list on its own page ("Gifts", "Notes"…: a section of the menu). */
+  | { view: 'kind'; section: string }
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent)
@@ -66,6 +69,9 @@ export function parseRoute(hash: string): Route {
       return parts[1] ? { view: 'map', person: parts[1] } : { view: 'map' }
     case 'elements':
       return parts[1] ? { view: 'elements', symbol: parts[1] } : { view: 'elements' }
+    case 'kind':
+      if (parts[1] && SECTIONS.some((s) => s.title === parts[1])) return { view: 'kind', section: parts[1] }
+      break
     case 'help':
       return HELP_TOPICS.some((t) => t.id === parts[1]) ? { view: 'help', topic: parts[1] as HelpTopicId } : { view: 'help' }
     case 'list':
@@ -119,6 +125,8 @@ export function routeHash(route: Route): string {
       return route.person ? `#/map/${encodeURIComponent(route.person)}` : '#/map'
     case 'elements':
       return route.symbol ? `#/elements/${encodeURIComponent(route.symbol)}` : '#/elements'
+    case 'kind':
+      return `#/kind/${encodeURIComponent(route.section)}`
     default:
       return `#/${route.view}`
   }

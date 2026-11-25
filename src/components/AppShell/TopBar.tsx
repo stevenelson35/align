@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { HouseholdMember } from '../../types'
 import { ThemeToggle } from './ThemeToggle'
 import { useInbox } from '../../hooks/useInbox'
@@ -17,8 +18,19 @@ interface Props {
 // The household's name isn't shown (it can identify the family on a shared or borrowed screen).
 export function TopBar({ member, onMenu, onChat, onSettings, onSearch, onInbox, onHome }: Props) {
   const { unread } = useInbox()
+  // Its height, for headers that stay just below it while the page scrolls (the Library's): --top-bar-h.
+  const bar = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = bar.current
+    if (!el) return
+    const set = () => document.documentElement.style.setProperty('--top-bar-h', `${el.offsetHeight}px`)
+    set()
+    const watch = new ResizeObserver(set)
+    watch.observe(el)
+    return () => watch.disconnect()
+  }, [])
   return (
-    <header className="top-bar">
+    <header className="top-bar" ref={bar}>
       <div className="brand">
         <button type="button" className="link menu-button" onClick={onMenu} aria-label="Menu">
           <Icon name="menu" />

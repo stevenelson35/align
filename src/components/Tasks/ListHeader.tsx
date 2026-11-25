@@ -55,11 +55,10 @@ export function ListHeader({ list, children, tools = true }: { list: List; child
       <PageBar
         crumbs={
           <>
-            <button type="button" className="link" onClick={() => app.openMenu(menuSectionOf(list))} title="Show this section of the menu">
-              {menuSectionOf(list)}
+            {/* Back to all the lists of this kind (its own page), to open another one. */}
+            <button type="button" className="secondary small crumb-kind" onClick={() => app.navigate({ view: 'kind', section: menuSectionOf(list) })} title={`All your ${menuSectionOf(list).toLowerCase()}`}>
+              <Icon name="chevron-left" /> {menuSectionOf(list)}
             </button>
-            <span aria-hidden="true">›</span>
-            <span aria-current="page">{list.name}</span>
           </>
         }
       />

@@ -220,7 +220,8 @@ export function AppShell({ uid, household, member }: Props) {
               </p>
             )}
             {/* Every page but Home gets a way back Home (list pages put it beside their breadcrumb). */}
-            {data.loaded && !['today', 'list', 'task'].includes(route.view) && <PageBar crumbs={pageCrumbs} />}
+            {/* The Library has its own header that stays at the top, with ↩ Home in it. */}
+            {data.loaded && !['today', 'list', 'task', 'library'].includes(route.view) && <PageBar crumbs={pageCrumbs} />}
             {data.loaded ? (
               <>
                 <MainView />

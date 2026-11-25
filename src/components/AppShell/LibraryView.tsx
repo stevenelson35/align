@@ -4,29 +4,16 @@ import { useApp, useData } from '../../hooks/useApp'
 import { LIBRARY_FIND_KEY, useLibraryPages } from '../../hooks/useLibraryPages'
 import { useStoredSet } from '../../hooks/useStoredSet'
 import { useTodayTiles } from '../../hooks/useTodayTiles'
-import type { List, Task } from '../../types'
+import type { Task } from '../../types'
 import { AUDIENCE_ICON, audienceLabel, audienceOf } from '../../utils/audience'
 import { safeUrl } from '../../utils/links'
 import { LIST_KIND } from '../../utils/listKinds'
-import { MENU_SCROLL_KEY, menuSectionOf } from '../../utils/menu'
+import { listSize, listsInSection, MENU_SCROLL_KEY, SECTIONS } from '../../utils/menu'
 import { searchAll } from '../../utils/search'
 import { EntryResults } from './FindAnything'
-import { isFinished, isItemList } from '../../utils/tasks'
 import { placeOf, tile, type Tile } from '../../utils/tiles'
 import { Icon, type IconName } from '../UI/Icon'
 
-/** The Library's sections of lists, in the menu's order, each with its kind's icon. */
-const SECTIONS: { title: string; icon: IconName }[] = [
-  { title: 'Lists', icon: 'list' },
-  { title: 'Projects', icon: 'chain' },
-  { title: 'Checklists', icon: 'check' },
-  { title: 'Notes', icon: 'note' },
-  { title: 'Links', icon: 'link' },
-  { title: 'Pick lists', icon: 'star' },
-  { title: 'Flashcards', icon: 'book' },
-  { title: 'Contacts', icon: 'person' },
-  { title: 'Gifts', icon: 'gift' },
-]
 
 /** "On Today", "On Today · Kids", "In More…" (or nothing): where a tile sits on your Today. */
 function whereText(tiles: Tile[], t: Tile): string | null {
@@ -70,12 +57,7 @@ export function LibraryView() {
   const links = (app.member.pinnedLinks ?? []).map((id) => listItems.find((t) => t.id === id)).filter((t): t is Task => !!t && !!safeUrl(t.url))
   const shownLinks = [{ id: 'blog', title: "Travelin' On blog", url: BLOG_URL }, ...links.map((t) => ({ id: t.id, title: t.title, url: safeUrl(t.url)! }))].filter((l) => !finding || hit(l.title))
 
-  const inSection = (title: string) =>
-    lists
-      .filter((l) => menuSectionOf(l) === title && !l.giftSecret && (l.visibility !== 'private' || l.ownerId === app.uid) && (!finding || hit(l.name, title)))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  const count = (l: List) => (isItemList(l) ? listItems : tasks).filter((t) => t.listId === l.id && (l.kind === 'notes' || l.kind === 'links' || l.kind === 'contacts' || l.kind === 'cards' || !isFinished(t))).length
-  const unit = (l: List) => (l.kind === 'notes' ? 'notes' : l.kind === 'links' ? 'links' : l.kind === 'cards' ? 'cards' : l.kind === 'contacts' ? 'people' : l.kind === 'gifts' ? 'ideas' : 'open')
+  const inSection = (title: string) => listsInSection(lists, title, app.uid).filter((l) => !finding || hit(l.name, title))
   const shownBoards = boards.filter((b) => !finding || hit(b.name, 'voting'))
 
   const pin = (t: Tile, name: string) => {
@@ -122,16 +104,22 @@ export function LibraryView() {
 
   return (
     <section className="library">
-      <header className="view-header">
-        <h2>Library</h2>
-        <span className="grow" />
-        {app.canPlay && (
-          <button type="button" className="secondary small" onClick={() => app.editList(null, app.isMember ? undefined : 'gifts')}>
-            <Icon name="plus" /> {app.isMember ? 'New list' : 'New gift list'}
+      {/* Stays at the top while the Library scrolls: its name, New list and ↩ Home, then Find. */}
+      <div className="library-top">
+        <header className="view-header">
+          <h2>Library</h2>
+          <span className="grow" />
+          {app.canPlay && (
+            <button type="button" className="secondary small" onClick={() => app.editList(null, app.isMember ? undefined : 'gifts')}>
+              <Icon name="plus" /> {app.isMember ? 'New list' : 'New gift list'}
+            </button>
+          )}
+          <button type="button" className="small home-button" onClick={() => app.navigate({ view: 'today' })} title="Back to Home (Today)" aria-label="Back to Home">
+            <Icon name="back" /> Home
           </button>
-        )}
-      </header>
-      <input type="search" className="library-find" placeholder="Find anything: a page, list, task, note, link…" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Find in the Library" />
+        </header>
+        <input type="search" className="library-find" placeholder="Find anything: a page, list, task, note, link…" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Find in the Library" />
+      </div>
       {error && <p className="error small">{error}</p>}
 
       {shownPages.length > 0 && (
@@ -183,7 +171,7 @@ export function LibraryView() {
                       <span className="library-row-text">
                         <span className="library-row-name">{l.name}</span>
                         <span className="muted small">
-                          {count(l)} {unit(l)} · <Icon name={AUDIENCE_ICON[audience]} /> {audienceLabel(audience)}
+                          {listSize(l, tasks, listItems)} · <Icon name={AUDIENCE_ICON[audience]} /> {audienceLabel(audience)}
                           {where && <span className="library-where"> · {where}</span>}
                         </span>
                       </span>

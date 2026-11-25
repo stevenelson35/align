@@ -372,6 +372,15 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
   before). Only someone who turned notifications on for that phone takes it over: opening Align as a child who never
   did (Switch to) leaves it with whoever had it.
 
+### 5.21 Getting around: a kind of list on its own page (2026-11-26)
+- `#/kind/<Section>` (`KindView`): the lists of one menu section (Gifts, Notes, Links…: `SECTIONS`, `listsInSection`
+  in `utils/menu.ts`, shared with the Library), one `ListRow` each (icon square, name, "for Wife · 3 ideas ·
+  Everyone", ›, 📌), + New. A list page's breadcrumb is now "‹ Gifts" (a pill) to that page instead of the Library
+  scrolled to the section; ↩ Home stays on the right.
+- The Library's header (name, New list, ↩ Home) and find box stay pinned below the top bar (`.library-top`, sticky at
+  `--top-bar-h`, which TopBar measures); it has no separate page bar.
+- Home's Gifts tile shows its lists as indented `ListRow`s (`.tile-body`), like a folder's tiles.
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts
