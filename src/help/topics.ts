@@ -289,9 +289,10 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'inbox',
     title: 'Inbox',
-    tip: 'What family members sent you in Align, and game invitations. Tap one to open it; ✕ clears it.',
+    tip: 'Messages from the family, things they sent you in Align, and game invitations. ✍ writes a message; tap one to open it; ✕ clears it.',
     body: [
-      'Your Inbox is on Today (a tile, at the top until you move it) and behind the ✉ in the top bar, with how many are new.',
+      'Your Inbox is on Home (a tile, at the top until you move it) and behind the ✉ in the top bar, with how many are new.',
+      '• To send a message: ✍ on the Inbox’s heading (or “Write one” when it’s empty) picks who and what; Reply on a message from someone answers them. To send something in Align (a task, a note, a link, a board, a photo) with a message: open it and use “Send about this” at the bottom of its details (or Send… in a row’s ⋯ menu).',
       '• Tap a message to open what it’s about (an entry, a board, a photo, a game); it’s then marked seen (a hollow dot and a dashed outline). A game invitation has Play, which opens the Games page with your Invitations, where you play or decline it; once you’ve opened it, the button says ✓ Opened. ✕ clears it; Mark all read and Clear read tidy up. Only you and the sender can see a message.',
       '• Notifications: Settings → Notifications turns them on for this device (on iPhone and iPad, add Align to the Home Screen first). The sender’s phone asks for the notification at once, so it arrives in seconds; if that doesn’t get through, one goes out within 15 minutes. You can keep notifications for family map alerts but turn them off for the Inbox.',
       '• While Align is open, a new message shows a banner at the top; a game invitation stays until you play or close it.',

@@ -4,6 +4,7 @@ import { useApp } from '../../hooks/useApp'
 import { relativeDay } from '../../utils/day'
 import { CalendarActions } from './CalendarActions'
 import { HelpTip } from '../UI/HelpTip'
+import { Icon } from '../UI/Icon'
 import { useWaiting } from '../../hooks/useWaiting'
 import { TodayDock } from './TodayDock'
 import { TodaySections } from '../../context/TodaySections'
@@ -46,8 +47,8 @@ function DayContents({ day }: { day: string }) {
       style={day === now && todayStyle ? { ...panelBackground(todayStyle), borderRadius: 'var(--radius)', padding: '0.5rem' } : undefined}
     >
       <header className="view-header day-header">
-        <button type="button" className="secondary small" onClick={() => go(addDays(day, -1))} aria-label="Previous day" title="Previous day">
-          ‹
+        <button type="button" className="link header-icon day-arrow" onClick={() => go(addDays(day, -1))} aria-label="Previous day" title="Previous day">
+          <Icon name="chevron-left" />
         </button>
         <h2>
           {todayStyle?.sticker && day === now ? <>{todayStyle.sticker} </> : null}
@@ -55,8 +56,8 @@ function DayContents({ day }: { day: string }) {
           {label && <span className="muted small day-date"> {formatDay(day)}</span>}
         </h2>
         <HelpTip topic="today" label="Today" />
-        <button type="button" className="secondary small" onClick={() => go(addDays(day, 1))} aria-label="Next day" title="Next day">
-          ›
+        <button type="button" className="link header-icon day-arrow" onClick={() => go(addDays(day, 1))} aria-label="Next day" title="Next day">
+          <Icon name="chevron-right" />
         </button>
         {day !== now && (
           <button type="button" className="link small" onClick={() => go(now)}>

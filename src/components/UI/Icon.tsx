@@ -98,6 +98,7 @@ const ICONS = {
   more: { emoji: '⋯', fill: 'M5 10.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0-3.6zM12 10.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0-3.6zM19 10.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0-3.6z' },
   menu: { emoji: '☰', line: 'M4 7h16M4 12h16M4 17h16' },
   'chevron-right': { emoji: '›', line: 'M9 5.5l6.5 6.5-6.5 6.5' },
+  'chevron-left': { emoji: '‹', line: 'M15 5.5L8.5 12l6.5 6.5' },
   'chevron-down': { emoji: '⌄', line: 'M5.5 9l6.5 6.5 6.5-6.5' },
   back: { emoji: '↩️', line: 'M9.5 5.5L4 11l5.5 5.5M4.5 11H15a5 5 0 0 1 5 5v2.5' },
   home: { emoji: '🏠', fill: 'M12 3.2l9 7.8h-2.6v8.8h-4.9v-5.6h-3v5.6H5.6V11H3z' },

@@ -10,6 +10,7 @@ import { agoText } from '../../utils/location'
 import { Icon, type IconName } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { NotifyToggle } from './NotifyToggle'
+import { InboxCompose } from './InboxCompose'
 
 const KIND_ICON: Record<InboxMessage['kind'], IconName> = { entry: 'note', link: 'link', board: 'star', photo: 'photo', game: 'sparkle', result: 'sparkle', note: 'message' }
 
@@ -35,6 +36,12 @@ export function InboxPanel({ page = false }: { page?: boolean }) {
   const shown = page ? messages : [...unreadOnes, ...readOnes.slice(0, TILE_READ)]
   const name = (uid: string) => app.household.members[uid]?.displayName ?? 'Someone'
   const expanded = page || open
+  // Writing a message (to someone, or a reply to them; '' = pick).
+  const [composing, setComposing] = useState<string | null>(null)
+  const write = (to = '') => {
+    if (!page && !open) setOpen(true)
+    setComposing(to)
+  }
 
   return (
     <div className="day-section inbox-panel">
@@ -44,6 +51,11 @@ export function InboxPanel({ page = false }: { page?: boolean }) {
             Mark all read
           </button>
         )}
+        {app.canPlay && (
+          <button type="button" className="link small header-add" onClick={() => (composing === null ? write() : setComposing(null))} title="New message" aria-label="New message" aria-expanded={composing !== null}>
+            <Icon name="compose" />
+          </button>
+        )}
         {!page && (
           <button type="button" className="link small" onClick={() => app.navigate({ view: 'inbox' })}>
             All
@@ -51,12 +63,20 @@ export function InboxPanel({ page = false }: { page?: boolean }) {
         )}
       </SectionHeader>
       {expanded && (
-        <>
+        <div className="inbox-body">
+          {composing !== null && <InboxCompose key={composing} to={composing || undefined} onDone={() => setComposing(null)} />}
           <NotifyToggle compact />
           {error && <p className="error small">{error.includes('index') ? 'The Inbox is still being set up (a few minutes after an update). Try again shortly.' : error}</p>}
           {problem && <p className="error small">{problem}</p>}
-          {loaded && !messages.length && (
-            <p className="muted small">Nothing yet. When someone sends you something in Align (Send → Align), or invites you to a game, it lands here.</p>
+          {loaded && !messages.length && composing === null && (
+            <p className="muted small inbox-empty">
+              <Icon name="mail" /> No messages.{' '}
+              {app.canPlay && (
+                <button type="button" className="link small" onClick={() => write()}>
+                  Write one
+                </button>
+              )}
+            </p>
           )}
           <ul className="inbox-list">
             {shown.map((m) => (
@@ -73,6 +93,11 @@ export function InboxPanel({ page = false }: { page?: boolean }) {
                   </span>
                   <span className="inbox-when muted small">{m.read ? 'seen · ' : ''}{m.createdAt ? agoText(m.createdAt.toMillis(), now) : 'just now'}</span>
                 </button>
+                {m.kind === 'note' && m.link === '#/inbox' && app.canPlay && app.household.members[m.from] && (
+                  <button type="button" className="link small" onClick={() => write(m.from)} title={`Reply to ${name(m.from)}`}>
+                    Reply
+                  </button>
+                )}
                 {(m.kind === 'game' || m.kind === 'result') && (
                   <button type="button" className={`small inbox-play${m.read ? ' secondary' : ''}`} onClick={() => openMessage(m)} title={m.read ? 'You opened this; open it again' : actionLabel(m)}>
                     {m.read ? <><Icon name="check" /> Opened</> : actionLabel(m)}
@@ -94,7 +119,7 @@ export function InboxPanel({ page = false }: { page?: boolean }) {
               Clear read ({readOnes.length})
             </button>
           )}
-        </>
+        </div>
       )}
     </div>
   )

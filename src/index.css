@@ -868,9 +868,58 @@ table.moves td {
 
 .calendar-refresh {
   display: inline-flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.15rem;
+}
+/* Icons in a page header (‹ › days, 📅 ↻ calendar): plain like the top bar's, no button outline, centered. */
+.header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.25rem;
+  font-size: 1.05rem;
+  color: var(--text);
+  text-decoration: none;
+}
+.header-icon:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.header-icon.spinning svg {
+  animation: header-spin 1s linear infinite;
+}
+@keyframes header-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* A note for a moment, floating above the page bottom (it doesn't move anything). */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 5.5rem;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: min(90vw, 26rem);
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--surface);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.2);
+  pointer-events: none;
+  animation: toast-in 0.2s ease-out;
+}
+.toast.error {
+  background: var(--danger);
+  color: white;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 0.5rem);
+  }
 }
 .error-text {
   color: var(--danger);
@@ -3533,6 +3582,29 @@ button.today-sheet-title {
 }
 .weather-detail p {
   margin: 0.2rem 0;
+}
+/* The Inbox's messages sit indented under its heading, like a list's entries. */
+.today-tiles .inbox-body {
+  margin-left: 0.95rem;
+  padding-left: 0.65rem;
+  border-left: 2px solid var(--border);
+}
+.inbox-body > :first-child {
+  margin-top: 0;
+}
+.inbox-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.2rem 0;
+}
+.inbox-compose {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+.inbox-compose select {
+  width: auto;
 }
 .today-quiet-note {
   margin: 0 0 0.4rem;

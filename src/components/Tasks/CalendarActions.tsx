@@ -17,6 +17,19 @@ export function CalendarActions() {
   const wentToCalendar = useRef(false)
   const canRefresh = !!calendarSyncUrl && isMember
 
+  // After a refresh: ↻ dims for a minute (it's up to date), and the note fades after a few seconds.
+  const [resting, setResting] = useState(false)
+  useEffect(() => {
+    if (!note) return
+    const t = setTimeout(() => setNote(null), note.error ? 6000 : 3000)
+    return () => clearTimeout(t)
+  }, [note])
+  useEffect(() => {
+    if (!resting) return
+    const t = setTimeout(() => setResting(false), 60_000)
+    return () => clearTimeout(t)
+  }, [resting])
+
   async function run() {
     setBusy(true)
     setNote(null)
@@ -28,6 +41,7 @@ export function CalendarActions() {
         const changes = (r.created ?? 0) + (r.updated ?? 0) + (r.removed ?? 0)
         setNote({ text: changes ? `Calendar refreshed: ${r.created} new, ${r.updated} changed, ${r.removed} removed.` : 'Calendar is up to date.' })
       }
+      if (r.ok) setResting(true)
     } catch (err) {
       setNote({ text: `Couldn’t reach the calendar sync (${err instanceof Error ? err.message : String(err)}).`, error: true })
     }
@@ -55,7 +69,7 @@ export function CalendarActions() {
   return (
     <span className="calendar-refresh">
       <a
-        className="button-link secondary small icon-button"
+        className="link header-icon"
         href={googleCalendarDayUrl(today())}
         aria-label="Open Google Calendar (new tab)"
         target="_blank"
@@ -66,11 +80,16 @@ export function CalendarActions() {
         <Icon name="calendar" />
       </a>
       {canRefresh && (
-        <button type="button" className={`secondary small icon-button${busy ? ' spinning' : ''}`} onClick={run} disabled={busy} title="Refresh the calendar (sync Google Calendar now)" aria-label={busy ? 'Refreshing the calendar' : 'Refresh the calendar'}>
+        <button type="button" className={`link header-icon${busy ? ' spinning' : ''}`} onClick={run} disabled={busy || resting} title={resting ? 'Just refreshed' : 'Refresh the calendar (sync Google Calendar now)'} aria-label={busy ? 'Refreshing the calendar' : resting ? 'Calendar just refreshed' : 'Refresh the calendar'}>
           <Icon name="refresh" />
         </button>
       )}
-      {note && <span className={`small calendar-note${note.error ? ' error-text' : ' muted'}`}>{note.text}</span>}
+      {/* What happened, for a moment, floating over the page (it doesn't push the header around). */}
+      {note && (
+        <span className={`toast small${note.error ? ' error' : ''}`} role="status">
+          {note.text}
+        </span>
+      )}
     </span>
   )
 }
