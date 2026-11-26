@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from 'react'
+import { deleteField } from 'firebase/firestore'
+import { cleanPayName } from '../../utils/gifts'
 import { createList, deleteList, updateList, type ListInput } from '../../firebase/db'
 import { useApp, useData } from '../../hooks/useApp'
 import type { List } from '../../types'
@@ -22,6 +24,8 @@ export function ListEditor({ list, kind, onClose, onCreated }: { list: List | nu
   const [audience, setAudience] = useState<Audience>(list ? audienceOf(list) : (app.member.defaultVisibility ?? 'everyone'))
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // Gift lists: PayPal.me and Venmo names for chipping in toward group gifts.
+  const [pay, setPay] = useState({ paypal: list?.payTo?.paypal ?? '', venmo: list?.payTo?.venmo ?? '' })
   const set = (patch: Partial<ListInput>) => setForm((f) => ({ ...f, ...patch }))
   const members = people(app.household, true)
   const owner = form.ownerId || app.uid
@@ -41,6 +45,10 @@ export function ListEditor({ list, kind, onClose, onCreated }: { list: List | nu
     setBusy(true)
     setError(null)
     const ownerId = canChangeOwner ? owner : (list?.ownerId ?? app.uid)
+    // Where chip-ins can be sent: only the names that look right, or none at all.
+    const paypal = cleanPayName(pay.paypal)
+    const venmo = cleanPayName(pay.venmo)
+    const payTo = paypal || venmo ? { ...(paypal ? { paypal } : {}), ...(venmo ? { venmo } : {}) } : undefined
     const data: ListInput = {
       ...form,
       name: form.name.trim(),
@@ -48,6 +56,7 @@ export function ListEditor({ list, kind, onClose, onCreated }: { list: List | nu
       pickKind: form.kind === 'picks' ? (form.pickKind ?? 'movies') : undefined,
       recipientId: form.kind === 'gifts' ? form.recipientId : undefined,
       recipientName: form.kind === 'gifts' && !form.recipientId ? form.recipientName?.trim() : undefined,
+      payTo: form.kind === 'gifts' && payTo ? payTo : undefined,
       sharedWith: undefined,
       audience: undefined,
       ...privacyFields(effective.view, ownerId, effective.viewChosen, parents),
@@ -58,6 +67,8 @@ export function ListEditor({ list, kind, onClose, onCreated }: { list: List | nu
     const problem =
       form.kind === 'gifts' && !form.recipientId && !form.recipientName?.trim()
         ? 'Choose who the gifts are for.'
+        : form.kind === 'gifts' && ((pay.paypal.trim() && !paypal) || (pay.venmo.trim() && !venmo))
+          ? 'The PayPal or Venmo name doesn’t look right: just the name (like sam-w), letters, numbers, - _ . only.'
         : edit === 'shared' && !editChosen.length
         ? 'Pick at least one other person who can edit, or choose another option.'
         : edit === 'parents' && !parents.length
@@ -74,7 +85,8 @@ export function ListEditor({ list, kind, onClose, onCreated }: { list: List | nu
     }
     try {
       if (list) {
-        await updateList(list, data, tasks)
+        // Names cleared: remove them (an undefined field would be left as it was).
+        await updateList(list, list.payTo && !data.payTo ? { ...data, payTo: deleteField() as unknown as List['payTo'] } : data, tasks)
       } else {
         const id = await createList({ ...data, ownerId: app.uid })
         if (onCreated) onCreated(id)
@@ -170,6 +182,22 @@ export function ListEditor({ list, kind, onClose, onCreated }: { list: List | nu
               Their name
               <input value={form.recipientName} onChange={(e) => set({ recipientName: e.target.value })} placeholder="Grandma Rose" required maxLength={100} />
             </label>
+          )}
+          {form.kind === 'gifts' && (
+            <fieldset className="pay-to">
+              <legend className="small">Chipping in (optional)</legend>
+              <p className="muted small">
+                For group gifts: where people can send their share. Align only keeps track; the money goes straight to this account.
+              </p>
+              <label className="small">
+                PayPal.me name
+                <input value={pay.paypal} onChange={(e) => setPay({ ...pay, paypal: e.target.value })} placeholder="e.g. SamWest (paypal.me/SamWest)" maxLength={80} autoComplete="off" />
+              </label>
+              <label className="small">
+                Venmo username
+                <input value={pay.venmo} onChange={(e) => setPay({ ...pay, venmo: e.target.value })} placeholder="e.g. @sam-west" maxLength={80} autoComplete="off" />
+              </label>
+            </fieldset>
           )}
           {form.kind === 'picks' && (
             <label>

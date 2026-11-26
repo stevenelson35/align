@@ -1317,6 +1317,10 @@ describe('view-only accounts (extended family): their own gift lists, games and 
     await assertSucceeds(getDoc(doc(db('grandma'), 'lists/gm')))
     await assertSucceeds(updateDoc(doc(db('grandma'), 'lists/gm'), { name: 'Grandma 2026' }))
     await assertFails(updateDoc(doc(db('grandma'), 'lists/gm'), { kind: 'checklist' }))
+    // Where chip-ins go: PayPal.me / Venmo names only, on gift lists only.
+    await assertSucceeds(updateDoc(doc(db('grandma'), 'lists/gm'), { payTo: { paypal: 'GrandmaR', venmo: 'grandma-r' } }))
+    await assertFails(updateDoc(doc(db('grandma'), 'lists/gm'), { payTo: { venmo: 'not a name!' } }))
+    await assertFails(updateDoc(doc(db('grandma'), 'lists/gm'), { payTo: { bank: '123' } }))
     await assertSucceeds(setDoc(doc(db('grandma'), 'tasks/i1'), idea(myList)))
     await assertSucceeds(updateDoc(doc(db('grandma'), 'tasks/i1'), { title: 'Garden gloves (M)' }))
     // Family only (not shown to view-only accounts): still theirs to read and change.

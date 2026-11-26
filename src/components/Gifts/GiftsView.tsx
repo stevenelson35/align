@@ -1,10 +1,10 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { useStoredChoice } from '../../hooks/useStoredChoice'
 import { addTaskNow } from '../../firebase/db'
-import { ensureSecretList, removeClaim, saveClaim, setGiftRanks, useGiftClaims } from '../../firebase/gifts'
+import { ADD_IDEA_KEY, ensureSecretList, removeClaim, saveClaim, setGiftRanks, useGiftClaims } from '../../firebase/gifts'
 import { useApp, useData } from '../../hooks/useApp'
 import type { GiftClaim, List, Task } from '../../types'
-import { canAddIdeas, canClaim, claimState, cleanGift, giftStatus, giftSummary, GIFT_SHOWS, GIFT_SORTS, isRecipient, priceText, recipientKey, recipientLabel, reRank, secretListFor, showGifts, sortGifts, type GiftShow, type GiftSort } from '../../utils/gifts'
+import { canAddIdeas, canClaim, claimState, payLinks, qtyLine, cleanGift, giftStatus, giftSummary, GIFT_SHOWS, GIFT_SORTS, isRecipient, priceText, recipientKey, recipientLabel, reRank, secretListFor, showGifts, sortGifts, type GiftShow, type GiftSort } from '../../utils/gifts'
 import { targetName } from '../../utils/tasks'
 import { ListHeader } from '../Tasks/ListHeader'
 import { Icon } from '../UI/Icon'
@@ -166,7 +166,7 @@ export function ClaimControls({ item, list, claims, full = false }: { item: Task
   const [pledging, setPledging] = useState<string | null>(null)
   const fail = (err: unknown) => setError(err instanceof Error ? err.message : String(err))
   const save = (patch: Partial<{ qty: number; bought: boolean; note?: string; amount?: number }>) =>
-    saveClaim(list, item, app.uid, { qty: pool ? 1 : (own?.qty ?? Math.max(1, s.open)), bought: own?.bought ?? false, note: own?.note, amount: own?.amount, ...patch }).catch(fail)
+    saveClaim(list, item, app.uid, { qty: pool ? 1 : (own?.qty ?? 1), bought: own?.bought ?? false, note: own?.note, amount: own?.amount, ...patch }).catch(fail)
   const pledge = () => {
     const amount = Number(String(pledging ?? '').replace(/[$,\s]/g, ''))
     if (!(amount > 0)) return setError('Type how much you’re putting in.')
@@ -182,11 +182,12 @@ export function ClaimControls({ item, list, claims, full = false }: { item: Task
           {s.still ? ` · ${priceText(s.still)} to go` : s.still === 0 ? ' · covered' : ''}
         </span>
       )}
+      {qtyLine(s, pool) && <span className={`small claim-qty${s.open ? '' : ' muted'}`}>{qtyLine(s, pool)}</span>}
       {others.map((c) => (
         <span key={c.id} className={`badge claim-badge${c.bought ? ' bought' : ''}`} title={c.note}>
           {targetName(c.claimedBy, app.household)}
-          {pool && c.amount ? ` ${priceText(c.amount)}` : s.wanted > 1 ? ` ×${c.qty}` : ''}
-          {c.bought ? ' · bought' : ''}
+          {pool && c.amount ? ` ${priceText(c.amount)}` : s.wanted > 1 ? ` is getting ${c.qty}` : ''}
+          {c.bought ? (pool ? ' · sent' : ' · bought') : ''}
           {c.note ? ` · “${c.note}”` : ''}
         </span>
       ))}
@@ -207,15 +208,38 @@ export function ClaimControls({ item, list, claims, full = false }: { item: Task
             <Icon name="coin" /> {own ? `You: ${priceText(own.amount ?? 0)} (change)` : 'Chip in'}
           </button>
           {own && (
-            <button type="button" className="link small" onClick={() => removeClaim(item.id, app.uid).catch(fail)}>
-              Take back
-            </button>
+            <>
+              {/* Align never holds the money: these open PayPal or Venmo ready to send, then you mark it Sent. */}
+              {!own.bought &&
+                payLinks(list.payTo, own.amount ?? 0, `${item.title} for ${recipientLabel(list, app.household)}`).map((l) => (
+                  <a key={l.label} className="button-link secondary small" href={l.url} target="_blank" rel="noopener noreferrer" title={`Send ${priceText(own.amount ?? 0)} with ${l.label}`}>
+                    Send with {l.label} <Icon name="external" />
+                  </a>
+                ))}
+              <button type="button" className={`small ${own.bought ? '' : 'secondary'}`} onClick={() => save({ bought: !own.bought })} aria-pressed={own.bought} title={own.bought ? 'Sent (tap to undo)' : 'Mark that you’ve sent it'}>
+                <Icon name="check" /> {own.bought ? 'Sent' : 'Mark sent'}
+              </button>
+              <button type="button" className="link small" onClick={() => removeClaim(item.id, app.uid).catch(fail)}>
+                Take back
+              </button>
+            </>
           )}
         </>
       )}
       {!pool && canClaim(app.member.role) &&
         (own ? (
           <>
+            {s.wanted > 1 && (
+              <span className="claim-stepper" role="group" aria-label="How many you’re getting">
+                <button type="button" className="secondary small" disabled={own.qty <= 1} onClick={() => save({ qty: own.qty - 1 })} aria-label="One fewer">
+                  −
+                </button>
+                <span className="small">You: {own.qty}</span>
+                <button type="button" className="secondary small" disabled={s.open <= 0} onClick={() => save({ qty: own.qty + 1 })} aria-label="One more">
+                  +
+                </button>
+              </span>
+            )}
             <button type="button" className={`small ${own.bought ? '' : 'secondary'}`} onClick={() => save({ bought: !own.bought })} aria-pressed={own.bought} title={own.bought ? 'Bought (tap to undo)' : 'Mark bought'}>
               <Icon name="check" /> {own.bought ? 'Bought' : 'Mark bought'}
             </button>
@@ -225,20 +249,14 @@ export function ClaimControls({ item, list, claims, full = false }: { item: Task
           </>
         ) : (
           s.open > 0 && (
-            <button type="button" className="secondary small" onClick={() => save({ qty: s.open, bought: false })} title="Quietly mark that you're getting it">
-              <Icon name="gift" /> I’ll get it{s.wanted > 1 ? ` (${s.open})` : ''}
+            <button type="button" className="secondary small" onClick={() => save({ qty: 1, bought: false })} title="Quietly mark that you're getting it (one; + takes more)">
+              <Icon name="gift" /> {s.wanted > 1 ? 'I’ll get one' : 'I’ll get it'}
             </button>
           )
         ))}
       {!pool && !own && s.open === 0 && !others.length && <span className="muted small">Taken</span>}
       {full && own && (
         <div className="claim-more">
-          {s.wanted > 1 && !pool && (
-            <label className="inline small">
-              How many you’re getting
-              <input type="number" min={1} max={99} value={own.qty} onChange={(e) => save({ qty: Number(e.target.value) || 1 })} style={{ width: '4.5rem' }} />
-            </label>
-          )}
           <label className="small">
             Your note (the other givers see it, never the recipient): which one, where, wrapped?
             <input
@@ -347,7 +365,12 @@ function GiftRankArrange({ items, onDone }: { items: Task[]; onDone: () => void 
 function AddGift({ list, secretAllowed, name }: { list: List; secretAllowed: boolean; name: string }) {
   const app = useApp()
   const { lists } = useData()
-  const [open, setOpen] = useState(false)
+  // Open from the start right after Make my wish list (once).
+  const [open, setOpen] = useState(() => {
+    if (sessionStorage.getItem(ADD_IDEA_KEY) !== list.id) return false
+    sessionStorage.removeItem(ADD_IDEA_KEY)
+    return true
+  })
   const [title, setTitle] = useState('')
   const [qty, setQty] = useState('1')
   const [color, setColor] = useState('')

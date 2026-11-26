@@ -79,6 +79,8 @@ export interface List {
   /** Gift lists: who the gifts are for, a household member (recipientId) or anyone else by name (recipientName). */
   recipientId?: string
   recipientName?: string
+  /** Gift lists: where people who chip in toward a group gift can send money (PayPal.me and Venmo names). */
+  payTo?: { paypal?: string; venmo?: string }
   /**
    * A gift list's hidden companion for surprise ideas: shared with everyone except the recipient (so the rules keep
    * it from them), shown merged into the recipient's list for everyone else, never in the menu.

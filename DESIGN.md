@@ -381,6 +381,16 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
   `--top-bar-h`, which TopBar measures); it has no separate page bar.
 - Home's Gifts tile shows its lists as indented `ListRow`s (`.tile-body`), like a folder's tiles.
 
+### 5.22 Gifts: several of one, chipping in with real money, one-tap wish list (2026-11-26)
+- Several of one (gift.qty > 1): "I’ll get one" claims 1; − / + on your claim (up to what's still open);
+  `qtyLine`: "1 of 2 still needed" / "All 2 taken"; others' badges say "Linda is getting 1".
+- Group gifts: gift lists may carry `payTo` { paypal?, venmo? } (PayPal.me / Venmo names, rules: ^[A-Za-z0-9_.-]{1,40}$,
+  gift lists only; set in the list editor, `cleanPayName`). After pledging, `payLinks` opens PayPal.me (amount) or
+  Venmo (amount and note) to send it person to person; "Mark sent" reuses the claim's `bought`. Align never holds
+  money (no payment provider, no fees).
+- `MakeWishList` (Home's Gifts and the Gifts page, until you have one): `makeWishList` creates "<name>’s wish list"
+  for you, Everyone, and opens it with Add an idea open (`ADD_IDEA_KEY`, once).
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts

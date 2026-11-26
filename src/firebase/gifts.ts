@@ -77,3 +77,16 @@ export async function setGiftRanks(changes: { id: string; rank: number }[], item
     await batch.commit()
   }
 }
+
+/** Opens the "Add an idea" form when a gift list opens (its id), once: set by Make my wish list. */
+export const ADD_IDEA_KEY = 'align-gift-add-idea'
+
+/**
+ * Make my wish list, in one tap: "Sam’s wish list", for you, seen by Everyone (the family and view-only relatives),
+ * who quietly mark what they're getting. Returns its id.
+ */
+export async function makeWishList(uid: string, name: string): Promise<string> {
+  const id = await createList({ name: `${name}’s wish list`, kind: 'gifts', recipientId: uid, visibility: 'family', viewerVisible: true, ownerId: uid, defaultContext: 'family' })
+  sessionStorage.setItem(ADD_IDEA_KEY, id)
+  return id
+}

@@ -127,3 +127,37 @@ export function cleanGift(g: { qty?: number | string; color?: string; size?: str
   }
   return Object.keys(out).length ? out : undefined
 }
+
+/**
+ * Where a gift wanted more than once stands, in words: "1 of 2 still needed", "All 2 taken" (nothing when nobody's
+ * on it yet, or it's just one, or a group gift).
+ */
+export function qtyLine(s: { wanted: number; open: number; claims: unknown[] }, pool = false): string {
+  if (pool || s.wanted <= 1 || !s.claims.length) return ''
+  return s.open > 0 ? `${s.open} of ${s.wanted} still needed` : `All ${s.wanted} taken`
+}
+
+/** A PayPal.me or Venmo name as typed ("@sam-w", "paypal.me/SamW", "venmo.com/u/sam") → "sam-w", or '' if not one. */
+export function cleanPayName(raw: string | undefined): string {
+  const name = (raw ?? '')
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/^(www\.)?(paypal\.me|venmo\.com(\/u)?)\//i, '')
+    .replace(/^@/, '')
+    .replace(/\/.*$/, '')
+  return /^[A-Za-z0-9_.-]{1,40}$/.test(name) ? name : ''
+}
+
+/**
+ * Links that open PayPal or Venmo ready to send an amount to the gift list's person, with a note. Align never holds
+ * the money: the pledge stays a pledge in Align, and the giver marks it Sent.
+ */
+export function payLinks(payTo: { paypal?: string; venmo?: string } | undefined, amount: number, note: string): { label: string; url: string }[] {
+  const out: { label: string; url: string }[] = []
+  const paypal = cleanPayName(payTo?.paypal)
+  const venmo = cleanPayName(payTo?.venmo)
+  const sum = Math.round(amount * 100) / 100
+  if (paypal) out.push({ label: 'PayPal', url: `https://paypal.me/${encodeURIComponent(paypal)}/${sum}USD` })
+  if (venmo) out.push({ label: 'Venmo', url: `https://venmo.com/${encodeURIComponent(venmo)}?txn=pay&amount=${sum}&note=${encodeURIComponent(note.slice(0, 100))}` })
+  return out
+}

@@ -5,6 +5,7 @@ import { canClaim, claimState, isRecipient, recipientKey, recipientLabel, secret
 import { Icon } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { ListRow } from '../UI/ListRow'
+import { MakeWishList } from './MakeWishList'
 import { useTodayExpansion } from '../../hooks/useTodaySection'
 
 /**
@@ -36,6 +37,10 @@ export function GiftsStrip() {
           {open ? 'Hide' : 'Show'}
         </button>
       </SectionHeader>
+      {/* No wish list of your own yet: the way to make one, without opening anything. */}
+      <div className="tile-body gift-wish-prompt">
+        <MakeWishList className="secondary small" />
+      </div>
       {open && (
         <div className="tile-body">
           {shopping.length > 0 && (
@@ -69,7 +74,7 @@ export function GiftsStrip() {
               </ul>
             </>
           )}
-          {!giftLists.length && <p className="muted small">No gift lists yet: + makes one (for someone in the family, yourself, or anyone).</p>}
+          {!giftLists.length && <p className="muted small">No gift lists yet: + makes one for someone else.</p>}
           {/* Each gift list as a line, like a folder's tiles. */}
           <div className="kind-rows">
             {giftLists.map((l) => {

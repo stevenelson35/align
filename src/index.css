@@ -3689,6 +3689,36 @@ button.today-sheet-title {
 .library-top .library-find {
   margin: 0;
 }
+/* Gifts: Make my wish list (gone once you have one), how many are still needed, − / + on your own claim. */
+.gift-wish-prompt:empty,
+.kind-wish:empty {
+  display: none;
+}
+.gift-wish-prompt {
+  margin-bottom: 0.4rem;
+}
+.claim-qty {
+  font-weight: 600;
+}
+.claim-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.claim-stepper button {
+  min-width: 1.9rem;
+  padding: 0.1rem 0.4rem;
+}
+.pay-to {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.7rem;
+}
+.pay-to p {
+  margin: 0;
+}
 .today-quiet-note {
   margin: 0 0 0.4rem;
 }

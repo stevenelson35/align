@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GiftClaim, Household, List, Task } from '../types'
-import { claimState, cleanGift, giftStatus, giftSummary, priceText, reRank, showGifts, sortGifts, isRecipient, recipientKey, recipientLabel, secretListFor, secretSharedWith } from './gifts'
+import { claimState, cleanGift, giftStatus, giftSummary, priceText, reRank, showGifts, sortGifts, isRecipient, recipientKey, recipientLabel, secretListFor, secretSharedWith, qtyLine, cleanPayName, payLinks } from './gifts'
 
 const household = {
   members: {
@@ -77,5 +77,26 @@ describe('gift priorities, prices and group gifts', () => {
     expect(cleanGift({ price: '' })).toBeUndefined()
     expect(giftSummary({ gift: { qty: 2, color: 'Navy', price: 25 } })).toBe('×2 · Navy · about $25')
     expect(priceText(12.5)).toBe('$12.50')
+  })
+})
+
+describe('several of one gift, and paying toward a group gift', () => {
+  it('says how many are still needed', () => {
+    expect(qtyLine({ wanted: 2, open: 1, claims: [{}] })).toBe('1 of 2 still needed')
+    expect(qtyLine({ wanted: 2, open: 0, claims: [{}, {}] })).toBe('All 2 taken')
+    expect(qtyLine({ wanted: 2, open: 2, claims: [] })).toBe('')
+    expect(qtyLine({ wanted: 1, open: 0, claims: [{}] })).toBe('')
+    expect(qtyLine({ wanted: 3, open: 1, claims: [{}] }, true)).toBe('')
+  })
+  it('opens PayPal or Venmo with the amount and a note', () => {
+    expect(cleanPayName('@sam-w')).toBe('sam-w')
+    expect(cleanPayName('https://www.paypal.me/SamW')).toBe('SamW')
+    expect(cleanPayName('venmo.com/u/sam_99')).toBe('sam_99')
+    expect(cleanPayName('not a name!')).toBe('')
+    expect(payLinks({ paypal: 'SamW', venmo: '@sam_99' }, 25.5, 'For the bike')).toEqual([
+      { label: 'PayPal', url: 'https://paypal.me/SamW/25.5USD' },
+      { label: 'Venmo', url: 'https://venmo.com/sam_99?txn=pay&amount=25.5&note=For%20the%20bike' },
+    ])
+    expect(payLinks(undefined, 10, 'x')).toEqual([])
   })
 })

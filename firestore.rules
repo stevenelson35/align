@@ -180,6 +180,10 @@ service cloud.firestore {
         // shared with chosen people that don't include the recipient, so the rules keep it from them.
         && (!('recipientId' in d) || (d.kind == 'gifts' && d.recipientId is string))
         && (!('recipientName' in d) || (d.kind == 'gifts' && d.recipientName is string && d.recipientName.size() <= 100))
+        // Where chip-ins for group gifts can be sent (PayPal.me / Venmo names; Align never holds money).
+        && (!('payTo' in d) || (d.kind == 'gifts' && d.payTo is map && d.payTo.keys().hasOnly(['paypal', 'venmo'])
+            && (!('paypal' in d.payTo) || d.payTo.paypal.matches('^[A-Za-z0-9_.-]{1,40}$'))
+            && (!('venmo' in d.payTo) || d.payTo.venmo.matches('^[A-Za-z0-9_.-]{1,40}$'))))
         && (!('giftSecret' in d) || (d.giftSecret == true && d.kind == 'gifts' && d.visibility == 'shared'
                                      && 'recipientId' in d && !(d.recipientId in d.sharedWith)))
         && (!('secretOf' in d) || (d.get('giftSecret', false) == true && d.secretOf is string))

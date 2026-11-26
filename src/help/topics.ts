@@ -374,7 +374,9 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: 'Gift lists',
     tip: 'Ideas for one person. Everyone sees the ideas; everyone except that person also sees secret ideas and quietly marks what they’re getting.',
     body: [
-      'Make one with “+ New list” → Gift list, and choose who it’s for: a family member (yourself, for a wish list) or anyone else by name.',
+      'Your own wish list: “Make my wish list” (on Home’s Gifts, or the Gifts page) makes it in one tap, seen by everyone, and opens it ready for your first idea. For someone else, + on Gifts (or “+ New list” → Gift list) and choose who it’s for: a family member or anyone by name.',
+      '• Several of one thing (×2): “I’ll get one” takes one; − / + takes more or fewer. Everyone sees “1 of 2 still needed” (and who’s getting how many) until it says “All 2 taken”.',
+      '• Group gifts (chip in): after you pledge, “Send with PayPal” or “Send with Venmo” opens the app ready to send your share (when the list has a PayPal.me or Venmo name: Edit list → Chipping in), then “Mark sent”. Align only keeps track; the money goes straight to them.',
       '• Two ways to use it: someone makes their own wish list (the family sees it and quietly claims ideas), or you make a list for someone else, which starts hidden from them (shared with everyone else) so the whole list is a surprise. Add them under Who can see it to show it to them.',
       '• Add an idea with how many, color, size, about how much it costs, and details. Whoever keeps the list can tap Arrange by priority and drag the ideas into order (#1 = most wanted); everyone sees the numbers.',
       '• Sort by priority, price (low to high or high to low) or newest. Givers can also show All, Not claimed (nobody, or not all of it, yet) or Claimed; with All, ✓ marks a claimed idea and ◐ one that’s partly claimed. Secret ideas are in their own section below.',

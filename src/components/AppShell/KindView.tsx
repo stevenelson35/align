@@ -4,6 +4,7 @@ import { recipientLabel } from '../../utils/gifts'
 import { listSize, listsInSection, SECTIONS } from '../../utils/menu'
 import { Icon } from '../UI/Icon'
 import { ListRow } from '../UI/ListRow'
+import { MakeWishList } from '../Gifts/MakeWishList'
 import { useTodayTiles } from '../../hooks/useTodayTiles'
 import { tile } from '../../utils/tiles'
 
@@ -37,6 +38,11 @@ export function KindView({ section }: { section: string }) {
           </button>
         )}
       </header>
+      {kind.kind === 'gifts' && (
+        <p className="kind-wish">
+          <MakeWishList />
+        </p>
+      )}
       {groups.map((g) => (
         <div key={g.title} className="kind-group">
           {groups.length > 1 && (
