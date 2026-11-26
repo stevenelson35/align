@@ -286,7 +286,11 @@ export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallen
       // It says which kind it is: your own word for them, a play-any-time challenge (chosen or random word), or a race.
       const recipients = selected.filter((id) => id !== app.uid)
       const { title, text } = challengeMessage(challengeType, challengeType === 'invite' ? 0 : recipients.length - 1)
-      void sendToInbox(app.uid, recipients, { kind: 'game', title, text, link: result.challengeId ? `#/games/${result.challengeId}` : '#/games' }).catch(() => undefined)
+      // Each person's invitation opens their own copy of the challenge (each player has one).
+      for (const to of recipients) {
+        const own = result.challengeIds?.[to]
+        void sendToInbox(app.uid, [to], { kind: 'game', title, text, link: own ? `#/games/${own}` : '#/games' }).catch(() => undefined)
+      }
       setWord('')
       setSelected([])
       if (isRandomChallenge && result.challengeId) {

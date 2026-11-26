@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { today } from '../../engine/dates'
-import { completeGameChallenge, inviteToGame, recordGameScore, startGameChallenge, useGameChallenge, useGameScores, type GameChallenge } from '../../firebase/games'
+import { completeGameChallenge, findOwnChallenge, inviteToGame, recordGameScore, startGameChallenge, useGameChallenge, useGameScores, type GameChallenge } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
 import { isLightsOutSolved, lightsOutBoard, toggleLights } from '../../games/lightsOut'
 import { celebrate } from '../../utils/celebrate'
@@ -78,6 +78,27 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
     startGameChallenge(challenge.id).catch((err) => setError(err instanceof Error ? err.message : String(err)))
   }, [challengeId, challenge])
 
+  // A Wordle challenge link to someone else's copy (each player has their own): go to yours instead. Until the
+  // lookup says there's none, this counts as on the way (no "not for you" flash).
+  const wrongCopy = !!challengeId && !!challenge && challenge.gameId === 'wordle' && challenge.to !== app.uid && !!challenge.payload?.puzzleId
+  const [noOwnCopy, setNoOwnCopy] = useState<string | null>(null)
+  const redirecting = wrongCopy && noOwnCopy !== challengeId
+  useEffect(() => {
+    const puzzleId = challenge?.payload?.puzzleId
+    if (!wrongCopy || !challengeId || !puzzleId) return
+    let live = true
+    findOwnChallenge(app.uid, puzzleId)
+      .then((own) => {
+        if (!live) return
+        if (own && own !== challengeId) app.navigate({ view: 'games', challengeId: own })
+        else setNoOwnCopy(challengeId)
+      })
+      .catch(() => live && setNoOwnCopy(challengeId))
+    return () => {
+      live = false
+    }
+  }, [wrongCopy, challengeId, challenge, app])
+
   const validChallenge = !challengeId || (
     !!selectedGame && !!gameById(selectedGame) && challenge?.to === app.uid && challenge.gameId === selectedGame
     && (challenge.status === 'pending' || challenge.status === 'playing'
@@ -86,7 +107,7 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
   )
   const setupError = challengeError
     ?? (challengeId && challenge === null ? 'This challenge is no longer available.' : null)
-    ?? (challengeId && challenge && !validChallenge ? 'This challenge was already completed or was not meant for your account.' : null)
+    ?? (challengeId && challenge && !validChallenge && !redirecting ? 'This challenge was already completed or was not meant for your account.' : null)
   const people = Object.entries(app.household.members)
     .filter(([id, member]) => id !== app.uid && (member.role === 'member' || member.role === 'viewer') && !member.bot)
     .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
@@ -166,6 +187,7 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
   if (!app.canPlay) return <p className="muted">Family games are for the family’s accounts.</p>
   if (challengeId && challenge === undefined && !challengeError) return <p className="muted">Opening your challenge…</p>
   if (setupError) return <p className={challengeError ? 'error' : 'muted'}>{setupError}</p>
+  if (redirecting) return <p className="muted">Opening your copy of this challenge…</p>
   if (!validChallenge) return <p className="muted">Opening Lights Out…</p>
   if (selectedGame === 'tower-of-hanoi') {
     return <TowerOfHanoiGame challenge={challengeId ? challenge ?? undefined : undefined} onBack={() => app.navigate({ view: 'games' })} onSolved={() => setSolved(true)} />

@@ -1208,6 +1208,20 @@ describe('investing', () => {
   })
 })
 
+describe('Wordle challenge copies', () => {
+  it('lets a player find their own copy of a challenge by its puzzle', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const fs = ctx.firestore() as unknown as Firestore
+      const base = { gameId: 'wordle', from: 'steve', challengeType: 'realtime-live', payload: { puzzleId: 'p1', wordLength: 5, version: 1 }, status: 'pending', participants: ['steve', 'grandma'], players: ['steve', 'grandma'] }
+      await setDoc(doc(fs, 'gameChallenges/c-steve'), { ...base, to: 'steve' })
+      await setDoc(doc(fs, 'gameChallenges/c-grandma'), { ...base, to: 'grandma' })
+    })
+    const mine = await assertSucceeds(getDocs(query(collection(db('grandma'), 'gameChallenges'), where('to', '==', 'grandma'), where('payload.puzzleId', '==', 'p1'))))
+    if (mine.docs.map((d) => d.id).join() !== 'c-grandma') throw new Error('expected her own copy')
+    await assertFails(getDocs(query(collection(db('wife'), 'gameChallenges'), where('to', '==', 'grandma'))))
+  })
+})
+
 describe('phones and daily Wordle boards', () => {
   const id = 'a'.repeat(64)
   beforeEach(async () => {

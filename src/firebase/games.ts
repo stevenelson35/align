@@ -1,4 +1,4 @@
-import { Timestamp, collection, doc, getDocs, onSnapshot, query, runTransaction, serverTimestamp, updateDoc, where, writeBatch } from 'firebase/firestore'
+import { Timestamp, collection, doc, getDocs, limit, onSnapshot, query, runTransaction, serverTimestamp, updateDoc, where, writeBatch } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { db } from './config'
 import { sendToInbox } from './inbox'
@@ -204,6 +204,15 @@ export function useGameChallenge(id: string | undefined) {
     )
   }, [id])
   return id ? state?.id === id ? state : { challenge: undefined, error: null } : { challenge: null, error: null }
+}
+
+/**
+ * Your own copy of a Wordle challenge (each player has one, sharing the puzzle): for a link that pointed at someone
+ * else's copy (invitations sent before 2026-11-26 linked everyone to the sender's). Null if you're not in it.
+ */
+export async function findOwnChallenge(uid: string, puzzleId: string): Promise<string | null> {
+  const snap = await getDocs(query(collection(db, 'gameChallenges'), where('to', '==', uid), where('payload.puzzleId', '==', puzzleId), limit(1)))
+  return snap.docs[0]?.id ?? null
 }
 
 export async function inviteToGame(from: string, recipients: string[], gameId: GameId, payload: GameChallengePayload) {

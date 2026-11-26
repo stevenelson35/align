@@ -1018,6 +1018,8 @@ function createCustomChallenges($config, $token, $uid, $body) {
         'participants' => count($players),
     ];
     if ($ownChallengeId !== null) $result['challengeId'] = $ownChallengeId;
+    // Each player's own copy, so each invitation links to the right one.
+    $result['challengeIds'] = $challengeIds;
     return $result;
 }
 

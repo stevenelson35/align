@@ -79,7 +79,7 @@ export const abandonWordleChallenge = (challengeId: string) =>
   wordleRequest<WordleGameState>('challenge_abandon', { challengeId })
 
 export const createWordleChallenge = (word: string | null, recipients: string[], challengeType: WordleChallengeType) =>
-  wordleRequest<{ invited: number; participants: number; challengeId?: string }>(
+  wordleRequest<{ invited: number; participants: number; challengeId?: string; challengeIds?: Record<string, string> }>(
     'custom_create',
     { ...(word ? { word } : {}), recipients, challengeType },
   )
