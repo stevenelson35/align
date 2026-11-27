@@ -676,7 +676,7 @@ service cloud.firestore {
     }
 
     function validGameScore(d) {
-      return d.uid == request.auth.uid && d.gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle']
+      return d.uid == request.auth.uid && d.gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle', 'trail', 'balance', 'stars', 'blocks', 'combine']
         && d.seed is string && d.seed.size() > 0 && d.seed.size() <= 120
         && d.plays is int && d.plays > 0 && d.plays <= 1000000
         && d.updatedAt is timestamp
@@ -691,10 +691,17 @@ service cloud.firestore {
         );
     }
 
+    // The daily logic puzzles (Trail, Balance, Star Fields, Blocks): time only.
+    function timedGame(gameId) {
+      return gameId in ['trail', 'balance', 'stars', 'blocks', 'combine'];
+    }
+
     function validGameResult(gameId, result) {
-      return gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle']
+      return gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle', 'trail', 'balance', 'stars', 'blocks', 'combine']
         && result is map && result.ms is int && result.ms > 0 && result.ms <= 3600000
-        && (gameId == 'wordle'
+        && (timedGame(gameId)
+          ? result.keys().hasOnly(['ms'])
+          : gameId == 'wordle'
           ? result.keys().hasOnly(['guesses', 'ms', 'hardMode', 'solved'])
             && result.keys().hasAll(['guesses', 'ms'])
             && result.guesses is int && result.guesses > 0 && result.guesses <= 6
@@ -710,7 +717,9 @@ service cloud.firestore {
     function gameScoreBeats(newScore, oldScore) {
       let newer = scoreResult(newScore);
       let older = scoreResult(oldScore);
-      return newScore.gameId == 'wordle'
+      return timedGame(newScore.gameId)
+        ? newer.ms <= older.ms
+        : newScore.gameId == 'wordle'
         ? newer.guesses < older.guesses || (newer.guesses == older.guesses && newer.ms <= older.ms)
         : newer.moves < older.moves || (newer.moves == older.moves && newer.ms <= older.ms);
     }

@@ -414,7 +414,7 @@ export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallen
 
       {game && (
         <>
-          <article className={`game-card card wordle-game${!game.complete ? ' wordle-game-playing' : ''}${challenge ? ' wordle-game-challenge' : ''}`}>
+          <article className={`game-card card wordle-game wordle-game-playing${challenge ? ' wordle-game-challenge' : ''}`}>
             <header className="row wrap">
               <div className="grow">
                 <h3>{game.mode === 'daily' ? `${earlier ? 'Daily Wordle' : 'Today’s Wordle'}${game.date ? ` · ${wordleDay(game.date)}` : ''}` : `${game.length}-letter challenge`}</h3>
@@ -621,13 +621,10 @@ export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallen
         </>
       )}
 
-      {/* The family's day: before you play, and under your board once you've finished. */}
-      {!challenge && (!game || (game.mode === 'daily' && game.complete)) && (game?.date ?? dailyPreview?.date) && (
-        <WordleDailyResults date={(game?.date ?? dailyPreview?.date)!} today={today()} scores={scores} finished={!!(game?.complete ?? dailyPreview?.complete)} />
-      )}
-      {scoreError && <p className="error small">{scoreError}</p>}
 
-      {!challenge && (
+
+      {/* Challenge someone: on the Wordle page, not while you're playing. */}
+      {!challenge && !game && (
         <article className="card game-invite-form">
           <div className="row">
             <div className="grow">
@@ -742,7 +739,11 @@ export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallen
           )}
         </article>
       )}
-
+      {/* The family's day: before you play, and under your board once you've finished. */}
+      {!challenge && (!game || (game.mode === 'daily' && game.complete)) && (game?.date ?? dailyPreview?.date) && (
+        <WordleDailyResults date={(game?.date ?? dailyPreview?.date)!} today={today()} scores={scores} finished={!!(game?.complete ?? dailyPreview?.complete)} />
+      )}
+      {scoreError && <p className="error small">{scoreError}</p>}
     </section>
   )
 }

@@ -5,6 +5,8 @@ export function GameTile({
   name,
   description,
   pinned,
+  daily = false,
+  doneToday = false,
   onPlay,
   onPin,
 }: {
@@ -12,6 +14,9 @@ export function GameTile({
   name: string
   description: string
   pinned: boolean
+  /** A new puzzle every day (and whether you've finished today's). */
+  daily?: boolean
+  doneToday?: boolean
   onPlay: () => void
   onPin: () => void
 }) {
@@ -44,7 +49,10 @@ export function GameTile({
           </span>
         )}
         <span className="game-tile-copy">
-          <strong>{name}</strong>
+          <strong>
+            {name}
+            {daily && <span className={`badge daily-badge${doneToday ? ' done' : ''}`}>{doneToday ? '✓ Today’s done' : 'Daily'}</span>}
+          </strong>
           <span className="muted small">{description}</span>
         </span>
       </button>

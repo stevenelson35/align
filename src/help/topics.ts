@@ -27,6 +27,11 @@ export type HelpTopicId =
   | 'goals'
   | 'rewards'
   | 'games'
+  | 'trail'
+  | 'balance'
+  | 'stars'
+  | 'blocks'
+  | 'combine'
   | 'photos'
   | 'map'
   | 'voting'
@@ -354,10 +359,76 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: 'trail',
+    title: 'Trail',
+    tip: 'Draw one path from 1 through every number in order, filling every square.',
+    body: [
+      'A daily puzzle, the same for everyone. Start shows the board and starts the clock.',
+      '• Drag from 1 through neighboring squares (up, down, left, right), or tap square by square. The numbers must come in order, and the path must cover every square once.',
+      '• Drag back over your path, or tap an earlier square, to undo to there. The path turns red when the numbers are out of order.',
+      '• Tip: squares in corners and along the edges have the fewest ways in and out; plan around them first.',
+      'Solving it saves your time for today (fastest in the family shows first) and earns 30 seconds of Glider time once a day.',
+    ],
+  },
+  {
+    id: 'balance',
+    title: 'Balance',
+    tip: 'Fill the grid with ● and ○: three of each in every row and column, never three side by side, = and × between squares.',
+    body: [
+      'A daily puzzle, the same for everyone. Start shows the board and starts the clock.',
+      '• Tap an empty square for ●, again for ○, again to clear it. The shaded squares are given and don’t change.',
+      '• Every row and column has three ● and three ○, and never three of the same side by side.',
+      '• = between two squares means they match; × means they’re different.',
+      '• Squares that break a rule are outlined in red as you go.',
+      '• Tip: two of the same side by side means the squares at either end must be the other one.',
+      'Any grid that follows the rules counts. Solving it saves your time for today and earns 30 seconds of Glider time once a day.',
+    ],
+  },
+  {
+    id: 'stars',
+    title: 'Star Fields',
+    tip: 'One star in every row, column and colored area; no two stars touch, not even corner to corner.',
+    body: [
+      'A daily puzzle, the same for everyone. Start shows the board and starts the clock.',
+      '• Tap a square once for × (a note to yourself that no star goes there), twice for ★, a third time to clear it.',
+      '• Each row, each column and each colored area gets exactly one star, and no two stars touch, even diagonally.',
+      '• Stars that break a rule are outlined in red.',
+      '• Tip: start with the smallest areas, and mark × around every star you place.',
+      'Solving it saves your time for today and earns 30 seconds of Glider time once a day.',
+    ],
+  },
+  {
+    id: 'blocks',
+    title: 'Blocks',
+    tip: 'Cut the grid into rectangles, each holding exactly one number that says how many squares it covers.',
+    body: [
+      'A daily puzzle, the same for everyone. Start shows the board and starts the clock.',
+      '• Tap one corner of a rectangle, then the opposite corner. A new rectangle replaces any it overlaps; tap a rectangle to remove it.',
+      '• Every square ends up in exactly one rectangle, and each rectangle holds exactly one number: its size (a 2 × 3 rectangle holds a 6).',
+      '• Tip: a number with only one shape that fits (a 2 in a corner between two other numbers) is a good place to start.',
+      'Any cut that follows the rules counts. Solving it saves your time for today and earns 30 seconds of Glider time once a day.',
+    ],
+  },
+  {
+    id: 'combine',
+    title: 'Sum Up',
+    tip: 'Swipe a square onto a neighbor with the same number to make their sum, until one square is left.',
+    body: [
+      'A daily puzzle, the same for everyone, in three sizes: 3 × 3, and 4 × 4 or 5 × 5 for a challenge (each with its own times). Start shows the board and starts the clock.',
+      '• Swipe a square onto a neighbor (up, down, left, right) with the same number, or tap one and then the other: the one you moved onto now holds the sum, and the other is empty.',
+      '• Combine them all into one square. Every puzzle can be finished, but an early move can leave you stuck; Start over and try another order.',
+      '• Tip: think about where the last big square should end up, and combine toward it.',
+      'Solving it saves your time for today and earns 30 seconds of Glider time once a day.',
+    ],
+  },
+  {
     id: 'games',
     title: 'Family games',
     tip: 'Short family puzzles with leaderboards. Invite someone to solve the same puzzle, then compare moves, guesses or time.',
     body: [
+      'Daily games (marked Daily, ✓ once you’ve finished today’s): Wordle, Lights Out and the five logic puzzles below. “Play them” on the Games page (or Daily games on Home’s Games) starts at the first you haven’t done; on each, the bar at the top steps ‹ › through the set, with a chip for each. The timed ones wait for Start, so you can look ahead and skip one without the clock running.',
+      'Five daily logic puzzles, the same for everyone each day, timed (today’s family times show below each): Trail (one path from 1 through every number in order, filling every square), Balance (● and ○: three of each per row and column, never three side by side, = and × between squares), Star Fields (one star per row, column and colored area, none touching) Blocks (cut the grid into rectangles, each holding one number that is its size) and Sum Up (swipe a square onto a neighbor with the same number to make their sum, until one square is left; 3 × 3, 4 × 4 or 5 × 5, each with its own times). Solving each earns 30 seconds of Glider time once a day.',
+      'Wordle’s page: today’s puzzle, Challenge someone, then today’s results (who has played; “N haven’t played yet” opens to remind them). Both folds are remembered on this device.',
       'Glider: tap (or Space) to keep the paper plane up between the cloud towers. It runs on play time you earn by learning: Wordle of the day (1 minute), solving Lights Out, the Tower of Hanoi or a Picture Slider (30 seconds each), and each item of The Daily you open (15 seconds; once a day each), a finished flashcard round of 5 or more cards (a minute, plus 5 seconds for each card after 5; a Challenge round 1½ minutes), and each element you open for the first time in the periodic table (10 seconds). You can hold up to 15 minutes; the clock runs only while you fly. Earn play time (below the game) lists each of these with a link straight to it, ✓ once done today. Family best shows everyone’s top score.',
       'Finishing Wordle of the day tells the family by itself: everyone gets an Inbox message (and a notification, if they turned them on) with your score and time, the colored squares (no letters) and today’s ranking so far; Play there opens today’s Wordle. Once a day each. (Settings → Notifications turns Inbox notifications off.)',
       'On Today, Games shows your pinned games, a search and all games, then Invitations (games someone sent you: Play or Decline), then Live Wordle Updates: live challenges you’re in or started, where everyone plays the same word at once and you can watch each player’s progress and who finished.',

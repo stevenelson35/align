@@ -666,6 +666,16 @@ describe('games', () => {
     await assertFails(updateDoc(doc(db('wife'), 'wordleChallengeProgress/group_wife'), { rows: ['CCCCC'] }))
   })
 
+  it('saves the daily logic puzzles by time only, a faster time replacing a slower one', async () => {
+    const ref = (who: string) => doc(db(who), 'gameScores/steve_trail_2026-11-27')
+    const score = (ms: number, plays: number, extra = {}) => ({ uid: 'steve', gameId: 'trail', seed: '2026-11-27', best: { ms, ...extra }, plays, updatedAt: new Date() })
+    await assertFails(setDoc(ref('steve'), score(90000, 1, { moves: 3 })))
+    await assertSucceeds(setDoc(ref('steve'), score(90000, 1)))
+    await assertSucceeds(setDoc(ref('steve'), score(80000, 2)))
+    await assertFails(setDoc(ref('steve'), score(95000, 3)))
+    await assertSucceeds(setDoc(doc(db('grandma'), 'gameScores/grandma_stars_2026-11-27'), { uid: 'grandma', gameId: 'stars', seed: '2026-11-27', best: { ms: 70000 }, plays: 1, updatedAt: new Date() }))
+  })
+
   it('lets a member save only their Lights Out best score', async () => {
     await assertSucceeds(setDoc(doc(db('steve'), 'gameScores/steve_lights-out_2026-10-30'), {
       uid: 'steve', gameId: 'lights-out', seed: '2026-10-30', bestMoves: 12, bestMs: 20000, plays: 1, updatedAt: new Date(),

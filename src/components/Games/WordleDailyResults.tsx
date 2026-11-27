@@ -4,6 +4,7 @@ import { useDailyBoards, type GameScore } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
 import { dailyStandings, wordleDay } from '../../games/wordle'
 import { Icon } from '../UI/Icon'
+import { useStoredSet } from '../../hooks/useStoredSet'
 
 /** A board's rows as small colored squares (C / P / A). */
 function MiniBoard({ rows }: { rows: string[] }) {
@@ -32,6 +33,10 @@ export function WordleDailyResults({ date, today, scores, finished }: { date: st
   const boards = useDailyBoards(date)
   const [reminded, setReminded] = useState<Set<string>>(() => new Set())
   const [error, setError] = useState<string | null>(null)
+  // What's folded here: 'waiting' (who hasn't played) starts folded; 'results' folds the card.
+  const [opened, toggleOpened] = useStoredSet('align-wordle-results-open')
+  const folded = new Set([...(opened.has('waiting') ? [] : ['waiting']), ...(opened.has('results-closed') ? ['results'] : [])])
+  const toggle = (what: 'waiting' | 'results') => toggleOpened(what === 'waiting' ? 'waiting' : 'results-closed')
   const people = Object.entries(app.household.members)
     .filter(([, m]) => (m.role === 'member' || m.role === 'viewer') && !m.bot)
     .map(([uid, m]) => ({ uid, name: m.displayName }))
@@ -55,34 +60,57 @@ export function WordleDailyResults({ date, today, scores, finished }: { date: st
     }
   }
 
+  const played = standings.filter((s) => s.state !== 'waiting')
+  const waiting = standings.filter((s) => s.state === 'waiting')
+  const row = (s: (typeof standings)[number]) => (
+    <li key={s.uid} className={`wordle-standing ${s.state}${s.uid === app.uid ? ' game-score-me' : ''}`}>
+      <span className="wordle-standing-place">{s.place ?? ''}</span>
+      <strong className="wordle-standing-name">{s.uid === app.uid ? `${s.name} (you)` : s.name}</strong>
+      <span className="wordle-standing-result">{s.text}</span>
+      {(finished || s.uid === app.uid) && s.rows.length > 0 && s.state !== 'waiting' && <MiniBoard rows={s.rows} />}
+      {s.state === 'waiting' && s.uid !== app.uid && (
+        <button type="button" className="link small" disabled={wasReminded(s.uid)} onClick={() => void remind(s.uid)}>
+          {wasReminded(s.uid) ? (
+            <>
+              <Icon name="check" /> Reminded
+            </>
+          ) : (
+            'Remind'
+          )}
+        </button>
+      )}
+    </li>
+  )
+
+  // Folds (remembered on this device): the whole card, and the list of who hasn't played (closed to begin with).
   return (
     <article className="card game-leaderboard wordle-day-results">
-      <h3>
-        {isToday ? 'Today’s results' : 'Results'} · {wordleDay(date)}
-      </h3>
-      <p className="muted small">Fewest guesses, then fastest time{finished ? '' : ' · everyone’s squares show once you’ve finished'}</p>
-      {error && <p className="error small">{error}</p>}
-      <ol className="wordle-standings">
-        {standings.map((s) => (
-          <li key={s.uid} className={`wordle-standing ${s.state}${s.uid === app.uid ? ' game-score-me' : ''}`}>
-            <span className="wordle-standing-place">{s.place ?? ''}</span>
-            <strong className="wordle-standing-name">{s.uid === app.uid ? `${s.name} (you)` : s.name}</strong>
-            <span className="wordle-standing-result">{s.text}</span>
-            {(finished || s.uid === app.uid) && s.rows.length > 0 && s.state !== 'waiting' && <MiniBoard rows={s.rows} />}
-            {s.state === 'waiting' && s.uid !== app.uid && (
-              <button type="button" className="link small" disabled={wasReminded(s.uid)} onClick={() => void remind(s.uid)}>
-                {wasReminded(s.uid) ? (
-                  <>
-                    <Icon name="check" /> Reminded
-                  </>
-                ) : (
-                  'Remind'
-                )}
+      <button type="button" className="wordle-results-head" onClick={() => toggle('results')} aria-expanded={!folded.has('results')}>
+        <h3>
+          {isToday ? 'Today’s results' : 'Results'} · {wordleDay(date)}
+        </h3>
+        <span className="muted small">
+          {played.length} of {standings.length} played
+        </span>
+        <span className="grow" />
+        <Icon name={folded.has('results') ? 'chevron-right' : 'chevron-down'} />
+      </button>
+      {!folded.has('results') && (
+        <>
+          <p className="muted small">Fewest guesses, then fastest time{finished ? '' : ' · everyone’s squares show once you’ve finished'}</p>
+          {error && <p className="error small">{error}</p>}
+          {played.length ? <ol className="wordle-standings">{played.map(row)}</ol> : <p className="muted small">Nobody has played yet.</p>}
+          {waiting.length > 0 && (
+            <>
+              <button type="button" className="link small wordle-waiting-toggle" onClick={() => toggle('waiting')} aria-expanded={!folded.has('waiting')}>
+                <Icon name={folded.has('waiting') ? 'chevron-right' : 'chevron-down'} /> {waiting.length} {waiting.length === 1 ? 'hasn’t' : 'haven’t'} played yet
+                {folded.has('waiting') ? ' · remind them' : ''}
               </button>
-            )}
-          </li>
-        ))}
-      </ol>
+              {!folded.has('waiting') && <ol className="wordle-standings">{waiting.map(row)}</ol>}
+            </>
+          )}
+        </>
+      )}
     </article>
   )
 }

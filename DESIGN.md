@@ -391,6 +391,27 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
 - `MakeWishList` (Home's Gifts and the Gifts page, until you have one): `makeWishList` creates "<name>’s wish list"
   for you, Everyone, and opens it with Add an idea open (`ADD_IDEA_KEY`, once).
 
+### 5.23 Daily logic puzzles and the Wordle page order (2026-11-27)
+- `games/logic.ts`: Trail (a Hamiltonian path, numbers on its start, end and every few squares), Balance (a 6 × 6 binary
+  grid: halves per line, no three in a row, 8 givens and 7 = / × edges), Star Fields (7 stars, one per row / column,
+  none touching; areas grown from each star) and Blocks (a random cut into rectangles of 2–8 squares, a number in each).
+  Sum Up (`makeCombine`: one number split in halves into neighboring squares until the grid is full, so undoing the
+  splits always finishes it; equal neighbors combine; 3 / 4 / 5 square grids, score seed `<date>-<size>`).
+  Seeded by `daySeed(game, date)`: everyone gets the same puzzle that day. Answers are checked by the rules, not
+  against the solution the puzzle was made from, so any rule-following answer counts. Original takes on classic
+  genres (path, binary, star battle, rectangles), with their own names and look.
+- `LogicGames.tsx`: a shared frame (timer, Start over, today's family times from `gameScores` seed = date, best time
+  per person via `recordGameScore`, `earnDaily` 30 s each) and a board per game. Rules: `timedGame` ids keep `best:
+  { ms }` only, a faster time replaces a slower one.
+- Wordle page: today's puzzle, Challenge someone (hidden while playing), then `WordleDailyResults`, which folds (card,
+  and "N haven't played yet" with Remind, closed to begin with; `align-wordle-results-open`). The board keeps its
+  compact size after finishing (no jump on a Z Fold).
+- Daily set (`DAILY_GAMES`: Wordle, Lights Out, Trail, Balance, Star Fields, Blocks, Sum Up): Daily / ✓ badges on the
+  Games page (✓ from `play.daily.done`, which each daily game sets once a day via `earnDaily`), "Play them" (the first
+  not done: `nextDaily`), a link on Home's Games, and `DailyBar` on each (‹ previous, which of 7, next ›, a chip each).
+  Lights Out and the logic puzzles wait for Start (board hidden, clock still), so looking ahead or skipping costs
+  nothing. Each logic puzzle has its own help topic.
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts

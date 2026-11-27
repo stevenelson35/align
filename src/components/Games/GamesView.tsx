@@ -5,7 +5,7 @@ import { useApp } from '../../hooks/useApp'
 import { isLightsOutSolved, lightsOutBoard, toggleLights } from '../../games/lightsOut'
 import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
-import { compareGameResults, formatGameResult, GAMES, gameById, type GameId } from '../../games/catalog'
+import { compareGameResults, DAILY_GAMES, formatGameResult, GAMES, gameById, isDailyGame, nextDaily, type GameId } from '../../games/catalog'
 import { GameTile } from './GameTile'
 import { setPinnedGames } from '../../firebase/db'
 import { TowerOfHanoiGame } from './TowerOfHanoiGame'
@@ -14,6 +14,10 @@ import { GameInvitationsBlock } from './GameInvitationsBlock'
 import { GliderGame } from './GliderGame'
 import { earnDaily } from '../../firebase/play'
 import { WordleGame } from './WordleGame'
+import { LogicGame } from './LogicGames'
+import { DailyBar } from './DailyBar'
+import { useDailyDone } from '../../hooks/useDailyDone'
+import { isLogicGame } from '../../games/logic'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 export function GamesView({ challengeId, gameId, day }: { challengeId?: string; gameId?: string; day?: string }) {
@@ -41,16 +45,18 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
   const challengeLoaded = useRef('')
   const startedChallenge = useRef('')
 
+  // Lights Out waits for Start (the board hidden, the clock still), like the other daily puzzles.
+  const [lightsStarted, setLightsStarted] = useState(false)
   useEffect(() => {
-    if (selectedGame === 'lights-out') startedAt.current = Date.now()
-  }, [seed, selectedGame])
+    if (selectedGame === 'lights-out' && lightsStarted) startedAt.current = Date.now()
+  }, [seed, selectedGame, lightsStarted])
 
   useEffect(() => {
-    if (selectedGame === 'lights-out' && !solved) {
+    if (selectedGame === 'lights-out' && lightsStarted && !solved) {
       const timer = window.setInterval(() => setElapsed(Date.now() - startedAt.current), 250)
       return () => window.clearInterval(timer)
     }
-  }, [seed, selectedGame, solved])
+  }, [seed, selectedGame, solved, lightsStarted])
 
   useEffect(() => {
     if (!challengeId || !challenge || challenge.gameId !== 'lights-out' || challengeLoaded.current === challenge.id) return
@@ -111,6 +117,7 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
   const people = Object.entries(app.household.members)
     .filter(([id, member]) => id !== app.uid && (member.role === 'member' || member.role === 'viewer') && !member.bot)
     .sort((a, b) => a[1].displayName.localeCompare(b[1].displayName))
+  const dailyDone = useDailyDone()
   const pinnedGames = app.member.pinnedGames ?? ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle']
 
   function togglePin(id: GameId) {
@@ -196,8 +203,22 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
     return <SlidingTilesGame challenge={challengeId ? challenge ?? undefined : undefined} onBack={() => app.navigate({ view: 'games' })} onSolved={() => setSolved(true)} />
   }
   if (selectedGame === 'glider') return <GliderGame onBack={() => app.navigate({ view: 'games' })} />
+  // Today's daily games: the bar to step through them (not on a challenge).
+  const dailyBar = !challengeId && selectedGame && isDailyGame(selectedGame) ? <DailyBar current={selectedGame} /> : null
+  if (selectedGame && isLogicGame(selectedGame))
+    return (
+      <>
+        {dailyBar}
+        <LogicGame key={selectedGame} id={selectedGame} onBack={() => app.navigate({ view: 'games' })} />
+      </>
+    )
   if (selectedGame === 'wordle') {
-    return <WordleGame key={challengeId ?? `daily${day ?? ''}`} challenge={challengeId ? challenge ?? undefined : undefined} day={challengeId ? undefined : day} onBack={() => app.navigate({ view: 'games' })} />
+    return (
+      <>
+        {dailyBar}
+        <WordleGame key={challengeId ?? `daily${day ?? ''}`} challenge={challengeId ? challenge ?? undefined : undefined} day={challengeId ? undefined : day} onBack={() => app.navigate({ view: 'games' })} />
+      </>
+    )
   }
   if (!selectedGame) {
     const visibleGames = GAMES.filter((game) => `${game.name} ${game.description}`.toLowerCase().includes(gameSearch.trim().toLowerCase()))
@@ -207,6 +228,16 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
           <h2><Icon name="sparkle" /> Games</h2>
           <span className="muted small">Find a game to play or pin</span>
         </header>
+        <div className="daily-start card">
+          <div className="grow">
+            <strong>Today’s daily games</strong>
+            <span className="muted small"> · {DAILY_GAMES.filter((g) => dailyDone.has(g)).length} of {DAILY_GAMES.length} done</span>
+            <p className="muted small">A new puzzle in each every day, the same for everyone: step through them with ‹ ›.</p>
+          </div>
+          <button type="button" className="small" onClick={() => app.navigate({ view: 'games', gameId: nextDaily(dailyDone) })}>
+            <Icon name="play" /> {dailyDone.size ? 'Keep going' : 'Play them'}
+          </button>
+        </div>
         <GameInvitationsBlock />
         <label className="games-search">
           <input
@@ -223,6 +254,8 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
               key={game.id}
               {...game}
               pinned={pinnedGames.includes(game.id)}
+              daily={isDailyGame(game.id)}
+              doneToday={dailyDone.has(game.id)}
               onPlay={() => app.navigate({ view: 'games', gameId: game.id })}
               onPin={() => togglePin(game.id)}
             />
@@ -235,6 +268,8 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
   }
 
   return (
+    <>
+    {dailyBar}
     <section className="games-view">
       <header className="view-header">
         <h2><Icon name="sparkle" /> Games</h2>
@@ -249,6 +284,15 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
           </div>
           {challenge && <span className="badge">Challenge from {app.household.members[challenge.from]?.displayName ?? 'a family member'}</span>}
         </header>
+        {!lightsStarted ? (
+          <div className="logic-start">
+            <p className="small">Switch off every light: each tap flips that square and its neighbors. Fewest moves, then fastest. The clock starts when you do.</p>
+            <button type="button" onClick={() => setLightsStarted(true)}>
+              <Icon name="play" /> Start
+            </button>
+          </div>
+        ) : (
+        <>
         <div className="game-status row" aria-live="polite">
           <strong>{moves} {moves === 1 ? 'move' : 'moves'}</strong>
           <span className="muted">·</span>
@@ -276,6 +320,8 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
           </div>
         )}
         {!solved && <button type="button" className="secondary small" onClick={newPuzzle}>Reset today’s puzzle</button>}
+        </>
+        )}
       </article>
 
       <article className="card game-leaderboard">
@@ -313,5 +359,6 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
       {note && <p className="muted small" role="status">{note}</p>}
       {error && !solved && <p className="error small">{error}</p>}
     </section>
+    </>
   )
 }

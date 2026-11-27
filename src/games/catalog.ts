@@ -34,6 +34,36 @@ export const GAMES = [
     scoreOrder: ['guesses', 'ms'],
   },
   {
+    id: 'trail',
+    name: 'Trail',
+    description: 'Today’s path puzzle: one line from 1 through every number in order that fills every square.',
+    scoreOrder: ['ms'],
+  },
+  {
+    id: 'balance',
+    name: 'Balance',
+    description: 'Today’s ● and ○ puzzle: three of each in every row and column, never three side by side, = and × between squares.',
+    scoreOrder: ['ms'],
+  },
+  {
+    id: 'stars',
+    name: 'Star Fields',
+    description: 'Today’s star puzzle: one star in every row, column and colored area, and no two stars touching.',
+    scoreOrder: ['ms'],
+  },
+  {
+    id: 'blocks',
+    name: 'Blocks',
+    description: 'Today’s rectangle puzzle: cut the grid into rectangles, each holding one number that says its size.',
+    scoreOrder: ['ms'],
+  },
+  {
+    id: 'combine',
+    name: 'Sum Up',
+    description: 'Today’s number puzzle: swipe equal neighbors together into their sum until one square is left. 3 × 3, or bigger for a challenge.',
+    scoreOrder: ['ms'],
+  },
+  {
     id: 'glider',
     name: 'Glider',
     description: 'Tap to keep the paper plane up between the cloud towers. Played with time you earn from flashcards and the periodic table.',
@@ -69,3 +99,10 @@ export function formatGameResult(gameId: GameId, result: GameResult): string {
 function formatTime(ms: number): string {
   return `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 }
+
+/** The daily games, in the order "Play today's daily games" goes through them (each has a new puzzle every day). */
+export const DAILY_GAMES: GameId[] = ['wordle', 'lights-out', 'trail', 'balance', 'stars', 'blocks', 'combine']
+export const isDailyGame = (id: string) => (DAILY_GAMES as string[]).includes(id)
+
+/** The first daily game not finished today (or the first, when all are). */
+export const nextDaily = (done: Set<string>): GameId => DAILY_GAMES.find((g) => !done.has(g)) ?? DAILY_GAMES[0]

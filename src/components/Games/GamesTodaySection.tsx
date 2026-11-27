@@ -3,7 +3,8 @@ import { setPinnedGames } from '../../firebase/db'
 import { useApp } from '../../hooks/useApp'
 import { useStoredFlag } from '../../hooks/useStoredFlag'
 import { useTodayExpansion } from '../../hooks/useTodaySection'
-import { DEFAULT_PINNED_GAMES, GAMES } from '../../games/catalog'
+import { DAILY_GAMES, DEFAULT_PINNED_GAMES, GAMES, nextDaily } from '../../games/catalog'
+import { useDailyDone } from '../../hooks/useDailyDone'
 import { CollectionContents, PinButton } from '../UI/CollectionSection'
 import { Icon } from '../UI/Icon'
 import { SectionHeader } from '../UI/SectionHeader'
@@ -19,6 +20,7 @@ export function GamesTodaySection() {
   const setOpen = useTodayExpansion(open, saveOpen)
   const [error, setError] = useState<string | null>(null)
   const pinnedIds = app.member.pinnedGames ?? DEFAULT_PINNED_GAMES
+  const dailyDone = useDailyDone()
   const pinned = pinnedIds.map((id) => GAMES.find((g) => g.id === id)).filter((g) => !!g)
   function togglePin(id: string) {
     const next = pinnedIds.includes(id) ? pinnedIds.filter((x) => x !== id) : [...pinnedIds, id]
@@ -46,6 +48,11 @@ export function GamesTodaySection() {
           matches={(g, q) => q.toLowerCase().split(/\s+/).every((w) => `${g.name} ${g.description}`.toLowerCase().includes(w))}
           searchHint="Find a game…"
           startAll
+          top={
+            <button type="button" className="link small daily-home-link" onClick={() => app.navigate({ view: 'games', gameId: nextDaily(dailyDone) })}>
+              <Icon name="play" /> Today’s daily games · {DAILY_GAMES.filter((g) => dailyDone.has(g)).length} of {DAILY_GAMES.length} done ›
+            </button>
+          }
           bottom={<GameInvitationsBlock enabled={open} />}
           filters={error && <p className="error small">{error}</p>}
           render={(g) => (
