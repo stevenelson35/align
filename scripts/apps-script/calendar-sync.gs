@@ -423,7 +423,8 @@ function inboxText_(fromName, m) {
   // real-time Wordle race", "completed today's Wordle (Fri, Nov 20): 3/6 in 2:03"); older ones keep the old wording.
   var game = m.kind === 'game' || m.kind === 'result'
   var link = m.link || ''
-  var after = !game ? ': ' + m.title
+  var after = m.kind === 'challenge' && /^[a-z]/.test(m.title) ? ' ' + m.title
+    : !game ? ': ' + m.title
     : /^[a-z]/.test(m.title) ? ' ' + m.title
     : m.kind === 'result' || link.indexOf('#/games/play/') === 0 ? ' shared a result: ' + m.title
     : ' invited you: ' + m.title

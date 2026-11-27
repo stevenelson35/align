@@ -27,6 +27,7 @@ import { TheDaily } from '../Daily/TheDaily'
 import { LanguagesView } from '../Languages/LanguagesView'
 import { GamesView } from '../Games/GamesView'
 import { KindView } from './KindView'
+import { ChallengesView } from '../Challenges/Challenges'
 
 // The map library (Leaflet) loads only when the map is opened.
 const FamilyMap = lazy(() => import('../Map/FamilyMap'))
@@ -108,6 +109,8 @@ export function MainView() {
       return <HelpView topic={route.topic} />
     case 'library':
       return <LibraryView />
+    case 'challenges':
+      return <ChallengesView />
     case 'kind':
       return <KindView key={route.section} section={route.section} />
     case 'elements':

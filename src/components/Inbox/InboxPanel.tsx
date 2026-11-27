@@ -12,7 +12,7 @@ import { SectionHeader } from '../UI/SectionHeader'
 import { NotifyToggle } from './NotifyToggle'
 import { InboxCompose } from './InboxCompose'
 
-const KIND_ICON: Record<InboxMessage['kind'], IconName> = { entry: 'note', link: 'link', board: 'star', photo: 'photo', game: 'sparkle', result: 'sparkle', note: 'message' }
+const KIND_ICON: Record<InboxMessage['kind'], IconName> = { entry: 'note', link: 'link', board: 'star', photo: 'photo', game: 'sparkle', result: 'sparkle', note: 'message', challenge: 'trophy' }
 
 /** How many read messages the Today tile shows (the Inbox page shows all). */
 const TILE_READ = 3

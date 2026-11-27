@@ -17,5 +17,6 @@ describe('an Inbox message in one line', () => {
     expect(headline('Ann', { kind: 'game', title: 'Lights Out', link: '#/games/x' })).toBe('Ann invited you: Lights Out')
     expect(headline('Ann', { kind: 'entry', title: 'Buy milk', link: '#/task/1' })).toBe('Ann: Buy milk')
     expect(actionLabel({ kind: 'note', title: 'Hi', link: '#/' })).toBe('Open')
+    expect(headline('Ann', { kind: 'challenge', title: 'reached 50% in The Road to 40', link: '#/challenges' })).toBe('Ann reached 50% in The Road to 40')
   })
 })

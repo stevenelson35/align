@@ -5,7 +5,7 @@ import { addGroup, addSubgroup, addTile, allInFolder, folderTree, moveToFolder, 
 describe('Today tiles', () => {
   it('starts someone new with the family layout: On this day, Inbox, Goals, Fun, People, Gifts, To Do, the rest in More…', () => {
     const t = defaultTiles()
-    expect(splitMore(t).main).toEqual(['panel:weather', 'panel:photos', 'panel:inbox', 'panel:goals', 'group:Fun', 'panel:daily', 'panel:games', 'game:wordle', 'panel:rewards', 'panel:cards', 'panel:elements', 'game:glider', 'group:People', 'panel:map', 'panel:contacts', 'end:1', 'panel:gifts', 'panel:todo'])
+    expect(splitMore(t).main).toEqual(['panel:weather', 'panel:photos', 'panel:inbox', 'panel:challenges', 'panel:goals', 'group:Fun', 'panel:daily', 'panel:games', 'game:wordle', 'panel:rewards', 'panel:cards', 'panel:elements', 'game:glider', 'group:People', 'panel:map', 'panel:contacts', 'end:1', 'panel:gifts', 'panel:todo'])
     expect(splitMore(t).more).toEqual(['panel:lists', 'panel:links', 'panel:projects', 'panel:voting', 'panel:invest'])
     // Every panel is somewhere, once (a new panel added to TODAY_SECTIONS lands in More… by itself).
     expect(TODAY_SECTIONS.every((s) => t.filter((x) => x === `panel:${s.id}`).length === 1)).toBe(true)
@@ -13,18 +13,20 @@ describe('Today tiles', () => {
   })
 
   it('uses what you saved, with exactly one More… mark and no repeats', () => {
-    expect(tilesOf({ today: ['panel:weather', 'panel:inbox', 'panel:todo', 'entry:a', 'entry:a'] })).toEqual(['panel:weather', 'panel:inbox', 'panel:todo', 'entry:a', MORE])
-    expect(tilesOf({ today: ['panel:weather', 'panel:inbox', MORE, 'panel:goals'] })).toEqual(['panel:weather', 'panel:inbox', MORE, 'panel:goals'])
+    expect(tilesOf({ today: ['panel:weather', 'panel:inbox', 'panel:challenges', 'panel:todo', 'entry:a', 'entry:a'] })).toEqual(['panel:weather', 'panel:inbox', 'panel:challenges', 'panel:todo', 'entry:a', MORE])
+    expect(tilesOf({ today: ['panel:weather', 'panel:inbox', 'panel:challenges', MORE, 'panel:goals'] })).toEqual(['panel:weather', 'panel:inbox', 'panel:challenges', MORE, 'panel:goals'])
   })
 
   it('puts a newly added panel (Inbox) at the top of saved tiles once; taking it off is remembered', () => {
-    expect(tilesOf({ today: ['panel:todo', MORE] })).toEqual(['panel:weather', 'panel:inbox', 'panel:todo', MORE])
-    expect(tilesOf({ today: [MORE, 'panel:inbox', 'panel:weather'] })).toEqual([MORE, 'panel:inbox', 'panel:weather']) // moved into More…: stays there
-    const off = removeTile(tilesOf({ today: ['panel:weather', 'panel:todo', MORE] }), 'panel:inbox')
-    expect(off).toEqual(['panel:weather', 'panel:todo', MORE, '-panel:inbox'])
+    // New panels arrive once: at the top, or (Challenges) just below the Inbox.
+    expect(tilesOf({ today: ['panel:todo', MORE] })).toEqual(['panel:weather', 'panel:inbox', 'panel:challenges', 'panel:todo', MORE])
+    expect(tilesOf({ today: ['panel:goals', 'panel:inbox', 'panel:todo', MORE] })).toEqual(['panel:weather', 'panel:goals', 'panel:inbox', 'panel:challenges', 'panel:todo', MORE])
+    expect(tilesOf({ today: [MORE, 'panel:inbox', 'panel:weather', 'panel:challenges'] })).toEqual([MORE, 'panel:inbox', 'panel:weather', 'panel:challenges']) // moved into More…: stays there
+    const off = removeTile(tilesOf({ today: ['panel:weather', 'panel:challenges', 'panel:todo', MORE] }), 'panel:inbox')
+    expect(off).toEqual(['panel:weather', 'panel:challenges', 'panel:todo', MORE, '-panel:inbox'])
     expect(tilesOf({ today: off })).toEqual(off)
     expect(known('-panel:inbox')).toBe(false)
-    expect(addTile(off, 'panel:inbox')).toEqual(['panel:weather', 'panel:todo', 'panel:inbox', MORE])
+    expect(addTile(off, 'panel:inbox')).toEqual(['panel:weather', 'panel:challenges', 'panel:todo', 'panel:inbox', MORE])
   })
 
   it('reads tiles, keeping ids with colons', () => {

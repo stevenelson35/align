@@ -10,6 +10,8 @@ export interface HeadlineMessage {
 
 /** After the name: " completed today's Wordle …", " invited you: Lights Out" (older), ": Buy milk". */
 export function afterName(m: HeadlineMessage): string {
+  // A challenge's news reads the same way ("Steve reached 50% in The Road to 40").
+  if (m.kind === 'challenge') return /^[a-z]/.test(m.title) ? ` ${m.title}` : `: ${m.title}`
   if (m.kind === 'result' || m.kind === 'game') {
     if (/^[a-z]/.test(m.title)) return ` ${m.title}`
     // Older messages: the day's Wordle result, then invitations with just the game's name.

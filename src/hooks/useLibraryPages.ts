@@ -27,6 +27,7 @@ export function useLibraryPages(): LibraryPage[] {
     { label: 'Inbox', icon: 'mail', route: { view: 'inbox' }, badge: unread, tile: 'panel:inbox' },
     { label: 'Tasks', icon: 'todo', route: { view: 'home' } },
     { label: 'Goals', icon: 'goal', route: { view: 'goals' }, tile: 'panel:goals' },
+    { label: 'Challenges', icon: 'trophy', route: { view: 'challenges' }, tile: 'panel:challenges' },
     { label: 'Games', icon: 'sparkle', route: { view: 'games' }, tile: 'panel:games', members: true },
     { label: 'Family map', icon: 'map', route: { view: 'map' }, tile: 'panel:map', members: true },
     { label: 'Photos', icon: 'photo', route: { view: 'photos' } },

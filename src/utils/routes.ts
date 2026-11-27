@@ -42,6 +42,7 @@ export type Route =
   | { view: 'inbox' }
   /** Everything in Align as a page (☰ on a phone). */
   | { view: 'library' }
+  | { view: 'challenges' }
   /** One kind of list on its own page ("Gifts", "Notes"…: a section of the menu). */
   | { view: 'kind'; section: string }
 
@@ -61,6 +62,7 @@ export function parseRoute(hash: string): Route {
     case 'photos':
     case 'wall':
     case 'library':
+    case 'challenges':
     case 'inbox':
     case 'daily':
     case 'languages':

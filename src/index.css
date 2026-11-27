@@ -3585,6 +3585,174 @@ button.today-sheet-title {
 .weather-detail p {
   margin: 0.2rem 0;
 }
+/* Family challenges: the one-line track (icons at their percent, the finish on the right), then bars per person. */
+.challenges-panel {
+  display: grid;
+  gap: var(--tile-gap, 1rem);
+}
+.challenge-card .section-header {
+  margin-bottom: 0.25rem;
+}
+.challenge-track {
+  position: relative;
+  margin: 0.1rem 1.6rem 0.2rem 0.2rem;
+}
+.challenge-track-line {
+  position: absolute;
+  left: 0;
+  right: -1.3rem;
+  bottom: 0.55rem;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--border), color-mix(in srgb, #2da44e 60%, var(--border)));
+}
+.challenge-track-goal {
+  position: absolute;
+  right: -1.6rem;
+  bottom: 0.1rem;
+  font-size: 1.05rem;
+}
+.challenge-track-icon {
+  position: absolute;
+  transform: translateX(-10%);
+  display: grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  font-size: 0.95rem;
+  line-height: 1;
+  background: var(--surface);
+  border: 2px solid;
+  border-radius: 50%;
+  transition: left 0.6s ease;
+}
+.challenge-detail {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+.challenge-detail > p {
+  margin: 0;
+}
+.challenge-row {
+  display: grid;
+  gap: 0.25rem;
+}
+.challenge-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.challenge-name {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.challenge-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.challenge-bar-icon {
+  font-size: 1.15rem;
+  width: 1.4rem;
+  text-align: center;
+}
+.challenge-bar {
+  flex: 1;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 14%, var(--surface));
+  overflow: hidden;
+}
+.challenge-bar > span {
+  display: block;
+  height: 100%;
+  min-width: 0.8rem;
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+.challenge-log input {
+  flex: 1;
+  min-width: 0;
+}
+.challenge-actions {
+  gap: 0.3rem 0.9rem;
+}
+.challenge-actions .link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.challenge-card.ended {
+  opacity: 0.85;
+}
+.challenge-form,
+.challenge-new {
+  display: grid;
+  gap: 0.45rem;
+}
+.challenge-form h4,
+.challenge-new h3 {
+  margin: 0;
+}
+.emoji-choices,
+.color-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.emoji-choices button {
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  font-size: 1.2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.emoji-choices button.on {
+  border-color: var(--brand);
+  box-shadow: inset 0 0 0 2px var(--brand);
+}
+.color-choices button {
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.color-choices button.on {
+  box-shadow: 0 0 0 3px var(--text);
+}
+.challenge-graph svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.graph-label {
+  font-size: 3px;
+  fill: var(--muted);
+}
+.graph-grid {
+  stroke: var(--border);
+  stroke-width: 0.3;
+}
+.challenge-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-right: 0.8rem;
+}
+.challenge-key > span {
+  width: 0.8rem;
+  height: 0.25rem;
+  border-radius: 2px;
+}
 /* The Inbox's messages sit indented under its heading, like a list's entries. */
 .today-tiles .inbox-body {
   margin-left: 0.95rem;

@@ -7,7 +7,7 @@ import { auth, db } from './config'
 import { calendarSyncUrl } from './calendarSync'
 import { inboxLink } from '../utils/inboxLink'
 
-export type InboxKind = 'entry' | 'link' | 'board' | 'photo' | 'game' | 'result' | 'note'
+export type InboxKind = 'entry' | 'link' | 'board' | 'photo' | 'game' | 'result' | 'note' | 'challenge'
 
 export interface InboxMessage {
   id: string

@@ -101,6 +101,7 @@ const ICONS = {
   'chevron-left': { emoji: '‹', line: 'M15 5.5L8.5 12l6.5 6.5' },
   'chevron-down': { emoji: '⌄', line: 'M5.5 9l6.5 6.5 6.5-6.5' },
   back: { emoji: '↩️', line: 'M9.5 5.5L4 11l5.5 5.5M4.5 11H15a5 5 0 0 1 5 5v2.5' },
+  trophy: { emoji: '🏆', fill: 'M7 3h10v2h3v3a4 4 0 0 1-4 4h-.4A5 5 0 0 1 13 14.9V17h3v3H8v-3h3v-2.1A5 5 0 0 1 8.4 12H8a4 4 0 0 1-4-4V5h3zm10 4v3a2 2 0 0 0 1-1.7V7zM7 7H6v1.3A2 2 0 0 0 7 10z' },
   puzzle: { emoji: '🧩', fill: 'M10 2.5a2.25 2.25 0 0 1 4.5 0V5H18a1 1 0 0 1 1 1v3.5h-1.5a2.25 2.25 0 0 0 0 4.5H19V18a1 1 0 0 1-1 1h-3.5v-1.5a2.25 2.25 0 0 0-4.5 0V19H6a1 1 0 0 1-1-1v-4h1.5a2.25 2.25 0 0 0 0-4.5H5V6a1 1 0 0 1 1-1h4z' },
   home: { emoji: '🏠', fill: 'M12 3.2l9 7.8h-2.6v8.8h-4.9v-5.6h-3v5.6H5.6V11H3z' },
   sun: {

@@ -421,6 +421,19 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
   Lights Out and the logic puzzles wait for Start (board hidden, clock still), so looking ahead or skipping costs
   nothing. Each logic puzzle has its own help topic.
 
+### 5.24 Family challenges (2026-11-28)
+- `challenges/{id}`: { title, unit, goalIcon, createdBy, invited (everyone who can see it, creator too), players:
+  { uid: { nickname, icon, color, start, goal, log: [{ at, v }], goalId?, joinedAt } }, status active | ended }.
+  Rules: read if invited; each person writes only `players.<self>` (accept, settings, check-ins); anyone may remove
+  themselves from invited; the creator changes title / unit / goalIcon / invited / status; `validChallengePlayer`.
+- Progress is percent of each player's own goal (`utils/challenges.ts`: `percent` either direction, `ranked`,
+  `trackPositions` with lanes so close icons don't hide, `milestonesPassed`, `overtaken`, `allFinished`, `series`).
+- Home tile `panel:challenges` (auto-added just below the Inbox; hidden when you're in none): invitations (Accept →
+  your part, No thanks), then each challenge: the track line, Show → bars, your name to check in (Undo last), Nudge,
+  Graph (% or unit), My settings, the creator's Edit challenge (end / start again). Page `#/challenges` (Library):
+  New challenge, past ones. A check-in also logs your linked measure goal (made for you if you like: Weight).
+  Inbox kind `challenge`: invitations, milestones (25/50/75/100%), "passed you", nudges.
+
 ### 5.7 `images/{imageId}` (pictures stored in Align)
 
 ```ts

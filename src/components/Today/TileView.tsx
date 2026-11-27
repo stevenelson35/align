@@ -37,6 +37,7 @@ import { ItemIcon } from '../UI/ItemIcon'
 import { SectionHeader } from '../UI/SectionHeader'
 import { InboxPanel } from '../Inbox/InboxPanel'
 import { WeatherPanel } from '../Tasks/TodayWeather'
+import { ChallengesPanel } from '../Challenges/Challenges'
 import { ElementsPanel } from '../Elements/ElementsPanel'
 import { playClock, usePlay } from '../../firebase/play'
 import { VotingSection } from '../Voting/VotingSection'
@@ -70,6 +71,8 @@ function PanelTile({ id, day }: { id: string; day: string }) {
       return <InboxPanel />
     case 'weather':
       return <WeatherPanel />
+    case 'challenges':
+      return <ChallengesPanel />
     case 'elements':
       return <ElementsPanel />
     case 'goals':

@@ -1224,6 +1224,35 @@ describe('investing', () => {
   })
 })
 
+describe('family challenges', () => {
+  const me = (extra = {}) => ({ nickname: 'Steve', icon: '🏃', color: '#2da44e', start: 200, goal: 170, joinedAt: '2026-11-28T12:00:00Z', ...extra })
+  const challenge = { title: 'The Road to 40', unit: 'lb', goalIcon: '🏁', createdBy: 'steve', invited: ['steve', 'wife'], players: { steve: me() }, status: 'active', createdAt: '2026-11-28T12:00:00Z' }
+  it('lets the invited see it; each person writes only their own entry; the creator runs the challenge', async () => {
+    const ref = (who: string) => doc(db(who), 'challenges/c1')
+    await assertFails(setDoc(ref('steve'), { ...challenge, players: { steve: me(), wife: me() } }))
+    await assertFails(setDoc(ref('steve'), { ...challenge, players: { steve: me({ color: 'green' }) } }))
+    await assertSucceeds(setDoc(ref('steve'), challenge))
+    await assertSucceeds(getDoc(ref('wife')))
+    await assertFails(getDoc(ref('daughter')))
+    await assertSucceeds(getDocs(query(collection(db('wife'), 'challenges'), where('invited', 'array-contains', 'wife'))))
+    // Accepting, then a check-in.
+    await assertSucceeds(updateDoc(ref('wife'), { 'players.wife': me({ nickname: 'Sam', start: 138, goal: 128 }) }))
+    await assertSucceeds(updateDoc(ref('wife'), { 'players.wife.log': [{ at: '2026-11-29T08:00:00Z', v: 135 }] }))
+    await assertFails(updateDoc(ref('wife'), { 'players.steve.log': [{ at: '2026-11-29T08:00:00Z', v: 150 }] }))
+    await assertFails(updateDoc(ref('wife'), { title: 'Mine now' }))
+    await assertFails(updateDoc(ref('daughter'), { 'players.daughter': me() }))
+    // The creator: title, invites, ending.
+    await assertSucceeds(updateDoc(ref('steve'), { title: 'Road to 40', invited: ['steve', 'wife', 'grandma'] }))
+    await assertSucceeds(updateDoc(ref('steve'), { status: 'ended', endedAt: '2026-12-31T00:00:00Z' }))
+    await assertFails(updateDoc(ref('steve'), { invited: ['wife'] }))
+    // Anyone can take themselves off; not someone else.
+    await assertFails(updateDoc(ref('wife'), { invited: ['steve', 'wife'] }))
+    await assertSucceeds(updateDoc(ref('grandma'), { invited: ['steve', 'wife'] }))
+    await assertFails(deleteDoc(ref('wife')))
+    await assertSucceeds(deleteDoc(ref('steve')))
+  })
+})
+
 describe('Wordle challenge copies', () => {
   it('lets a player find their own copy of a challenge by its puzzle', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {

@@ -14,6 +14,7 @@ export const PANEL_ICON: Record<string, IconName> = {
   todo: 'todo',
   weather: 'sun',
   inbox: 'mail',
+  challenges: 'trophy',
   goals: 'goal',
   rewards: 'photo',
   games: 'sparkle',

@@ -796,7 +796,7 @@ service cloud.firestore {
       return d.keys().hasOnly(['to', 'from', 'kind', 'title', 'text', 'link', 'read', 'pushed', 'createdAt'])
         && d.from == request.auth.uid
         && d.to is string && d.to != d.from && roleOf(d.to) in ['member', 'viewer']
-        && d.kind in ['entry', 'link', 'board', 'photo', 'game', 'result', 'note']
+        && d.kind in ['entry', 'link', 'board', 'photo', 'game', 'result', 'note', 'challenge']
         && d.title is string && d.title.size() > 0 && d.title.size() <= 300
         && (!('text' in d) || (d.text is string && d.text.size() <= 2000))
         && d.link is string && d.link.size() <= 500
@@ -814,6 +814,55 @@ service cloud.firestore {
         || (isBot() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pushed'])
           && request.resource.data.pushed == true);
       allow delete: if signedIn() && resource.data.to == request.auth.uid;
+    }
+
+    // Family challenges (DESIGN.md §5.24): seen by everyone invited (the creator too). Each person writes only their own
+    // entry under players (accepting adds it; check-ins add to its log); the creator changes the challenge itself;
+    // anyone can take themselves off the invited list (no thanks, or leaving).
+    function validChallengePlayer(p) {
+      return p is map
+        && p.keys().hasOnly(['nickname', 'icon', 'color', 'start', 'goal', 'log', 'goalId', 'joinedAt'])
+        && p.nickname is string && p.nickname.size() > 0 && p.nickname.size() <= 40
+        && p.icon is string && p.icon.size() > 0 && p.icon.size() <= 16
+        && p.color is string && p.color.matches('^#[0-9a-fA-F]{6}$')
+        && (p.start is int || p.start is float) && (p.goal is int || p.goal is float) && p.start != p.goal
+        && (!('log' in p) || (p.log is list && p.log.size() <= 2000))
+        && (!('goalId' in p) || (p.goalId is string && p.goalId.size() <= 64))
+        && (!('joinedAt' in p) || (p.joinedAt is string && p.joinedAt.size() <= 40));
+    }
+
+    function validFamilyChallenge(d) {
+      return d.title is string && d.title.size() > 0 && d.title.size() <= 80
+        && d.unit is string && d.unit.size() <= 12
+        && d.goalIcon is string && d.goalIcon.size() > 0 && d.goalIcon.size() <= 16
+        && d.invited is list && d.invited.size() <= 20 && d.createdBy in d.invited
+        && d.status in ['active', 'ended']
+        && d.players is map;
+    }
+
+    match /challenges/{id} {
+      allow read: if (isMember() || isViewer()) && request.auth.uid in resource.data.invited;
+      allow create: if (isMember() || isViewer())
+        && request.resource.data.keys().hasOnly(['title', 'unit', 'goalIcon', 'createdBy', 'invited', 'players', 'status', 'createdAt'])
+        && request.resource.data.createdBy == request.auth.uid
+        && validFamilyChallenge(request.resource.data)
+        && request.resource.data.status == 'active'
+        && request.resource.data.players.keys().hasOnly([request.auth.uid])
+        && validChallengePlayer(request.resource.data.players[request.auth.uid]);
+      allow update: if (isMember() || isViewer()) && request.auth.uid in resource.data.invited && validFamilyChallenge(request.resource.data)
+        && request.resource.data.createdBy == resource.data.createdBy && (
+          // Your own entry (accepting, settings, check-ins).
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players'])
+            && request.resource.data.players.diff(resource.data.players).affectedKeys().hasOnly([request.auth.uid])
+            && validChallengePlayer(request.resource.data.players[request.auth.uid]))
+          // Taking yourself off the invited list.
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['invited'])
+            && request.resource.data.invited.toSet() == resource.data.invited.toSet().difference([request.auth.uid].toSet()))
+          // The creator: the challenge itself.
+          || (resource.data.createdBy == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'unit', 'goalIcon', 'invited', 'status', 'endedAt']))
+        );
+      allow delete: if (isMember() || isViewer()) && resource.data.createdBy == request.auth.uid;
     }
 
     match /gameChallenges/{id} {

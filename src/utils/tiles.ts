@@ -16,7 +16,9 @@ export const MAX_TILES = 120
  * Tiles added after people had arranged Today: put at the top of their tiles once. Taking one off is remembered as
  * "-tile" (at the end, never shown), so it doesn't come back.
  */
-export const AUTO_TILES: Tile[] = ['panel:weather', 'panel:inbox']
+export const AUTO_TILES: Tile[] = ['panel:weather', 'panel:inbox', 'panel:challenges']
+/** Where an auto tile goes when the tile before it is there (Challenges just below the Inbox); else the top. */
+const AUTO_AFTER: Record<string, Tile> = { 'panel:challenges': 'panel:inbox' }
 const removedMark = (t: Tile) => `-${t}`
 
 /** Panels that belong to a day (shown on other days too). To Do is one of them. */
@@ -41,7 +43,7 @@ export function known(t: Tile): boolean {
 }
 
 /** Today's panels in the order someone new starts with (the family's own layout, without their personal links). */
-const DEFAULT_MAIN = ['weather', 'photos', 'inbox', 'goals', 'group:Fun', 'daily', 'games', 'game:wordle', 'rewards', 'cards', 'elements', 'game:glider', 'group:People', 'map', 'contacts', 'end:1', 'gifts', 'todo']
+const DEFAULT_MAIN = ['weather', 'photos', 'inbox', 'challenges', 'goals', 'group:Fun', 'daily', 'games', 'game:wordle', 'rewards', 'cards', 'elements', 'game:glider', 'group:People', 'map', 'contacts', 'end:1', 'gifts', 'todo']
 
 /**
  * Today for someone who hasn't arranged it (a new member or relative): On this day, Inbox, Goals, a Fun group (with
@@ -57,7 +59,12 @@ export function defaultTiles(): Tile[] {
 /** Your tiles: as you arranged them, or the default. Always exactly one "more" mark; no repeats. */
 export function tilesOf(member: { today?: string[] }): Tile[] {
   let saved = member.today ?? defaultTiles()
-  if (member.today) for (const t of [...AUTO_TILES].reverse()) if (!saved.includes(t) && !saved.includes(removedMark(t))) saved = [t, ...saved]
+  if (member.today)
+    for (const t of [...AUTO_TILES].reverse()) {
+      if (saved.includes(t) || saved.includes(removedMark(t))) continue
+      const after = AUTO_AFTER[t] ? saved.indexOf(AUTO_AFTER[t]) : -1
+      saved = after >= 0 ? [...saved.slice(0, after + 1), t, ...saved.slice(after + 1)] : [t, ...saved]
+    }
   const out = [...new Set(saved)]
   return out.includes(MORE) ? out : [...out, MORE]
 }

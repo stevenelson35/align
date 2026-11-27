@@ -3,6 +3,7 @@
 export const TODAY_SECTIONS = [
   { id: 'weather', label: 'Weather' },
   { id: 'inbox', label: 'Inbox' },
+  { id: 'challenges', label: 'Challenges' },
   { id: 'goals', label: 'Goals' },
   { id: 'rewards', label: 'Reveal' },
   { id: 'games', label: 'Games' },
