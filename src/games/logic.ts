@@ -360,3 +360,68 @@ export const combineSolved = (grid: number[]) => grid.filter((v) => v > 0).lengt
 /** Whether any move is left (when none and more than one square remains, start over). */
 export const combineStuck = (grid: number[], n: number) =>
   !combineSolved(grid) && !grid.some((v, i) => v > 0 && neighbors(i, n).some((j) => grid[j] === v))
+
+// ---- Hints: one correct step, from where the player is (each costs a place on the leaderboard: fewest hints first) ----
+
+/** Trail: the path so far, kept while it matches the puzzle's own path, plus its next square. */
+export function trailHint(p: TrailPuzzle, path: Cell[]): Cell[] {
+  let k = 0
+  while (k < path.length && path[k] === p.solution[k]) k++
+  return p.solution.slice(0, Math.min(p.solution.length, k + 1))
+}
+
+/** Balance: the first square that's wrong (or else empty), set right. Null when there's none. */
+export function balanceHint(p: BalancePuzzle, grid: (Mark | null)[]): { cell: Cell; value: Mark } | null {
+  const wrong = grid.findIndex((v, i) => v !== null && v !== p.solution[i])
+  const cell = wrong >= 0 ? wrong : grid.findIndex((v) => v === null)
+  return cell >= 0 ? { cell, value: p.solution[cell] } : null
+}
+
+/** Star Fields: take away a star that doesn't belong, or else put one where it does. */
+export function starsHint(p: StarsPuzzle, stars: Set<Cell>): { cell: Cell; star: boolean } | null {
+  const answer = new Set(p.solution)
+  const wrong = [...stars].find((c) => !answer.has(c))
+  if (wrong !== undefined) return { cell: wrong, star: false }
+  const missing = p.solution.find((c) => !stars.has(c))
+  return missing !== undefined ? { cell: missing, star: true } : null
+}
+
+/** Blocks: one rectangle of the answer that isn't drawn yet (it replaces whatever it overlaps). */
+export function blocksHint(p: BlocksPuzzle, rects: Rect[]): Rect | null {
+  const same = (a: Rect, b: Rect) => a.r === b.r && a.c === b.c && a.h === b.h && a.w === b.w
+  return p.solution.find((q) => !rects.some((x) => same(x, q))) ?? null
+}
+
+/**
+ * Sum Up: a move from here that can still finish the puzzle: the puzzle's own next move while you're on its way,
+ * otherwise a search (as long as it stays small); null if none was found (start over).
+ */
+export function combineHint(grid: number[], n: number, puzzle?: CombinePuzzle, budget = 50000): [Cell, Cell] | null {
+  // Still on the puzzle's own way through: its next move.
+  if (puzzle) {
+    let g = puzzle.grid
+    for (const move of puzzle.solution) {
+      if (g.join() === grid.join()) return move
+      g = combineMove(g, move[0], move[1], n) ?? g
+    }
+  }
+  let nodes = 0
+  const seen = new Set<string>()
+  const solve = (g: number[]): [Cell, Cell] | null | true => {
+    if (combineSolved(g)) return true
+    if (++nodes > budget) return null
+    const key = g.join(',')
+    if (seen.has(key)) return null
+    seen.add(key)
+    for (let i = 0; i < g.length; i++) {
+      if (!g[i]) continue
+      for (const j of neighbors(i, n)) {
+        const next = combineMove(g, i, j, n)
+        if (next && solve(next)) return [i, j]
+      }
+    }
+    return null
+  }
+  const first = solve(grid)
+  return first === true ? null : first
+}

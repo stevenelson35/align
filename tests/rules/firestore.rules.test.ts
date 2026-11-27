@@ -673,6 +673,12 @@ describe('games', () => {
     await assertSucceeds(setDoc(ref('steve'), score(90000, 1)))
     await assertSucceeds(setDoc(ref('steve'), score(80000, 2)))
     await assertFails(setDoc(ref('steve'), score(95000, 3)))
+    // Hints: fewest first, then time (a slower time with fewer hints beats a faster one with more).
+    const hinted = doc(db('steve'), 'gameScores/steve_balance_2026-11-27')
+    await assertSucceeds(setDoc(hinted, { uid: 'steve', gameId: 'balance', seed: '2026-11-27', best: { ms: 60000, hints: 2 }, plays: 1, updatedAt: new Date() }))
+    await assertSucceeds(setDoc(hinted, { uid: 'steve', gameId: 'balance', seed: '2026-11-27', best: { ms: 90000, hints: 1 }, plays: 2, updatedAt: new Date() }))
+    await assertFails(setDoc(hinted, { uid: 'steve', gameId: 'balance', seed: '2026-11-27', best: { ms: 30000, hints: 3 }, plays: 3, updatedAt: new Date() }))
+    await assertFails(setDoc(hinted, { uid: 'steve', gameId: 'balance', seed: '2026-11-27', best: { ms: 30000, hints: -1 }, plays: 3, updatedAt: new Date() }))
     await assertSucceeds(setDoc(doc(db('grandma'), 'gameScores/grandma_stars_2026-11-27'), { uid: 'grandma', gameId: 'stars', seed: '2026-11-27', best: { ms: 70000 }, plays: 1, updatedAt: new Date() }))
   })
 

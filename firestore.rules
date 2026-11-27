@@ -699,15 +699,17 @@ service cloud.firestore {
     function validGameResult(gameId, result) {
       return gameId in ['lights-out', 'tower-of-hanoi', 'sliding-tiles', 'wordle', 'trail', 'balance', 'stars', 'blocks', 'combine']
         && result is map && result.ms is int && result.ms > 0 && result.ms <= 3600000
+        // Hints taken (each a step shown): fewest first, then time.
+        && (!('hints' in result) || (result.hints is int && result.hints >= 0 && result.hints <= 999))
         && (timedGame(gameId)
-          ? result.keys().hasOnly(['ms'])
+          ? result.keys().hasOnly(['ms', 'hints'])
           : gameId == 'wordle'
           ? result.keys().hasOnly(['guesses', 'ms', 'hardMode', 'solved'])
             && result.keys().hasAll(['guesses', 'ms'])
             && result.guesses is int && result.guesses > 0 && result.guesses <= 6
             && (!('hardMode' in result) || result.hardMode is bool)
             && (!('solved' in result) || result.solved is bool)
-          : result.keys().hasOnly(['moves', 'ms']) && result.moves is int && result.moves > 0 && result.moves <= 5000);
+          : result.keys().hasOnly(['moves', 'ms', 'hints']) && result.moves is int && result.moves > 0 && result.moves <= 5000);
     }
 
     function scoreResult(score) {
@@ -717,11 +719,13 @@ service cloud.firestore {
     function gameScoreBeats(newScore, oldScore) {
       let newer = scoreResult(newScore);
       let older = scoreResult(oldScore);
+      let fewer = newer.get('hints', 0) < older.get('hints', 0);
+      let same = newer.get('hints', 0) == older.get('hints', 0);
       return timedGame(newScore.gameId)
-        ? newer.ms <= older.ms
+        ? fewer || (same && newer.ms <= older.ms)
         : newScore.gameId == 'wordle'
         ? newer.guesses < older.guesses || (newer.guesses == older.guesses && newer.ms <= older.ms)
-        : newer.moves < older.moves || (newer.moves == older.moves && newer.ms <= older.ms);
+        : fewer || (same && (newer.moves < older.moves || (newer.moves == older.moves && newer.ms <= older.ms)));
     }
 
     function validGameChallengePayload(payload) {

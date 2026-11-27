@@ -39,11 +39,11 @@ export function GamesTodaySection() {
             onClick={() => app.navigate({ view: 'games', gameId: nextDaily(dailyDone), daily: true })}
             title={`Today’s daily games: ${DAILY_GAMES.filter((g) => dailyDone.has(g)).length} of ${DAILY_GAMES.length} done`}
           >
-            <Icon name="play" /> Play Daily
+            <Icon name="play" /> Daily
           </button>
         )}
-        <button type="button" className="link small" onClick={() => app.navigate({ view: 'games' })}>
-          Open games
+        <button type="button" className="link small header-icon-small" onClick={() => app.navigate({ view: 'games' })} title="All games" aria-label="All games">
+          <Icon name="chevron-right" />
         </button>
         <button type="button" className="link small" onClick={() => setOpen(!open)} aria-expanded={open}>
           {open ? 'Hide' : 'Show'}

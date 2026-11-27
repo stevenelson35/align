@@ -7,6 +7,7 @@ import { HelpTip } from '../UI/HelpTip'
 import { Icon } from '../UI/Icon'
 import { useWaiting } from '../../hooks/useWaiting'
 import { TodayDock } from './TodayDock'
+import { DailyGamesButton } from '../Games/DailyGamesButton'
 import { TodaySections } from '../../context/TodaySections'
 import { panelBackground } from '../../utils/panelStyle'
 import { useTodayTiles } from '../../hooks/useTodayTiles'
@@ -53,7 +54,7 @@ function DayContents({ day }: { day: string }) {
         <h2>
           {todayStyle?.sticker && day === now ? <>{todayStyle.sticker} </> : null}
           {label || formatDay(day)}
-          {label && <span className="muted small day-date"> {formatDay(day)}</span>}
+          {label && <span className="muted small day-date">{formatDay(day)}</span>}
         </h2>
         <HelpTip topic="today" label="Today" />
         <button type="button" className="link header-icon day-arrow" onClick={() => go(addDays(day, 1))} aria-label="Next day" title="Next day">
@@ -65,6 +66,7 @@ function DayContents({ day }: { day: string }) {
           </button>
         )}
         <span className="grow" />
+        {day === now && <DailyGamesButton />}
         {day === now && <CalendarActions />}
       </header>
 

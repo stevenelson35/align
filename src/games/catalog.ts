@@ -1,4 +1,4 @@
-export type GameMetric = 'moves' | 'guesses' | 'ms'
+export type GameMetric = 'hints' | 'moves' | 'guesses' | 'ms'
 export type GameResult = Partial<Record<GameMetric, number>> & { hardMode?: boolean }
 
 export interface GameDefinition {
@@ -13,7 +13,7 @@ export const GAMES = [
     id: 'lights-out',
     name: 'Lights Out',
     description: 'Today’s shared 5 × 5 puzzle. Switch off every light; each tap flips that square and its neighbors.',
-    scoreOrder: ['moves', 'ms'],
+    scoreOrder: ['hints', 'moves', 'ms'],
   },
   {
     id: 'tower-of-hanoi',
@@ -37,31 +37,31 @@ export const GAMES = [
     id: 'trail',
     name: 'Trail',
     description: 'Today’s path puzzle: one line from 1 through every number in order that fills every square.',
-    scoreOrder: ['ms'],
+    scoreOrder: ['hints', 'ms'],
   },
   {
     id: 'balance',
     name: 'Balance',
     description: 'Today’s ● and ○ puzzle: three of each in every row and column, never three side by side, = and × between squares.',
-    scoreOrder: ['ms'],
+    scoreOrder: ['hints', 'ms'],
   },
   {
     id: 'stars',
     name: 'Star Fields',
     description: 'Today’s star puzzle: one star in every row, column and colored area, and no two stars touching.',
-    scoreOrder: ['ms'],
+    scoreOrder: ['hints', 'ms'],
   },
   {
     id: 'blocks',
     name: 'Blocks',
     description: 'Today’s rectangle puzzle: cut the grid into rectangles, each holding one number that says its size.',
-    scoreOrder: ['ms'],
+    scoreOrder: ['hints', 'ms'],
   },
   {
     id: 'combine',
     name: 'Sum Up',
     description: 'Today’s number puzzle: swipe equal neighbors together into their sum until one square is left. 3 × 3, or bigger for a challenge.',
-    scoreOrder: ['ms'],
+    scoreOrder: ['hints', 'ms'],
   },
   {
     id: 'glider',
@@ -81,7 +81,9 @@ export function compareGameResults(gameId: GameId, a: GameResult, b: GameResult)
   const game = gameById(gameId)
   if (!game) throw new Error(`Unknown game: ${gameId}`)
   for (const metric of game.scoreOrder) {
-    const difference = (a[metric] ?? Number.POSITIVE_INFINITY) - (b[metric] ?? Number.POSITIVE_INFINITY)
+    // No hints recorded = none taken.
+    const missing = metric === 'hints' ? 0 : Number.POSITIVE_INFINITY
+    const difference = (a[metric] ?? missing) - (b[metric] ?? missing)
     if (difference) return difference
   }
   return 0
@@ -91,8 +93,9 @@ export function formatGameResult(gameId: GameId, result: GameResult): string {
   const game = gameById(gameId)
   if (!game) throw new Error(`Unknown game: ${gameId}`)
   return game.scoreOrder
-    .filter((metric) => result[metric] !== undefined)
-    .map((metric) => metric === 'ms' ? formatTime(result.ms!) : `${result[metric]} ${metric}`)
+    .filter((metric) => result[metric] !== undefined && !(metric === 'hints' && !result.hints))
+    .map((metric) => (metric === 'ms' ? formatTime(result.ms!) : metric === 'hints' ? `${result.hints} hint${result.hints === 1 ? '' : 's'}` : `${result[metric]} ${metric}`))
+    .sort((a, b) => Number(a.includes('hint')) - Number(b.includes('hint')))
     .join(' · ')
 }
 
@@ -106,3 +109,6 @@ export const isDailyGame = (id: string) => (DAILY_GAMES as string[]).includes(id
 
 /** The first daily game not finished today (or the first, when all are). */
 export const nextDaily = (done: Set<string>): GameId => DAILY_GAMES.find((g) => !done.has(g)) ?? DAILY_GAMES[0]
+
+/** The daily game after this one (round the set). */
+export const dailyAfter = (id: GameId): GameId => DAILY_GAMES[(DAILY_GAMES.indexOf(id) + 1) % DAILY_GAMES.length]

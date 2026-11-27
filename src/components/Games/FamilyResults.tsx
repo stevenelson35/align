@@ -37,7 +37,7 @@ export function FamilyResults({ gameId, gameName, day, rows }: { gameId: string;
   return (
     <article className="card game-leaderboard wordle-day-results">
       <button type="button" className="wordle-results-head" onClick={() => toggle('results-closed')} aria-expanded={!closed}>
-        <h3>Today’s family results</h3>
+        <h3>Today’s Results</h3>
         <span className="muted small">
           {rows.length} of {people.length} played
         </span>

@@ -42,3 +42,16 @@ export function compareLightsOutScores(a: { moves: number; ms: number }, b: { mo
 export function newLightsOutSeed(): string {
   return crypto.randomUUID()
 }
+
+/**
+ * A hint: a square to press that's on the way to solving from here. Presses commute and a press twice cancels out,
+ * so what's left is the scramble's presses plus yours, each counted odd or even.
+ */
+export function lightsOutHint(seed: string, pressed: number[], size = LIGHTS_OUT_SIZE): number | null {
+  const odd = new Set<number>()
+  for (const i of [...lightsOutScramble(seed, size), ...pressed]) {
+    if (odd.has(i)) odd.delete(i)
+    else odd.add(i)
+  }
+  return odd.size ? Math.min(...odd) : null
+}

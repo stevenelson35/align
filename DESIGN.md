@@ -410,7 +410,12 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
   `#/games/daily/<id>` (route `daily`: the bar, and no Challenge someone; `#/games/play/<id>` is the game on its own).
   Home's Games has a green ▶ Play Daily. The bar's ‹ › name the games and go round. Every daily game shows
   `FamilyResults` (Wordle: `WordleDailyResults`, the same layout with the colored squares), with Remind for who
-  hasn't played. Earlier: Daily / ✓ badges on the
+  hasn't played. One go per daily puzzle: the first Start is kept on the device (`align-daily-start:<id>:<seed>`,
+  with hints; `:done` once solved), Start over clears only the board, and finished means Next daily or Practice
+  puzzle (a random board, not saved). Hints (`trailHint`, `balanceHint`, `starsHint`, `blocksHint`, `combineHint`,
+  `lightsOutHint`) take one correct step; results carry `hints` (rules: int 0–999) and rank fewest hints first
+  (`scoreOrder` starts with 'hints'). 🧩 in Today's header (`DailyGamesButton`, with the number left) opens the daily
+  games; `GameExample` draws a made-up example of each daily game for the Games page and Start screens. Earlier: Daily / ✓ badges on the
   Games page (✓ from `play.daily.done`, which each daily game sets once a day via `earnDaily`), "Play them" (the first
   not done: `nextDaily`), a link on Home's Games, and `DailyBar` on each (‹ previous, which of 7, next ›, a chip each).
   Lights Out and the logic puzzles wait for Start (board hidden, clock still), so looking ahead or skipping costs

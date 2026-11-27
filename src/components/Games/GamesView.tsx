@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { today } from '../../engine/dates'
 import { completeGameChallenge, findOwnChallenge, inviteToGame, recordGameScore, startGameChallenge, useGameChallenge, useGameScores, type GameChallenge } from '../../firebase/games'
 import { useApp } from '../../hooks/useApp'
-import { isLightsOutSolved, lightsOutBoard, toggleLights } from '../../games/lightsOut'
+import { isLightsOutSolved, lightsOutBoard, lightsOutHint, newLightsOutSeed, toggleLights } from '../../games/lightsOut'
 import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
-import { compareGameResults, DAILY_GAMES, formatGameResult, GAMES, gameById, isDailyGame, nextDaily, type GameId } from '../../games/catalog'
+import { compareGameResults, dailyAfter, DAILY_GAMES, formatGameResult, GAMES, gameById, isDailyGame, nextDaily, type GameId } from '../../games/catalog'
 import { GameTile } from './GameTile'
 import { setPinnedGames } from '../../firebase/db'
 import { TowerOfHanoiGame } from './TowerOfHanoiGame'
@@ -17,6 +17,7 @@ import { WordleGame } from './WordleGame'
 import { LogicGame } from './LogicGames'
 import { DailyBar } from './DailyBar'
 import { FamilyResults } from './FamilyResults'
+import { GameExample } from './GameExample'
 import { useDailyDone } from '../../hooks/useDailyDone'
 import { isLogicGame } from '../../games/logic'
 
@@ -48,9 +49,23 @@ export function GamesView({ challengeId, gameId, day, daily = false }: { challen
 
   // Lights Out waits for Start (the board hidden, the clock still), like the other daily puzzles.
   const [lightsStarted, setLightsStarted] = useState(false)
-  useEffect(() => {
-    if (selectedGame === 'lights-out' && lightsStarted) startedAt.current = Date.now()
-  }, [seed, selectedGame, lightsStarted])
+  // Today's puzzle is one go (no challenge): its first Start is remembered on this device, with the hints taken.
+  const lightsToday = !challengeId && seed === today()
+  const lightsKey = `align-daily-start:lights-out:${seed}`
+  const [lightsHints, setLightsHints] = useState(0)
+  const [pressed, setPressed] = useState<number[]>([])
+  function startLights() {
+    let saved: { at: number; hints: number } | null = null
+    try {
+      saved = lightsToday ? (JSON.parse(localStorage.getItem(lightsKey) ?? 'null') as { at: number; hints: number } | null) : null
+    } catch {
+      saved = null
+    }
+    startedAt.current = saved?.at ?? Date.now()
+    if (lightsToday && !saved) localStorage.setItem(lightsKey, JSON.stringify({ at: startedAt.current, hints: 0 }))
+    setLightsHints(saved?.hints ?? 0)
+    setLightsStarted(true)
+  }
 
   useEffect(() => {
     if (selectedGame === 'lights-out' && lightsStarted && !solved) {
@@ -131,7 +146,14 @@ export function GamesView({ challengeId, gameId, day, daily = false }: { challen
     setSaving(true)
     setError(null)
     try {
-      const result = { moves: resultMoves, ms: resultMs }
+      // A practice puzzle isn't saved: only today's (or a challenge's) counts.
+      if (!lightsToday && !currentChallenge) {
+        setSaved(true)
+        celebrate({ done: 1, total: 1, message: 'Solved!' })
+        return
+      }
+      if (lightsToday) localStorage.setItem(`${lightsKey}:done`, '1')
+      const result = { moves: resultMoves, ms: resultMs, ...(lightsHints ? { hints: lightsHints } : {}) }
       const personalBest = await recordGameScore(app.uid, 'lights-out', seed, result)
       if (currentChallenge) await completeGameChallenge(currentChallenge.id, result)
       setSaved(true)
@@ -144,7 +166,7 @@ export function GamesView({ challengeId, gameId, day, daily = false }: { challen
     } finally {
       setSaving(false)
     }
-  }, [app.uid, seed, saving, saved, scores])
+  }, [app.uid, seed, saving, saved, scores, lightsToday, lightsHints, lightsKey])
 
   const press = useCallback((index: number) => {
     if (solved || !validChallenge) return
@@ -152,6 +174,7 @@ export function GamesView({ challengeId, gameId, day, daily = false }: { challen
     const count = moves + 1
     setBoard(next)
     setMoves(count)
+    setPressed((p) => [...p, index])
     if (isLightsOutSolved(next)) {
       const time = Math.max(1, Date.now() - startedAt.current)
       setElapsed(time)
@@ -160,21 +183,45 @@ export function GamesView({ challengeId, gameId, day, daily = false }: { challen
     }
   }, [board, moves, solved, validChallenge, challengeId, challenge, saveResult])
 
-  function newPuzzle() {
-    if (challengeId) {
-      app.navigate({ view: 'games' })
-      return
-    }
-    const nextSeed = today()
+  /** Clear the board (today's clock keeps going: it's one go). */
+  function resetLights() {
+    setBoard(lightsOutBoard(seed))
+    setMoves(0)
+    setPressed([])
+  }
+
+  /** A practice puzzle: a new board, not on today's results, its own clock. */
+  function practiceLights() {
+    const nextSeed = newLightsOutSeed()
     setSeed(nextSeed)
     setBoard(lightsOutBoard(nextSeed))
     setMoves(0)
+    setPressed([])
+    setLightsHints(0)
     setSolved(false)
     setSaved(false)
     setElapsed(0)
     setNote(null)
     setError(null)
     startedAt.current = Date.now()
+    setLightsStarted(true)
+  }
+
+  function lightsHint() {
+    const h = lightsOutHint(seed, pressed)
+    if (h === null || solved) return
+    const next = lightsHints + 1
+    setLightsHints(next)
+    if (lightsToday) localStorage.setItem(lightsKey, JSON.stringify({ at: startedAt.current, hints: next }))
+    press(h)
+  }
+
+  function newPuzzle() {
+    if (challengeId) {
+      app.navigate({ view: 'games' })
+      return
+    }
+    practiceLights()
   }
 
   async function sendInvites() {
@@ -210,7 +257,7 @@ export function GamesView({ challengeId, gameId, day, daily = false }: { challen
     return (
       <>
         {dailyBar}
-        <LogicGame key={selectedGame} id={selectedGame} onBack={() => app.navigate({ view: 'games' })} />
+        <LogicGame key={selectedGame} id={selectedGame} daily={daily} onBack={() => app.navigate({ view: 'games' })} />
       </>
     )
   if (selectedGame === 'wordle') {
@@ -268,6 +315,18 @@ export function GamesView({ challengeId, gameId, day, daily = false }: { challen
     )
   }
 
+  const myLights = scores.find((x) => x.uid === app.uid)
+  const lightsAfter = (
+    <div className="row wrap logic-after">
+      <button type="button" onClick={() => app.navigate({ view: 'games', gameId: dailyAfter('lights-out'), daily: true })}>
+        Next daily: {gameById(dailyAfter('lights-out'))?.name} <Icon name="chevron-right" />
+      </button>
+      <button type="button" className="secondary" onClick={practiceLights}>
+        Practice puzzle
+      </button>
+    </div>
+  )
+
   return (
     <>
     {dailyBar}
@@ -279,10 +338,16 @@ export function GamesView({ challengeId, gameId, day, daily = false }: { challen
       </header>
       <article className="game-card card">
         <p className="small muted logic-rules">Switch off every light. Each tap flips that square and the ones above, below and beside it. Fewest moves wins, then fastest.</p>
-        {!lightsStarted ? (
+        {!lightsStarted && lightsToday && (myLights || dailyDone.has('lights-out') || localStorage.getItem(`${lightsKey}:done`)) ? (
           <div className="logic-start">
-            <p className="small muted">The board shows and the clock starts when you tap Start.</p>
-            <button type="button" onClick={() => setLightsStarted(true)}>
+            <p className="small">You’ve done today’s{myLights ? `: ${formatGameResult('lights-out', myLights.best)}` : ''}. A new one comes tomorrow.</p>
+            {lightsAfter}
+          </div>
+        ) : !lightsStarted ? (
+          <div className="logic-start">
+            <GameExample id="lights-out" className="game-example-start" />
+            <p className="small muted">The board shows and the clock starts when you tap Start. One go a day: Reset clears the board, not the clock.</p>
+            <button type="button" onClick={startLights}>
               <Icon name="play" /> Start
             </button>
           </div>
@@ -292,7 +357,14 @@ export function GamesView({ challengeId, gameId, day, daily = false }: { challen
           <strong>{moves} {moves === 1 ? 'move' : 'moves'}</strong>
           <span className="muted">·</span>
           <strong>{seconds(elapsed)}</strong>
+          {lightsHints > 0 && <span className="muted small">{lightsHints} hint{lightsHints === 1 ? '' : 's'}</span>}
           {solved && <span className="badge">Solved!</span>}
+          <span className="grow" />
+          {!solved && (
+            <button type="button" className="secondary small" onClick={lightsHint} title="Press one light that’s on the way to solving it (fewest hints ranks first)">
+              Hint
+            </button>
+          )}
         </div>
         <div className="lights-board" role="group" aria-label="Lights Out puzzle">
           {board.map((on, i) => (
@@ -311,10 +383,10 @@ export function GamesView({ challengeId, gameId, day, daily = false }: { challen
           <div className="game-result">
             <p>{saved ? 'Result saved to the family leaderboard.' : saving ? 'Saving your result…' : 'Your puzzle is solved.'}</p>
             {error && <p className="error small">{error} <button type="button" className="link small" onClick={() => void saveResult(moves, elapsed, challengeId ? challenge ?? undefined : undefined)}>Try saving again</button></p>}
-            <button type="button" className="secondary small" onClick={newPuzzle}>Play today’s puzzle again</button>
+            {challengeId ? <button type="button" className="secondary small" onClick={newPuzzle}>Back to games</button> : lightsAfter}
           </div>
         )}
-        {!solved && <button type="button" className="secondary small" onClick={newPuzzle}>Reset today’s puzzle</button>}
+        {!solved && <button type="button" className="secondary small" onClick={resetLights}>Reset the board{lightsToday ? ' (the clock keeps going)' : ''}</button>}
         </>
         )}
       </article>

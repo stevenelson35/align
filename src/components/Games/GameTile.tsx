@@ -1,3 +1,5 @@
+import { isLogicGame } from '../../games/logic'
+import { GameExample } from './GameExample'
 import type { GameId } from '../../games/catalog'
 
 export function GameTile({
@@ -36,6 +38,10 @@ export function GameTile({
             <span className="glider-mini-tower top" />
             <span className="glider-mini-plane">➤</span>
             <span className="glider-mini-tower bottom" />
+          </span>
+        ) : isLogicGame(id) ? (
+          <span className="game-mini-picture game-mini-example">
+            <GameExample id={id} />
           </span>
         ) : id === 'tower-of-hanoi' ? (
           <span className="game-mini-picture game-mini-hanoi" role="img" aria-label={`${name} preview`}>

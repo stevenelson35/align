@@ -1150,6 +1150,8 @@ label.inline input[type='radio'] {
 }
 .day-date {
   font-weight: normal;
+  /* The same space as between the heading and its ⓘ. */
+  margin-left: 0.5rem;
 }
 .day-section {
   margin-bottom: 1rem;
@@ -3829,9 +3831,26 @@ button.today-sheet-title {
   font-weight: 700;
   pointer-events: none;
 }
-/* Star Fields: colored areas with heavy lines between them. */
+/* Star Fields: colored areas, faint lines between squares, and one dark outline (an SVG over the board) between areas
+   and around the edge: the same in light and dark themes. */
 .stars-board .logic-cell {
   color: #1f2328;
+  border: 1px solid rgb(31 35 40 / 0.12);
+}
+.stars-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.stars-outline path,
+.stars-outline rect {
+  fill: none;
+  stroke: #1f2328;
+  stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: square;
 }
 .stars-board .logic-cell.bad {
   color: #cf222e;
@@ -3900,6 +3919,60 @@ button.today-sheet-title {
 }
 .daily-badge.done {
   color: var(--muted);
+}
+/* 🧩 in Today's header, with how many daily games are left. */
+.daily-games-button {
+  position: relative;
+}
+.header-icon-count {
+  position: absolute;
+  top: 0;
+  right: -0.1rem;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  background: #1f883d;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1rem;
+  text-align: center;
+}
+.header-icon-small {
+  display: inline-flex;
+  padding: 0.15rem;
+}
+/* Example drawings (GameExample): on the Games page's tiles and the Start screens. */
+.game-example {
+  display: block;
+}
+.game-example svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.game-mini-picture.game-mini-example {
+  display: block;
+  padding: 4px;
+  background: color-mix(in srgb, var(--text) 6%, var(--surface));
+}
+.game-mini-picture.game-mini-example span {
+  border-radius: 0;
+  background: none;
+}
+.game-example-start {
+  width: min(9rem, 40vw);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
+}
+.game-example-wordle {
+  width: min(7rem, 35vw);
+  margin: 0.4rem 0;
+}
+.logic-after {
+  justify-content: center;
 }
 /* Home's Games: the green Play Daily button. */
 .play-daily {

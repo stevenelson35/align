@@ -21,6 +21,7 @@ import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
 import { WordleProgressBoard } from './WordleProgressBoard'
 import { WordleDailyResults } from './WordleDailyResults'
+import { GameExample } from './GameExample'
 import { earnDaily } from '../../firebase/play'
 import { sendToInbox } from '../../firebase/inbox'
 import { today } from '../../engine/dates'
@@ -387,6 +388,7 @@ export function WordleGame({ challenge, day, daily = false, onBack }: { challeng
           <div className="row">
             <div className="grow">
               <h3>{earlier ? 'Daily Wordle' : 'Today’s Wordle'}{dailyPreview ? ` · ${wordleDay(dailyPreview.date)}` : ''}</h3>
+              {daily && !dailyPreview?.complete && <GameExample id="wordle" className="game-example-wordle" />}
               {earlier && (
                 <p className="small">
                   An earlier day’s Wordle: the same word everyone had that day, so your result ranks with theirs.{' '}

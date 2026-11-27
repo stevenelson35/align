@@ -87,7 +87,7 @@ export function WordleDailyResults({ date, today, scores, finished }: { date: st
     <article className="card game-leaderboard wordle-day-results">
       <button type="button" className="wordle-results-head" onClick={() => toggle('results')} aria-expanded={!folded.has('results')}>
         <h3>
-          {isToday ? 'Today’s family results' : `Family results · ${wordleDay(date)}`}
+          {isToday ? 'Today’s Results' : `Results · ${wordleDay(date)}`}
         </h3>
         <span className="muted small">
           {played.length} of {standings.length} played

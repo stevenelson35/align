@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { combineMove, combineSolved, combineStuck, makeCombine, balanceConflicts, balanceSolved, blocksSolved, daySeed, makeBalance, makeBlocks, makeStars, makeTrail, starConflicts, starsSolved, trailOnTrack, trailSolved, type Mark } from './logic'
+import { balanceHint, blocksHint, combineHint, starsHint, trailHint, combineMove, combineSolved, combineStuck, makeCombine, balanceConflicts, balanceSolved, blocksSolved, daySeed, makeBalance, makeBlocks, makeStars, makeTrail, starConflicts, starsSolved, trailOnTrack, trailSolved, type Mark } from './logic'
 
 const seeds = Array.from({ length: 25 }, (_, i) => daySeed('test', `2026-12-${String(i + 1).padStart(2, '0')}`))
 
@@ -72,4 +72,50 @@ describe('the daily logic puzzles', () => {
     expect(combineMove([2, 0, 0, 2], 0, 3, 2)).toBeNull()
     expect(combineStuck([2, 4, 0, 8], 2)).toBe(true)
   })
+
+  it('hints take one correct step from where you are, and following them finishes the puzzle', () => {
+    for (const seed of seeds.slice(0, 6)) {
+      const t = makeTrail(seed)
+      let path: number[] = []
+      while (!trailSolved(t, path)) path = trailHint(t, path)
+      expect(path).toEqual(t.solution)
+
+      const b = makeBalance(seed)
+      let grid = Array.from({ length: 36 }, (_, i) => b.given[i] ?? null) as (Mark | null)[]
+      grid[grid.findIndex((v) => v === null)] = 0
+      for (let h = balanceHint(b, grid); h; h = balanceHint(b, grid)) grid = grid.map((v, i) => (i === h!.cell ? h!.value : v))
+      expect(balanceSolved(b, grid)).toBe(true)
+
+      const st = makeStars(seed)
+      const stars = new Set<number>([0])
+      for (let h = starsHint(st, stars); h; h = starsHint(st, stars)) {
+        if (h.star) stars.add(h.cell)
+        else stars.delete(h.cell)
+      }
+      expect(starsSolved(st, stars)).toBe(true)
+
+      const bl = makeBlocks(seed)
+      const rects = [] as typeof bl.solution
+      for (let q = blocksHint(bl, rects); q; q = blocksHint(bl, rects)) rects.push(q)
+      expect(blocksSolved(bl, rects)).toBe(true)
+
+      for (const n of [3, 4]) {
+        const c = makeCombine(seed, n)
+        let g = c.grid
+        for (let m = combineHint(g, n, c); m; m = combineHint(g, n, c)) g = combineMove(g, m[0], m[1], n)!
+        expect(combineSolved(g)).toBe(true)
+      }
+    }
+    expect(combineHint([2, 4, 0, 8], 2)).toBeNull()
+    // Off the puzzle's way (3 × 3): the search still finds a way through.
+    const c = makeCombine(seeds[0], 3)
+    const moves = [...Array(9).keys()].flatMap((i) => [i + 1, i + 3].map((j) => [i, j] as [number, number]))
+    const off = moves.map(([a, b]) => combineMove(c.grid, a, b, 3)).find((g) => g && combineHint(g, 3, undefined) !== null)
+    if (off) {
+      let g = off
+      for (let m = combineHint(g, 3); m; m = combineHint(g, 3)) g = combineMove(g, m[0], m[1], 3)!
+      expect(combineSolved(g)).toBe(true)
+    }
+  })
 })
+
