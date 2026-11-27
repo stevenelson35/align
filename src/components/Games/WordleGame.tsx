@@ -29,7 +29,7 @@ import { challengeNotification } from './wordleNotification'
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 
 /** day: play the daily Wordle of that date (one from the last week, opened from someone's result) instead of today's. */
-export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallenge; day?: string; onBack: () => void }) {
+export function WordleGame({ challenge, day, daily = false, onBack }: { challenge?: GameChallenge; day?: string; /** Playing through the daily games: no Challenge someone. */ daily?: boolean; onBack: () => void }) {
   const app = useApp()
   const [game, setGame] = useState<WordleGameState | null>(null)
   // How many people were told when you finished today's Wordle (0: not this time).
@@ -373,7 +373,7 @@ export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallen
             ? isRealtimeChallenge
               ? 'Real-time Live Wordle'
               : challenge.from === app.uid ? 'Your live challenge' : `Challenge from ${app.household.members[challenge.from]?.displayName ?? 'a family member'}`
-            : 'The same word for the whole family each day.'}
+            : 'Today’s word, the same for everyone.'}
         </span>
         <button type="button" className="secondary small" onClick={onBack}>Show All Games</button>
       </header>
@@ -623,8 +623,8 @@ export function WordleGame({ challenge, day, onBack }: { challenge?: GameChallen
 
 
 
-      {/* Challenge someone: on the Wordle page, not while you're playing. */}
-      {!challenge && !game && (
+      {/* Challenge someone: on the Wordle page, not while you're playing, nor in the daily games. */}
+      {!challenge && !game && !daily && (
         <article className="card game-invite-form">
           <div className="row">
             <div className="grow">

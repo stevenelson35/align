@@ -3901,6 +3901,21 @@ button.today-sheet-title {
 .daily-badge.done {
   color: var(--muted);
 }
+/* Home's Games: the green Play Daily button. */
+.play-daily {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: #1f883d;
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.play-daily:hover {
+  background: #1a7f37;
+}
 .daily-home-link {
   display: inline-flex;
   align-items: center;

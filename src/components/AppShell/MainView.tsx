@@ -103,7 +103,7 @@ export function MainView() {
         </Suspense>
       )
     case 'games':
-      return <GamesView key={route.challengeId ?? `${route.gameId ?? 'games'}${route.day ?? ''}`} challengeId={route.challengeId} gameId={route.gameId} day={route.day} />
+      return <GamesView key={route.challengeId ?? `${route.gameId ?? 'games'}${route.day ?? ''}${route.daily ? '-daily' : ''}`} challengeId={route.challengeId} gameId={route.gameId} day={route.day} daily={route.daily} />
     case 'help':
       return <HelpView topic={route.topic} />
     case 'library':

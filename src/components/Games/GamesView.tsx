@@ -16,11 +16,12 @@ import { earnDaily } from '../../firebase/play'
 import { WordleGame } from './WordleGame'
 import { LogicGame } from './LogicGames'
 import { DailyBar } from './DailyBar'
+import { FamilyResults } from './FamilyResults'
 import { useDailyDone } from '../../hooks/useDailyDone'
 import { isLogicGame } from '../../games/logic'
 
 const seconds = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
-export function GamesView({ challengeId, gameId, day }: { challengeId?: string; gameId?: string; day?: string }) {
+export function GamesView({ challengeId, gameId, day, daily = false }: { challengeId?: string; gameId?: string; day?: string; /** Playing through today's daily games: the bar, and no challenges. */ daily?: boolean }) {
   const app = useApp()
   const { challenge, error: challengeError } = useGameChallenge(challengeId)
   const selectedGame = challengeId ? challenge?.gameId ?? null : gameId && gameById(gameId) ? gameId as GameId : null
@@ -204,7 +205,7 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
   }
   if (selectedGame === 'glider') return <GliderGame onBack={() => app.navigate({ view: 'games' })} />
   // Today's daily games: the bar to step through them (not on a challenge).
-  const dailyBar = !challengeId && selectedGame && isDailyGame(selectedGame) ? <DailyBar current={selectedGame} /> : null
+  const dailyBar = daily && !challengeId && selectedGame && isDailyGame(selectedGame) ? <DailyBar current={selectedGame} /> : null
   if (selectedGame && isLogicGame(selectedGame))
     return (
       <>
@@ -216,7 +217,7 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
     return (
       <>
         {dailyBar}
-        <WordleGame key={challengeId ?? `daily${day ?? ''}`} challenge={challengeId ? challenge ?? undefined : undefined} day={challengeId ? undefined : day} onBack={() => app.navigate({ view: 'games' })} />
+        <WordleGame key={challengeId ?? `daily${day ?? ''}`} challenge={challengeId ? challenge ?? undefined : undefined} day={challengeId ? undefined : day} daily={daily} onBack={() => app.navigate({ view: 'games' })} />
       </>
     )
   }
@@ -234,7 +235,7 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
             <span className="muted small"> · {DAILY_GAMES.filter((g) => dailyDone.has(g)).length} of {DAILY_GAMES.length} done</span>
             <p className="muted small">A new puzzle in each every day, the same for everyone: step through them with ‹ ›.</p>
           </div>
-          <button type="button" className="small" onClick={() => app.navigate({ view: 'games', gameId: nextDaily(dailyDone) })}>
+          <button type="button" className="small" onClick={() => app.navigate({ view: 'games', gameId: nextDaily(dailyDone), daily: true })}>
             <Icon name="play" /> {dailyDone.size ? 'Keep going' : 'Play them'}
           </button>
         </div>
@@ -272,21 +273,15 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
     {dailyBar}
     <section className="games-view">
       <header className="view-header">
-        <h2><Icon name="sparkle" /> Games</h2>
-        <span className="muted small">Quick puzzles for the family</span>
+        <h2><Icon name="sparkle" /> {gameById(selectedGame)?.name ?? 'Lights Out'}</h2>
+        <span className="muted small">{challenge ? `Challenge from ${app.household.members[challenge.from]?.displayName ?? 'a family member'}` : 'Today’s puzzle, the same for everyone.'}</span>
         {!challengeId && <button type="button" className="secondary small" onClick={() => app.navigate({ view: 'games' })}>Show All Games</button>}
       </header>
       <article className="game-card card">
-        <header className="row">
-          <div className="grow">
-            <h3>{gameById(selectedGame)?.name ?? selectedGame}</h3>
-            <p className="muted small">{GAMES.find((game) => game.id === selectedGame)?.description}</p>
-          </div>
-          {challenge && <span className="badge">Challenge from {app.household.members[challenge.from]?.displayName ?? 'a family member'}</span>}
-        </header>
+        <p className="small muted logic-rules">Switch off every light. Each tap flips that square and the ones above, below and beside it. Fewest moves wins, then fastest.</p>
         {!lightsStarted ? (
           <div className="logic-start">
-            <p className="small">Switch off every light: each tap flips that square and its neighbors. Fewest moves, then fastest. The clock starts when you do.</p>
+            <p className="small muted">The board shows and the clock starts when you tap Start.</p>
             <button type="button" onClick={() => setLightsStarted(true)}>
               <Icon name="play" /> Start
             </button>
@@ -324,23 +319,10 @@ export function GamesView({ challengeId, gameId, day }: { challengeId?: string; 
         )}
       </article>
 
-      <article className="card game-leaderboard">
-        <h3>Family leaderboard</h3>
-        {scoreError && <p className="error small">{scoreError}</p>}
-        {!scores.length ? <p className="muted small">Solve a puzzle to set the first family score.</p> : (
-          <ol>
-            {scores.map((score) => (
-              <li key={score.uid} className={score.uid === app.uid ? 'game-score-me' : ''}>
-                <strong>{app.household.members[score.uid]?.displayName ?? 'Family member'}</strong>
-                <span>{formatGameResult(score.gameId, score.best)}</span>
-                {score.uid !== app.uid && <button type="button" className="link small" onClick={newPuzzle}>Try today’s puzzle</button>}
-              </li>
-            ))}
-          </ol>
-        )}
-      </article>
+      {scoreError && <p className="error small">{scoreError}</p>}
+      <FamilyResults gameId="lights-out" gameName="Lights Out" day={seed} rows={scores.map((score) => ({ uid: score.uid, text: formatGameResult(score.gameId, score.best) }))} />
 
-      {solved && !challengeId && people.length > 0 && (
+      {solved && !challengeId && !daily && people.length > 0 && (
         <article className="card game-invite-form">
           <h3>Invite someone to solve this same puzzle</h3>
           <div className="chips">

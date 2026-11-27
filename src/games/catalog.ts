@@ -101,7 +101,7 @@ function formatTime(ms: number): string {
 }
 
 /** The daily games, in the order "Play today's daily games" goes through them (each has a new puzzle every day). */
-export const DAILY_GAMES: GameId[] = ['wordle', 'lights-out', 'trail', 'balance', 'stars', 'blocks', 'combine']
+export const DAILY_GAMES: GameId[] = ['wordle', 'trail', 'balance', 'stars', 'blocks', 'combine', 'lights-out']
 export const isDailyGame = (id: string) => (DAILY_GAMES as string[]).includes(id)
 
 /** The first daily game not finished today (or the first, when all are). */

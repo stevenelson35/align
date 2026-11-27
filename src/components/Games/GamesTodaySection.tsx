@@ -31,6 +31,17 @@ export function GamesTodaySection() {
   return (
     <section className="day-section games-today">
       <SectionHeader icon="sparkle" title="Games" count={pinned.length} onTitleClick={() => setOpen(!open)} expanded={open} help="games">
+        {/* Straight into today's daily games (the first one not done yet), even with Games folded. */}
+        {app.canPlay && (
+          <button
+            type="button"
+            className="small play-daily"
+            onClick={() => app.navigate({ view: 'games', gameId: nextDaily(dailyDone), daily: true })}
+            title={`Today’s daily games: ${DAILY_GAMES.filter((g) => dailyDone.has(g)).length} of ${DAILY_GAMES.length} done`}
+          >
+            <Icon name="play" /> Play Daily
+          </button>
+        )}
         <button type="button" className="link small" onClick={() => app.navigate({ view: 'games' })}>
           Open games
         </button>
@@ -48,11 +59,6 @@ export function GamesTodaySection() {
           matches={(g, q) => q.toLowerCase().split(/\s+/).every((w) => `${g.name} ${g.description}`.toLowerCase().includes(w))}
           searchHint="Find a game…"
           startAll
-          top={
-            <button type="button" className="link small daily-home-link" onClick={() => app.navigate({ view: 'games', gameId: nextDaily(dailyDone) })}>
-              <Icon name="play" /> Today’s daily games · {DAILY_GAMES.filter((g) => dailyDone.has(g)).length} of {DAILY_GAMES.length} done ›
-            </button>
-          }
           bottom={<GameInvitationsBlock enabled={open} />}
           filters={error && <p className="error small">{error}</p>}
           render={(g) => (

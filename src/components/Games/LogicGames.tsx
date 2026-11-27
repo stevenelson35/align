@@ -35,6 +35,7 @@ import { useApp } from '../../hooks/useApp'
 import { celebrate } from '../../utils/celebrate'
 import { Icon } from '../UI/Icon'
 import { HelpTip } from '../UI/HelpTip'
+import { FamilyResults } from './FamilyResults'
 
 
 const clock = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
@@ -170,21 +171,7 @@ export function LogicGame({ id, onBack }: { id: LogicGameId; onBack: () => void 
           </>
         )}
       </article>
-      <article className="card game-leaderboard">
-        <h3>Today’s family times{id === 'combine' ? ` · ${size} × ${size}` : ''}</h3>
-        {!ranked.length ? (
-          <p className="muted small">Nobody has solved today’s yet.</p>
-        ) : (
-          <ol>
-            {ranked.map((s, i) => (
-              <li key={s.uid} className={s.uid === app.uid ? 'game-score-me' : ''}>
-                <span className="muted">{i + 1}</span> <strong>{app.household.members[s.uid]?.displayName ?? 'Family member'}</strong>
-                <span>{clock(s.best.ms ?? 0)}</span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </article>
+      <FamilyResults gameId={id} gameName={id === 'combine' ? `${game.name} (${size} × ${size})` : game.name} day={scoreSeed} rows={ranked.map((r) => ({ uid: r.uid, text: clock(r.best.ms ?? 0) }))} />
     </section>
   )
 }

@@ -406,7 +406,11 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
 - Wordle page: today's puzzle, Challenge someone (hidden while playing), then `WordleDailyResults`, which folds (card,
   and "N haven't played yet" with Remind, closed to begin with; `align-wordle-results-open`). The board keeps its
   compact size after finishing (no jump on a Z Fold).
-- Daily set (`DAILY_GAMES`: Wordle, Lights Out, Trail, Balance, Star Fields, Blocks, Sum Up): Daily / ✓ badges on the
+- Daily set (`DAILY_GAMES`: Wordle, Trail, Balance, Star Fields, Blocks, Sum Up, Lights Out last), played at
+  `#/games/daily/<id>` (route `daily`: the bar, and no Challenge someone; `#/games/play/<id>` is the game on its own).
+  Home's Games has a green ▶ Play Daily. The bar's ‹ › name the games and go round. Every daily game shows
+  `FamilyResults` (Wordle: `WordleDailyResults`, the same layout with the colored squares), with Remind for who
+  hasn't played. Earlier: Daily / ✓ badges on the
   Games page (✓ from `play.daily.done`, which each daily game sets once a day via `earnDaily`), "Play them" (the first
   not done: `nextDaily`), a link on Home's Games, and `DailyBar` on each (‹ previous, which of 7, next ›, a chip each).
   Lights Out and the logic puzzles wait for Start (board hidden, clock still), so looking ahead or skipping costs
