@@ -3588,43 +3588,77 @@ button.today-sheet-title {
 /* Family challenges: the one-line track (icons at their percent, the finish on the right), then bars per person. */
 .challenges-panel {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--tile-gap, 1rem);
+  min-width: 0;
+}
+.challenge-card {
+  min-width: 0;
 }
 .challenge-card .section-header {
   margin-bottom: 0.25rem;
 }
 .challenge-track {
+  flex: 1 4 3rem;
+  min-width: 2.5rem;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.2rem;
+  margin: 0 0.15rem;
+}
+.challenge-track-run {
   position: relative;
-  margin: 0.1rem 1.6rem 0.2rem 0.2rem;
+  flex: 1;
+  min-width: 0;
 }
 .challenge-track-line {
   position: absolute;
   left: 0;
-  right: -1.3rem;
-  bottom: 0.55rem;
+  right: 0;
+  bottom: 0.45rem;
   height: 3px;
   border-radius: 2px;
   background: linear-gradient(90deg, var(--border), color-mix(in srgb, #2da44e 60%, var(--border)));
 }
 .challenge-track-goal {
-  position: absolute;
-  right: -1.6rem;
-  bottom: 0.1rem;
-  font-size: 1.05rem;
+  flex: 0 0 auto;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding-bottom: 0.1rem;
 }
 .challenge-track-icon {
   position: absolute;
-  transform: translateX(-10%);
   display: grid;
   place-items: center;
-  width: 1.3rem;
-  height: 1.3rem;
-  font-size: 0.95rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  font-size: 0.75rem;
   line-height: 1;
   background: var(--surface);
   border: 2px solid;
   border-radius: 50%;
-  transition: left 0.6s ease;
+  transition: left 0.6s ease, transform 0.6s ease;
+}
+/* A challenge's heading: the title shortens (…) before the track or Show do. */
+.challenge-card .section-header {
+  flex-wrap: nowrap;
+}
+.challenge-card .section-toggle {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+/* The track gives way first; the title only once the track is at its smallest. */
+.challenge-card .section-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.challenge-card .section-actions {
+  flex: 0 0 auto;
+  margin-left: 0;
+}
+.challenge-leader {
+  margin: 0;
 }
 .challenge-detail {
   display: grid;

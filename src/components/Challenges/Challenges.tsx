@@ -101,20 +101,31 @@ export function ChallengesView() {
   )
 }
 
-/** The one-line track: 0% on the left, the finish on the right, everyone's icon where they are. */
+/**
+ * The short track in a challenge's heading: 0% on the left, the finish icon on the right, everyone's icon where they
+ * are (close ones stack). It fits between the title and Show.
+ */
 function Track({ c }: { c: Challenge }) {
   const spots = trackPositions(c)
   const lanes = Math.max(1, ...spots.map((s) => s.lane + 1))
   return (
-    <div className="challenge-track" style={{ height: `${0.9 + lanes * 1.25}rem` }} aria-hidden="true">
-      <span className="challenge-track-line" />
+    <span className="challenge-track" aria-hidden="true">
+      <span className="challenge-track-run" style={{ height: `${0.3 + lanes * 1.05}rem` }}>
+        <span className="challenge-track-line" />
+        {spots.map((s) => (
+          <span
+            key={s.uid}
+            className="challenge-track-icon"
+            // At 0% the icon starts at the line's start; at 100% it ends at the line's end.
+            style={{ left: `${s.pct}%`, transform: `translateX(-${s.pct}%)`, bottom: `${s.lane * 1.05}rem`, borderColor: c.players[s.uid].color }}
+            title={`${c.players[s.uid].nickname}: ${s.pct}%`}
+          >
+            {c.players[s.uid].icon}
+          </span>
+        ))}
+      </span>
       <span className="challenge-track-goal">{c.goalIcon}</span>
-      {spots.map((s) => (
-        <span key={s.uid} className="challenge-track-icon" style={{ left: `calc(${s.pct}% * 0.9)`, bottom: `${0.1 + s.lane * 1.25}rem`, borderColor: c.players[s.uid].color }} title={`${c.players[s.uid].nickname}: ${s.pct}%`}>
-          {c.players[s.uid].icon}
-        </span>
-      ))}
-    </div>
+    </span>
   )
 }
 
@@ -183,16 +194,19 @@ function ChallengeCard({ c, startOpen = false }: { c: Challenge; startOpen?: boo
 
   return (
     <article className={`challenge-card${ended ? ' ended' : ''}`}>
-      <SectionHeader icon="trophy" title={c.title} onTitleClick={() => setOpen(!open)} expanded={open} help="challenges" beside={!open && leader ? <span className="muted small tile-status">{`${c.players[leader.uid].nickname} leads · ${leader.pct}%`}</span> : undefined}>
+      <SectionHeader icon="trophy" title={c.title} onTitleClick={() => setOpen(!open)} expanded={open} help="challenges" beside={<Track c={c} />}>
         <button type="button" className="link small" onClick={() => setOpen(!open)} aria-expanded={open}>
           {open ? 'Hide' : 'Show'}
         </button>
       </SectionHeader>
+      {open && (
       <div className="tile-body">
-        <Track c={c} />
-        {open && (
           <div className="challenge-detail">
-            <p className="muted small">Progress is each person’s percent of their own goal.{ended ? ' This challenge has ended.' : ''}</p>
+            {leader && (
+              <p className="small challenge-leader">
+                <strong>{c.players[leader.uid].nickname}</strong> leads · {leader.pct}%{ended ? ' · this challenge has ended' : ''}
+              </p>
+            )}
             {ranked(c).map(({ uid, p, pct }) => (
               <div key={uid} className="challenge-row">
                 <div className="challenge-row-head">
@@ -203,9 +217,6 @@ function ChallengeCard({ c, startOpen = false }: { c: Challenge; startOpen?: boo
                   ) : (
                     <strong className="challenge-name">{p.nickname}</strong>
                   )}
-                  <span className="muted small">
-                    {fmt(current(p))} {c.unit} → {fmt(p.goal)}
-                  </span>
                   {uid !== app.uid && !ended && !checkedInOn(p, day) && (
                     <button type="button" className="link small" disabled={nudged.has(uid)} onClick={() => void nudge(uid)} title="They haven’t checked in today">
                       {nudged.has(uid) ? 'Nudged' : 'Nudge'}
@@ -261,21 +272,21 @@ function ChallengeCard({ c, startOpen = false }: { c: Challenge; startOpen?: boo
             {editing === 'me' && me && <PlayerForm c={c} player={me} onDone={() => setEditing(null)} />}
             {editing === 'challenge' && <ChallengeSettings c={c} onDone={() => setEditing(null)} />}
           </div>
-        )}
       </div>
+      )}
     </article>
   )
 }
 
 /** Everyone's check-ins over time, in percent of their goal (or in the unit). */
 function ChallengeGraph({ c }: { c: Challenge }) {
-  const [as, setAs] = useState<'percent' | 'value'>('percent')
+  // Percent only: nobody's weight shows (only your own, where you enter it).
+  const as = 'percent' as const
   const since = c.createdAt ?? new Date().toISOString()
   const lines = Object.entries(c.players).map(([uid, p]) => ({ uid, p, points: series(p, as, since) }))
   const xs = lines.flatMap((l) => l.points.map(([x]) => x))
-  const ys = lines.flatMap((l) => l.points.map(([, y]) => y))
   const [x0, x1] = [Math.min(...xs), Math.max(...xs, Math.min(...xs) + 86400000)]
-  const [y0, y1] = as === 'percent' ? [0, 100] : [Math.min(...ys, ...Object.values(c.players).map((p) => p.goal)), Math.max(...ys, ...Object.values(c.players).map((p) => p.goal))]
+  const [y0, y1] = [0, 100]
   const W = 100
   const H = 50
   const px = (x: number) => ((x - x0) / (x1 - x0)) * W
@@ -283,22 +294,12 @@ function ChallengeGraph({ c }: { c: Challenge }) {
   const date = (t: number) => new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' })
   return (
     <div className="challenge-graph">
-      <div className="row">
-        <span className="segmented small" role="group" aria-label="Show as">
-          <button type="button" className={as === 'percent' ? 'on' : ''} aria-pressed={as === 'percent'} onClick={() => setAs('percent')}>
-            % of goal
-          </button>
-          <button type="button" className={as === 'value' ? 'on' : ''} aria-pressed={as === 'value'} onClick={() => setAs('value')}>
-            {c.unit || 'Value'}
-          </button>
-        </span>
-      </div>
       <svg viewBox={`-8 -3 ${W + 12} ${H + 10}`} role="img" aria-label="Progress over time">
         <text x={-1} y={0} className="graph-label" textAnchor="end">
-          {as === 'percent' ? '100%' : fmt(y1)}
+          100%
         </text>
         <text x={-1} y={H} className="graph-label" textAnchor="end">
-          {as === 'percent' ? '0%' : fmt(y0)}
+          0%
         </text>
         <text x={0} y={H + 6} className="graph-label">
           {date(x0)}
@@ -447,7 +448,6 @@ function Invitation({ c }: { c: Challenge }) {
         )}
       </SectionHeader>
       <div className="tile-body">
-        <Track c={c} />
         {joining && <PlayerForm c={c} accepting onDone={() => setJoining(false)} />}
         {error && <p className="error small">{error}</p>}
       </div>

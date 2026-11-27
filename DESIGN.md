@@ -430,7 +430,7 @@ Scores and AI recovery estimates are uncalibrated research aids, not measured pr
   `trackPositions` with lanes so close icons don't hide, `milestonesPassed`, `overtaken`, `allFinished`, `series`).
 - Home tile `panel:challenges` (auto-added just below the Inbox; hidden when you're in none): invitations (Accept →
   your part, No thanks), then each challenge: the track line, Show → bars, your name to check in (Undo last), Nudge,
-  Graph (% or unit), My settings, the creator's Edit challenge (end / start again). Page `#/challenges` (Library):
+  Graph (percent only), My settings, the creator's Edit challenge (end / start again). Page `#/challenges` (Library):
   New challenge, past ones. A check-in also logs your linked measure goal (made for you if you like: Weight).
   Inbox kind `challenge`: invitations, milestones (25/50/75/100%), "passed you", nudges.
 

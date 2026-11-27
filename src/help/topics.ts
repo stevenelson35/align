@@ -365,10 +365,10 @@ export const HELP_TOPICS: HelpTopic[] = [
     tip: 'A race to each person’s own goal, in percent of it, so different goals compare fairly.',
     body: [
       'Start one on the Challenges page (Library → Challenges): a title, what it’s measured in (lb, kg, $, miles…), a finish-line icon, who to invite, and your own part: nickname, icon, color, where you start and your goal. The people you invite get it in their Inbox and on Home, to Accept (setting their own) or say No thanks.',
-      '• On Home (below the Inbox), each challenge is one line: everyone’s icon on a track from 0% to the finish, where they are. Show opens it: each person’s bar and percent, in their color.',
+      '• On Home (below the Inbox), each challenge is one line: its name, then a short track from 0% to the finish with everyone’s icon where they are, then Show. Show opens it: who leads, then each person’s bar and percent, in their color. Only percents show: nobody’s weight (or other numbers) is shown to anyone else; you see your own when you enter a new one or open My settings.',
       '• Tap your own name to record a new value (any time, as often as you like); Undo last takes back a typo. A check-in can also go to one of your goals: pick a weight goal you have, or let it make one (Weight, with your goal as its target).',
       '• Celebrations when you reach 25, 50, 75 and 100%, when you take the lead, and when everyone reaches their goal; the others hear about milestones, and whoever you pass hears that too.',
-      '• Nudge sends a friendly reminder to someone who hasn’t checked in today. Graph shows everyone’s check-ins over time, in percent or in the unit.',
+      '• Nudge sends a friendly reminder to someone who hasn’t checked in today. Graph shows everyone’s check-ins over time, in percent of their own goal.',
       '• My settings changes your nickname, icon, color, start, goal and linked goal; the person who started it can rename it, change the finish icon, invite more people, or end it. Ended challenges stay on the Challenges page as history.',
     ],
   },
