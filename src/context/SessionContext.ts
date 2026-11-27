@@ -3,7 +3,8 @@ import { createContext } from 'react'
 import type { Household, HouseholdMember } from '../types'
 
 export type SessionState =
-  | { status: 'loading' }
+  /** step: what it's waiting for (shown while opening): your sign-in, then the household. */
+  | { status: 'loading'; step?: 'auth' | 'household' }
   | { status: 'signedOut' }
   | { status: 'unauthorized'; user: User }
   | { status: 'setup'; user: User }

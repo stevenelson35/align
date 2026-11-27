@@ -62,10 +62,18 @@
           <div class="boot-block"></div>
           <div class="boot-block"></div>
           <div class="boot-block"></div>
-          <span class="boot-note">Opening Align…</span>
+          <span class="boot-note">Step 1 of 4: downloading Align…</span>
         </div>
       </div>
     </div>
+    <script>
+      // Still on step 1 after a while (a slow connection): say so, with a way to try again.
+      setTimeout(function () {
+        var note = document.querySelector('#root .boot .boot-note')
+        if (!note) return
+        note.innerHTML = 'Still downloading Align (a slow connection can take a minute)… <button type="button" onclick="location.reload()">Reload</button>'
+      }, 15000)
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

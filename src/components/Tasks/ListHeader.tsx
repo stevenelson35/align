@@ -65,10 +65,18 @@ export function ListHeader({ list, children, tools = true }: { list: List; child
       <header className="view-header">
         <h2>{list.name}</h2>
         <HelpTip topic={HELP_FOR_KIND[list.kind]} label={KIND_NAME[list.kind]} />
-        <span className={`badge ${list.kind === 'project' ? 'color-project' : `color-${list.visibility}`}`}>
-          <Icon name={AUDIENCE_ICON[audienceOf(list)]} /> {audienceLabel(audienceOf(list))}
-          {KIND_LABEL[list.kind]}
-        </span>
+        {/* Who can see it; tapping it (if you can change the list) opens its settings to change that. */}
+        {app.canEdit(list) ? (
+          <button type="button" className={`badge badge-button ${list.kind === 'project' ? 'color-project' : `color-${list.visibility}`}`} onClick={() => app.editList(list)} title="Change who can see it">
+            <Icon name={AUDIENCE_ICON[audienceOf(list)]} /> {audienceLabel(audienceOf(list))}
+            {KIND_LABEL[list.kind]} <Icon name="edit" />
+          </button>
+        ) : (
+          <span className={`badge ${list.kind === 'project' ? 'color-project' : `color-${list.visibility}`}`}>
+            <Icon name={AUDIENCE_ICON[audienceOf(list)]} /> {audienceLabel(audienceOf(list))}
+            {KIND_LABEL[list.kind]}
+          </span>
+        )}
         {list.visibility === 'shared' && <span className="muted small">with {sharedNames(list.sharedWith ?? [], app.household, app.uid)}</span>}
         {list.defaultContext === 'work' && (list.kind === 'list' || list.kind === 'project') && <span className="badge work">Work</span>}
         <span className="grow" />

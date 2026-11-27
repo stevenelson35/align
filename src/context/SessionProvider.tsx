@@ -5,7 +5,7 @@ import { currentSlot, rememberAccount } from '../firebase/accounts'
 import { SessionContext, type SessionState } from './SessionContext'
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SessionState>({ status: 'loading' })
+  const [state, setState] = useState<SessionState>({ status: 'loading', step: 'auth' })
 
   useEffect(() => {
     let unsubHousehold: (() => void) | undefined
@@ -17,7 +17,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setState({ status: 'signedOut' })
         return
       }
-      setState({ status: 'loading' })
+      setState({ status: 'loading', step: 'household' })
       unsubHousehold = subscribeHousehold(
         (household) => {
           if (!household) {

@@ -11,7 +11,7 @@ function App() {
 
   switch (session.status) {
     case 'loading':
-      return <AppSkeleton bar note="Opening Align…" />
+      return <AppSkeleton bar note={session.step === 'household' ? 'Step 3 of 4: opening your family…' : 'Step 2 of 4: checking your sign-in…'} />
     case 'signedOut':
       return <SignIn />
     case 'unauthorized':

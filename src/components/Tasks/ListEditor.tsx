@@ -20,8 +20,9 @@ export function ListEditor({ list, kind, onClose, onCreated }: { list: List | nu
     // New lists start with your own default privacy (Settings).
     list ?? { name: '', kind: app.isMember ? (kind ?? 'list') : 'gifts', visibility: 'private', ownerId: app.uid, viewerVisible: false, defaultContext: 'family' },
   )
-  // New lists start with your own default (Settings), which is Everyone unless you changed it.
-  const [audience, setAudience] = useState<Audience>(list ? audienceOf(list) : (app.member.defaultVisibility ?? 'everyone'))
+  // New lists start with your own default (Settings), which is Everyone unless you changed it. Flashcard sets start
+  // as Everyone whatever your default: they're for the whole family, view-only relatives too.
+  const [audience, setAudience] = useState<Audience>(list ? audienceOf(list) : kind === 'cards' ? 'everyone' : (app.member.defaultVisibility ?? 'everyone'))
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   // Gift lists: PayPal.me and Venmo names for chipping in toward group gifts.
@@ -123,7 +124,15 @@ export function ListEditor({ list, kind, onClose, onCreated }: { list: List | nu
         <div className="grid2">
           <label>
             Kind
-            <select value={form.kind} onChange={(e) => set({ kind: e.target.value as List['kind'] })} disabled={!app.isMember}>
+            <select
+              value={form.kind}
+              onChange={(e) => {
+                const next = e.target.value as List['kind']
+                set({ kind: next })
+                if (!list && next === 'cards') setAudience('everyone')
+              }}
+              disabled={!app.isMember}
+            >
               <option value="list">Task list</option>
               <option value="project">Project (dependencies, timeline)</option>
               <option value="checklist">Checklist (shopping, gifts, people to call…)</option>

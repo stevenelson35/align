@@ -3666,6 +3666,18 @@ button.today-sheet-title {
   color: var(--muted);
   margin-left: auto;
 }
+.badge-button {
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.badge-button .i-edit {
+  opacity: 0.7;
+}
 .crumb-kind {
   display: inline-flex;
   align-items: center;

@@ -226,7 +226,7 @@ export function AppShell({ uid, household, member }: Props) {
               <>
                 <MainView />
               </>
-            ) : <AppSkeleton note="Loading your lists…" />}
+            ) : <AppSkeleton note="Step 4 of 4: loading your lists…" />}
           </main>
           {selectedTask && (
             <aside className="right-panel">
