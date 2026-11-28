@@ -297,3 +297,9 @@ export interface GiftClaim {
   /** A group gift: how much they're putting in (dollars). */
   amount?: number
 }
+
+export type GiftPlanStatus = 'to-buy' | 'bought' | 'wrapped' | 'sent' | 'delivered'
+export interface GiftPlan {
+  status?: GiftPlanStatus
+  note?: string
+}

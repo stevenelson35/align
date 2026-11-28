@@ -49,7 +49,7 @@ const clock = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms 
 
 const RULES: Record<LogicGameId, string> = {
   trail: 'Draw one path from 1 that passes every number in order and fills every square. Drag from 1 (or tap the next square); drag back, or tap an earlier square, to undo.',
-  balance: 'Fill every square with ● or ○ (tap to change). Each row and column has three of each; never three of one side by side; = means the two squares match, × means they differ.',
+  balance: 'Fill every square with one of two colors (tap to change). Each row and column has three of each; never three of one side by side; = means the two squares match, × means they differ.',
   stars: 'Put one ★ in every row, every column and every colored area. Stars can’t touch, not even corner to corner. Tap once for × (a note), twice for ★.',
   combine: 'Swipe a square onto a neighbor with the same number (or tap one, then the other): they become one square holding the sum. Combine them all into one. Bigger grids are harder.',
   blocks: 'Cut the grid into rectangles. Each rectangle holds exactly one number, and the number is how many squares it covers. Tap two corners to make one; tap a rectangle to remove it.',
@@ -92,6 +92,13 @@ export function LogicGame({ id, daily = false, onBack }: { id: LogicGameId; dail
   const [elapsed, setElapsed] = useState(0)
   const [hints, setHints] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [balanceColors, setBalanceColors] = useState<[string, string]>(() => {
+    const read = (key: string, fallback: string) => {
+      const value = localStorage.getItem(key)
+      return value && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback
+    }
+    return [read('align-balance-color-1', '#2563eb'), read('align-balance-color-2', '#e87929')]
+  })
   const startedAt = useRef(0)
   const boardRef = useRef<HintHandle | null>(null)
   // Nothing shows and the clock doesn't run until Start, so you can look ahead (or skip one) without it counting.
@@ -176,7 +183,7 @@ export function LogicGame({ id, daily = false, onBack }: { id: LogicGameId; dail
       case 'trail':
         return <TrailBoard {...props} />
       case 'balance':
-        return <BalanceBoard {...props} />
+        return <BalanceBoard {...props} colors={balanceColors} />
       case 'stars':
         return <StarsBoard {...props} />
       case 'blocks':
@@ -204,6 +211,21 @@ export function LogicGame({ id, daily = false, onBack }: { id: LogicGameId; dail
       </header>
       <article className="game-card card">
         <p className="small muted logic-rules">{RULES[id]}</p>
+        {id === 'balance' && (
+          <div className="balance-colors">
+            {balanceColors.map((color, i) => (
+              <label key={i} className="inline small">
+                Color {i + 1}
+                <input type="color" className="color-input" value={color} onChange={(e) => {
+                  const next: [string, string] = [...balanceColors]
+                  next[i] = e.target.value
+                  setBalanceColors(next)
+                  localStorage.setItem(`align-balance-color-${i + 1}`, e.target.value)
+                }} />
+              </label>
+            ))}
+          </div>
+        )}
         {id === 'combine' && (
           <label className="inline small">
             Grid{' '}
@@ -350,7 +372,7 @@ function TrailBoard({ seed, onSolved, done, ref }: BoardProps) {
 
 // ---- Balance ----
 
-function BalanceBoard({ seed, onSolved, done, ref }: BoardProps) {
+function BalanceBoard({ seed, onSolved, done, ref, colors }: BoardProps & { colors: [string, string] }) {
   const p: BalancePuzzle = useMemo(() => makeBalance(seed), [seed])
   const n = p.size
   const [grid, setGrid] = useState<(Mark | null)[]>(() => Array.from({ length: n * n }, (_, i) => p.given[i] ?? null))
@@ -381,9 +403,9 @@ function BalanceBoard({ seed, onSolved, done, ref }: BoardProps) {
           type="button"
           className={`logic-cell${p.given[i] !== undefined ? ' given' : ''}${bad.has(i) ? ' bad' : ''}`}
           onClick={() => tap(i)}
-          aria-label={v === null ? 'Empty' : v === 0 ? 'Filled circle' : 'Open circle'}
+          aria-label={v === null ? 'Empty' : `Color ${v + 1}`}
         >
-          {v !== null && <span className={`balance-mark ${v === 0 ? 'dark' : 'light'}`} />}
+          {v !== null && <span className="balance-mark" style={{ backgroundColor: colors[v] }} aria-hidden="true">{v + 1}</span>}
         </button>
       ))}
       {p.edges.map((e) => {

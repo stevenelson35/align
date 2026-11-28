@@ -36,6 +36,12 @@ export const earnsDaily = (id: string) => DAILY_EARNERS.find((d) => d.id === id)
 
 /** What's already been earned today (the saved list is only for its day). */
 export const doneToday = (daily: { day?: string; done?: string[] } | undefined, day: string) => (daily?.day === day ? (daily.done ?? []) : [])
+/** A completed Wordle board also counts, including games ended before the play-time record was updated. */
+export function dailyGamesDone(daily: { day?: string; done?: string[] } | undefined, day: string, board?: { uid: string; date: string; complete: boolean }, uid?: string): Set<string> {
+  const done = new Set(doneToday(daily, day))
+  if (board?.uid === uid && board?.date === day && board.complete) done.add('wordle')
+  return done
+}
 /** A flashcard round must have at least this many answers to count. */
 export const MIN_ROUND = 5
 /** What a finished flashcard round earns: a Challenge round, or a minute plus 5 s for each card after the first 5. */

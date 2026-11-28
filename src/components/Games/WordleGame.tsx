@@ -207,8 +207,8 @@ export function WordleGame({ challenge, day, daily = false, onBack }: { challeng
       setReceivedAt(Date.now())
       setGuess('')
       // Finishing Wordle of the day (solved or not) earns Glider play time, once a day.
-      if (next.complete && game.mode === 'daily') {
-        void earnDaily(app.uid, 'wordle', today()).catch(() => undefined)
+      if (next.complete && game.mode === 'daily' && !earlier) {
+        void earnDaily(app.uid, 'wordle', today()).catch((err) => setError(err instanceof Error ? err.message : String(err)))
         // Tell the family (score, time, squares, today's ranking), once a day.
         void announceDailyWordle(app.uid, app.household.members, next, today()).then((n) => n && setAnnounced(n), () => undefined)
       }
@@ -325,6 +325,9 @@ export function WordleGame({ challenge, day, daily = false, onBack }: { challeng
       setGame(next)
       setElapsed(next.elapsedMs)
       setReceivedAt(Date.now())
+      if (game.mode === 'daily' && !earlier) {
+        await earnDaily(app.uid, 'wordle', today())
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {

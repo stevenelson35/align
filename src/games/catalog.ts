@@ -42,7 +42,7 @@ export const GAMES = [
   {
     id: 'balance',
     name: 'Balance',
-    description: 'Today’s ● and ○ puzzle: three of each in every row and column, never three side by side, = and × between squares.',
+    description: 'Today’s two-color puzzle: three of each in every row and column, never three side by side, = and × between squares.',
     scoreOrder: ['hints', 'ms'],
   },
   {

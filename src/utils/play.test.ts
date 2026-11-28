@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { doneToday, earnsDaily, playClock, roundEarns } from './play'
+import { dailyGamesDone, doneToday, earnsDaily, playClock, roundEarns } from './play'
 
 describe('play time', () => {
   it('pays for finished rounds of 5 or more: a minute and 5 s a card after that; a Challenge 1:30', () => {
@@ -15,5 +15,13 @@ describe('play time', () => {
     expect(earnsDaily('joke')).toBe(0)
     expect(doneToday({ day: '2026-11-17', done: ['word'] }, '2026-11-17')).toEqual(['word'])
     expect(doneToday({ day: '2026-11-16', done: ['word'] }, '2026-11-17')).toEqual([])
+  })
+  it('counts a finished Wordle board only for its owner and day, including a given-up game', () => {
+    const board = { uid: 'a', date: '2026-11-17', complete: true, abandoned: true }
+    const record = { day: '2026-11-17', done: ['trail'] }
+    expect([...dailyGamesDone(record, '2026-11-17', board, 'a')]).toEqual(['trail', 'wordle'])
+    expect([...dailyGamesDone(record, '2026-11-17', { ...board, complete: false }, 'a')]).toEqual(['trail'])
+    expect([...dailyGamesDone(record, '2026-11-17', board, 'b')]).toEqual(['trail'])
+    expect([...dailyGamesDone(record, '2026-11-18', board, 'a')]).toEqual([])
   })
 })

@@ -46,7 +46,7 @@ function Balance() {
       <rect width={4} height={4} fill={PAPER} />
       <Grid n={4} />
       {rows.flatMap((row, r) =>
-        [...row].map((ch, c) => <circle key={`${r}${c}`} cx={c + 0.5} cy={r + 0.5} r={0.27} fill={ch === '●' ? INK : PAPER} stroke={INK} strokeWidth={0.08} />),
+        [...row].map((ch, c) => <circle key={`${r}${c}`} cx={c + 0.5} cy={r + 0.5} r={0.27} fill={ch === '●' ? '#2563eb' : '#e87929'} stroke={INK} strokeWidth={0.04} />),
       )}
       {/* = between two that match (row 3), × between two that differ (row 1). */}
       {(

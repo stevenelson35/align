@@ -551,6 +551,15 @@ service cloud.firestore {
       allow delete: if (isMember() || isViewer()) && resource.data.claimedBy == request.auth.uid;
     }
 
+    // Personal shopping plans are not readable by other givers or recipients.
+    match /giftPlans/{uid}/items/{itemId} {
+      allow read, delete: if (isMember() || isViewer()) && request.auth.uid == uid;
+      allow create, update: if (isMember() || isViewer()) && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['status', 'note'])
+        && (!('status' in request.resource.data) || request.resource.data.status in ['to-buy', 'bought', 'wrapped', 'sent', 'delivered'])
+        && (!('note' in request.resource.data) || (request.resource.data.note is string && request.resource.data.note.size() <= 2000));
+    }
+
     // Places on the family map (geofences): a name, center and radius. Members see and manage them; the helper
     // account reads them to notice arrivals and departures.
     match /places/{placeId} {

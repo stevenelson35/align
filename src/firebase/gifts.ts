@@ -1,8 +1,8 @@
 // Gift lists' data: the secret companion list (made when the first surprise idea is added) and claims. Claims are
 // queried by recipient, never for lists meant for you (the rules would refuse, and the point is not to know).
-import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore'
+import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
-import type { GiftClaim, Household, List, Task } from '../types'
+import type { GiftClaim, GiftPlan, Household, List, Task } from '../types'
 import { recipientKey, secretListFor, secretSharedWith } from '../utils/gifts'
 import { db } from './config'
 import { createList } from './db'
@@ -43,7 +43,29 @@ export function saveClaim(list: List, item: { id: string; title: string }, uid: 
   })
 }
 
-export const removeClaim = (itemId: string, uid: string) => deleteDoc(doc(db, 'giftClaims', `${itemId}_${uid}`))
+export async function removeClaim(itemId: string, uid: string) {
+  const batch = writeBatch(db)
+  batch.delete(doc(db, 'giftClaims', `${itemId}_${uid}`))
+  batch.delete(doc(db, 'giftPlans', uid, 'items', itemId))
+  await batch.commit()
+}
+
+/** Private shopping details are never stored on the shared claim. */
+export function useGiftPlans(uid: string, enabled: boolean) {
+  const [data, setData] = useState<{ uid: string; plans: Record<string, GiftPlan> } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!enabled) return
+    return onSnapshot(collection(db, 'giftPlans', uid, 'items'),
+      (snapshot) => setData({ uid, plans: Object.fromEntries(snapshot.docs.map((d) => [d.id, d.data() as GiftPlan])) }),
+      (err) => setError(err.message))
+  }, [uid, enabled])
+  return { plans: enabled && data?.uid === uid ? data.plans : {}, error }
+}
+
+export function saveGiftPlan(uid: string, itemId: string, patch: GiftPlan) {
+  return setDoc(doc(db, 'giftPlans', uid, 'items', itemId), patch, { merge: true })
+}
 
 /** The secret companion of a member's gift list: found among your lists, or made (shared with everyone but them). */
 export async function ensureSecretList(list: List, lists: List[], household: Household, uid: string): Promise<List> {

@@ -19,7 +19,7 @@ const REQUIRED = [
   // Rows and sections everywhere
   '.entry-row', '.entry-line', '.entry-detail', '.section-header', '.section-icon', '.day-section',
   // Gift lists
-  '.gift-tools', '.gift-rank', '.gift-state', '.gift-pool', '.gift-arrange',
+  '.gift-tools', '.gift-rank', '.gift-state', '.gift-pool', '.gift-arrange', '.gift-shopping-panel', '.gift-plan-note',
   // Periodic table
   '.ptable', '.pcell', '.fam-halogen', '.element-detail', '.term-pop', '.family-strip', '.element-answer', '.element-decks',
   // Glider and play time
@@ -27,7 +27,7 @@ const REQUIRED = [
   // Languages
   '.language-card', '.phrase-answer', '.hear',
   // Games
-  '.game-invitations-list', '.game-invitation-row',
+  '.game-invitations-list', '.game-invitation-row', '.balance-colors', '.daily-chip.done',
 ]
 
 describe('the stylesheet', () => {

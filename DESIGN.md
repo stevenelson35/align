@@ -688,6 +688,16 @@ firestore.rules, firestore.indexes.json
 
 ## 13. Status & Handoff
 
+### Daily games and private gift plans
+- A finished Wordle, including giving up, counts in the daily games; the saved daily board also covers earlier
+  give-ups. Giving up today's Wordle earns the same once-daily play time as using all guesses.
+- Daily-game chips highlight completed games. Balance uses two numbered, selectable colors remembered per device.
+- Today → Gifts → You’re getting starts folded every time the Gifts section opens. Private shopping status and notes
+  live in `giftPlans/{uid}/items/{itemId}`, separate from the shared claim's bought mark and note; unclaim removes the
+  private plan. The fold is not a security boundary on an unlocked account.
+- Deploy Firestore rules before the web app. Verified unit and rules tests, build and lint, plus phone-sized emulator
+  browser checks including a mocked Wordle give-up, an existing abandoned board, and private gift-plan persistence.
+
 ### How Align works now (the 2026-11 refactor, phases 1–5, done)
 Planned 2026-11-13 (checkpoint tag `pre-refactor-2026-11-13`, `7e9b111`) and finished 2026-11-16. Commits: phase 1
 `55d8a6c`, phase 2 `4ba5220`, phase 3 `1c7e9fe`, phase 4 `13111f6`, follow-ups `60f8ead` `6bba091` `31532ad`
