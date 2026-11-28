@@ -230,8 +230,8 @@ export function AppShell({ uid, household, member }: Props) {
           </main>
           {selectedTask && (
             <aside className="right-panel">
-              {/* Re-keyed on any change so the form never holds stale dates after a shift is applied. */}
-              <TaskDetails key={JSON.stringify(selectedTask)} task={selectedTask} />
+              {/* Re-keyed on each open so the requested panel mode starts fresh. */}
+              <TaskDetails key={`${selectedTask.id}:${panel.n}`} task={selectedTask} />
             </aside>
           )}
           {selectedItem && selectedItemList && (

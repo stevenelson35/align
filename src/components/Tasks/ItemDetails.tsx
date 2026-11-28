@@ -24,6 +24,8 @@ import { cleanGift, giftSummary, isRecipient, ownGiftIdea, recipientLabel } from
 import { PinToToday } from '../Today/PinToToday'
 import { tile } from '../../utils/tiles'
 import { ItemIconPicker } from '../UI/ItemIcon'
+import { MoveEntry } from '../Entries/MoveEntry'
+import { entryListLabel } from '../../utils/listKinds'
 
 /**
  * Side panel for a checklist item, a note or a link. It opens as a view (the item, its note, links, pictures,
@@ -32,10 +34,10 @@ import { ItemIconPicker } from '../UI/ItemIcon'
 export function ItemDetails({ item, list }: { item: Task; list: List }) {
   const app = useApp()
   const { lists } = useData()
-  // Opened with Edit or Move (a row's ⋯ menu): straight to the form.
-  const [editing, setEditing] = useState(app.panelMode === 'edit')
+  const [mode, setMode] = useState<'view' | 'edit' | 'move'>(app.panelMode === 'move' ? 'move' : app.panelMode === 'edit' ? 'edit' : 'view')
+  if (mode === 'move') return <MoveEntry item={item} list={list} onDone={() => setMode('view')} />
   if (list.kind === 'contacts') return <ContactDetails item={item} list={list} />
-  if (editing) return <ItemEditForm item={item} list={list} onDone={() => setEditing(false)} />
+  if (mode === 'edit') return <ItemEditForm item={item} list={list} onDone={() => setMode('view')} />
   const isNote = list.kind === 'notes'
   const isLink = list.kind === 'links'
   const isPick = list.kind === 'picks'
@@ -49,7 +51,7 @@ export function ItemDetails({ item, list }: { item: Task; list: List }) {
       kind={isNote ? 'Note' : isLink ? 'Link' : isPick ? pickKind(list.pickKind).label : list.kind === 'cards' ? 'Flashcard' : isGift ? (list.giftSecret ? 'Secret gift idea' : 'Gift idea') : 'Checklist item'}
       title={item.title}
       customIcon={item.customIcon}
-      onEdit={app.canEdit(item) || ownGiftIdea(item, list, app.member.role, app.uid) ? () => setEditing(true) : undefined}
+      onEdit={app.canEdit(item) || ownGiftIdea(item, list, app.member.role, app.uid) ? () => setMode('edit') : undefined}
       onClose={() => app.selectTask(null)}
       facts={
         <>
@@ -328,7 +330,7 @@ function ItemEditForm({ item, list, onDone }: { item: Task; list: List; onDone: 
         {editable && list.kind !== 'cards' && <NotePicker value={noteIds} onChange={setNoteIds} audience={audienceOf(list)} />}
         {moveChoices.length > 1 && (
           <label>
-            {isNote ? 'Notes list' : isLink ? 'Links list' : 'Checklist'}
+            {entryListLabel(list)}
             <select value={listId} onChange={(e) => setListId(e.target.value)}>
               {moveChoices.map((l) => (
                 <option key={l.id} value={l.id}>

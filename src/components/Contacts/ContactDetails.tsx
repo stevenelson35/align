@@ -20,7 +20,7 @@ type Contact = NonNullable<Task['contact']>
 /** A contact in the side panel: a view with tap-to-call / text / email / map, and Edit for the form. */
 export function ContactDetails({ item, list }: { item: Task; list: List }) {
   const app = useApp()
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(app.panelMode === 'edit')
   const pins = usePinned()
   if (editing) return <ContactForm item={item} onDone={() => setEditing(false)} />
   const c = item.contact ?? {}

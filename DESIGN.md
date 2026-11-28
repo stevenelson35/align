@@ -712,7 +712,7 @@ Planned 2026-11-13 (checkpoint tag `pre-refactor-2026-11-13`, `7e9b111`) and fin
   (`useEntrySize`): simple, medium (marks and the kind's facts), detail (everything in place). Tap the title to open it
   in place; ⋯ or press and hold opens Open, Edit, Move, Comment, Send…, Pin to Today. `.flat` rows (an entry pinned on
   Today) are one line with the kind's icon in the panels' tinted square, no border, and hold arranges Today instead.
-  Panels open in a mode: `app.openEntry(id, 'view' | 'edit' | 'comment')`.
+  Panels open in a mode: `app.openEntry(id, 'view' | 'edit' | 'move' | 'comment')`; Move has a focused list picker.
 
 #### Today
 - **Tiles** (`utils/tiles.ts`, `components/Today/`): `members.<uid>.today`, an ordered list of `panel:<id>`

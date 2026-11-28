@@ -19,6 +19,7 @@ import { DetailsView, LinksAndPictures } from '../UI/Details'
 import { NotePicker } from '../UI/RelatedNotes'
 import { AutoTextarea } from '../UI/AutoTextarea'
 import { ItemIconPicker } from '../UI/ItemIcon'
+import { MoveEntry } from '../Entries/MoveEntry'
 
 /** ✓ done, ✕ canceled, ⏳ not finished yet. */
 function statusIcon(t: Task) {
@@ -30,8 +31,14 @@ const NEW = '__new__'
 
 /** Right panel for a task (DESIGN.md §10): opens as a view; Edit switches to the full form. */
 export function TaskDetails({ task }: { task: Task }) {
-  const [editing, setEditing] = useState(false)
-  return editing ? <TaskEditForm task={task} onDone={() => setEditing(false)} /> : <TaskView task={task} onEdit={() => setEditing(true)} />
+  const app = useApp()
+  const { lists } = useData()
+  const [mode, setMode] = useState<'view' | 'edit' | 'move'>(app.panelMode === 'move' ? 'move' : app.panelMode === 'edit' ? 'edit' : 'view')
+  const list = lists.find((candidate) => candidate.id === task.listId)
+  if (mode === 'move' && list) return <MoveEntry item={task} list={list} onDone={() => setMode('view')} />
+  return mode === 'edit'
+    ? <TaskEditForm task={task} onDone={() => setMode('view')} />
+    : <TaskView task={task} onEdit={() => setMode('edit')} />
 }
 
 /**

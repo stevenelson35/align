@@ -14,8 +14,8 @@ export interface PendingShift {
   extra?: { id: string; data: Partial<TaskInput> }[]
 }
 
-/** How an entry's side panel opens: its view, its edit form, or scrolled to its comments. */
-export type PanelMode = 'view' | 'edit' | 'comment'
+/** How an entry's side panel opens: its view, edit or move form, or scrolled to its comments. */
+export type PanelMode = 'view' | 'edit' | 'move' | 'comment'
 
 /** UI state shared by the shell, views and chat. */
 export interface AppState {
@@ -35,7 +35,7 @@ export interface AppState {
   /** Opens the ☰ menu (on a phone), with one section expanded if named (the breadcrumb). */
   openMenu: (section?: string) => void
   textAbout: (taskId: string) => void
-  /** Opens an entry's panel in a mode: as a view, straight to its edit form (Edit, Move), or at its comments. */
+  /** Opens an entry's panel in a mode: its view, edit form, move form or comments. */
   openEntry: (id: string, mode?: PanelMode) => void
   /** How the open panel should start (set by openEntry; plain selectTask opens the view). */
   panelMode: PanelMode
